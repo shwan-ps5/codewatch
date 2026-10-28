@@ -18,6 +18,8 @@ SECURITY_TYPES = "vulnerability,security_hotspot"
 def call(path, params=None, body=None):
     base = os.environ.get("CODEWATCH_URL", "http://127.0.0.1:8100").rstrip("/")
     query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v not in (None, "", False)})
+    if not base.startswith(("http://", "https://")):
+        raise RuntimeError(f"CODEWATCH_URL must be http(s): {base}")
     url = f"{base}/api/{path}" + (f"?{query}" if query else "")
     headers = {"Authorization": f"Bearer {os.environ.get('CODEWATCH_TOKEN', '')}"}
     data = None

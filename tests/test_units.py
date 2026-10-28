@@ -165,3 +165,12 @@ def test_new_projects_get_default_exclusions():
 def test_distinct_template_values_stay_distinct():
     out = blank_template_syntax("<h2>{{ std.top25.name }}</h2><h2>{{ std.owasp.name }}</h2>")
     assert out.count("<h2>") == 2 and "top25" in out and "owasp" in out
+
+
+def test_client_refuses_non_http_server_urls():
+    import pytest
+
+    from core.client import ClientError, request
+
+    with pytest.raises(ClientError):
+        request("file:///etc/passwd", "t")
