@@ -49,7 +49,7 @@ def quality_gate(project: str, branch: str = "") -> dict:
 
 
 @mcp.tool()
-def list_issues(
+def list_issues(  # noqa: PLR0913 # each parameter is a field in the MCP tool's input schema
     project: str,
     branch: str = "",
     new_only: bool = False,

@@ -209,7 +209,7 @@ def rule_json(entry, full=True):
 
 
 @api()
-def rule(request, rule_id):
+def rule(request, rule_id):  # noqa: ARG001 # Django passes the request to every view
     entry = catalog.find(rule_id)
     if entry is None:
         raise ApiError(404, f"No rule {rule_id}")
