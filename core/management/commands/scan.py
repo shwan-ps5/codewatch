@@ -45,17 +45,18 @@ class Command(BaseCommand):
         parser.add_argument("--coverage-base", help="Directory the report's paths are relative to")
         parser.add_argument("--fail-on-gate", action="store_true", help="Exit 1 if any quality gate fails")
 
-    def handle(self, project, branch, all_branches, coverage, coverage_base, fail_on_gate, **_):
+    def handle(self, **options):
+        key = options["project"]
         try:
-            proj = Project.objects.get(key=project)
+            proj = Project.objects.get(key=key)
         except Project.DoesNotExist as exc:
-            raise CommandError(f"Unknown project {project}") from exc
+            raise CommandError(f"Unknown project {key}") from exc
         mirror = Mirror(proj)
         mirror.sync()
         ensure_main_branch(proj, mirror)
-        branches = mirror.branches() if all_branches else (branch or [proj.main_branch])
+        branches = mirror.branches() if options["all_branches"] else (options["branch"] or [proj.main_branch])
         # Main first, so branches compare against a fresh baseline.
         branches.sort(key=lambda b: b != proj.main_branch)
-        results = [self.scan_branch(proj, mirror, b, coverage, coverage_base) for b in branches]
-        if fail_on_gate and not all(results):
+        results = [self.scan_branch(proj, mirror, b, options["coverage"], options["coverage_base"]) for b in branches]
+        if options["fail_on_gate"] and not all(results):
             raise SystemExit(1)

@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import catalog, gate
-from .collect import ScanConfig, choose_reference, collect
+from .collect import ScanConfig, ScanInput, choose_reference, collect
 from .git import Mirror
 from .models import Analysis, AnalysisSource, Issue, Metric, SourceBlob
 
@@ -35,8 +35,8 @@ def scan(project, branch, coverage_report=None, coverage_base=None, log=print):
     try:
         with mirror.worktree(commit, f"a{analysis.pk}") as root:
             changed = mirror.changed_lines(ref, commit) if ref else None
-            payload = collect(cfg, root, mirror.tracked_files(commit), branch, changed,
-                              coverage_report, coverage_base, log)
+            payload = collect(cfg, ScanInput(root, mirror.tracked_files(commit), branch, changed,
+                                             coverage_report, coverage_base), log)
         payload.update(reference_analysis_commit=ref_analysis)
         ingest(analysis, payload)
         log(f"{len(payload['issues'])} issues, gate {'passed' if analysis.gate_passed else 'FAILED'}")

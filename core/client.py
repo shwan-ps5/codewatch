@@ -13,10 +13,11 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 from .analyzers.base import node_tool
-from .collect import GitError, LocalRepo, ScanConfig, choose_reference, collect
+from .collect import GitError, LocalRepo, ScanConfig, ScanInput, choose_reference, collect
 
 CONFIG_FILE = "codewatch-project.json"
 COVERAGE_CANDIDATES = ["coverage.xml", "coverage/cobertura-coverage.xml", "coverage/lcov.info", "lcov.info"]
@@ -81,7 +82,20 @@ def first(*values):
     return next((v for v in values if v), "")
 
 
-def scan_settings(args, repo, conf):
+@dataclass
+class ScanTarget:
+    """The working copy being scanned and where its results go."""
+
+    args: argparse.Namespace
+    repo: LocalRepo
+    conf: dict
+    url: str
+    token: str
+    key: str
+    branch: str
+
+
+def scan_target(args, repo, conf):
     url = first(args.url, os.environ.get("CODEWATCH_URL"), conf.get("serverUrl")).rstrip("/")
     token = first(args.token, os.environ.get("CODEWATCH_TOKEN"))
     key = first(args.project, os.environ.get("CODEWATCH_PROJECT"), conf.get("projectKey"), default_key(repo.root))
@@ -90,19 +104,21 @@ def scan_settings(args, repo, conf):
         raise ClientError("Detached HEAD: pass --branch")
     if not args.output and not (url and token):
         raise ClientError(f"Set CODEWATCH_URL and CODEWATCH_TOKEN (or serverUrl in {CONFIG_FILE}, --url/--token)")
-    return url, token, key, branch
+    return ScanTarget(args, repo, conf, url, token, key, branch)
 
 
-def fetch_config(url, token, key, repo, args, conf):
-    cfg, created = server_config(url, token, key, repo, args, conf)
+def fetch_config(target):
+    cfg, created = server_config(target)
     # Local opt-outs (e.g. a slow tool) add to the server's list rather than replacing it.
+    conf = target.conf
     cfg.disabled_analyzers = sorted(set(cfg.disabled_analyzers) | set(conf.get("disabledAnalyzers", [])))
     cfg.exclusions = list(dict.fromkeys([*cfg.exclusions, *conf.get("exclusions", [])]))
     return cfg, created
 
 
-def server_config(url, token, key, repo, args, conf):
-    main = args.main_branch or conf.get("mainBranch")
+def server_config(target):
+    url, token, key, repo = target.url, target.token, target.key, target.repo
+    main = target.args.main_branch or target.conf.get("mainBranch")
     if not url:
         return ScanConfig(main_branch=main or detect_main_branch(repo)), True
     status, body = request(f"{url}/api/projects/{key}/config/", token)
@@ -125,8 +141,9 @@ def find_coverage(args, root, conf):
 def cmd_scan(args):
     repo = LocalRepo(args.path)
     conf = load_config(repo.root)
-    url, token, key, branch = scan_settings(args, repo, conf)
-    cfg, created = fetch_config(url, token, key, repo, args, conf)
+    target = scan_target(args, repo, conf)
+    url, token, key, branch = target.url, target.token, target.key, target.branch
+    cfg, created = fetch_config(target)
     head = repo.head()
     ref, ref_analysis = choose_reference(branch, head, cfg, repo)
     log(f"Scanning {repo.root} ({branch} @ {head[:8]}"
@@ -135,7 +152,7 @@ def cmd_scan(args):
     if coverage:
         log(f"Using coverage report {coverage}")
     changed = repo.changed_lines(ref) if ref else None
-    payload = collect(cfg, repo.root, repo.files(), branch, changed, coverage, repo.root, log)
+    payload = collect(cfg, ScanInput(repo.root, repo.files(), branch, changed, coverage, repo.root), log)
     payload.update(
         branch=branch, commit=head, dirty=repo.dirty(), reference_commit=ref,
         reference_analysis_commit=ref_analysis, main_branch=cfg.main_branch,

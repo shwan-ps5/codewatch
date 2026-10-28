@@ -17,11 +17,14 @@ async function enabledEslintRules(configFile, sample) {
     .map(([id]) => id);
 }
 
+const PLUGINS = new Map([
+  ["security", new Map(Object.entries(require("eslint-plugin-security").rules))],
+  ["jsx-a11y", new Map(Object.entries(require("eslint-plugin-jsx-a11y").rules))],
+]);
+
 function eslintMeta(id) {
   const [plugin, name] = id.includes("/") ? id.split("/") : [null, id];
-  const rule = plugin
-    ? require(plugin === "security" ? "eslint-plugin-security" : `eslint-plugin-${plugin}`).rules[name]
-    : builtinRules.get(id);
+  const rule = plugin ? PLUGINS.get(plugin)?.get(name) : builtinRules.get(id);
   const docs = rule?.meta?.docs ?? {};
   return { id, description: docs.description ?? "", url: docs.url ?? "", category: docs.category ?? "" };
 }
@@ -29,6 +32,7 @@ function eslintMeta(id) {
 const eslintRules = (await enabledEslintRules("eslint-quality.config.js", "sample.js")).map(eslintMeta);
 const a11yRules = (await enabledEslintRules("eslint-a11y.config.js", "sample.tsx")).map(eslintMeta);
 
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path chosen by codewatch, not by scanned code
 const hvConfig = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const resolved = await new HtmlValidate(hvConfig).getConfigFor("sample.html");
 const htmlRules = [];
