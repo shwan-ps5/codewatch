@@ -18,27 +18,38 @@ def project(repo):
     return p
 
 
-@pytest.mark.django_db
-def test_branch_new_code_and_gate(repo, project):
+@pytest.fixture
+def scanned_feature(repo, project):
+    """main scanned, then a feature branch that shifts an existing issue down and adds a new bug."""
     call_command("scan", "demo")
-    main = Analysis.objects.get(branch="main")
-    assert main.status == "success"
-    assert main.issues.filter(rule="F401").count() == 1
-    assert not main.issues.filter(is_new=True).exists()
-
     sh(repo, "checkout", "-qb", "feature")
     (repo / "app.py").write_text("# moved down\nimport os\n\n\ndef f():\n    return undefined_name\n")
     sh(repo, "commit", "-qam", "feature")
     call_command("scan", "demo", "--branch", "feature")
+    return Analysis.objects.get(branch="main"), Analysis.objects.get(branch="feature")
 
-    feature = Analysis.objects.get(branch="feature")
+
+@pytest.mark.django_db
+def test_main_has_no_new_code_on_first_scan(scanned_feature):
+    main, _ = scanned_feature
+    assert main.status == "success"
+    assert main.issues.filter(rule="F401").count() == 1
+    assert not main.issues.filter(is_new=True).exists()
+
+
+@pytest.mark.django_db
+def test_branch_new_code_and_gate(scanned_feature):
+    main, feature = scanned_feature
     assert feature.reference_commit == main.commit
     new = list(feature.issues.filter(is_new=True).values_list("rule", flat=True))
     assert new == ["F821"], "shifted F401 must keep its identity; only the undefined name is new"
     assert feature.gate_passed is False
-    failing = {d["metric"] for d in feature.gate_details if d["status"] == "error"}
-    assert failing == {"new_bugs", "new_critical_issues"}
+    assert {d["metric"] for d in feature.gate_details if d["status"] == "error"} == {"new_bugs", "new_critical_issues"}
 
+
+@pytest.mark.django_db
+def test_resolving_the_new_issue_passes_the_gate(scanned_feature, project):
+    _, feature = scanned_feature
     issue = feature.issues.get(rule="F821")
     IssueResolution.objects.create(project=project, fingerprint=issue.fingerprint, status="false_positive")
     gate.refresh(feature)

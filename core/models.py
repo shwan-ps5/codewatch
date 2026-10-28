@@ -213,11 +213,11 @@ class GateCondition(models.Model):
     class Meta:
         ordering = ["metric"]
 
-    def fails(self, value):
-        return value > self.threshold if self.op == self.GT else value < self.threshold
-
     def __str__(self):
         return f"{self.metric} {self.op} {self.threshold:g}"
+
+    def fails(self, value):
+        return value > self.threshold if self.op == self.GT else value < self.threshold
 
 
 class Profile(models.Model):
@@ -247,6 +247,9 @@ class ApiToken(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    def __str__(self):
+        return f"{self.user}: {self.name} ({self.prefix}\u2026)"
+
     @classmethod
     def issue(cls, user, name, scope):
         """Create a token; the raw value is returned once and only its hash is stored."""
@@ -260,9 +263,6 @@ class ApiToken(models.Model):
         if token is None or not token.user.is_active:
             return None
         return token
-
-    def __str__(self):
-        return f"{self.user}: {self.name} ({self.prefix}\u2026)"
 
 
 DEFAULT_GATE = [

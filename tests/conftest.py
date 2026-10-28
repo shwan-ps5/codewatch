@@ -29,12 +29,12 @@ def repo(tmp_path, settings):
 
 @pytest.fixture
 def alice(db):
-    return User.objects.create_user("alice", password="pw-alice-123")  # pragma: allowlist secret
+    return User.objects.create_user("alice", password="pw-alice-123")  # nosec B106  # pragma: allowlist secret
 
 
 @pytest.fixture
 def bob(db):
-    return User.objects.create_user("bob", password="pw-bob-123")  # pragma: allowlist secret
+    return User.objects.create_user("bob", password="pw-bob-123")  # nosec B106  # pragma: allowlist secret
 
 
 def token_for(user, scope=ApiToken.SCAN):

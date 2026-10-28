@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import re
 import tomllib
@@ -9,7 +10,7 @@ from .base import Analyzer, Finding, Result
 
 OSV_URL = "https://api.osv.dev/v1/vulns/{}"
 OSV_SEVERITY = {"CRITICAL": "blocker", "HIGH": "critical", "MODERATE": "major", "MEDIUM": "major", "LOW": "minor"}
-REQUIREMENTS_RE = re.compile(r"requirements[\w.-]*\.txt$")
+REQUIREMENTS_GLOB = "requirements*.txt"
 
 
 def normalize(name):
@@ -20,7 +21,7 @@ def manifests(files, root):
     found = []
     for f in files:
         name = Path(f).name
-        if REQUIREMENTS_RE.search(name):
+        if fnmatch.fnmatch(name, REQUIREMENTS_GLOB):
             found.append(f)
         elif name == "pyproject.toml":
             try:

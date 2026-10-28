@@ -11,6 +11,11 @@ JS = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"}
 C = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 CODE = PY | JS | C | {".java", ".go", ".rs", ".cs", ".rb", ".php", ".kt", ".swift"}
 
+BLOCKER, CRITICAL, MAJOR, MINOR, INFO = "blocker", "critical", "major", "minor", "info"
+BUG, VULNERABILITY, HOTSPOT, CODE_SMELL, ACCESSIBILITY = (
+    "bug", "vulnerability", "security_hotspot", "code_smell", "accessibility"
+)
+
 TOOL_TIMEOUT = 1800
 TOOLS_DIR = Path(os.environ.get("CODEWATCH_TOOLS", Path(__file__).resolve().parents[2] / "tools"))
 

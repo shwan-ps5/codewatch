@@ -19,5 +19,6 @@ def assign_fingerprints(findings, read_line):
         key = (f.tool, f.rule, f.path, anchor)
         seen[key] += 1
         raw = "\0".join([*key, str(seen[key])])
+        # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
         fingerprints[id(f)] = hashlib.sha1(raw.encode(), usedforsecurity=False).hexdigest()
     return [fingerprints[id(f)] for f in findings]

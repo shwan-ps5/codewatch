@@ -7,18 +7,35 @@ from pathlib import Path
 
 import yaml
 
-from .base import CODE, JS, PY, Analyzer, C, Finding, Result, isolated_tool, node_tool
+from .base import (
+    BUG,
+    CODE,
+    CODE_SMELL,
+    CRITICAL,
+    HOTSPOT,
+    JS,
+    MAJOR,
+    MINOR,
+    PY,
+    VULNERABILITY,
+    Analyzer,
+    C,
+    Finding,
+    Result,
+    isolated_tool,
+    node_tool,
+)
 from .python_tools import complexity_severity
 
-SEMGREP_SEVERITY = {"ERROR": "critical", "WARNING": "major", "INFO": "minor"}
-SEMGREP_TYPE = {"security": "vulnerability", "correctness": "bug"}
+SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
+SEMGREP_TYPE = {"security": VULNERABILITY, "correctness": BUG}
 
 CPPCHECK_SEVERITY = {
-    "error": ("critical", "bug"),
-    "warning": ("major", "bug"),
-    "portability": ("minor", "bug"),
-    "performance": ("minor", "code_smell"),
-    "style": ("minor", "code_smell"),
+    "error": (CRITICAL, BUG),
+    "warning": (MAJOR, BUG),
+    "portability": (MINOR, BUG),
+    "performance": (MINOR, CODE_SMELL),
+    "style": (MINOR, CODE_SMELL),
 }
 CPPCHECK_NOISE = {"missingInclude", "missingIncludeSystem", "checkersReport", "unmatchedSuppression",
                   "toomanyconfigs", "normalCheckLevelMaxBranches", "unknownMacro", "syntaxError"}
@@ -45,7 +62,7 @@ class Lizard(Analyzer):
             total += ccn
             if ccn > threshold:
                 result.findings.append(
-                    Finding("lizard", "cyclomatic-complexity", complexity_severity(ccn, threshold), "code_smell",
+                    Finding("lizard", "cyclomatic-complexity", complexity_severity(ccn, threshold), CODE_SMELL,
                             f"{func} has cyclomatic complexity {ccn} (threshold {threshold})",
                             ctx.rel(path), start, end)
                 )
@@ -81,7 +98,7 @@ class Semgrep(Analyzer):
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
             custom_id = next((cid for cid in custom_ids if item["check_id"].endswith(cid)), None)
             result.findings.append(
-                Finding("codewatch" if custom_id else "semgrep", custom_id or item["check_id"], SEMGREP_SEVERITY.get(extra.get("severity"), "minor"),
+                Finding("codewatch" if custom_id else "semgrep", custom_id or item["check_id"], SEMGREP_SEVERITY.get(extra.get("severity"), MINOR),
                         semgrep_type(item["check_id"], extra.get("metadata", {})), extra["message"].strip(),
                         ctx.rel(item["path"]), item["start"]["line"], item["end"]["line"])
             )
@@ -92,8 +109,8 @@ def semgrep_type(check_id, metadata):
     category = metadata.get("category", "")
     # "audit" rules flag security-sensitive code that needs a human look rather than a confirmed flaw.
     if category == "security" and (".audit." in check_id or "audit" in metadata.get("subcategory", [])):
-        return "security_hotspot"
-    return SEMGREP_TYPE.get(category, "code_smell")
+        return HOTSPOT
+    return SEMGREP_TYPE.get(category, CODE_SMELL)
 
 
 class Cppcheck(Analyzer):
@@ -149,7 +166,7 @@ class Jscpd(Analyzer):
                 start, end = side["start"], side["end"]
                 result.duplicated_lines.setdefault(path, set()).update(range(start, end + 1))
                 result.findings.append(
-                    Finding("jscpd", "duplicated-block", "minor", "code_smell",
+                    Finding("jscpd", "duplicated-block", MINOR, CODE_SMELL,
                             f"{end - start + 1} duplicated lines, also in {other}:{other_side['start']}",
                             path, start, end)
                 )

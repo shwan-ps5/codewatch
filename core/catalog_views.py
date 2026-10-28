@@ -24,7 +24,7 @@ FILTERS = {
     "tool": lambda r, v: r["tool"] == v,
     "type": lambda r, v: r["type"] == v,
     "origin": lambda r, v: r.get("origin") == v,
-    "language": lambda r, v: catalog.speaks(r, v),
+    "language": catalog.speaks,
     "cwe": lambda r, v: v.isdigit() and int(v) in r["cwe"],
     "owasp": lambda r, v: v in r["owasp"],
     "wcag": lambda r, v: v in r["wcag"],

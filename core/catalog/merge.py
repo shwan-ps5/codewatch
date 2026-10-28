@@ -7,6 +7,7 @@ import yaml
 CWE_RE = re.compile(r"CWE-(\d+)")
 CWE_URL = "https://cwe.mitre.org/data/definitions/{}.html"
 WCAG_URL = "https://www.w3.org/WAI/WCAG22/quickref/#{}"
+CODEWATCH = "codewatch"
 OVERRIDABLE = ("severity", "type", "title", "summary", "disabled")
 SEMGREP_SEVERITY = {"ERROR": "critical", "WARNING": "major", "INFO": "minor"}
 SEMGREP_TYPE = {"security": "vulnerability", "correctness": "bug"}
@@ -23,7 +24,7 @@ def normal_language(lang):
 def custom_rule(r, path):
     meta = r.get("metadata") or {}
     return {
-        "id": f"codewatch/{r['id']}", "tool": "codewatch", "code": r["id"],
+        "id": f"codewatch/{r['id']}", "tool": CODEWATCH, "code": r["id"],
         "title": meta.get("title") or r["message"].split(".")[0].strip(),
         "languages": [normal_language(lang) for lang in r.get("languages", [])],
         "type": meta.get("type") or SEMGREP_TYPE.get(meta.get("category", ""), "code_smell"),
@@ -52,7 +53,7 @@ def apply_mappings(rules, mappings):
         table = mappings.get(kind, {})
         for r in rules:
             values = table.get(r["id"]) or table.get(f"{r['tool']}/*") or []
-            add_mapping(r, kind, values, "codewatch")
+            add_mapping(r, kind, values, CODEWATCH)
 
 
 def source_pairs(rules, by_id):
@@ -100,8 +101,8 @@ def owasp_for(cwes, standards):
 def builtin_rules():
     from ..analyzers.codewatch_checks import RULES
 
-    return [{"id": f"codewatch/{r['code']}", "tool": "codewatch", "docs": "", "wcag": [], "owasp": [],
-             "license": "codewatch", "origin": "codewatch", **copy.deepcopy(r)} for r in RULES]
+    return [{"id": f"codewatch/{r['code']}", "tool": CODEWATCH, "docs": "", "wcag": [], "owasp": [],
+             "license": CODEWATCH, "origin": CODEWATCH, **copy.deepcopy(r)} for r in RULES]
 
 
 def merge(imported, standards, mappings, overrides, custom_paths):

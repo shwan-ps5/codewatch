@@ -3,28 +3,31 @@ import security from "eslint-plugin-security";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+const ERROR = "error";
+const WARN = "warn";
+
 const quality = {
-  "no-undef": "warn",
-  eqeqeq: ["error", "smart"],
-  "no-var": "error",
-  "prefer-const": "warn",
-  "no-eval": "error",
-  "no-implied-eval": "error",
-  "no-new-func": "error",
-  "no-throw-literal": "error",
-  "no-unused-expressions": "error",
-  "consistent-return": "warn",
-  "default-case-last": "error",
-  "no-shadow": "warn",
-  "no-return-assign": "error",
-  "no-self-compare": "error",
-  "no-unmodified-loop-condition": "error",
-  "no-unreachable-loop": "error",
-  "no-template-curly-in-string": "warn",
-  "require-atomic-updates": "warn",
-  "max-depth": ["warn", 4],
-  "max-params": ["warn", 6],
-  "max-nested-callbacks": ["warn", 4],
+  "no-undef": WARN,
+  eqeqeq: [ERROR, "smart"],
+  "no-var": ERROR,
+  "prefer-const": WARN,
+  "no-eval": ERROR,
+  "no-implied-eval": ERROR,
+  "no-new-func": ERROR,
+  "no-throw-literal": ERROR,
+  "no-unused-expressions": ERROR,
+  "consistent-return": WARN,
+  "default-case-last": ERROR,
+  "no-shadow": WARN,
+  "no-return-assign": ERROR,
+  "no-self-compare": ERROR,
+  "no-unmodified-loop-condition": ERROR,
+  "no-unreachable-loop": ERROR,
+  "no-template-curly-in-string": WARN,
+  "require-atomic-updates": WARN,
+  "max-depth": [WARN, 4],
+  "max-params": [WARN, 6],
+  "max-nested-callbacks": [WARN, 4],
 };
 
 export default [
