@@ -33,6 +33,7 @@ from .models import (
 )
 
 User = get_user_model()
+PROJECT_PAGE = "project"
 
 
 def get_project(request, key):
@@ -100,7 +101,7 @@ def new_project(request):
         project = create_project(request.user, **form.cleaned_data)
         launch_scan(project)
         messages.success(request, f"Created {project.key}; the first scan of the main branch has started.")
-        return redirect("project", key=project.key)
+        return redirect(PROJECT_PAGE, key=project.key)
     return render(request, "core/new_project.html", {"form": form})
 
 
@@ -132,7 +133,7 @@ def start_scan(request, key):
         messages.info(request, f"{branch} is already being analysed.")
     else:
         messages.success(request, f"Scan of {branch or 'the main branch'} started.")
-    return redirect("project", key=key)
+    return redirect(PROJECT_PAGE, key=key)
 
 
 TYPE_ROWS = [("bug", "bugs"), ("vulnerability", "vulnerabilities"), ("security_hotspot", "security_hotspots"),
@@ -229,7 +230,7 @@ def resolve_issue(request, key):
         set_resolution(project, request.POST["fingerprint"], request.POST["status"], request.POST.get("comment", ""))
     except ValueError as exc:
         messages.error(request, str(exc))
-    return redirect(safe_next(request, reverse("project", args=[key])))
+    return redirect(safe_next(request, reverse(PROJECT_PAGE, args=[key])))
 
 
 def source_text(analysis, path):
@@ -325,7 +326,7 @@ def project_settings(request, key):
             cond.delete()
         refresh_gates(project)
         messages.success(request, "Settings saved.")
-        return redirect("project", key=key)
+        return redirect(PROJECT_PAGE, key=key)
     return render(request, "core/settings.html", {
         "project": project, "form": form, "formset": formset, "member_form": MemberForm(),
         "members": project.members.select_related("user").order_by("user__username"),
@@ -369,7 +370,7 @@ class ChangePasswordView(PasswordChangeView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        Profile.objects.update_or_create(user=self.request.user, defaults={"must_change_password": False})
+        Profile.objects.update_or_create(user=self.request.user, defaults={"must_change_password": False})  # nosec B105
         messages.success(self.request, "Password changed.")
         return response
 
@@ -431,7 +432,7 @@ def user_edit(request, pk):
         return redirect("users")
     if request.method == "POST" and form.is_valid():
         form.save()
-        Profile.objects.update_or_create(user=target, defaults={"must_change_password": True})
+        Profile.objects.update_or_create(user=target, defaults={"must_change_password": True})  # nosec B105
         messages.success(request, f"Password reset for {target.username}; they must change it on next login.")
         return redirect("users")
     return render(request, "core/user_edit.html", {"target": target, "form": form})

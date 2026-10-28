@@ -124,7 +124,7 @@ def test_public_rule_pages_and_update_permissions(monkeypatch):
     assert c.get("/rules/codewatch/regex-backtracking/").status_code == 200
     assert c.get("/rules/nope/").status_code == 404
     assert c.get("/standards/").status_code == 200
-    user = User.objects.create_user("u", password="p-12345678x")
+    user = User.objects.create_user("u", password="p-12345678x")  # nosec B106  # pragma: allowlist secret
     c.force_login(user)
     assert c.post("/rules/update/").status_code == 403
     admin = User.objects.get(username="admin")

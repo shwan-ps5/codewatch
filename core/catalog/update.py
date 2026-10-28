@@ -43,18 +43,24 @@ def run_step(args, log, cwd=None):
     return proc.returncode == 0
 
 
+def pip_upgrade(pip, packages, log):
+    return run_step([*pip, "install", "-q", "-U", *packages], log)
+
+
 def upgrade_tools(log):
-    ok = run_step([sys.executable, "-m", "pip", "install", "-q", "-U", *PYTHON_ANALYZERS], log)
+    ok = pip_upgrade([sys.executable, "-m", "pip"], PYTHON_ANALYZERS, log)
     for name in ISOLATED_ANALYZERS:
         pip = TOOLS_DIR / f"{name}-venv" / "bin" / "pip"
         if pip.exists():
-            ok &= run_step([str(pip), "install", "-q", "-U", name], log)
+            ok &= pip_upgrade([str(pip)], [name], log)
     package = TOOLS_DIR / "package.json"
     if package.exists():
         deps = json.loads(package.read_text()).get("dependencies", {})
         specs = [f"{name}@{NODE_MAJOR_PINS.get(name, 'latest')}" for name in deps]
-        ok &= run_step(["npm", "install", "--save-exact", "--no-fund", "--no-audit", *specs], log, cwd=TOOLS_DIR)
-        ok &= run_step([str(TOOLS_DIR / "node_modules/.bin/playwright"), "install", "--only-shell", "chromium"], log)
+        npm_install = ["npm", "install", "--save-exact", "--no-fund", "--no-audit"]
+        ok &= run_step([*npm_install, *specs], log, cwd=TOOLS_DIR)
+        playwright = str(TOOLS_DIR / "node_modules/.bin/playwright")
+        ok &= run_step([playwright, npm_install[1], "--only-shell", "chromium"], log)
     return ok
 
 

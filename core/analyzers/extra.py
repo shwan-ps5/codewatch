@@ -4,7 +4,23 @@ import re
 import tempfile
 from pathlib import Path
 
-from .base import JS, PY, TOOLS_DIR, Analyzer, Finding, Result, isolated_tool, node_tool
+from .base import (
+    BLOCKER,
+    BUG,
+    CODE_SMELL,
+    HOTSPOT,
+    JS,
+    MAJOR,
+    MINOR,
+    PY,
+    TOOLS_DIR,
+    VULNERABILITY,
+    Analyzer,
+    Finding,
+    Result,
+    isolated_tool,
+    node_tool,
+)
 from .python_tools import complexity_severity
 
 SECRET_HEURISTICS = {"Base64 High Entropy String", "Hex High Entropy String", "Secret Keyword"}
@@ -56,7 +72,7 @@ class CognitiveComplexity(Analyzer):
             name = row["function_name"].replace("::", ".")
             result.findings.append(
                 Finding("complexipy", "cognitive-complexity", complexity_severity(row["complexity"], threshold),
-                        "code_smell", f"{name} has cognitive complexity {row['complexity']} "
+                        CODE_SMELL, f"{name} has cognitive complexity {row['complexity']} "
                                       f"(threshold {threshold})", path, start, end)
             )
         result.metrics["cognitive_complexity"] = sum(r["complexity"] for r in rows)
@@ -107,7 +123,7 @@ class TypeCheck(Analyzer):
                 continue
             start, end = d["range"]["start"]["line"] + 1, d["range"]["end"]["line"] + 1
             result.findings.append(
-                Finding("basedpyright", d.get("rule") or "type-error", "major", "bug",
+                Finding("basedpyright", d.get("rule") or "type-error", MAJOR, BUG,
                         d["message"].split("\n")[0], ctx.rel(d["file"]), start, end)
             )
         return result
@@ -130,8 +146,8 @@ class Secrets(Analyzer):
                 specific = sorted(types - SECRET_HEURISTICS)
                 result.findings.append(
                     Finding("detect-secrets", specific[0] if specific else min(types),
-                            "blocker" if specific else "major",
-                            "vulnerability" if specific else "security_hotspot",
+                            BLOCKER if specific else MAJOR,
+                            VULNERABILITY if specific else HOTSPOT,
                             f"Possible hard-coded secret ({', '.join(sorted(types))}); move it to configuration "
                             "or a secret store, and rotate it if it was ever committed", ctx.rel(path), line)
                 )
@@ -141,11 +157,10 @@ class Secrets(Analyzer):
 class Checkov(Analyzer):
     """Misconfigurations in Dockerfiles, Terraform, Kubernetes manifests and GitHub Actions workflows."""
 
-    name = "checkov"
-    executable = "checkov"
+    name = executable = "checkov"
 
     def binary(self):
-        return isolated_tool("checkov") or super().binary()
+        return isolated_tool(self.name) or super().binary()
 
     def applies(self, ctx):
         return any(self.is_iac(f) for f in ctx.files)
@@ -173,7 +188,7 @@ class Checkov(Analyzer):
 def checkov_finding(ctx, check):
     first, last = check.get("file_line_range") or [None, None]
     resource = f" ({check['resource']})" if check.get("resource") else ""
-    return Finding("checkov", check["check_id"], "major", "security_hotspot", check["check_name"] + resource,
+    return Finding(Checkov.name, check["check_id"], MAJOR, HOTSPOT, check["check_name"] + resource,
                    checkov_path(ctx, check["file_path"]), first or None, last or None)
 
 
@@ -187,12 +202,11 @@ def checkov_path(ctx, path):
 class EslintQuality(Analyzer):
     """Bugs, risky APIs and maintainability for JS/TS: ESLint core rules plus eslint-plugin-security."""
 
-    name = "eslint"
-    executable = "eslint"
+    name = executable = "eslint"
     extensions = JS
 
     def binary(self):
-        return node_tool("eslint")
+        return node_tool(self.name)
 
     def run(self, ctx):
         config = TOOLS_DIR / "eslint-quality.config.js"
@@ -207,7 +221,7 @@ class EslintQuality(Analyzer):
                 rule = m.get("ruleId") or "parse-error"
                 severity, type_ = eslint_classify(rule, m.get("severity"))
                 result.findings.append(
-                    Finding("eslint", rule, severity, type_, m["message"], ctx.rel(file_report["filePath"]),
+                    Finding(self.name, rule, severity, type_, m["message"], ctx.rel(file_report["filePath"]),
                             m.get("line"), m.get("endLine"))
                 )
         return result
@@ -224,23 +238,22 @@ ESLINT_BUG_RULES = {
 
 def eslint_classify(rule, level):
     if rule == "parse-error":
-        return "major", "bug"
+        return MAJOR, BUG
     if rule.startswith("security/") or rule in ("no-eval", "no-implied-eval", "no-new-func"):
-        return "major", "security_hotspot"
+        return MAJOR, HOTSPOT
     if rule in ESLINT_BUG_RULES:
-        return ("major" if level == 2 else "minor"), "bug"
-    return "minor", "code_smell"
+        return (MAJOR if level == 2 else MINOR), BUG
+    return MINOR, CODE_SMELL
 
 
 class Stylelint(Analyzer):
     """CSS errors (invalid values, unknown properties, duplicates) with stylelint's recommended rules."""
 
-    name = "stylelint"
-    executable = "stylelint"
+    name = executable = "stylelint"
     extensions = {".css"}
 
     def binary(self):
-        return node_tool("stylelint")
+        return node_tool(self.name)
 
     def run(self, ctx):
         with tempfile.TemporaryDirectory() as tmp:
@@ -254,7 +267,7 @@ class Stylelint(Analyzer):
             for w in file_report["warnings"]:
                 error = w["severity"] == "error"
                 result.findings.append(
-                    Finding("stylelint", w["rule"], "major" if error else "minor", "bug" if error else "code_smell",
+                    Finding(self.name, w["rule"], MAJOR if error else MINOR, BUG if error else CODE_SMELL,
                             w["text"].removesuffix(f" ({w['rule']})"), ctx.rel(file_report["source"]),
                             w.get("line"), w.get("endLine"))
                 )

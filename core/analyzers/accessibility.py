@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .base import TOOLS_DIR, Analyzer, Finding, Result, node_tool
+from .base import ACCESSIBILITY, CRITICAL, INFO, MAJOR, MINOR, TOOLS_DIR, Analyzer, Finding, Result, node_tool
 
 TEMPLATES = {".html", ".htm", ".djhtml", ".jinja", ".jinja2", ".j2"}
 JSX = {".jsx", ".tsx"}
@@ -14,24 +14,25 @@ TAG_DELIMITERS = (("{%", "%}"), ("{#", "#}"), ("{{", "}}"))
 BOUND_EMPTY = re.compile(
     r"(<(\w{1,40})\b[^<>]{0,2000}\s(?:x-text|x-html|v-text|v-html)\s{0,20}=[^<>]{0,2000}>)(\s{0,200})(</\2>)"
 )
-AXE_SEVERITY = {"critical": "critical", "serious": "major", "moderate": "minor", "minor": "info"}
+AXE_SEVERITY = {CRITICAL: CRITICAL, "serious": MAJOR, "moderate": MINOR, MINOR: INFO}
+ERROR, WARN, OFF = "error", "warn", "off"
 HTML_VALIDATE_CONFIG = {
     "extends": ["html-validate:a11y"],
     # The preset alone misses unlabelled inputs, empty headings, duplicate landmarks and focusable hidden content.
     "rules": {
-        "input-missing-label": "error",
-        "aria-label-misuse": "error",
-        "unique-landmark": "error",
-        "empty-heading": "error",
-        "hidden-focusable": "error",
-        "area-alt": "error",
-        "no-abstract-role": "error",
-        "aria-hidden-body": "error",
-        "text-content": "error",
-        "valid-autocomplete": "error",
-        "no-redundant-role": "warn",
-        "prefer-native-element": "warn",
-        "no-implicit-button-type": "off",
+        "input-missing-label": ERROR,
+        "aria-label-misuse": ERROR,
+        "unique-landmark": ERROR,
+        "empty-heading": ERROR,
+        "hidden-focusable": ERROR,
+        "area-alt": ERROR,
+        "no-abstract-role": ERROR,
+        "aria-hidden-body": ERROR,
+        "text-content": ERROR,
+        "valid-autocomplete": ERROR,
+        "no-redundant-role": WARN,
+        "prefer-native-element": WARN,
+        "no-implicit-button-type": OFF,
     },
 }
 
@@ -80,8 +81,8 @@ class HtmlA11y(Analyzer):
 
     def run(self, ctx):
         files = ctx.files_with(TEMPLATES)
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
+        with tempfile.TemporaryDirectory() as tmp_name:
+            tmp = Path(tmp_name)
             for f in files:
                 target = tmp / f
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -99,9 +100,9 @@ class HtmlA11y(Analyzer):
                            else report["filePath"])
             for m in report["messages"]:
                 rule = m.get("ruleId") or "parser-error"
-                severity = "major" if m.get("severity") == 2 else "minor"
+                severity = MAJOR if m.get("severity") == 2 else MINOR
                 result.findings.append(
-                    Finding("html-a11y", rule, severity, "accessibility", m["message"], path, m.get("line"))
+                    Finding("html-a11y", rule, severity, ACCESSIBILITY, m["message"], path, m.get("line"))
                 )
         return result
 
@@ -126,7 +127,7 @@ class JsxA11y(Analyzer):
             for m in report["messages"]:
                 rule = m.get("ruleId") or "parser-error"
                 result.findings.append(
-                    Finding("jsx-a11y", rule, "major" if m.get("severity") == 2 else "minor", "accessibility",
+                    Finding("jsx-a11y", rule, MAJOR if m.get("severity") == 2 else MINOR, ACCESSIBILITY,
                             m["message"], ctx.rel(report["filePath"]), m.get("line"), m.get("endLine"))
                 )
         return result
@@ -160,13 +161,13 @@ class Axe(Analyzer):
             if page.get("error"):
                 failed += 1
                 result.findings.append(
-                    Finding("axe", "page-load-failed", "major", "accessibility",
+                    Finding("axe", "page-load-failed", MAJOR, ACCESSIBILITY,
                             f"Could not load page: {page['error']}", page["url"])
                 )
             for v in page["violations"]:
                 for node in v["nodes"]:
                     result.findings.append(
-                        Finding("axe", v["id"], AXE_SEVERITY.get(v["impact"], "minor"), "accessibility",
+                        Finding("axe", v["id"], AXE_SEVERITY.get(v["impact"], MINOR), ACCESSIBILITY,
                                 f"{v['help']} — {node['target']}. {first_line(node['summary'])} ({v['helpUrl']})",
                                 page["url"])
                     )

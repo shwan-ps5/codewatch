@@ -1,7 +1,23 @@
 import json
 import re
 
-from .base import PY, Analyzer, Finding, Result, by_prefix, is_test_file
+from .base import (
+    BLOCKER,
+    BUG,
+    CODE_SMELL,
+    CRITICAL,
+    HOTSPOT,
+    INFO,
+    MAJOR,
+    MINOR,
+    PY,
+    VULNERABILITY,
+    Analyzer,
+    Finding,
+    Result,
+    by_prefix,
+    is_test_file,
+)
 
 # Rule families enabled on top of a project's own ruff config; S (bandit) is left to bandit itself.
 RUFF_EXTEND_SELECT = [
@@ -12,23 +28,23 @@ RUFF_EXTEND_SELECT = [
 RUFF_EXTEND_IGNORE = ["PLR2004", "PLR0911", "PLR0912", "PLR0915", "PLR0914", "PLR0917", "TRY003", "RUF012"]
 
 RUFF_RULES = [
-    ("E9", "blocker", "bug"),
-    ("F82", "critical", "bug"),
-    ("F63", "major", "bug"),
-    ("F7", "major", "bug"),
-    ("PLE", "major", "bug"),
-    ("ASYNC", "major", "bug"),
-    ("T10", "major", "bug"),
-    ("B", "major", "bug"),
-    ("PLW", "minor", "bug"),
-    ("DTZ", "minor", "bug"),
-    ("BLE", "minor", "bug"),
-    ("S", "major", "security_hotspot"),
-    ("FIX", "info", "code_smell"),
+    ("E9", BLOCKER, BUG),
+    ("F82", CRITICAL, BUG),
+    ("F63", MAJOR, BUG),
+    ("F7", MAJOR, BUG),
+    ("PLE", MAJOR, BUG),
+    ("ASYNC", MAJOR, BUG),
+    ("T10", MAJOR, BUG),
+    ("B", MAJOR, BUG),
+    ("PLW", MINOR, BUG),
+    ("DTZ", MINOR, BUG),
+    ("BLE", MINOR, BUG),
+    ("S", MAJOR, HOTSPOT),
+    ("FIX", INFO, CODE_SMELL),
 ]
 
 # Parameters whose names are dictated by a framework (Django views/migrations/signals, pytest fixtures).
-FRAMEWORK_ARGS = {"request", "schema_editor", "apps", "sender", "args", "kwargs", "context", "info"}
+FRAMEWORK_ARGS = {"request", "schema_editor", "apps", "sender", "args", "kwargs", "context", INFO}
 UNUSED_ARG_RE = re.compile(r"`(\w{1,100})`")
 
 
@@ -41,12 +57,12 @@ def framework_required(code, message, path):
     return bool(match) and match[1] in FRAMEWORK_ARGS
 
 
-BANDIT_SEVERITY = {"HIGH": "critical", "MEDIUM": "major", "LOW": "minor"}
-DOWNGRADE = {"critical": "major", "major": "minor", "minor": "info"}
+BANDIT_SEVERITY = {"HIGH": CRITICAL, "MEDIUM": MAJOR, "LOW": MINOR}
+DOWNGRADE = {CRITICAL: MAJOR, MAJOR: MINOR, MINOR: INFO}
 
 
 def complexity_severity(value, threshold):
-    return "critical" if value > 2 * threshold else "major"
+    return CRITICAL if value > 2 * threshold else MAJOR
 
 
 class Ruff(Analyzer):
@@ -66,10 +82,10 @@ class Ruff(Analyzer):
             if framework_required(code, item["message"], ctx.rel(item["filename"])):
                 continue
             if code is None:
-                severity, type_ = "blocker", "bug"
+                severity, type_ = BLOCKER, BUG
                 rule = "syntax-error"
             else:
-                severity, type_ = by_prefix(code, RUFF_RULES, ("minor", "code_smell"))
+                severity, type_ = by_prefix(code, RUFF_RULES, (MINOR, CODE_SMELL))
                 rule = code
             result.findings.append(
                 Finding(
@@ -95,7 +111,7 @@ class Bandit(Analyzer):
         out = self.exec(["-f", "json", "-q", "--exit-zero", "-s", "B101", *ctx.files_with(PY)], ctx)
         result = Result()
         for item in json.loads(out)["results"]:
-            severity = BANDIT_SEVERITY.get(item["issue_severity"], "minor")
+            severity = BANDIT_SEVERITY.get(item["issue_severity"], MINOR)
             if item["issue_confidence"] == "LOW":
                 severity = DOWNGRADE[severity]
             # Low-severity or low-confidence findings are things to review, not confirmed vulnerabilities.
@@ -108,7 +124,7 @@ class Bandit(Analyzer):
                     "bandit",
                     f"{item['test_id']}:{item['test_name']}",
                     severity,
-                    "vulnerability" if confirmed else "security_hotspot",
+                    VULNERABILITY if confirmed else HOTSPOT,
                     item["issue_text"],
                     ctx.rel(item["filename"]),
                     item["line_number"],
@@ -148,5 +164,5 @@ def radon_functions(report):
 def radon_finding(ctx, path, block, threshold):
     name = f"{block['classname']}.{block['name']}" if block.get("classname") else block["name"]
     return Finding("radon", "cyclomatic-complexity", complexity_severity(block["complexity"], threshold),
-                   "code_smell", f"{name} has cyclomatic complexity {block['complexity']} (threshold {threshold})",
+                   CODE_SMELL, f"{name} has cyclomatic complexity {block['complexity']} (threshold {threshold})",
                    ctx.rel(path), block["lineno"], block["endline"])

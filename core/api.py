@@ -16,6 +16,7 @@ from .models import Analysis, ApiToken, Issue, Project
 from .runner import create_uploaded_analysis, ingest
 from .views import create_project, filter_issues, set_resolution, source_text
 
+BRANCH, MAIN_BRANCH = "branch", "main_branch"
 MAX_PAYLOAD_BYTES = 500 * 1024 * 1024
 MAX_PAGE = 500
 
@@ -138,7 +139,7 @@ def project_config(request, key):
 @api()
 def status(request, key):
     p = visible_project(request, key)
-    return JsonResponse(analysis_json(request, latest_analysis(p, request.GET.get("branch"), True), full=True))
+    return JsonResponse(analysis_json(request, latest_analysis(p, request.GET.get(BRANCH), True), full=True))
 
 
 @api()
@@ -152,7 +153,7 @@ def analysis(request, pk):
 @api()
 def issues(request, key):
     p = visible_project(request, key)
-    a = latest_analysis(p, request.GET.get("branch"))
+    a = latest_analysis(p, request.GET.get(BRANCH))
     qs, resolutions, _ = filter_issues(a, request.GET)
     severity_rank = {"blocker": 0, "critical": 1, "major": 2, "minor": 3, "info": 4}
     limit = min(int(request.GET.get("limit", 100)), MAX_PAGE)
@@ -263,15 +264,15 @@ def project_for_scan(request, key, create_fields):
 def upload(request, key):
     """Results from codewatch-scan run against a local working copy."""
     payload = json_body(request)
-    for field in ("branch", "commit", "issues", "metrics"):
+    for field in (BRANCH, "commit", "issues", "metrics"):
         if field not in payload:
             raise ApiError(400, f"Missing {field}")
     project = project_for_scan(request, key, {
-        "name": payload.get("project_name") or key, "repo_url": "", "main_branch": payload.get("main_branch", ""),
+        "name": payload.get("project_name") or key, "repo_url": "", MAIN_BRANCH: payload.get(MAIN_BRANCH, ""),
     })
-    if not project.main_branch and payload.get("main_branch"):
-        project.main_branch = payload["main_branch"]
-        project.save(update_fields=["main_branch"])
+    if not project.main_branch and payload.get(MAIN_BRANCH):
+        project.main_branch = payload[MAIN_BRANCH]
+        project.save(update_fields=[MAIN_BRANCH])
     analysis = create_uploaded_analysis(project, payload, request.user)
     try:
         ingest(analysis, payload)
@@ -285,7 +286,7 @@ def upload(request, key):
 
 
 def new_server_project_fields(request, key, body):
-    fields = {"name": body.get("name") or key, "main_branch": body.get("main_branch", "")}
+    fields = {"name": body.get("name") or key, MAIN_BRANCH: body.get(MAIN_BRANCH, "")}
     if Project.objects.filter(key=key).exists():
         return fields
     try:
@@ -304,8 +305,8 @@ def server_scan(request, key):
         raise ApiError(400, "This project has no repository URL; upload results with codewatch-scan instead")
     coverage = request.FILES.get("coverage")
     path = save_coverage_upload(project, coverage) if coverage else None
-    branch = body.get("branch") or None
+    branch = body.get(BRANCH) or None
     if launch_scan(project, branch, coverage=path) is None:
         raise ApiError(409, f"{branch} is already being analysed")
-    return JsonResponse({"project": project.key, "branch": branch or project.main_branch or None,
+    return JsonResponse({"project": project.key, BRANCH: branch or project.main_branch or None,
                          "status": "queued"}, status=202)

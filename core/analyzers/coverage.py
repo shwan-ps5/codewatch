@@ -66,6 +66,8 @@ def resolve(candidate, base):
 
 def parse_cobertura(report):
     root = ET.parse(report).getroot()
+    if root is None:
+        return
     sources = [s.text.strip() for s in root.iter("source") if s.text and s.text.strip()]
     for cls in root.iter("class"):
         filename = cls.get("filename")

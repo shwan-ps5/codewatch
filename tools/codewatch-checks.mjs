@@ -20,13 +20,37 @@ function scriptKind(path) {
 }
 
 // Strings that are names rather than repeated data: module specifiers, property keys and literal types.
+const STRUCTURAL_PARENTS = [
+  (p) => ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isExternalModuleReference(p),
+  (p) => ts.isCallExpression(p) && p.expression.getText() === "require",
+  (p, node) => p.name === node
+    && (ts.isPropertyAssignment(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p)),
+  (p) => ts.isLiteralTypeNode(p) || ts.isElementAccessExpression(p),
+];
+
 function isStructural(node) {
-  const p = node.parent;
-  if (!p) return false;
-  if (ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isExternalModuleReference(p)) return true;
-  if (ts.isCallExpression(p) && p.expression.getText() === "require") return true;
-  if ((ts.isPropertyAssignment(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p)) && p.name === node) return true;
-  return ts.isLiteralTypeNode(p) || ts.isElementAccessExpression(p);
+  return Boolean(node.parent) && STRUCTURAL_PARENTS.some((test) => test(node.parent, node));
+}
+
+function isRepeatableString(node) {
+  return (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && !isStructural(node)
+    && node.text.trim().length >= spec.minLength;
+}
+
+function regexLiteral(node, sf) {
+  if (node.kind !== ts.SyntaxKind.RegularExpressionLiteral) return null;
+  const raw = node.getText(sf);
+  const end = raw.lastIndexOf("/");
+  return { pattern: raw.slice(1, end), flags: raw.slice(end + 1) };
+}
+
+// new RegExp("...", "flags") / RegExp("...") with literal arguments.
+function regexConstructor(node, sf) {
+  const isCall = ts.isNewExpression(node) || ts.isCallExpression(node);
+  if (!isCall || node.expression.getText(sf) !== "RegExp") return null;
+  const [source, flags] = node.arguments ?? [];
+  if (!source || !ts.isStringLiteral(source)) return null;
+  return { pattern: source.text, flags: flags && ts.isStringLiteral(flags) ? flags.text : "" };
 }
 
 function scanJs(path) {
@@ -36,21 +60,12 @@ function scanJs(path) {
   const seen = new Map();
   const lineOf = (node) => sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
   const visit = (node) => {
-    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && !isStructural(node)
-        && node.text.trim().length >= spec.minLength) {
+    if (isRepeatableString(node)) {
       if (!seen.has(node.text)) seen.set(node.text, []);
       seen.get(node.text).push(lineOf(node));
     }
-    if (node.kind === ts.SyntaxKind.RegularExpressionLiteral) {
-      const raw = node.getText(sf);
-      const end = raw.lastIndexOf("/");
-      regexes.push({ path, line: lineOf(node), pattern: raw.slice(1, end), flags: raw.slice(end + 1) });
-    }
-    if ((ts.isNewExpression(node) || ts.isCallExpression(node)) && node.expression.getText(sf) === "RegExp"
-        && node.arguments?.length && ts.isStringLiteral(node.arguments[0])) {
-      const flags = node.arguments[1] && ts.isStringLiteral(node.arguments[1]) ? node.arguments[1].text : "";
-      regexes.push({ path, line: lineOf(node), pattern: node.arguments[0].text, flags });
-    }
+    const regex = regexLiteral(node, sf) ?? regexConstructor(node, sf);
+    if (regex) regexes.push({ path, line: lineOf(node), ...regex });
     ts.forEachChild(node, visit);
   };
   visit(sf);
