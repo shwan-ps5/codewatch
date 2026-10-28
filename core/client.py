@@ -33,6 +33,8 @@ def log(message):
 
 
 def request(url, token, data=None, timeout=600):
+    if not url.startswith(("http://", "https://")):
+        raise ClientError(f"codewatch server URL must be http(s): {url}")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     if data is not None:
         data = gzip.compress(json.dumps(data).encode())
