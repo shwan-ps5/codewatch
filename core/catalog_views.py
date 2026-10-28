@@ -8,7 +8,7 @@ from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils.safestring import mark_safe
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 from markdown_it import MarkdownIt
 
 from . import catalog, ratings
@@ -38,6 +38,7 @@ def matches(rule, params):
 
 
 @login_not_required
+@require_safe
 def rules(request):
     all_rules, standards = catalog.load()
     if request.user.is_authenticated:
@@ -69,6 +70,7 @@ def update_rules(request):
 
 
 @login_not_required
+@require_safe
 def rule_detail(request, rule_id):
     rule = catalog.find(rule_id)
     if rule is None:
@@ -86,6 +88,7 @@ def rule_detail(request, rule_id):
 
 
 @login_not_required
+@require_safe
 def standards(request):
     all_rules, std = catalog.load()
     if not std:
@@ -103,6 +106,7 @@ def standards(request):
 
 
 @login_not_required
+@require_safe
 def ratings_help(request):
     return render(request, "core/ratings.html", {
         "remediation": ratings.REMEDIATION_MINUTES, "minutes_per_line": ratings.MINUTES_PER_LINE,

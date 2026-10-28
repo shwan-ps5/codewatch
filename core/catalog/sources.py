@@ -173,7 +173,7 @@ def bandit_plugin(plugin, issue):
     cwes = {getattr(issue.Cwe, n) for n in re.findall(r"cwe=issue\.Cwe\.(\w+)", source)} - {0}
     doc = inspect.getdoc(fn) or ""
     paragraphs = [p for p in doc.split("\n\n")[1:] if p and not p.startswith(("..", ":"))]
-    return rule(BANDIT, f"{fn._test_id}:{plugin.name}", humanize(plugin.name), [PYTHON], VULNERABILITY, "varies",
+    return rule(BANDIT, f"{fn._test_id}:{plugin.name}", humanize(plugin.name), [PYTHON], HOTSPOT, "varies",
                 license_="Apache-2.0 (bandit)", summary=" ".join(paragraphs[0].split())[:400] if paragraphs else "",
                 docs=f"https://bandit.readthedocs.io/en/latest/plugins/{fn._test_id.lower()}_{plugin.name}.html",
                 cwe=cwes, doc=rst_to_markdown(doc), refs=links_in(doc))

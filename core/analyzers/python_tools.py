@@ -11,7 +11,6 @@ from .base import (
     MAJOR,
     MINOR,
     PY,
-    VULNERABILITY,
     Analyzer,
     Finding,
     Result,
@@ -114,17 +113,14 @@ class Bandit(Analyzer):
             severity = BANDIT_SEVERITY.get(item["issue_severity"], MINOR)
             if item["issue_confidence"] == "LOW":
                 severity = DOWNGRADE[severity]
-            # Low-severity or low-confidence findings are things to review, not confirmed vulnerabilities.
-            # So are bandit's "blacklist" checks (B3xx/B4xx), which flag risky APIs rather than misuse.
-            confirmed = (item["issue_severity"] != "LOW" and item["issue_confidence"] != "LOW"
-                         and item["test_name"] != "blacklist")
+            # bandit matches API use without following data, so its findings are things to review, not verdicts.
             lines = item.get("line_range") or [item["line_number"]]
             result.findings.append(
                 Finding(
                     "bandit",
                     f"{item['test_id']}:{item['test_name']}",
                     severity,
-                    VULNERABILITY if confirmed else HOTSPOT,
+                    HOTSPOT,
                     item["issue_text"],
                     ctx.rel(item["filename"]),
                     item["line_number"],

@@ -90,7 +90,7 @@ class Semgrep(Analyzer):
             if not configs:
                 return Result()
             args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check",
-                    *ctx.files_with(CODE)]
+                    *ctx.files_with(self.extensions)]
             data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
         result = Result()
         for item in data["results"]:
@@ -106,11 +106,13 @@ class Semgrep(Analyzer):
 
 
 def semgrep_type(check_id, metadata):
+    """Only rules Semgrep marks "vuln" (taint-checked or a definite flaw) are vulnerabilities;
+    "audit" and other security rules flag risky code to review, so they're hotspots."""
     category = metadata.get("category", "")
-    # "audit" rules flag security-sensitive code that needs a human look rather than a confirmed flaw.
-    if category == "security" and (".audit." in check_id or "audit" in metadata.get("subcategory", [])):
-        return HOTSPOT
-    return SEMGREP_TYPE.get(category, CODE_SMELL)
+    if category != "security":
+        return SEMGREP_TYPE.get(category, CODE_SMELL)
+    vuln = "vuln" in (metadata.get("subcategory") or []) and ".audit." not in check_id
+    return VULNERABILITY if vuln else HOTSPOT
 
 
 class Cppcheck(Analyzer):

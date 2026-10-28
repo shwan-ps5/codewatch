@@ -56,10 +56,15 @@ def issue_cwes(issue):
     return set(entry["cwe"]) if entry else set()
 
 
-def security_issues_by_file(issues):
+# Verdict mode counts only findings that claim a vulnerability (data flow or definite flaw), which is what the
+# Security rating uses; review mode adds security hotspots, i.e. everything a reviewer is asked to look at.
+MODES = {"verdict": {"vulnerability"}, "review": SECURITY_TYPES}
+
+
+def issues_by_file(issues, types):
     by_file = defaultdict(list)
     for i in issues:
-        if i["type"] in SECURITY_TYPES:
+        if i["type"] in types:
             by_file[i["path"]].append(i)
     return by_file
 
@@ -79,26 +84,32 @@ def flagged(case, findings, parents):
     return any(any(related(c, case["cwe"], parents) for c in issue_cwes(i)) for i in findings)
 
 
-def score_owasp(root, suite, issues):
-    parents = catalog.load()[1].get("cwe_parents", {})
-    by_file = security_issues_by_file(issues)
+def rates(s):
+    tpr = s["tp"] / (s["tp"] + s["fn"]) if s["tp"] + s["fn"] else 0.0
+    fpr = s["fp"] / (s["fp"] + s["tn"]) if s["fp"] + s["tn"] else 0.0
+    return {**s, "tpr": round(tpr, 3), "fpr": round(fpr, 3), "score": round(tpr - fpr, 3)}
+
+
+def score_owasp_mode(cases, suite, by_file, parents):
     stats = defaultdict(lambda: {"tp": 0, "fn": 0, "fp": 0, "tn": 0, "cwe": None})
     missed = []
-    for case in owasp_cases(root, suite):
+    for case in cases:
         hit = flagged(case, by_file.get(f"{suite['test_dir']}/{case['test']}.py", []), parents)
         s = stats[case["category"]]
         s["cwe"] = case["cwe"]
-        key = ("tp" if hit else "fn") if case["real"] else ("fp" if hit else "tn")
-        s[key] += 1
-        if case["real"] and not hit:
-            missed.append(case)
-    categories = {}
-    for name, s in sorted(stats.items()):
-        tpr = s["tp"] / (s["tp"] + s["fn"]) if s["tp"] + s["fn"] else 0.0
-        fpr = s["fp"] / (s["fp"] + s["tn"]) if s["fp"] + s["tn"] else 0.0
-        categories[name] = {**s, "tpr": round(tpr, 3), "fpr": round(fpr, 3), "score": round(tpr - fpr, 3)}
+        s[("tp" if hit else "fn") if case["real"] else ("fp" if hit else "tn")] += 1
+        if case["real"] != hit:
+            missed.append({**case, "flagged": hit})
+    categories = {name: rates(s) for name, s in sorted(stats.items())}
     overall = {k: round(sum(c[k] for c in categories.values()) / len(categories), 3) for k in ("tpr", "fpr", "score")}
-    return {"overall": overall, "categories": categories, "missed": missed[:200]}
+    return {"overall": overall, "categories": categories, "mistakes": missed[:300]}
+
+
+def score_owasp(root, suite, issues):
+    parents = catalog.load()[1].get("cwe_parents", {})
+    cases = owasp_cases(root, suite)
+    return {mode: score_owasp_mode(cases, suite, issues_by_file(issues, types), parents)
+            for mode, types in MODES.items()}
 
 
 # --- Juice Shop style snippets ----------------------------------------------------------------------------
@@ -119,11 +130,9 @@ def marked_lines(root):
     return marks
 
 
-def score_snippets(root, suite, issues):
-    categories = {c["key"]: c.get("category", "?") for c in yaml.safe_load((root / suite["challenges"]).read_text())}
-    by_file = security_issues_by_file(issues)
+def score_snippets_mode(marks, categories, by_file):
     results, per_category = [], defaultdict(lambda: {"found": 0, "total": 0})
-    for challenge, lines in sorted(marked_lines(root).items()):
+    for challenge, lines in sorted(marks.items()):
         near = [i for path, n in lines for i in by_file.get(path, []) if abs((i["line"] or 0) - n) <= NEARBY_LINES]
         category = categories.get(challenge, "?")
         per_category[category]["total"] += 1
@@ -133,6 +142,13 @@ def score_snippets(root, suite, issues):
     found = sum(r["found"] for r in results)
     return {"overall": {"found": found, "total": len(results), "recall": round(found / len(results), 3)},
             "categories": dict(sorted(per_category.items())), "challenges": results}
+
+
+def score_snippets(root, suite, issues):
+    categories = {c["key"]: c.get("category", "?") for c in yaml.safe_load((root / suite["challenges"]).read_text())}
+    marks = marked_lines(root)
+    return {mode: score_snippets_mode(marks, categories, issues_by_file(issues, types))
+            for mode, types in MODES.items()}
 
 
 SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets}
@@ -148,9 +164,10 @@ def run(names=None, log=print):
         root = fetch(suite)
         issues = scan(root, log)
         (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(issues))
-        result = SCORERS[suite["kind"]](root, suite, issues)
-        result.update(suite=suite["name"], commit=suite["commit"], scanned_at=datetime.now(UTC).isoformat(timespec="seconds"),
-                      security_findings=sum(i["type"] in SECURITY_TYPES for i in issues))
+        scored = SCORERS[suite["kind"]](root, suite, issues)
+        result = {**scored, "suite": suite["name"], "commit": suite["commit"],
+                  "scanned_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                  "overall": {mode: scored[mode]["overall"] for mode in MODES}}
         write(suite, result)
         out[suite["name"]] = result
     return out
@@ -163,24 +180,33 @@ def write(suite, result):
     (results_dir / f"{suite['name']}.md").write_text(render(suite, result))
 
 
+def render_owasp(mode, r):
+    o = r["overall"]
+    return [f"## {mode.capitalize()} mode", "",
+            (f"**Detection {o['tpr']:.0%}, false alarms {o['fpr']:.0%}, score {o['score']:+.0%}** "
+             "(detection minus false alarms, averaged over categories)"), "",
+            "| Category | CWE | Detected | Missed | False alarms | Correctly quiet | Detection | False alarms | Score |",
+            "|---|---|---|---|---|---|---|---|---|",
+            *(f"| {name} | {c['cwe']} | {c['tp']} | {c['fn']} | {c['fp']} | {c['tn']} | {c['tpr']:.0%} | "
+              f"{c['fpr']:.0%} | {c['score']:+.0%} |" for name, c in r["categories"].items()), ""]
+
+
+def render_snippets(mode, r):
+    o = r["overall"]
+    return [f"## {mode.capitalize()} mode", "",
+            f"**{o['found']} of {o['total']} vulnerable challenges flagged ({o['recall']:.0%})**", "",
+            "| Category | Flagged | Challenges |", "|---|---|---|",
+            *(f"| {k} | {v['found']} | {v['total']} |" for k, v in r["categories"].items()), "",
+            "| Challenge | Category | Flagged by |", "|---|---|---|",
+            *(f"| {c['challenge']} | {c['category']} | {', '.join(c['by']) or 'missed'} |" for c in r["challenges"]),
+            ""]
+
+
 def render(suite, result):
     lines = [f"# {suite['name']}", "", suite["about"], "",
-             f"Commit `{suite['commit'][:10]}` ({suite['license']}), scanned {result['scanned_at']}.", ""]
-    if suite["kind"] == "owasp-benchmark":
-        o = result["overall"]
-        lines += [f"**Overall: detection {o['tpr']:.0%}, false alarms {o['fpr']:.0%}, "
-                  f"score {o['score']:+.0%}** (detection minus false alarms, averaged over categories)", "",
-                  "| Category | CWE | Detected | Missed | False alarms | Correctly quiet | Detection | False-alarm rate | Score |",
-                  "|---|---|---|---|---|---|---|---|---|"]
-        for name, c in result["categories"].items():
-            lines.append(f"| {name} | {c['cwe']} | {c['tp']} | {c['fn']} | {c['fp']} | {c['tn']} | "
-                         f"{c['tpr']:.0%} | {c['fpr']:.0%} | {c['score']:+.0%} |")
-    else:
-        o = result["overall"]
-        lines += [f"**Overall: {o['found']} of {o['total']} vulnerable challenges flagged ({o['recall']:.0%})**", "",
-                  "| Category | Flagged | Challenges |", "|---|---|---|"]
-        lines += [f"| {k} | {v['found']} | {v['total']} |" for k, v in result["categories"].items()]
-        lines += ["", "| Challenge | Category | Flagged by |", "|---|---|---|"]
-        lines += [f"| {r['challenge']} | {r['category']} | {', '.join(r['by']) or 'missed'} |"
-                  for r in result["challenges"]]
+             f"Commit `{suite['commit'][:10]}` ({suite['license']}), scanned {result['scanned_at']}.", "",
+             "Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.", ""]
+    renderer = render_owasp if suite["kind"] == "owasp-benchmark" else render_snippets
+    for mode in MODES:
+        lines += renderer(mode, result[mode])
     return "\n".join(lines) + "\n"

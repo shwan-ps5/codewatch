@@ -1,0 +1,78 @@
+# codewatch built-in rules for Django views and Django/Jinja templates.
+rules:
+  - id: codewatch.django.view-without-method-restriction
+    languages: [python]
+    severity: INFO
+    message: >-
+      This view accepts every HTTP method. Declare what it handles: @require_safe for read-only pages,
+      @require_POST (or @require_http_methods) for views that change state, so a GET link or an unexpected
+      method can't trigger it.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Django view without an HTTP method restriction
+      cwe: ["CWE-650: Trusting HTTP Permission Methods on the Server Side"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://docs.djangoproject.com/en/stable/topics/http/decorators/#allowed-http-methods
+        - https://docs.djangoproject.com/en/stable/ref/csrf/
+    paths:
+      include: ["**/views.py", "**/views/*.py"]
+    patterns:
+      - pattern: |
+          def $VIEW(request, ...):
+            ...
+            return <... $RESPONDER(...) ...>
+      - metavariable-regex:
+          metavariable: $RESPONDER
+          regex: '(.*\.)?(render|redirect|HttpResponse\w{0,20}|JsonResponse|TemplateResponse|FileResponse|StreamingHttpResponse)$'
+      - pattern-not-inside: |
+          class $CLASS(...):
+            ...
+      - pattern-not: |
+          @require_http_methods(...)
+          def $VIEW(request, ...):
+            ...
+      - pattern-not: |
+          @require_POST
+          def $VIEW(request, ...):
+            ...
+      - pattern-not: |
+          @require_GET
+          def $VIEW(request, ...):
+            ...
+      - pattern-not: |
+          @require_safe
+          def $VIEW(request, ...):
+            ...
+      - pattern-not: |
+          def $VIEW(request, ...):
+            ...
+            if <... request.method ...>:
+              ...
+            ...
+
+  - id: codewatch.templates.unescaped-output
+    languages: [generic]
+    severity: WARNING
+    message: >-
+      Template auto-escaping is switched off here (|safe or {% autoescape off %}), so any HTML in the value is
+      rendered as-is. Make sure the value can't contain user input, or escape it before marking it safe.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Auto-escaping turned off in a template
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://docs.djangoproject.com/en/stable/ref/templates/builtins/#safe
+        - https://docs.djangoproject.com/en/stable/ref/templates/builtins/#autoescape
+        - https://jinja.palletsprojects.com/en/stable/templates/#html-escaping
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+    paths:
+      include: ["*.html", "*.htm", "*.jinja", "*.jinja2", "*.j2", "*.djhtml"]
+    pattern-either:
+      - pattern-regex: '\{\{[^{}\n]{0,200}\|\s{0,5}safe\b'
+      - pattern-regex: '\{%-?\s{0,5}autoescape\s{1,5}(off|false)\b'

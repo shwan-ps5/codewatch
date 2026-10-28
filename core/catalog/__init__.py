@@ -19,6 +19,8 @@ from .merge import merge
 BUNDLED_DIR = Path(__file__).resolve().parents[2] / "catalog"
 RUNTIME_DIR = Path(os.environ.get("CODEWATCH_CACHE", Path.home() / ".cache" / "codewatch")) / "catalog"
 CUSTOM_DIR = Path(os.environ.get("CODEWATCH_CUSTOM_RULES", BUNDLED_DIR / "custom"))
+RULES = "rules"
+BUILTIN_RULES_DIR = BUNDLED_DIR / "codewatch" / RULES
 ANY = "any"
 
 # Issues whose rule is not a catalogue code: pip-audit names the advisory, detect-secrets the secret type.
@@ -38,17 +40,37 @@ def read_json(path, default):
 
 
 def custom_rule_files():
-    return sorted((CUSTOM_DIR / "rules").glob("*.y*ml"))
+    return sorted((CUSTOM_DIR / RULES).glob("*.y*ml"))
+
+
+def builtin_rule_files():
+    return sorted(BUILTIN_RULES_DIR.glob("*.y*ml"))
+
+
+def rules_in(path):
+    """Rules from one YAML file; a broken file is skipped (and reported) rather than breaking every scan."""
+    import sys
+
+    import yaml
+
+    try:
+        return (yaml.safe_load(path.read_text()) or {}).get(RULES, [])
+    except (OSError, yaml.YAMLError) as exc:
+        print(f"codewatch: skipping rule file {path}: {exc}", file=sys.stderr)
+        return []
 
 
 def custom_semgrep_rules():
-    """All custom rules as one Semgrep config document, for scans."""
+    """codewatch's built-in and the project's custom Semgrep rules as one config document, for scans.
+
+    Anchors in the rule files are expanded here, so semgrep receives plain YAML.
+    """
     import yaml
 
     rules = []
-    for path in custom_rule_files():
-        rules += (yaml.safe_load(path.read_text()) or {}).get("rules", [])
-    return yaml.safe_dump({"rules": rules}, sort_keys=False) if rules else ""
+    for path in [*builtin_rule_files(), *custom_rule_files()]:
+        rules += rules_in(path)
+    return yaml.safe_dump({RULES: rules}, sort_keys=False) if rules else ""
 
 
 @lru_cache(maxsize=1)
@@ -59,8 +81,8 @@ def load():
         read_json(base / "rules.json", []),
         standards,
         read_json(CUSTOM_DIR / "mappings.json", {}),
-        read_json(CUSTOM_DIR / "overrides.json", {}).get("rules", {}),
-        custom_rule_files(),
+        read_json(CUSTOM_DIR / "overrides.json", {}).get(RULES, {}),
+        [*((p, "codewatch") for p in builtin_rule_files()), *((p, "custom") for p in custom_rule_files())],
     )
     return rules, standards
 

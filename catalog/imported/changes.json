@@ -1,36 +1,5 @@
 {
- "added": [
-  "detect-secrets/hard-coded-secret"
- ],
- "removed": [
-  "coverage/lines-to-cover",
-  "detect-secrets/AWSKeyDetector",
-  "detect-secrets/ArtifactoryDetector",
-  "detect-secrets/AzureStorageKeyDetector",
-  "detect-secrets/Base64HighEntropyString",
-  "detect-secrets/BasicAuthDetector",
-  "detect-secrets/CloudantDetector",
-  "detect-secrets/DiscordBotTokenDetector",
-  "detect-secrets/GitHubTokenDetector",
-  "detect-secrets/GitLabTokenDetector",
-  "detect-secrets/HexHighEntropyString",
-  "detect-secrets/IPPublicDetector",
-  "detect-secrets/IbmCloudIamDetector",
-  "detect-secrets/IbmCosHmacDetector",
-  "detect-secrets/JwtTokenDetector",
-  "detect-secrets/KeywordDetector",
-  "detect-secrets/MailchimpDetector",
-  "detect-secrets/NpmDetector",
-  "detect-secrets/OpenAIDetector",
-  "detect-secrets/PrivateKeyDetector",
-  "detect-secrets/PypiTokenDetector",
-  "detect-secrets/SendGridDetector",
-  "detect-secrets/SlackDetector",
-  "detect-secrets/SoftlayerDetector",
-  "detect-secrets/SquareOAuthDetector",
-  "detect-secrets/StripeDetector",
-  "detect-secrets/TelegramBotTokenDetector",
-  "detect-secrets/TwilioKeyDetector"
- ],
- "at": "2026-10-28T20:11:00+00:00"
+ "added": [],
+ "removed": [],
+ "at": "2026-10-28T23:30:30+00:00"
 }

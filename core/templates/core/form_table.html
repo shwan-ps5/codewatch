@@ -1,10 +1,13 @@
 {% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
-<table class="form-table" role="presentation">
 {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+<div class="form-grid">
 {% for field in form.visible_fields %}
-<tr><th>{% if field.use_fieldset %}{{ field.label }}{% else %}{{ field.label_tag }}{% endif %}</th>
-<td>{% if field.use_fieldset %}<fieldset style="border:0;padding:0;margin:0"><legend class="sr-only">{{ field.label }}</legend>{{ field }}</fieldset>{% else %}{{ field }}{% endif %}
-{% if field.help_text %}<span class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</span>{% endif %}
-{% if field.errors %}<div role="alert">{{ field.errors }}</div>{% endif %}</td></tr>
+<div class="form-row">
+<div class="form-label">{% if field.use_fieldset %}<span aria-hidden="true">{{ field.label }}</span>{% else %}{{ field.label_tag }}{% endif %}</div>
+<div class="form-field">{% if field.use_fieldset %}<fieldset><legend class="sr-only">{{ field.label }}</legend>{{ field }}</fieldset>{% else %}{{ field }}{% endif %}
+{# Help text comes from Python form definitions, never from users, and Django's own forms render it unescaped too. #}
+{% if field.help_text %}<span class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</span>{% endif %}{# nosemgrep #}
+{% if field.errors %}<div role="alert">{{ field.errors }}</div>{% endif %}</div>
+</div>
 {% endfor %}
-</table>
+</div>

@@ -1,0 +1,1092 @@
+{
+ "verdict": {
+  "overall": {
+   "found": 7,
+   "total": 35,
+   "recall": 0.2
+  },
+  "categories": {
+   "Broken Access Control": {
+    "found": 1,
+    "total": 4
+   },
+   "Broken Anti Automation": {
+    "found": 0,
+    "total": 1
+   },
+   "Broken Authentication": {
+    "found": 0,
+    "total": 5
+   },
+   "Improper Input Validation": {
+    "found": 0,
+    "total": 2
+   },
+   "Injection": {
+    "found": 1,
+    "total": 8
+   },
+   "Miscellaneous": {
+    "found": 0,
+    "total": 2
+   },
+   "Observability Failures": {
+    "found": 0,
+    "total": 2
+   },
+   "Security through Obscurity": {
+    "found": 0,
+    "total": 1
+   },
+   "Sensitive Data Exposure": {
+    "found": 1,
+    "total": 4
+   },
+   "Unvalidated Redirects": {
+    "found": 1,
+    "total": 2
+   },
+   "Vulnerable Components": {
+    "found": 0,
+    "total": 1
+   },
+   "XSS": {
+    "found": 3,
+    "total": 3
+   }
+  },
+  "challenges": [
+   {
+    "challenge": "accessLogDisclosureChallenge",
+    "category": "Observability Failures",
+    "lines": [
+     [
+      "server.ts",
+      302
+     ],
+     [
+      "server.ts",
+      304
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "adminSectionChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      79
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "changeProductChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "server.ts",
+      398
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "chatbotGreedyInjectionChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/chat.ts",
+      179
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "chatbotPromptInjectionChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/chat.ts",
+      179
+     ],
+     [
+      "routes/chat.ts",
+      184
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "dbSchemaChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/search.ts",
+      23
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "directoryListingChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "server.ts",
+      290
+     ],
+     [
+      "server.ts",
+      291
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "exposedMetricsChallenge",
+    "category": "Observability Failures",
+    "lines": [
+     [
+      "server.ts",
+      759
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "forgedReviewChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "routes/updateProductReviews.ts",
+      16
+     ],
+     [
+      "routes/updateProductReviews.ts",
+      18
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.nosql-injection"
+    ]
+   },
+   {
+    "challenge": "iacLeakedKeyChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "infrastructure/terraform/networking.tf",
+      171
+     ],
+     [
+      "terraform/networking.tf",
+      171
+     ]
+    ],
+    "found": true,
+    "by": [
+     "detect-secrets:Private Key"
+    ]
+   },
+   {
+    "challenge": "localXssChallenge",
+    "category": "XSS",
+    "lines": [
+     [
+      "frontend/src/app/search-result/search-result.component.ts",
+      146
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.angular-bypass-sanitizer"
+    ]
+   },
+   {
+    "challenge": "loginAdminChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/login.ts",
+      34
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "loginBenderChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/login.ts",
+      34
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "loginJimChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/login.ts",
+      34
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "nftMintChallenge",
+    "category": "Improper Input Validation",
+    "lines": [
+     [
+      "data/static/web3-snippets/HoneyPotNFT.sol",
+      26
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "nftUnlockChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "data/static/web3-snippets/JuiceShopSBT.sol",
+      18
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "noSqlReviewsChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/updateProductReviews.ts",
+      18
+     ],
+     [
+      "routes/updateProductReviews.ts",
+      20
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.nosql-injection"
+    ]
+   },
+   {
+    "challenge": "redirectChallenge",
+    "category": "Unvalidated Redirects",
+    "lines": [
+     [
+      "lib/insecurity.ts",
+      136
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.substring-url-allowlist"
+    ]
+   },
+   {
+    "challenge": "redirectCryptoCurrencyChallenge",
+    "category": "Unvalidated Redirects",
+    "lines": [
+     [
+      "lib/insecurity.ts",
+      124
+     ],
+     [
+      "lib/insecurity.ts",
+      125
+     ],
+     [
+      "lib/insecurity.ts",
+      126
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "registerAdminChallenge",
+    "category": "Improper Input Validation",
+    "lines": [
+     [
+      "server.ts",
+      539
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordBenderChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      21
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordBjoernChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      19
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordBjoernOwaspChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      15
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordJimChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      3
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordMortyChallenge",
+    "category": "Broken Anti Automation",
+    "lines": [
+     [
+      "server.ts",
+      374
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordUvoginChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      25
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "restfulXssChallenge",
+    "category": "XSS",
+    "lines": [
+     [
+      "frontend/src/app/search-result/search-result.component.ts",
+      113
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.angular-bypass-sanitizer"
+    ]
+   },
+   {
+    "challenge": "scoreBoardChallenge",
+    "category": "Miscellaneous",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      186
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "tokenSaleChallenge",
+    "category": "Security through Obscurity",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      261
+     ],
+     [
+      "frontend/src/app/app.routing.ts",
+      300
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "unionSqlInjectionChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/search.ts",
+      23
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "vulnerableDockerImageChallenge",
+    "category": "Vulnerable Components",
+    "lines": [
+     [
+      "infrastructure/docker-compose.yml",
+      59
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "weakPasswordChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "models/user.ts",
+      73
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "web3SandboxChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      239
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "web3WalletChallenge",
+    "category": "Miscellaneous",
+    "lines": [
+     [
+      "data/static/web3-snippets/ETHWalletBank.sol",
+      34
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "xssBonusChallenge",
+    "category": "XSS",
+    "lines": [
+     [
+      "frontend/src/app/search-result/search-result.component.ts",
+      146
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.angular-bypass-sanitizer"
+    ]
+   }
+  ]
+ },
+ "review": {
+  "overall": {
+   "found": 15,
+   "total": 35,
+   "recall": 0.429
+  },
+  "categories": {
+   "Broken Access Control": {
+    "found": 1,
+    "total": 4
+   },
+   "Broken Anti Automation": {
+    "found": 0,
+    "total": 1
+   },
+   "Broken Authentication": {
+    "found": 0,
+    "total": 5
+   },
+   "Improper Input Validation": {
+    "found": 0,
+    "total": 2
+   },
+   "Injection": {
+    "found": 6,
+    "total": 8
+   },
+   "Miscellaneous": {
+    "found": 0,
+    "total": 2
+   },
+   "Observability Failures": {
+    "found": 2,
+    "total": 2
+   },
+   "Security through Obscurity": {
+    "found": 0,
+    "total": 1
+   },
+   "Sensitive Data Exposure": {
+    "found": 2,
+    "total": 4
+   },
+   "Unvalidated Redirects": {
+    "found": 1,
+    "total": 2
+   },
+   "Vulnerable Components": {
+    "found": 0,
+    "total": 1
+   },
+   "XSS": {
+    "found": 3,
+    "total": 3
+   }
+  },
+  "challenges": [
+   {
+    "challenge": "accessLogDisclosureChallenge",
+    "category": "Observability Failures",
+    "lines": [
+     [
+      "server.ts",
+      302
+     ],
+     [
+      "server.ts",
+      304
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.express.security.audit.express-check-directory-listing.express-check-directory-listing"
+    ]
+   },
+   {
+    "challenge": "adminSectionChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      79
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "changeProductChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "server.ts",
+      398
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "chatbotGreedyInjectionChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/chat.ts",
+      179
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "chatbotPromptInjectionChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/chat.ts",
+      179
+     ],
+     [
+      "routes/chat.ts",
+      184
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "dbSchemaChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/search.ts",
+      23
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+    ]
+   },
+   {
+    "challenge": "directoryListingChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "server.ts",
+      290
+     ],
+     [
+      "server.ts",
+      291
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.express.security.audit.express-check-directory-listing.express-check-directory-listing"
+    ]
+   },
+   {
+    "challenge": "exposedMetricsChallenge",
+    "category": "Observability Failures",
+    "lines": [
+     [
+      "server.ts",
+      759
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.unauthenticated-metrics"
+    ]
+   },
+   {
+    "challenge": "forgedReviewChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "routes/updateProductReviews.ts",
+      16
+     ],
+     [
+      "routes/updateProductReviews.ts",
+      18
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.nosql-injection"
+    ]
+   },
+   {
+    "challenge": "iacLeakedKeyChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "infrastructure/terraform/networking.tf",
+      171
+     ],
+     [
+      "terraform/networking.tf",
+      171
+     ]
+    ],
+    "found": true,
+    "by": [
+     "detect-secrets:Private Key"
+    ]
+   },
+   {
+    "challenge": "localXssChallenge",
+    "category": "XSS",
+    "lines": [
+     [
+      "frontend/src/app/search-result/search-result.component.ts",
+      146
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.angular-bypass-sanitizer"
+    ]
+   },
+   {
+    "challenge": "loginAdminChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/login.ts",
+      34
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+    ]
+   },
+   {
+    "challenge": "loginBenderChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/login.ts",
+      34
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+    ]
+   },
+   {
+    "challenge": "loginJimChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/login.ts",
+      34
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+    ]
+   },
+   {
+    "challenge": "nftMintChallenge",
+    "category": "Improper Input Validation",
+    "lines": [
+     [
+      "data/static/web3-snippets/HoneyPotNFT.sol",
+      26
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "nftUnlockChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "data/static/web3-snippets/JuiceShopSBT.sol",
+      18
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "noSqlReviewsChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/updateProductReviews.ts",
+      18
+     ],
+     [
+      "routes/updateProductReviews.ts",
+      20
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.nosql-injection"
+    ]
+   },
+   {
+    "challenge": "redirectChallenge",
+    "category": "Unvalidated Redirects",
+    "lines": [
+     [
+      "lib/insecurity.ts",
+      136
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.substring-url-allowlist"
+    ]
+   },
+   {
+    "challenge": "redirectCryptoCurrencyChallenge",
+    "category": "Unvalidated Redirects",
+    "lines": [
+     [
+      "lib/insecurity.ts",
+      124
+     ],
+     [
+      "lib/insecurity.ts",
+      125
+     ],
+     [
+      "lib/insecurity.ts",
+      126
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "registerAdminChallenge",
+    "category": "Improper Input Validation",
+    "lines": [
+     [
+      "server.ts",
+      539
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordBenderChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      21
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordBjoernChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      19
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordBjoernOwaspChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      15
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordJimChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      3
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordMortyChallenge",
+    "category": "Broken Anti Automation",
+    "lines": [
+     [
+      "server.ts",
+      374
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "resetPasswordUvoginChallenge",
+    "category": "Sensitive Data Exposure",
+    "lines": [
+     [
+      "data/static/securityQuestions.yml",
+      25
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "restfulXssChallenge",
+    "category": "XSS",
+    "lines": [
+     [
+      "frontend/src/app/search-result/search-result.component.ts",
+      113
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.angular-bypass-sanitizer",
+     "eslint:security/detect-object-injection"
+    ]
+   },
+   {
+    "challenge": "scoreBoardChallenge",
+    "category": "Miscellaneous",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      186
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "tokenSaleChallenge",
+    "category": "Security through Obscurity",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      261
+     ],
+     [
+      "frontend/src/app/app.routing.ts",
+      300
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "unionSqlInjectionChallenge",
+    "category": "Injection",
+    "lines": [
+     [
+      "routes/search.ts",
+      23
+     ]
+    ],
+    "found": true,
+    "by": [
+     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+    ]
+   },
+   {
+    "challenge": "vulnerableDockerImageChallenge",
+    "category": "Vulnerable Components",
+    "lines": [
+     [
+      "infrastructure/docker-compose.yml",
+      59
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "weakPasswordChallenge",
+    "category": "Broken Authentication",
+    "lines": [
+     [
+      "models/user.ts",
+      73
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "web3SandboxChallenge",
+    "category": "Broken Access Control",
+    "lines": [
+     [
+      "frontend/src/app/app.routing.ts",
+      239
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "web3WalletChallenge",
+    "category": "Miscellaneous",
+    "lines": [
+     [
+      "data/static/web3-snippets/ETHWalletBank.sol",
+      34
+     ]
+    ],
+    "found": false,
+    "by": []
+   },
+   {
+    "challenge": "xssBonusChallenge",
+    "category": "XSS",
+    "lines": [
+     [
+      "frontend/src/app/search-result/search-result.component.ts",
+      146
+     ]
+    ],
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.angular-bypass-sanitizer"
+    ]
+   }
+  ]
+ },
+ "suite": "juice-shop",
+ "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
+ "scanned_at": "2026-10-28T23:36:03+00:00",
+ "overall": {
+  "verdict": {
+   "found": 7,
+   "total": 35,
+   "recall": 0.2
+  },
+  "review": {
+   "found": 15,
+   "total": 35,
+   "recall": 0.429
+  }
+ }
+}

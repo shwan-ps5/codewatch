@@ -1,0 +1,4519 @@
+{
+ "verdict": {
+  "overall": {
+   "tpr": 0.742,
+   "fpr": 0.346,
+   "score": 0.396
+  },
+  "categories": {
+   "cmdi": {
+    "tp": 10,
+    "fn": 3,
+    "fp": 4,
+    "tn": 3,
+    "cwe": 78,
+    "tpr": 0.769,
+    "fpr": 0.571,
+    "score": 0.198
+   },
+   "codeinj": {
+    "tp": 17,
+    "fn": 3,
+    "fp": 10,
+    "tn": 23,
+    "cwe": 94,
+    "tpr": 0.85,
+    "fpr": 0.303,
+    "score": 0.547
+   },
+   "deserialization": {
+    "tp": 12,
+    "fn": 6,
+    "fp": 7,
+    "tn": 29,
+    "cwe": 502,
+    "tpr": 0.667,
+    "fpr": 0.194,
+    "score": 0.472
+   },
+   "hash": {
+    "tp": 68,
+    "fn": 3,
+    "fp": 0,
+    "tn": 80,
+    "cwe": 328,
+    "tpr": 0.958,
+    "fpr": 0.0,
+    "score": 0.958
+   },
+   "ldapi": {
+    "tp": 13,
+    "fn": 3,
+    "fp": 9,
+    "tn": 4,
+    "cwe": 90,
+    "tpr": 0.812,
+    "fpr": 0.692,
+    "score": 0.12
+   },
+   "pathtraver": {
+    "tp": 29,
+    "fn": 36,
+    "fp": 41,
+    "tn": 62,
+    "cwe": 22,
+    "tpr": 0.446,
+    "fpr": 0.398,
+    "score": 0.048
+   },
+   "redirect": {
+    "tp": 9,
+    "fn": 4,
+    "fp": 9,
+    "tn": 12,
+    "cwe": 601,
+    "tpr": 0.692,
+    "fpr": 0.429,
+    "score": 0.264
+   },
+   "securecookie": {
+    "tp": 24,
+    "fn": 0,
+    "fp": 0,
+    "tn": 15,
+    "cwe": 614,
+    "tpr": 1.0,
+    "fpr": 0.0,
+    "score": 1.0
+   },
+   "sqli": {
+    "tp": 3,
+    "fn": 2,
+    "fp": 0,
+    "tn": 11,
+    "cwe": 89,
+    "tpr": 0.6,
+    "fpr": 0.0,
+    "score": 0.6
+   },
+   "trustbound": {
+    "tp": 12,
+    "fn": 6,
+    "fp": 15,
+    "tn": 4,
+    "cwe": 501,
+    "tpr": 0.667,
+    "fpr": 0.789,
+    "score": -0.123
+   },
+   "weakrand": {
+    "tp": 56,
+    "fn": 43,
+    "fp": 0,
+    "tn": 227,
+    "cwe": 330,
+    "tpr": 0.566,
+    "fpr": 0.0,
+    "score": 0.566
+   },
+   "xpathi": {
+    "tp": 40,
+    "fn": 11,
+    "fp": 83,
+    "tn": 52,
+    "cwe": 643,
+    "tpr": 0.784,
+    "fpr": 0.615,
+    "score": 0.169
+   },
+   "xss": {
+    "tp": 18,
+    "fn": 13,
+    "fp": 29,
+    "tn": 29,
+    "cwe": 79,
+    "tpr": 0.581,
+    "fpr": 0.5,
+    "score": 0.081
+   },
+   "xxe": {
+    "tp": 8,
+    "fn": 0,
+    "fp": 7,
+    "tn": 13,
+    "cwe": 611,
+    "tpr": 1.0,
+    "fpr": 0.35,
+    "score": 0.65
+   }
+  },
+  "mistakes": [
+   {
+    "test": "BenchmarkTest00004",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00006",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00008",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00013",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00014",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00015",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00016",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00019",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00021",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00024",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00025",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00026",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00068",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00070",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00077",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00078",
+    "category": "deserialization",
+    "real": true,
+    "cwe": 502,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00083",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00084",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00086",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00087",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00089",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00092",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00095",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00098",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00105",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00106",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00109",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00110",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00112",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00117",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00150",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00152",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00154",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00155",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00156",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00157",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00164",
+    "category": "deserialization",
+    "real": true,
+    "cwe": 502,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00166",
+    "category": "cmdi",
+    "real": true,
+    "cwe": 78,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00170",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00171",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00172",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00173",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00174",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00176",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00178",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00180",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00182",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00184",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00185",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00188",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00189",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00191",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00194",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00195",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00196",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00197",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00199",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00200",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00201",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00202",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00203",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00206",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00208",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00211",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00213",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00214",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00218",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00219",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00224",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00225",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00226",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00227",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00256",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00259",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00260",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00262",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00263",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00264",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00267",
+    "category": "cmdi",
+    "real": true,
+    "cwe": 78,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00281",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00283",
+    "category": "sqli",
+    "real": true,
+    "cwe": 89,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00288",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00290",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00295",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00298",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00299",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00300",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00301",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00306",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00307",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00309",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00334",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00335",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00339",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00340",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00344",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00346",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00348",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00352",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00354",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00355",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00356",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00357",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00363",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00365",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00366",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00367",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00369",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00371",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00375",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00376",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00377",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00378",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00384",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00417",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00421",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00424",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00425",
+    "category": "codeinj",
+    "real": true,
+    "cwe": 94,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00427",
+    "category": "ldapi",
+    "real": true,
+    "cwe": 90,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00430",
+    "category": "ldapi",
+    "real": true,
+    "cwe": 90,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00433",
+    "category": "deserialization",
+    "real": true,
+    "cwe": 502,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00436",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00438",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00439",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00441",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00442",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00444",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00445",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00451",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00455",
+    "category": "sqli",
+    "real": true,
+    "cwe": 89,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00458",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00461",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00465",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00467",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00468",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00471",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00474",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00475",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00476",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00485",
+    "category": "hash",
+    "real": true,
+    "cwe": 328,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00497",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00498",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00500",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00501",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00508",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00512",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00513",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00519",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00521",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00522",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00523",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00526",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00529",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00530",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00534",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00537",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00540",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00544",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00547",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00548",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00549",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00552",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00555",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00559",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00561",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00562",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00563",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00564",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00582",
+    "category": "hash",
+    "real": true,
+    "cwe": 328,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00597",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00600",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00602",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00607",
+    "category": "cmdi",
+    "real": true,
+    "cwe": 78,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00608",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00611",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00614",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00623",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00624",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00627",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00628",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00655",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00661",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00662",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00663",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00665",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00666",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00668",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00669",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00671",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00672",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00673",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00675",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00676",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00677",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00679",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00680",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00683",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00684",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00708",
+    "category": "hash",
+    "real": true,
+    "cwe": 328,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00722",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00723",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00724",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00726",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00729",
+    "category": "codeinj",
+    "real": true,
+    "cwe": 94,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00732",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00738",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00740",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00742",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00750",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00752",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00754",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00756",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00758",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00759",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00762",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00763",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00768",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00769",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00775",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00814",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00823",
+    "category": "ldapi",
+    "real": true,
+    "cwe": 90,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00826",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00830",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00831",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00832",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00833",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00834",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00835",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00837",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00838",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00843",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00845",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00846",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00847",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00848",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00849",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00851",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00852",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00853",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00855",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00861",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00862",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00883",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00888",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00897",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00900",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00906",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00907",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00910",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00914",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00915",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00916",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00918",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00920",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00923",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00924",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00925",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00932",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00933",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00944",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00947",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00948",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00950",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00951",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00982",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00984",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00986",
+    "category": "codeinj",
+    "real": true,
+    "cwe": 94,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00992",
+    "category": "deserialization",
+    "real": true,
+    "cwe": 502,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00993",
+    "category": "deserialization",
+    "real": true,
+    "cwe": 502,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00994",
+    "category": "deserialization",
+    "real": true,
+    "cwe": 502,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest01000",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01001",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01003",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01004",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01006",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01008",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01015",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01016",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01022",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01023",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01025",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01026",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01027",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01028",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01029",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01031",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01032",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01038",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01039",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01043",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest01049",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest01050",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest01082",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01083",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01092",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01093",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01095",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01096",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01097",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01104",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   }
+  ]
+ },
+ "review": {
+  "overall": {
+   "tpr": 0.838,
+   "fpr": 0.591,
+   "score": 0.247
+  },
+  "categories": {
+   "cmdi": {
+    "tp": 13,
+    "fn": 0,
+    "fp": 7,
+    "tn": 0,
+    "cwe": 78,
+    "tpr": 1.0,
+    "fpr": 1.0,
+    "score": 0.0
+   },
+   "codeinj": {
+    "tp": 20,
+    "fn": 0,
+    "fp": 33,
+    "tn": 0,
+    "cwe": 94,
+    "tpr": 1.0,
+    "fpr": 1.0,
+    "score": 0.0
+   },
+   "deserialization": {
+    "tp": 18,
+    "fn": 0,
+    "fp": 12,
+    "tn": 24,
+    "cwe": 502,
+    "tpr": 1.0,
+    "fpr": 0.333,
+    "score": 0.667
+   },
+   "hash": {
+    "tp": 69,
+    "fn": 2,
+    "fp": 0,
+    "tn": 80,
+    "cwe": 328,
+    "tpr": 0.972,
+    "fpr": 0.0,
+    "score": 0.972
+   },
+   "ldapi": {
+    "tp": 13,
+    "fn": 3,
+    "fp": 9,
+    "tn": 4,
+    "cwe": 90,
+    "tpr": 0.812,
+    "fpr": 0.692,
+    "score": 0.12
+   },
+   "pathtraver": {
+    "tp": 29,
+    "fn": 36,
+    "fp": 41,
+    "tn": 62,
+    "cwe": 22,
+    "tpr": 0.446,
+    "fpr": 0.398,
+    "score": 0.048
+   },
+   "redirect": {
+    "tp": 9,
+    "fn": 4,
+    "fp": 10,
+    "tn": 11,
+    "cwe": 601,
+    "tpr": 0.692,
+    "fpr": 0.476,
+    "score": 0.216
+   },
+   "securecookie": {
+    "tp": 24,
+    "fn": 0,
+    "fp": 15,
+    "tn": 0,
+    "cwe": 614,
+    "tpr": 1.0,
+    "fpr": 1.0,
+    "score": 0.0
+   },
+   "sqli": {
+    "tp": 5,
+    "fn": 0,
+    "fp": 11,
+    "tn": 0,
+    "cwe": 89,
+    "tpr": 1.0,
+    "fpr": 1.0,
+    "score": 0.0
+   },
+   "trustbound": {
+    "tp": 12,
+    "fn": 6,
+    "fp": 15,
+    "tn": 4,
+    "cwe": 501,
+    "tpr": 0.667,
+    "fpr": 0.789,
+    "score": -0.123
+   },
+   "weakrand": {
+    "tp": 77,
+    "fn": 22,
+    "fp": 0,
+    "tn": 227,
+    "cwe": 330,
+    "tpr": 0.778,
+    "fpr": 0.0,
+    "score": 0.778
+   },
+   "xpathi": {
+    "tp": 40,
+    "fn": 11,
+    "fp": 83,
+    "tn": 52,
+    "cwe": 643,
+    "tpr": 0.784,
+    "fpr": 0.615,
+    "score": 0.169
+   },
+   "xss": {
+    "tp": 18,
+    "fn": 13,
+    "fp": 36,
+    "tn": 22,
+    "cwe": 79,
+    "tpr": 0.581,
+    "fpr": 0.621,
+    "score": -0.04
+   },
+   "xxe": {
+    "tp": 8,
+    "fn": 0,
+    "fp": 7,
+    "tn": 13,
+    "cwe": 611,
+    "tpr": 1.0,
+    "fpr": 0.35,
+    "score": 0.65
+   }
+  },
+  "mistakes": [
+   {
+    "test": "BenchmarkTest00004",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00006",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00008",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00011",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00012",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00013",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00014",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00015",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00016",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00019",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00021",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00024",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00025",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00026",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00068",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00070",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00073",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00075",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00077",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00083",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00084",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00086",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00087",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00089",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00092",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00095",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00098",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00100",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00105",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00106",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00109",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00110",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00112",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00149",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00150",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00152",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00154",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00155",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00156",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00157",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00158",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00162",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00163",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00170",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00171",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00172",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00173",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00174",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00176",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00178",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00180",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00182",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00184",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00185",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00188",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00189",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00191",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00192",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00194",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00195",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00196",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00197",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00199",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00200",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00201",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00202",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00203",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00206",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00208",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00211",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00213",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00214",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00218",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00219",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00256",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00257",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00259",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00260",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00262",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00263",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00264",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00281",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00285",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00286",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00287",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00288",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00290",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00295",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00298",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00299",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00300",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00301",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00306",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00307",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00334",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00335",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00337",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00339",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00340",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00344",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00345",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00346",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00347",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00348",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00349",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00350",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00352",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00354",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00355",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00356",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00357",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00363",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00365",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00366",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00367",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00369",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00371",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00375",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00376",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00377",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00378",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00384",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00414",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00415",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00416",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00417",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00421",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00423",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00424",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00426",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00427",
+    "category": "ldapi",
+    "real": true,
+    "cwe": 90,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00430",
+    "category": "ldapi",
+    "real": true,
+    "cwe": 90,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00436",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00438",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00439",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00441",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00442",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00444",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00445",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00451",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00458",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00461",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00465",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00467",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00468",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00471",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00474",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00475",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00485",
+    "category": "hash",
+    "real": true,
+    "cwe": 328,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00493",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00497",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00498",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00500",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00501",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00504",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00508",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00509",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00512",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00513",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00519",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00521",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00522",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00523",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00526",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00529",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00530",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00534",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00537",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00540",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00544",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00547",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00548",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00549",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00552",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00555",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00559",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00582",
+    "category": "hash",
+    "real": true,
+    "cwe": 328,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00591",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00594",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00595",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00597",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00600",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00602",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00603",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00608",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00611",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00614",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00623",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00624",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00653",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00655",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00658",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00661",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00662",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00663",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00665",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00666",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00668",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00669",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00671",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00672",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00673",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00675",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00676",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00677",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00679",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00680",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00683",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00684",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00721",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00722",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00723",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00724",
+    "category": "redirect",
+    "real": false,
+    "cwe": 601,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00726",
+    "category": "trustbound",
+    "real": false,
+    "cwe": 501,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00730",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00732",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00736",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00738",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00740",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00742",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00750",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00752",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00754",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00755",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00756",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00758",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00759",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00762",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00763",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00768",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00769",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00809",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00810",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00811",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00812",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00813",
+    "category": "securecookie",
+    "real": false,
+    "cwe": 614,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00814",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00818",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00821",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00822",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00823",
+    "category": "ldapi",
+    "real": true,
+    "cwe": 90,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00826",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00830",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00831",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00832",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00833",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00834",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00835",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00837",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00838",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00843",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00845",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00846",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00847",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00848",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00849",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00851",
+    "category": "xxe",
+    "real": false,
+    "cwe": 611,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00852",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00853",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00855",
+    "category": "xpathi",
+    "real": false,
+    "cwe": 643,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00861",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00862",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00883",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00884",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00888",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00892",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00893",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00897",
+    "category": "ldapi",
+    "real": false,
+    "cwe": 90,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00900",
+    "category": "cmdi",
+    "real": false,
+    "cwe": 78,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00906",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00907",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00910",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00914",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00915",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00916",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00918",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00920",
+    "category": "pathtraver",
+    "real": true,
+    "cwe": 22,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00923",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00924",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00925",
+    "category": "xss",
+    "real": true,
+    "cwe": 79,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00932",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00933",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00944",
+    "category": "xpathi",
+    "real": true,
+    "cwe": 643,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00947",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00948",
+    "category": "weakrand",
+    "real": true,
+    "cwe": 330,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00982",
+    "category": "redirect",
+    "real": true,
+    "cwe": 601,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00984",
+    "category": "trustbound",
+    "real": true,
+    "cwe": 501,
+    "flagged": false
+   },
+   {
+    "test": "BenchmarkTest00987",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00988",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00989",
+    "category": "codeinj",
+    "real": false,
+    "cwe": 94,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest00995",
+    "category": "deserialization",
+    "real": false,
+    "cwe": 502,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01000",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01001",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01003",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01004",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01006",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01008",
+    "category": "pathtraver",
+    "real": false,
+    "cwe": 22,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01015",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01016",
+    "category": "xss",
+    "real": false,
+    "cwe": 79,
+    "flagged": true
+   },
+   {
+    "test": "BenchmarkTest01021",
+    "category": "sqli",
+    "real": false,
+    "cwe": 89,
+    "flagged": true
+   }
+  ]
+ },
+ "suite": "owasp-benchmark-python",
+ "commit": "f1291485808b66e20ddb6b01b10dc71b3df8c8ba",
+ "scanned_at": "2026-10-28T23:38:53+00:00",
+ "overall": {
+  "verdict": {
+   "tpr": 0.742,
+   "fpr": 0.346,
+   "score": 0.396
+  },
+  "review": {
+   "tpr": 0.838,
+   "fpr": 0.591,
+   "score": 0.247
+  }
+ }
+}
