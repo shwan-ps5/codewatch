@@ -26,6 +26,9 @@ class ScanConfig:
     disabled_analyzers: list[str] = field(default_factory=list)
     semgrep_config: str = "p/default"
     complexity_threshold: int = 10
+    cognitive_complexity_threshold: int = 15
+    duplicate_literal_threshold: int = 3
+    custom_rules: str = ""
     a11y_urls: list[str] = field(default_factory=list)
     # Recent successful main-branch analyses, newest first: [{"commit": ..., "reference_commit": ...}]
     main_analyses: list[dict] = field(default_factory=list)
@@ -251,6 +254,9 @@ def make_context(cfg, root, files, branch, coverage_report, coverage_base):
         semgrep_config=cfg.semgrep_config,
         exclusions=cfg.exclusions,
         a11y_urls=[u.replace("{branch}", branch) for u in cfg.a11y_urls],
+        cognitive_threshold=cfg.cognitive_complexity_threshold,
+        max_literal_repeats=cfg.duplicate_literal_threshold,
+        custom_rules=cfg.custom_rules,
         coverage_report=Path(coverage_report) if coverage_report else None,
         coverage_base=Path(coverage_base) if coverage_base else None,
     )

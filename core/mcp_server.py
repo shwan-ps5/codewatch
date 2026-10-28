@@ -88,6 +88,13 @@ def get_issue(issue_id: int, context_lines: int = 5) -> dict:
 
 
 @mcp.tool()
+def get_rule(rule_id: str) -> dict:
+    """A catalogue rule (e.g. "ruff/F841", or the "rule.id" of an issue): what it checks, why it matters,
+    how to fix it with examples (from the tool's documentation and MITRE CWE), and its references."""
+    return call(f"rules/{rule_id}/")
+
+
+@mcp.tool()
 def resolve_issue(issue_id: int, status: str, comment: str = "") -> dict:
     """Mark an issue 'false_positive' or 'wont_fix' (with a reason in comment), or 'reopen' it.
 

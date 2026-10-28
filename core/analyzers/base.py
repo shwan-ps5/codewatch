@@ -43,6 +43,9 @@ class Context:
     semgrep_config: str = "p/default"
     exclusions: list[str] = field(default_factory=list)
     a11y_urls: list[str] = field(default_factory=list)
+    cognitive_threshold: int = 15
+    max_literal_repeats: int = 3
+    custom_rules: str = ""
     coverage_report: Path | None = None
     coverage_base: Path | None = None
 

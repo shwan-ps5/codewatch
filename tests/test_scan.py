@@ -3,7 +3,7 @@ import pytest
 from django.core.management import call_command
 
 from core import gate
-from core.models import Analysis, IssueResolution, Project
+from core.models import Analysis, IssueResolution, Metric, Project
 
 from .conftest import ONLY_RUFF, sh
 
@@ -86,5 +86,10 @@ def test_new_code_coverage_from_cobertura(repo, project, tmp_path):
     m = Analysis.objects.get(branch="feature").metrics_dict
     assert m["coverage"] == 66.7
     assert m["new_coverage"] == 33.3
-    gate_row = next(d for d in Analysis.objects.get(branch="feature").gate_details if d["metric"] == "new_coverage")
+    feature = Analysis.objects.get(branch="feature")
+    gate_row = next(d for d in feature.gate_details if d["metric"] == "new_coverage")
+    assert gate_row["status"] == "too_few_lines", "3 changed lines is below the 20-line minimum"
+    Metric.objects.filter(analysis=feature, key="new_lines").update(value=25)
+    gate.refresh(feature)
+    gate_row = next(d for d in feature.gate_details if d["metric"] == "new_coverage")
     assert gate_row["status"] == "error"

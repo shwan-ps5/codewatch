@@ -22,9 +22,9 @@
 <tbody>
 {% for i in page %}
 <tr><td><span class="sev sev-{{ i.severity }}">{{ i.severity }}</span><br><span class="muted">{{ i.type|label }}</span></td>
-<td>{% if i.is_new %}<span class="new">new</span> {% endif %}{{ i.message }}{% if i.resolution %}<br><span class="muted">{{ i.resolution.get_status_display }}{% if i.resolution.comment %}: {{ i.resolution.comment }}{% endif %}</span>{% endif %}</td>
+<td>{% if i.is_new %}<span class="new">new</span> {% endif %}{{ i.message }}{% if i.also_reported_by %}<br><span class="muted">Also reported by {{ i.also_reported_by|join:", " }}</span>{% endif %}{% if i.resolution %}<br><span class="muted">{{ i.resolution.get_status_display }}{% if i.resolution.comment %}: {{ i.resolution.comment }}{% endif %}</span>{% endif %}</td>
 <td>{% if "://" in i.path %}<a href="{{ i.path }}" rel="noopener noreferrer">{{ i.path }}</a>{% else %}<a href="{% url 'source' project.key analysis.pk %}?path={{ i.path|urlencode }}#L{{ i.line }}">{{ i.path }}{% if i.line %}:{{ i.line }}{% endif %}</a>{% endif %}</td>
-<td><a href="?{{ query }}&amp;rule={{ i.rule|urlencode }}" aria-label="Filter by rule {{ i.tool }}:{{ i.rule }}"><code>{{ i.tool }}:{{ i.rule }}</code></a></td>
+<td>{% rule_for i as r %}{% if r %}<a href="{% url 'rule' r.id %}">{{ r.title }}</a><br>{% endif %}<a href="?{{ query }}&amp;rule={{ i.rule|urlencode }}" aria-label="Filter by rule {{ i.tool }}:{{ i.rule }}"><code>{{ i.tool }}:{{ i.rule }}</code></a></td>
 {% if can_resolve %}<td><form class="inline" method="post" action="{% url 'resolve' project.key %}">{% csrf_token %}
 <input type="hidden" name="fingerprint" value="{{ i.fingerprint }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
 {% if i.resolution %}<input type="hidden" name="status" value="reopen"><button>Reopen</button>

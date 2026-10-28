@@ -1,0 +1,360 @@
+{
+ "_about": "codewatch's own mappings for rules whose analyzer doesn't publish them. Edit freely; rebuilt into the catalogue on every update. Keys are catalogue rule IDs; a key ending in /* applies to every rule of that tool.",
+ "cwe": {
+  "eslint/no-eval": [
+   95
+  ],
+  "eslint/no-implied-eval": [
+   95
+  ],
+  "eslint/no-new-func": [
+   95
+  ],
+  "eslint/security/detect-child-process": [
+   78
+  ],
+  "eslint/security/detect-eval-with-expression": [
+   95
+  ],
+  "eslint/security/detect-non-literal-fs-filename": [
+   22
+  ],
+  "eslint/security/detect-non-literal-regexp": [
+   1333
+  ],
+  "eslint/security/detect-unsafe-regex": [
+   1333
+  ],
+  "eslint/security/detect-object-injection": [
+   1321
+  ],
+  "eslint/security/detect-pseudoRandomBytes": [
+   338
+  ],
+  "eslint/security/detect-possible-timing-attacks": [
+   208
+  ],
+  "eslint/security/detect-no-csrf-before-method-override": [
+   352
+  ],
+  "eslint/security/detect-buffer-noassert": [
+   119
+  ],
+  "eslint/security/detect-new-buffer": [
+   119
+  ],
+  "eslint/security/detect-disable-mustache-escape": [
+   79
+  ],
+  "eslint/security/detect-non-literal-require": [
+   94
+  ],
+  "eslint/security/detect-bidi-characters": [
+   1007
+  ],
+  "basedpyright/reportOptionalMemberAccess": [
+   476
+  ],
+  "basedpyright/reportOptionalSubscript": [
+   476
+  ],
+  "basedpyright/reportOptionalCall": [
+   476
+  ],
+  "basedpyright/reportOptionalIterable": [
+   476
+  ],
+  "basedpyright/reportOptionalContextManager": [
+   476
+  ],
+  "basedpyright/reportOptionalOperand": [
+   476
+  ],
+  "basedpyright/reportCallIssue": [
+   628
+  ],
+  "basedpyright/reportArgumentType": [
+   843
+  ],
+  "basedpyright/reportPossiblyUnbound": [
+   457
+  ],
+  "basedpyright/reportIndexIssue": [
+   129
+  ],
+  "ruff/B006": [
+   1188
+  ],
+  "ruff/B008": [
+   1188
+  ],
+  "ruff/BLE001": [
+   396
+  ],
+  "ruff/E722": [
+   396
+  ],
+  "ruff/PLW0603": [
+   1108
+  ],
+  "ruff/B023": [
+   1109
+  ],
+  "ruff/S608": [
+   89
+  ],
+  "ruff/S602": [
+   78
+  ],
+  "ruff/S307": [
+   95
+  ],
+  "ruff/DTZ005": [
+   758
+  ],
+  "detect-secrets/*": [
+   798
+  ],
+  "pip-audit/vulnerable-dependency": [
+   1395,
+   1104
+  ],
+  "radon/cyclomatic-complexity": [
+   1121
+  ],
+  "lizard/cyclomatic-complexity": [
+   1121
+  ],
+  "complexipy/cognitive-complexity": [
+   1121
+  ],
+  "jscpd/duplicated-block": [
+   1041
+  ],
+  "cppcheck/arrayIndexOutOfBounds": [
+   787,
+   125
+  ],
+  "cppcheck/arrayIndexOutOfBoundsCond": [
+   787,
+   125
+  ],
+  "cppcheck/bufferAccessOutOfBounds": [
+   787,
+   125
+  ],
+  "cppcheck/stlOutOfBounds": [
+   787,
+   125
+  ],
+  "cppcheck/pointerOutOfBounds": [
+   787,
+   125
+  ],
+  "cppcheck/pointerOutOfBoundsCond": [
+   787,
+   125
+  ],
+  "cppcheck/negativeIndex": [
+   787,
+   125
+  ],
+  "cppcheck/negativeContainerIndex": [
+   787,
+   125
+  ]
+ },
+ "wcag": {
+  "html-a11y/wcag/h30": [
+   "2.4.4",
+   "1.1.1"
+  ],
+  "html-a11y/wcag/h32": [
+   "3.2.2"
+  ],
+  "html-a11y/wcag/h36": [
+   "1.1.1"
+  ],
+  "html-a11y/wcag/h37": [
+   "1.1.1"
+  ],
+  "html-a11y/wcag/h63": [
+   "1.3.1"
+  ],
+  "html-a11y/wcag/h67": [
+   "1.1.1"
+  ],
+  "html-a11y/wcag/h71": [
+   "1.3.1"
+  ],
+  "html-a11y/area-alt": [
+   "1.1.1",
+   "2.4.4"
+  ],
+  "html-a11y/input-missing-label": [
+   "1.3.1",
+   "3.3.2",
+   "4.1.2"
+  ],
+  "html-a11y/empty-heading": [
+   "1.3.1",
+   "2.4.6"
+  ],
+  "html-a11y/text-content": [
+   "4.1.2"
+  ],
+  "html-a11y/aria-label-misuse": [
+   "4.1.2"
+  ],
+  "html-a11y/unique-landmark": [
+   "1.3.1",
+   "2.4.1"
+  ],
+  "html-a11y/hidden-focusable": [
+   "4.1.2"
+  ],
+  "html-a11y/aria-hidden-body": [
+   "4.1.2"
+  ],
+  "html-a11y/no-abstract-role": [
+   "4.1.2"
+  ],
+  "html-a11y/valid-autocomplete": [
+   "1.3.5"
+  ],
+  "html-a11y/prefer-native-element": [
+   "4.1.2"
+  ],
+  "html-a11y/empty-title": [
+   "2.4.2"
+  ],
+  "html-a11y/meta-refresh": [
+   "2.2.1",
+   "3.2.5"
+  ],
+  "html-a11y/svg-focusable": [
+   "2.4.3"
+  ],
+  "html-a11y/no-autoplay": [
+   "1.4.2"
+  ],
+  "jsx-a11y/jsx-a11y/alt-text": [
+   "1.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/anchor-has-content": [
+   "2.4.4",
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/anchor-is-valid": [
+   "2.1.1",
+   "2.4.4"
+  ],
+  "jsx-a11y/jsx-a11y/aria-props": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/aria-proptypes": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/aria-role": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/aria-unsupported-elements": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/autocomplete-valid": [
+   "1.3.5"
+  ],
+  "jsx-a11y/jsx-a11y/click-events-have-key-events": [
+   "2.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/heading-has-content": [
+   "1.3.1",
+   "2.4.6"
+  ],
+  "jsx-a11y/jsx-a11y/html-has-lang": [
+   "3.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/iframe-has-title": [
+   "2.4.1",
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/img-redundant-alt": [
+   "1.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/interactive-supports-focus": [
+   "2.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/label-has-associated-control": [
+   "1.3.1",
+   "3.3.2"
+  ],
+  "jsx-a11y/jsx-a11y/media-has-caption": [
+   "1.2.2"
+  ],
+  "jsx-a11y/jsx-a11y/mouse-events-have-key-events": [
+   "2.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/no-access-key": [
+   "2.1.1"
+  ],
+  "jsx-a11y/jsx-a11y/no-autofocus": [
+   "2.4.3",
+   "3.2.1"
+  ],
+  "jsx-a11y/jsx-a11y/no-distracting-elements": [
+   "2.2.2"
+  ],
+  "jsx-a11y/jsx-a11y/no-noninteractive-tabindex": [
+   "2.4.3"
+  ],
+  "jsx-a11y/jsx-a11y/no-redundant-roles": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/no-static-element-interactions": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/role-has-required-aria-props": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/role-supports-aria-props": [
+   "4.1.2"
+  ],
+  "jsx-a11y/jsx-a11y/scope": [
+   "1.3.1"
+  ],
+  "jsx-a11y/jsx-a11y/tabindex-no-positive": [
+   "2.4.3"
+  ]
+ },
+ "owasp": {
+  "checkov/*": [
+   "A02:2025"
+  ]
+ },
+ "equivalent": [
+  [
+   "ruff/F401",
+   "basedpyright/reportUnusedImport"
+  ],
+  [
+   "ruff/F841",
+   "basedpyright/reportUnusedVariable"
+  ],
+  [
+   "ruff/F821",
+   "basedpyright/reportUndefinedVariable"
+  ],
+  [
+   "ruff/F811",
+   "basedpyright/reportRedeclaration"
+  ],
+  [
+   "ruff/E722",
+   "ruff/BLE001"
+  ],
+  [
+   "eslint/no-eval",
+   "eslint/security/detect-eval-with-expression"
+  ]
+ ]
+}

@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 
 from . import gate
 from .analyzers import ANALYZERS
+from .catalog import update as catalog_update
 from .git import GitError, Mirror, validate_repo_url
 from .jobs import launch_scan
 from .models import (
@@ -61,6 +62,7 @@ def refresh_gates(project):
 
 
 def index(request):
+    catalog_update.maybe_launch()
     projects = [(p, next(iter(p.latest_analyses()), None)) for p in Project.visible_to(request.user).order_by("key")]
     return render(request, "core/index.html", {"projects": projects})
 
@@ -149,7 +151,8 @@ def analysis_detail(request, key, pk):
         "by_tool": counts_by_tool(analysis),
         "other_metrics": sorted(
             (k, v) for k, v in m.items()
-            if not k.endswith(("issues", "bugs", "vulnerabilities", "code_smells", "hotspots"))
+            if not k.endswith(("issues", "bugs", "vulnerabilities", "code_smells", "hotspots", "rating"))
+            and not k.startswith("_")
         ),
     })
 
@@ -271,8 +274,8 @@ class ProjectSettingsForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ["name", "main_branch", "semgrep_config", "complexity_threshold", "exclusions", "a11y_urls",
-                  "disabled_analyzers"]
+        fields = ["name", "main_branch", "semgrep_config", "complexity_threshold", "cognitive_complexity_threshold",
+                  "duplicate_literal_threshold", "exclusions", "a11y_urls", "disabled_analyzers"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

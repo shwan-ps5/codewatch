@@ -1,0 +1,4 @@
+{
+ "_about": "Per-rule overrides applied on top of imported rules; never replaced by an import. Keys are rule IDs. Fields: severity, type, title, disabled (true hides the rule and drops its findings).",
+ "rules": {}
+}

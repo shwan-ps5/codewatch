@@ -1,0 +1,42 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block title %}Rules · codewatch{% endblock %}
+{% block crumbs %}<li aria-current="page">Rules</li>{% endblock %}
+{% block content %}
+<h1>Rule catalogue</h1>
+<p>{{ total }} rules from open-source analyzers, each linked to its source documentation and to the standards it maps to: <a href="https://cwe.mitre.org/">MITRE CWE</a>, the <a href="https://owasp.org/Top10/2025/">OWASP Top 10 (2025)</a>, <a href="https://www.w3.org/TR/WCAG22/">WCAG 2.2</a> and Python PEPs. See <a href="{% url 'standards' %}">standards coverage</a> for gaps. The catalogue is also published as <code>catalog/rules.json</code> in the codewatch repository.</p>
+<section class="card" aria-labelledby="source-h"><h2 id="source-h">Sources and updates</h2>
+<p>{% if meta.imported_at %}Imported {{ meta.imported_at }} ({{ meta.rules }} rules; CWE {{ meta.standards.cwe }}, WCAG {{ meta.standards.wcag }}, OWASP {{ meta.standards.owasp }}).{% else %}Not imported yet.{% endif %}
+{% if changes.at %}Last import added {{ changes.added|length }} and removed {{ changes.removed|length }} rules.{% endif %}
+{% if meta.failed_sources %}<span class="fail">Failed sources: {{ meta.failed_sources|join:", " }}.</span>{% endif %}
+Imported rules are refreshed automatically every {{ interval_days }} days. Custom rules, mappings and overrides in <code>catalog/custom/</code> are never changed by an import.</p>
+{% if status.state %}<p role="status">Update status: <strong>{{ status.state }}</strong>{% if status.finished_at %} at {{ status.finished_at }}{% endif %}{% if status.error %}: {{ status.error|truncatechars:200 }}{% endif %}</p>{% endif %}
+{% if user.is_superuser %}<form method="post" action="{% url 'update_rules' %}" class="filters">{% csrf_token %}
+<button>Update rules now</button><button name="upgrade" value="1">Upgrade analyzers and update rules</button></form>{% endif %}
+</section>
+<form class="filters" method="get" aria-label="Filter rules">
+<label>Search<input name="q" value="{{ f.q|default:'' }}"></label>
+<label>Tool<select name="tool"><option value="">Any</option>{% for t, n in tools %}<option value="{{ t }}" {% if f.tool == t %}selected{% endif %}>{{ t }} ({{ n }})</option>{% endfor %}</select></label>
+<label>Language<select name="language"><option value="">Any</option>{% for c, n in languages %}<option value="{{ c }}" {% if f.language == c %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+<label>Origin<select name="origin"><option value="">Any</option>{% for o, n, c in origins %}<option value="{{ o }}" {% if f.origin == o %}selected{% endif %}>{{ n }} ({{ c }})</option>{% endfor %}</select></label>
+<label class="check"><input type="checkbox" name="duplicates" value="1" {% if f.duplicates %}checked{% endif %}> Has equivalents</label>
+<label>Type<select name="type"><option value="">Any</option>{% for t in types %}<option value="{{ t }}" {% if f.type == t %}selected{% endif %}>{{ t|label }}</option>{% endfor %}</select></label>
+<label>CWE<input name="cwe" inputmode="numeric" size="6" value="{{ f.cwe|default:'' }}"></label>
+<label>OWASP<select name="owasp"><option value="">Any</option>{% for c in standards.owasp.categories %}<option value="{{ c.id }}" {% if f.owasp == c.id %}selected{% endif %}>{{ c.id }} {{ c.name }}</option>{% endfor %}</select></label>
+<label>WCAG SC<input name="wcag" size="6" value="{{ f.wcag|default:'' }}"></label>
+<button>Filter</button>
+</form>
+<p role="status">{{ page.paginator.count }} matching rule{{ page.paginator.count|pluralize }}</p>
+<div class="card"><table>
+<caption class="sr-only">Rules</caption>
+<thead><tr><th scope="col">Rule</th><th scope="col">Type</th><th scope="col">Languages</th><th scope="col">Standards</th></tr></thead>
+<tbody>
+{% for r in page %}<tr><th scope="row"><a href="{% url 'rule' r.id %}">{{ r.title }}</a><br><code class="muted">{{ r.id }}</code></th>
+<td>{{ r.type|label }}<br><span class="sev sev-{{ r.severity }}">{{ r.severity }}</span>{% if r.origin != "imported" %}<br><span class="muted">{{ r.origin }}</span>{% endif %}</td>
+<td>{{ r.languages|join:", " }}</td>
+<td><ul class="tags">{% for c in r.cwe|slice:":4" %}<li>CWE-{{ c }}</li>{% endfor %}{% for o in r.owasp|slice:":3" %}<li>{{ o }}</li>{% endfor %}{% for w in r.wcag|slice:":3" %}<li>WCAG {{ w }}</li>{% endfor %}</ul></td></tr>
+{% empty %}<tr><td colspan="4" class="muted">No rules match.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if page.has_other_pages %}<nav aria-label="Pagination"><p>{% if page.has_previous %}<a href="?{{ query }}&amp;page={{ page.previous_page_number }}">Previous page</a>{% endif %}
+Page {{ page.number }} of {{ page.paginator.num_pages }}
+{% if page.has_next %}<a href="?{{ query }}&amp;page={{ page.next_page_number }}">Next page</a>{% endif %}</p></nav>{% endif %}
+{% endblock %}

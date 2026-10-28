@@ -1,0 +1,11 @@
+{
+  "extends": ["stylelint-config-recommended"],
+  "rules": {
+    "color-no-invalid-hex": true,
+    "declaration-block-no-duplicate-properties": true,
+    "no-duplicate-selectors": true,
+    "selector-max-id": [1, {"severity": "warning"}],
+    "declaration-no-important": [true, {"severity": "warning"}],
+    "max-nesting-depth": [4, {"severity": "warning"}]
+  }
+}

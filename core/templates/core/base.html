@@ -50,6 +50,19 @@ button { cursor:pointer; } button.link { border:0; background:none; color:var(--
 .form-table th { width:220px; color:var(--fg); font-weight:600; }
 .helptext { display:block; color:var(--muted); font-size:13px; }
 .errorlist { color:var(--bad); margin:0; padding-left:18px; }
+.rating { display:inline-flex; align-items:center; justify-content:center; min-width:1.9em; height:1.9em; border-radius:50%; font-weight:700; color:#111; }
+.rating-A { background:#a7f3d0; } .rating-B { background:#d9f99d; } .rating-C { background:#fde68a; }
+.rating-D { background:#fed7aa; } .rating-E { background:#fecaca; } .rating-– { background:var(--code); color:var(--fg); }
+.rating.big { min-width:2.6em; height:2.6em; font-size:1.3rem; }
+.scores { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px; }
+.scores .card { margin:0; display:flex; flex-direction:column; gap:6px; }
+.scores .label { font-weight:600; } .scores .sub { color:var(--muted); font-size:13px; }
+.tags { display:flex; gap:6px; flex-wrap:wrap; list-style:none; padding:0; margin:0; }
+.tags li { background:var(--code); border:1px solid var(--line); border-radius:4px; padding:0 6px; font-size:13px; }
+.doc pre { background:var(--code); padding:10px; overflow-x:auto; border-radius:6px; }
+.doc code { background:var(--code); padding:0 3px; border-radius:3px; }
+.doc h2 { font-size:1.05rem; } .doc h3 { font-size:1rem; }
+pre.token { white-space:pre-wrap; }
 .token { font-size:15px; padding:10px; background:var(--code); border:1px dashed var(--line); word-break:break-all; }
 </style>
 </head>
@@ -59,14 +72,18 @@ button { cursor:pointer; } button.link { border:0; background:none; color:var(--
   <a class="brand" href="{% url 'index' %}">codewatch</a>
   {% block crumbs_wrap %}<nav class="crumbs" aria-label="Breadcrumb"><ol>{% block crumbs %}{% endblock %}</ol></nav>{% endblock %}
   <span class="spacer"></span>
-  {% if user.is_authenticated %}
   <nav aria-label="Account"><ul>
+    <li><a href="{% url 'rules' %}">Rules</a></li>
+    <li><a href="{% url 'standards' %}">Standards</a></li>
+  {% if user.is_authenticated %}
     <li><a href="{% url 'new_project' %}">New project</a></li>
     {% if user.is_superuser %}<li><a href="{% url 'users' %}">Users</a></li>{% endif %}
     <li><a href="{% url 'account' %}">{{ user.username }}</a></li>
     <li><form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link">Log out</button></form></li>
-  </ul></nav>
+  {% else %}
+    <li><a href="{% url 'login' %}">Log in</a></li>
   {% endif %}
+  </ul></nav>
 </header>
 <main id="main" tabindex="-1">
 {% if messages %}<ul class="messages" role="status">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}

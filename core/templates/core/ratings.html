@@ -1,0 +1,32 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block title %}Ratings · codewatch{% endblock %}
+{% block crumbs %}<li aria-current="page">Ratings</li>{% endblock %}
+{% block content %}
+<h1>How ratings work</h1>
+<p>Every analysis gets ratings from A (best) to E, overall and for new code. Issues marked won't fix or false positive don't count.</p>
+<section class="card" aria-labelledby="sev-h"><h2 id="sev-h">Reliability, security and accessibility</h2>
+<p>Rated by the worst open issue of that type (bugs, vulnerabilities including vulnerable dependencies, and accessibility issues):</p>
+<table><caption class="sr-only">Severity ratings</caption><thead><tr><th scope="col">Rating</th><th scope="col">Worst open issue</th></tr></thead><tbody>
+<tr><td>{% include "core/rating.html" with value=1 what="" %}</td><td>None</td></tr>
+<tr><td>{% include "core/rating.html" with value=2 what="" %}</td><td>Minor or info</td></tr>
+<tr><td>{% include "core/rating.html" with value=3 what="" %}</td><td>Major</td></tr>
+<tr><td>{% include "core/rating.html" with value=4 what="" %}</td><td>Critical</td></tr>
+<tr><td>{% include "core/rating.html" with value=5 what="" %}</td><td>Blocker</td></tr>
+</tbody></table></section>
+<section class="card" aria-labelledby="maint-h"><h2 id="maint-h">Maintainability</h2>
+<p>Uses the technical-debt ratio from the open <a href="https://www.sqale.org/">SQALE method</a>: the estimated time to fix all code smells, divided by the estimated time to write the code ({{ minutes_per_line }} minutes per line of code; for new code, per changed line).</p>
+<p>Fix estimates per code smell: {% for s, m in remediation.items %}{{ s }} {{ m }} min{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+<table><caption class="sr-only">Debt ratio ratings</caption><thead><tr><th scope="col">Rating</th><th scope="col">Debt ratio</th></tr></thead><tbody>
+{% for limit, r in debt_limits %}<tr><td>{% include "core/rating.html" with value=r what="" %}</td><td>up to {{ limit }}%</td></tr>{% endfor %}
+<tr><td>{% include "core/rating.html" with value=5 what="" %}</td><td>above 50%</td></tr>
+</tbody></table></section>
+<section class="card" aria-labelledby="review-h"><h2 id="review-h">Security review</h2>
+<p>Security hotspots are security-sensitive code that needs a human decision. This rating is the share of hotspots that have been reviewed (marked won't fix or false positive after checking):</p>
+<table><caption class="sr-only">Review ratings</caption><thead><tr><th scope="col">Rating</th><th scope="col">Reviewed</th></tr></thead><tbody>
+{% for limit, r in review_limits %}<tr><td>{% include "core/rating.html" with value=r what="" %}</td><td>at least {{ limit }}%</td></tr>{% endfor %}
+<tr><td>{% include "core/rating.html" with value=5 what="" %}</td><td>below 30%</td></tr>
+</tbody></table></section>
+<section class="card" aria-labelledby="health-h"><h2 id="health-h">Health score</h2>
+<p>The average of the reliability, security, security review and maintainability ratings, plus accessibility when an accessibility analyzer ran, with A = {{ score.1 }}, B = {{ score.2 }}, C = {{ score.3 }}, D = {{ score.4 }} and E = {{ score.5 }}. Shown as a letter: A from 90, B from 75, C from 60, D from 40, otherwise E.</p>
+</section>
+{% endblock %}

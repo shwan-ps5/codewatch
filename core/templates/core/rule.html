@@ -1,0 +1,33 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block title %}{{ rule.title }} · Rules{% endblock %}
+{% block crumbs %}<li><a href="{% url 'rules' %}">Rules</a></li><li aria-current="page">{{ rule.id }}</li>{% endblock %}
+{% block content %}
+<h1>{{ rule.title }}</h1>
+<p><code>{{ rule.id }}</code>{% if rule.origin != "imported" %} · <strong>{{ rule.origin }}</strong> rule{% endif %}{% if rule.overridden %} · overridden locally{% endif %}</p>
+{% if rule.summary %}<p>{{ rule.summary }}</p>{% endif %}
+<div class="card"><table class="form-table">
+<caption class="sr-only">Rule details</caption>
+<tbody>
+<tr><th scope="row">Type</th><td>{{ rule.type|label }}</td></tr>
+<tr><th scope="row">Default severity</th><td><span class="sev sev-{{ rule.severity }}">{{ rule.severity }}</span></td></tr>
+<tr><th scope="row">Languages</th><td>{{ rule.languages|join:", " }}</td></tr>
+<tr><th scope="row">Source</th><td>{{ rule.tool }}{% if rule.docs %}: <a href="{{ rule.docs }}" rel="noopener noreferrer">original documentation</a>{% endif %} ({{ rule.license }})</td></tr>
+{% if rule.owasp %}<tr><th scope="row">OWASP Top 10</th><td><ul class="tags">{% for o in rule.owasp %}<li><a href="{% url 'rules' %}?owasp={{ o|urlencode }}">{{ o }}</a></li>{% endfor %}</ul></td></tr>{% endif %}
+{% if rule.wcag %}<tr><th scope="row">WCAG 2.2</th><td><ul class="tags">{% for w in rule.wcag %}<li><a href="{% url 'rules' %}?wcag={{ w }}">{{ w }}</a></li>{% endfor %}</ul></td></tr>{% endif %}
+{% if same_as %}<tr><th scope="row">Same check as</th><td><ul class="tags">{% for s in same_as %}<li><a href="{% url 'rule' s.id %}">{{ s.id }}</a></li>{% endfor %}</ul><span class="helptext">When several tools report this on the same line, codewatch shows one issue.</span></td></tr>{% endif %}
+{% if rule.mapped_by %}<tr><th scope="row">Mapping</th><td>Some standards mappings were added by codewatch, because the analyzer doesn't publish them.</td></tr>{% endif %}
+</tbody></table></div>
+{% if doc %}<section class="card" aria-labelledby="doc-h"><h2 id="doc-h">What's wrong and how to fix it</h2>
+<div class="doc">{{ doc }}</div>
+<p class="muted">From the {{ rule.tool }} documentation ({{ rule.license }}){% if rule.docs %}; <a href="{{ rule.docs }}" rel="noopener noreferrer">read the original</a>{% endif %}.</p></section>{% endif %}
+{% for c in cwes %}<section class="card" aria-labelledby="cwe-{{ c.id }}-h"><h2 id="cwe-{{ c.id }}-h">CWE-{{ c.id }}: {{ c.name }}</h2>
+{% if c.description %}<h3>What's wrong</h3><p>{{ c.description }}</p>{% endif %}
+{% if c.extended %}<p>{{ c.extended|linebreaksbr }}</p>{% endif %}
+{% if c.mitigations %}<h3>How to fix it</h3><ul>{% for m in c.mitigations %}<li>{% if m.phase %}<strong>{{ m.phase }}:</strong> {% endif %}{{ m.text|linebreaksbr }}</li>{% endfor %}</ul>{% endif %}
+{% for ex in c.examples %}<h3>Example {{ forloop.counter }}</h3>{% if ex.intro %}<p>{{ ex.intro }}</p>{% endif %}
+{% for code in ex.code %}<p class="muted">{{ code.nature|default:"Example" }} code{% if code.language %} ({{ code.language }}){% endif %}:</p><pre class="token">{{ code.code }}</pre>{% endfor %}
+{% if ex.body %}<p>{{ ex.body }}</p>{% endif %}{% endfor %}
+<p class="muted">From <a href="{{ c.url }}" rel="noopener noreferrer">MITRE CWE-{{ c.id }}</a>, used under the CWE Terms of Use.</p></section>{% endfor %}
+{% if rule.references %}<section class="card" aria-labelledby="refs-h"><h2 id="refs-h">References</h2>
+<ul>{% for ref in rule.references %}<li><a href="{{ ref.url }}" rel="noopener noreferrer">{{ ref.label }}</a></li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

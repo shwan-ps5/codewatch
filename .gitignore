@@ -5,3 +5,4 @@ db.sqlite3
 tools/node_modules/
 coverage.xml
 .coverage
+tools/checkov-venv/

@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
+from . import catalog
 from .git import validate_repo_url
 from .jobs import launch_scan, save_coverage_upload
 from .models import Analysis, ApiToken, Issue, Project
@@ -189,7 +190,29 @@ def issue_detail(request, pk):
     data["project"] = issue.analysis.project.key
     data["analysis"] = analysis_json(request, issue.analysis)
     data["snippet"] = snippet(issue, min(int(request.GET.get("context", 5)), 50))
+    data["also_reported_by"] = issue.also_reported_by
+    entry = catalog.lookup(issue.tool, issue.rule)
+    data["rule"] = rule_json(entry, full=False) if entry else None
     return JsonResponse(data)
+
+
+def rule_json(entry, full=True):
+    data = {k: entry.get(k) for k in ("id", "title", "summary", "type", "severity", "languages", "docs", "cwe",
+                                      "owasp", "wcag", "same_as", "origin", "references")}
+    if full:
+        details = catalog.load()[1].get("cwe_details", {})
+        data["explanation"] = catalog.docs().get(entry["id"])
+        data["cwe_guidance"] = [{"cwe": c, **{k: details[str(c)][k] for k in ("description", "mitigations")}}
+                                for c in entry["cwe"] if str(c) in details]
+    return data
+
+
+@api()
+def rule(request, rule_id):
+    entry = catalog.find(rule_id)
+    if entry is None:
+        raise ApiError(404, f"No rule {rule_id}")
+    return JsonResponse(rule_json(entry))
 
 
 @api(methods=("POST",))

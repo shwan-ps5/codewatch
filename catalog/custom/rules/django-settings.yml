@@ -1,0 +1,19 @@
+# codewatch custom rules: Semgrep syntax (https://semgrep.dev/docs/writing-rules/rule-syntax).
+# Add metadata.cwe / metadata.owasp / metadata.references so they show up in the catalogue and coverage.
+rules:
+  - id: codewatch.django.allowed-hosts-wildcard
+    languages: [python]
+    severity: WARNING
+    message: >-
+      ALLOWED_HOSTS accepts any Host header. List the real host names instead, so forged Host headers
+      can't poison password-reset links or caches.
+    pattern: ALLOWED_HOSTS = [..., "*", ...]
+    paths:
+      include: ["**/settings*.py", "**/settings/*.py"]
+    metadata:
+      category: security
+      cwe: ["CWE-644: Improper Neutralization of HTTP Headers for Scripting Syntax"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://docs.djangoproject.com/en/stable/ref/settings/#allowed-hosts
+        - https://docs.djangoproject.com/en/stable/topics/security/#host-header-validation
