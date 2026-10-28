@@ -1,15 +1,19 @@
 {% extends "core/base.html" %}{% load codewatch %}
+{% block crumbs_wrap %}{% endblock %}
 {% block content %}
+<h1>Projects</h1>
 <div class="card"><table>
-<tr><th>Project</th><th>Main branch</th><th>Gate</th><th>Issues</th><th>Coverage</th><th>Duplication</th><th>Last analysis</th></tr>
+<caption class="sr-only">Projects and their main-branch status</caption>
+<thead><tr><th scope="col">Project</th><th scope="col">Main branch</th><th scope="col">Quality gate</th><th scope="col">Issues</th><th scope="col">Coverage</th><th scope="col">Duplication</th><th scope="col">Last analysis</th></tr></thead>
+<tbody>
 {% for p, a in projects %}{% with m=a.metrics_dict %}
-<tr><td><a href="{% url 'project' p.key %}">{{ p.name }}</a></td><td>{{ p.main_branch }}</td>
+<tr><th scope="row"><a href="{% url 'project' p.key %}">{{ p.name }}</a></th><td>{{ p.main_branch|default:"–" }}</td>
 <td>{% include "core/gate_badge.html" with analysis=a %}</td>
 <td>{{ m.issues|num }}</td><td>{{ m.coverage|num }}{% if m.coverage is not None %}%{% endif %}</td>
 <td>{{ m.duplicated_lines_percent|num }}{% if m.duplicated_lines_percent is not None %}%{% endif %}</td>
-<td class="muted">{{ a.started_at|timesince|default:"never" }}{% if a %} ago{% endif %}</td></tr>
+<td>{% if a %}{{ a.started_at|timesince }} ago{% else %}<span class="muted">never</span>{% endif %}</td></tr>
 {% endwith %}{% empty %}
-<tr><td colspan="7" class="muted">No projects yet. Add one with <code>manage.py addproject KEY PATH_OR_URL</code>.</td></tr>
+<tr><td colspan="7" class="muted">No projects yet. <a href="{% url 'new_project' %}">Add one</a>.</td></tr>
 {% endfor %}
-</table></div>
+</tbody></table></div>
 {% endblock %}

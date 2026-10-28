@@ -1,8 +1,11 @@
+import hashlib
+import secrets
+
 from django.conf import settings
 from django.db import models
 
 SEVERITIES = ["blocker", "critical", "major", "minor", "info"]
-ISSUE_TYPES = ["bug", "vulnerability", "code_smell"]
+ISSUE_TYPES = ["bug", "vulnerability", "security_hotspot", "code_smell", "accessibility"]
 
 
 def default_exclusions():
@@ -12,16 +15,55 @@ def default_exclusions():
 class Project(models.Model):
     key = models.SlugField(unique=True)
     name = models.CharField(max_length=200)
-    repo_url = models.CharField(max_length=500, help_text="Local path or git URL")
-    main_branch = models.CharField(max_length=200, default="main")
+    repo_url = models.CharField(
+        max_length=500, blank=True, help_text="Only for server-side scans; leave blank when using codewatch-scan"
+    )
+    main_branch = models.CharField(max_length=200, blank=True, help_text="Detected on first scan if blank")
     exclusions = models.JSONField(default=default_exclusions, blank=True)
     disabled_analyzers = models.JSONField(default=list, blank=True)
     semgrep_config = models.CharField(max_length=200, default="p/default")
     complexity_threshold = models.PositiveIntegerField(default=10)
+    a11y_urls = models.JSONField(
+        default=list, blank=True, help_text="Live pages to check with axe-core; {branch} is replaced by the branch name"
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="projects"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.key
+
+    @classmethod
+    def visible_to(cls, user):
+        if user.is_superuser:
+            return cls.objects.all()
+        return cls.objects.filter(models.Q(owner=user) | models.Q(members__user=user)).distinct()
+
+    def scan_config(self):
+        """Settings the codewatch-scan client needs, mirroring collect.ScanConfig."""
+        main = self.analyses.filter(branch=self.main_branch, status=Analysis.SUCCESS).order_by("-started_at")[:50]
+        return {
+            "main_branch": self.main_branch,
+            "exclusions": self.exclusions,
+            "disabled_analyzers": self.disabled_analyzers,
+            "semgrep_config": self.semgrep_config,
+            "complexity_threshold": self.complexity_threshold,
+            "a11y_urls": self.a11y_urls,
+            "main_analyses": [{"commit": a.commit, "reference_commit": a.reference_commit} for a in main],
+        }
+
+    def role_of(self, user):
+        if user.is_superuser or self.owner_id == user.pk:
+            return ProjectMember.OWNER
+        member = self.members.filter(user=user).first()
+        return member.role if member else None
+
+    def can_scan(self, user):
+        return self.role_of(user) in (ProjectMember.OWNER, ProjectMember.CONTRIBUTOR)
+
+    def can_admin(self, user):
+        return self.role_of(user) == ProjectMember.OWNER
 
     def latest_analyses(self):
         """Latest finished analysis per branch, main branch first."""
@@ -29,6 +71,18 @@ class Project(models.Model):
         for a in self.analyses.exclude(status=Analysis.RUNNING).order_by("-started_at"):
             latest.setdefault(a.branch, a)
         return sorted(latest.values(), key=lambda a: (a.branch != self.main_branch, a.branch))
+
+
+class ProjectMember(models.Model):
+    OWNER, CONTRIBUTOR, VIEWER = "owner", "contributor", "viewer"
+    ROLES = [(VIEWER, "Viewer: see results"), (CONTRIBUTOR, "Contributor: also scan branches and resolve issues")]
+
+    project = models.ForeignKey("Project", on_delete=models.CASCADE, related_name="members")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="memberships")
+    role = models.CharField(max_length=12, choices=ROLES, default=CONTRIBUTOR)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["project", "user"], name="uniq_member")]
 
 
 class Analysis(models.Model):
@@ -47,6 +101,9 @@ class Analysis(models.Model):
     gate_passed = models.BooleanField(null=True)
     gate_details = models.JSONField(default=list, blank=True)
     tools = models.JSONField(default=dict, blank=True)
+    dirty = models.BooleanField(default=False, help_text="Scanned from a working copy with uncommitted changes")
+    origin = models.CharField(max_length=10, default="server", choices=[("server", "server"), ("client", "client")])
+    scanned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ["-started_at"]
@@ -65,7 +122,7 @@ class Issue(models.Model):
     tool = models.CharField(max_length=30)
     rule = models.CharField(max_length=300)
     severity = models.CharField(max_length=10, choices=[(s, s) for s in SEVERITIES])
-    type = models.CharField(max_length=15, choices=[(t, t) for t in ISSUE_TYPES])
+    type = models.CharField(max_length=20, choices=[(t, t) for t in ISSUE_TYPES])
     message = models.TextField()
     path = models.CharField(max_length=500)
     line = models.PositiveIntegerField(null=True)
@@ -74,6 +131,20 @@ class Issue(models.Model):
 
     class Meta:
         ordering = ["path", "line"]
+
+
+class SourceBlob(models.Model):
+    sha = models.CharField(max_length=64, primary_key=True)
+    content = models.TextField()
+
+
+class AnalysisSource(models.Model):
+    analysis = models.ForeignKey(Analysis, on_delete=models.CASCADE, related_name="sources")
+    path = models.CharField(max_length=500)
+    blob = models.ForeignKey(SourceBlob, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["analysis", "path"], name="uniq_source")]
 
 
 class Metric(models.Model):
@@ -115,6 +186,45 @@ class GateCondition(models.Model):
         return value > self.threshold if self.op == self.GT else value < self.threshold
 
 
+class Profile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    must_change_password = models.BooleanField(default=False)
+
+
+def hash_token(raw):
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+class ApiToken(models.Model):
+    READ, SCAN = "read", "scan"
+    SCOPES = [(READ, "Read issues and results, resolve issues"), (SCAN, "Read, resolve, and create projects / start scans")]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="api_tokens")
+    name = models.CharField(max_length=100)
+    scope = models.CharField(max_length=10, choices=SCOPES, default=SCAN)
+    prefix = models.CharField(max_length=12)
+    key_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @classmethod
+    def issue(cls, user, name, scope):
+        """Create a token; the raw value is returned once and only its hash is stored."""
+        raw = "cw_" + secrets.token_urlsafe(32)
+        token = cls.objects.create(user=user, name=name, scope=scope, prefix=raw[:10], key_hash=hash_token(raw))
+        return token, raw
+
+    @classmethod
+    def authenticate(cls, raw):
+        token = cls.objects.select_related("user").filter(key_hash=hash_token(raw)).first()
+        if token is None or not token.user.is_active:
+            return None
+        return token
+
+
 DEFAULT_GATE = [
     ("new_blocker_issues", GateCondition.GT, 0),
     ("new_critical_issues", GateCondition.GT, 0),
@@ -123,4 +233,5 @@ DEFAULT_GATE = [
     ("new_coverage", GateCondition.LT, 80),
     ("new_duplicated_lines_percent", GateCondition.GT, 3),
     ("dependency_critical_vulnerabilities", GateCondition.GT, 0),
+    ("new_accessibility_issues", GateCondition.GT, 0),
 ]

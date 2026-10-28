@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from core.git import Mirror, git
 from core.models import Project
-from core.runner import scan
+from core.runner import ensure_main_branch, scan
 
 COVERAGE_CANDIDATES = ["coverage.xml", "coverage/cobertura-coverage.xml", "coverage/lcov.info", "lcov.info"]
 
@@ -52,6 +52,7 @@ class Command(BaseCommand):
             raise CommandError(f"Unknown project {project}") from exc
         mirror = Mirror(proj)
         mirror.sync()
+        ensure_main_branch(proj, mirror)
         branches = mirror.branches() if all_branches else (branch or [proj.main_branch])
         # Main first, so branches compare against a fresh baseline.
         branches.sort(key=lambda b: b != proj.main_branch)

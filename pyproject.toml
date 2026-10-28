@@ -16,8 +16,14 @@ dependencies = [
     "pip-audit",
 ]
 
+[project.scripts]
+codewatch = "core.client:main"
+codewatch-scan = "core.client:scan_main"
+codewatch-mcp = "core.mcp_server:main"
+
 [project.optional-dependencies]
-dev = ["pytest", "pytest-django"]
+dev = ["pytest", "pytest-django", "coverage"]
+mcp = ["mcp>=1.0"]
 
 [tool.setuptools.packages.find]
 include = ["core*", "codewatch*"]

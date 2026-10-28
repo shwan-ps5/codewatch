@@ -1,32 +1,35 @@
 {% extends "core/base.html" %}{% load codewatch %}
 {% block title %}{{ analysis.branch }} · {{ project.name }}{% endblock %}
-{% block crumbs %}<a href="{% url 'project' project.key %}">{{ project.name }}</a><span>{{ analysis.branch }} <code>{{ analysis.commit|slice:":8" }}</code></span>{% endblock %}
+{% block crumbs %}<li><a href="{% url 'project' project.key %}">{{ project.name }}</a></li><li aria-current="page">{{ analysis.branch }}</li>{% endblock %}
 {% block content %}
-{% if analysis.status == "failed" %}<div class="card"><h3 class="fail">Analysis failed</h3><pre>{{ analysis.error }}</pre></div>{% endif %}
-<div class="card"><h3>Quality gate: {% include "core/gate_badge.html" %}</h3>
-<p class="muted">{% if analysis.reference_commit %}New code = changes since <code>{{ analysis.reference_commit|slice:":8" }}</code> on {{ analysis.reference_branch }}.{% else %}No reference yet, so there is no new code on this analysis.{% endif %}</p>
-<table><tr><th>Metric</th><th>Condition</th><th>Value</th><th>Status</th></tr>
-{% for d in analysis.gate_details %}<tr><td>{{ d.metric|label }}</td><td>{% if d.op == "gt" %}&gt;{% else %}&lt;{% endif %} {{ d.threshold|num }}</td><td>{{ d.value|num }}</td>
-<td class="{% if d.status == 'error' %}fail{% elif d.status == 'ok' %}pass{% else %}muted{% endif %}">{{ d.status|label }}</td></tr>{% endfor %}
-</table></div>
+<h1>{{ analysis.branch }} <code>{{ analysis.commit|slice:":8" }}</code></h1>
+{% if analysis.status == "failed" %}<section class="card" role="alert"><h2 class="fail">Analysis failed</h2><pre>{{ analysis.error }}</pre></section>{% endif %}
+<section class="card" aria-labelledby="gate-h"><h2 id="gate-h">Quality gate: {% include "core/gate_badge.html" %}</h2>
+<p class="muted">{% if analysis.reference_commit %}New code = changes since <code>{{ analysis.reference_commit|slice:":8" }}</code> on {{ analysis.reference_branch }}.{% else %}No reference yet, so there is no new code on this analysis.{% endif %}
+{% if analysis.dirty %} Scanned with uncommitted local changes.{% endif %}</p>
+<table><caption class="sr-only">Quality gate conditions</caption>
+<thead><tr><th scope="col">Metric</th><th scope="col">Fails when</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>
+{% for d in analysis.gate_details %}<tr><th scope="row">{{ d.metric|label }}</th><td>{% if d.op == "gt" %}greater than{% else %}less than{% endif %} {{ d.threshold|num }}</td><td>{{ d.value|num }}</td>
+<td class="{% if d.status == 'error' %}fail{% elif d.status == 'ok' %}pass{% else %}muted{% endif %}">{% if d.status == 'error' %}Failed{% elif d.status == 'ok' %}OK{% else %}No value{% endif %}</td></tr>{% endfor %}
+</tbody></table></section>
 <div class="grid">
-<div class="card"><h3>By severity</h3><table><tr><th></th><th>New</th><th>Overall</th></tr>
-{% for s, all, new in severities %}<tr><td class="sev sev-{{ s }}">{{ s }}</td>
-<td><a href="{% url 'issues' project.key analysis.pk %}?severity={{ s }}&new=1">{{ new|num }}</a></td>
-<td><a href="{% url 'issues' project.key analysis.pk %}?severity={{ s }}">{{ all|num }}</a></td></tr>{% endfor %}</table></div>
-<div class="card"><h3>By type</h3><table><tr><th></th><th>New</th><th>Overall</th></tr>
-{% for t, all, new in types %}<tr><td>{{ t|label }}</td>
-<td><a href="{% url 'issues' project.key analysis.pk %}?type={{ t }}&new=1">{{ new|num }}</a></td>
-<td><a href="{% url 'issues' project.key analysis.pk %}?type={{ t }}">{{ all|num }}</a></td></tr>{% endfor %}</table></div>
-<div class="card"><h3>By tool</h3><table><tr><th></th><th>New</th><th>Overall</th></tr>
-{% for t, all, new in by_tool %}<tr><td>{{ t }}</td>
-<td><a href="{% url 'issues' project.key analysis.pk %}?tool={{ t }}&new=1">{{ new }}</a></td>
-<td><a href="{% url 'issues' project.key analysis.pk %}?tool={{ t }}">{{ all }}</a></td></tr>{% endfor %}</table></div>
+<div class="card"><table><caption>By severity</caption><thead><tr><th scope="col">Severity</th><th scope="col">New</th><th scope="col">Overall</th></tr></thead><tbody>
+{% for s, all, new in severities %}<tr><th scope="row" class="sev sev-{{ s }}">{{ s }}</th>
+<td><a href="{% url 'issues' project.key analysis.pk %}?severity={{ s }}&amp;new=1" aria-label="{{ new|num }} new {{ s }} issues">{{ new|num }}</a></td>
+<td><a href="{% url 'issues' project.key analysis.pk %}?severity={{ s }}" aria-label="{{ all|num }} {{ s }} issues overall">{{ all|num }}</a></td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><table><caption>By type</caption><thead><tr><th scope="col">Type</th><th scope="col">New</th><th scope="col">Overall</th></tr></thead><tbody>
+{% for t, all, new in types %}<tr><th scope="row">{{ t|label }}</th>
+<td><a href="{% url 'issues' project.key analysis.pk %}?type={{ t }}&amp;new=1" aria-label="{{ new|num }} new {{ t|label }} issues">{{ new|num }}</a></td>
+<td><a href="{% url 'issues' project.key analysis.pk %}?type={{ t }}" aria-label="{{ all|num }} {{ t|label }} issues overall">{{ all|num }}</a></td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><table><caption>By tool</caption><thead><tr><th scope="col">Tool</th><th scope="col">New</th><th scope="col">Overall</th></tr></thead><tbody>
+{% for t, all, new in by_tool %}<tr><th scope="row">{{ t }}</th>
+<td><a href="{% url 'issues' project.key analysis.pk %}?tool={{ t }}&amp;new=1" aria-label="{{ new }} new {{ t }} issues">{{ new }}</a></td>
+<td><a href="{% url 'issues' project.key analysis.pk %}?tool={{ t }}" aria-label="{{ all }} {{ t }} issues overall">{{ all }}</a></td></tr>{% endfor %}</tbody></table></div>
 </div>
 <div class="grid">
-<div class="card"><h3>Metrics</h3><table>{% for k, v in other_metrics %}<tr><td>{{ k|label }}</td><td>{{ v|num }}</td></tr>{% endfor %}</table></div>
-<div class="card"><h3>Analyzers</h3><table><tr><th>Tool</th><th>Status</th><th>Issues</th><th>Time</th></tr>
-{% for name, t in analysis.tools.items %}<tr><td>{{ name }}</td><td class="{% if t.status == 'error' %}fail{% elif t.status == 'ok' %}pass{% else %}muted{% endif %}" title="{{ t.detail }}">{{ t.status|label }}</td><td>{{ t.issues|default:"" }}</td><td class="muted">{% if t.seconds is not None %}{{ t.seconds }}s{% endif %}</td></tr>{% endfor %}
-</table></div>
+<div class="card"><table><caption>Metrics</caption><thead><tr><th scope="col">Metric</th><th scope="col">Value</th></tr></thead><tbody>{% for k, v in other_metrics %}<tr><th scope="row">{{ k|label }}</th><td>{{ v|num }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><table><caption>Analyzers</caption><thead><tr><th scope="col">Tool</th><th scope="col">Status</th><th scope="col">Issues</th><th scope="col">Time</th></tr></thead><tbody>
+{% for name, t in analysis.tools.items %}<tr><th scope="row">{{ name }}</th><td class="{% if t.status == 'error' %}fail{% elif t.status == 'ok' %}pass{% else %}muted{% endif %}">{{ t.status|label }}{% if t.detail %}<span class="helptext">{{ t.detail|truncatechars:200 }}</span>{% endif %}</td><td>{{ t.issues|default:"" }}</td><td>{% if t.seconds is not None %}{{ t.seconds }}s{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
 </div>
 {% endblock %}

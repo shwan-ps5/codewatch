@@ -2,3 +2,6 @@ venv/
 __pycache__/
 db.sqlite3
 *.egg-info/
+tools/node_modules/
+coverage.xml
+.coverage

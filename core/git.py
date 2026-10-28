@@ -1,3 +1,4 @@
+import os
 import re
 import shutil
 import subprocess
@@ -6,22 +7,33 @@ from pathlib import Path
 
 from django.conf import settings
 
-HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+from .collect import GitError, parse_diff, run_git
 
+__all__ = ["GitError", "Mirror", "validate_repo_url"]
 
-class GitError(RuntimeError):
-    pass
+REMOTE_URL_RE = re.compile(r"^(https?://|ssh://|git@[\w.-]+:)\S+$")
+# Blocks transports such as ext:: that run arbitrary commands from a crafted URL.
+GIT_ENV = {**os.environ, "GIT_ALLOW_PROTOCOL": "https:http:ssh:git:file", "GIT_TERMINAL_PROMPT": "0"}
 
 
 def git(*args, cwd=None, check=True):
-    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
-    if check and proc.returncode != 0:
-        raise GitError(f"git {' '.join(args)} failed: {proc.stderr.strip()}")
-    return proc.stdout
+    return run_git(*args, cwd=cwd, check=check, env=GIT_ENV)
+
+
+def validate_repo_url(url, allow_local):
+    """Remote URLs for everyone; server-local paths only for admins, since they expose the server's filesystem."""
+    if REMOTE_URL_RE.match(url):
+        return url
+    if allow_local:
+        path = Path(url).expanduser()
+        if path.is_dir():
+            return str(path.resolve())
+        raise ValueError(f"{url} is not a directory on the server")
+    raise ValueError("Repository must be an https://, ssh:// or git@host: URL")
 
 
 class Mirror:
-    """A bare mirror of the project repo, so scans never touch the user's working copy."""
+    """A bare mirror of the project repo for server-side scans; the user's working copy is never touched."""
 
     def __init__(self, project):
         self.project = project
@@ -29,6 +41,8 @@ class Mirror:
         self.path = self.root / "mirror.git"
 
     def sync(self):
+        if not self.project.repo_url:
+            raise GitError("This project has no repository URL; it is scanned with codewatch-scan from a local copy")
         if not self.path.exists():
             self.root.mkdir(parents=True, exist_ok=True)
             git("clone", "--mirror", "--quiet", self.project.repo_url, str(self.path))
@@ -36,6 +50,8 @@ class Mirror:
             git("remote", "update", "--prune", cwd=self.path)
 
     def branches(self):
+        if not self.path.exists():
+            return []
         out = git("for-each-ref", "--format=%(refname:short)", "refs/heads", cwd=self.path)
         return [b for b in out.splitlines() if b]
 
@@ -50,14 +66,17 @@ class Mirror:
     def rev_parse(self, ref):
         return git("rev-parse", "--verify", f"{ref}^{{commit}}", cwd=self.path).strip()
 
+    def resolve_main(self, main_branch):
+        return self.rev_parse(main_branch)
+
     def has_commit(self, commit):
         if not commit:
             return False
-        return subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=self.path, check=False).returncode == 0
+        return subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=self.path, check=False,
+                              capture_output=True).returncode == 0
 
     def merge_base(self, a, b):
-        out = git("merge-base", a, b, cwd=self.path, check=False).strip()
-        return out or None
+        return git("merge-base", a, b, cwd=self.path, check=False).strip() or None
 
     def is_ancestor(self, a, b):
         return subprocess.run(["git", "merge-base", "--is-ancestor", a, b], cwd=self.path, check=False).returncode == 0
@@ -69,19 +88,7 @@ class Mirror:
         return git("show", f"{commit}:{path}", cwd=self.path)
 
     def changed_lines(self, base, head):
-        """Map of path -> set of line numbers added or modified in head relative to base."""
-        out = git("diff", "-U0", "--no-renames", "--no-color", base, head, cwd=self.path)
-        changed, current = {}, None
-        for line in out.splitlines():
-            if line.startswith("+++ "):
-                target = line[4:]
-                current = None if target == "/dev/null" else target.removeprefix("b/")
-                if current:
-                    changed.setdefault(current, set())
-            elif current and (m := HUNK_RE.match(line)):
-                start, count = int(m[1]), int(m[2]) if m[2] is not None else 1
-                changed[current].update(range(start, start + count))
-        return changed
+        return parse_diff(git("diff", "-U0", "--no-renames", "--no-color", base, head, cwd=self.path))
 
     @contextmanager
     def worktree(self, commit, name):

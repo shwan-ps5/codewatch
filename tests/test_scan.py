@@ -1,4 +1,3 @@
-import subprocess
 
 import pytest
 from django.core.management import call_command
@@ -6,23 +5,7 @@ from django.core.management import call_command
 from core import gate
 from core.models import Analysis, IssueResolution, Project
 
-
-def sh(repo, *args):
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
-
-
-@pytest.fixture
-def repo(tmp_path, settings):
-    settings.CODEWATCH_CACHE = tmp_path / "cache"
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    sh(repo, "init", "-q", "-b", "main")
-    sh(repo, "config", "user.email", "t@example.com")
-    sh(repo, "config", "user.name", "t")
-    (repo / "app.py").write_text("import os\n\n\ndef f():\n    return 1\n")
-    sh(repo, "add", ".")
-    sh(repo, "commit", "-qm", "init")
-    return repo
+from .conftest import ONLY_RUFF, sh
 
 
 @pytest.fixture
@@ -30,7 +13,7 @@ def project(repo):
     call_command("addproject", "demo", str(repo))
     p = Project.objects.get(key="demo")
     # ruff alone keeps the test fast and offline.
-    p.disabled_analyzers = ["bandit", "radon", "lizard", "semgrep", "cppcheck", "jscpd", "pip-audit"]
+    p.disabled_analyzers = ONLY_RUFF
     p.save()
     return p
 

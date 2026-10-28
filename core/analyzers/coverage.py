@@ -30,12 +30,25 @@ class Coverage(Analyzer):
 
 
 def collect(result, lines, tracked, base):
+    by_name = {}
+    for f in tracked:
+        by_name.setdefault(Path(f).name, []).append(f)
     for candidates, hits in lines:
         path = next((p for p in (resolve(c, base) for c in candidates) if p in tracked), None)
+        path = path or match_suffix(candidates, by_name)
         if path is None:
             continue
         result.coverable_lines.setdefault(path, set()).update(hits)
         result.covered_lines.setdefault(path, set()).update(n for n, count in hits.items() if count > 0)
+
+
+def match_suffix(candidates, by_name):
+    """Reports from CI or another checkout carry absolute paths from that machine; match on the path tail."""
+    for c in candidates:
+        options = [f for f in by_name.get(Path(c).name, []) if c.replace("\\", "/").endswith("/" + f) or c == f]
+        if options:
+            return max(options, key=len)
+    return None
 
 
 def resolve(candidate, base):
