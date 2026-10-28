@@ -11,6 +11,7 @@ C = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 CODE = PY | JS | C | {".java", ".go", ".rs", ".cs", ".rb", ".php", ".kt", ".swift"}
 
 TOOL_TIMEOUT = 1800
+TOOLS_DIR = Path(os.environ.get("CODEWATCH_TOOLS", Path(__file__).resolve().parents[2] / "tools"))
 
 
 @dataclass
@@ -41,6 +42,7 @@ class Context:
     complexity_threshold: int = 10
     semgrep_config: str = "p/default"
     exclusions: list[str] = field(default_factory=list)
+    a11y_urls: list[str] = field(default_factory=list)
     coverage_report: Path | None = None
     coverage_base: Path | None = None
 
@@ -66,6 +68,12 @@ def tool_path(name):
     return str(local) if local.exists() else shutil.which(name)
 
 
+def node_tool(name):
+    """Pinned Node analyzers from tools/ (npm ci --prefix tools); never npx, which would honour a scanned repo's .npmrc."""
+    path = TOOLS_DIR / "node_modules" / ".bin" / name
+    return str(path) if path.exists() else None
+
+
 class Analyzer:
     name = ""
     executable = ""
@@ -74,16 +82,19 @@ class Analyzer:
     def applies(self, ctx: Context) -> bool:
         return self.extensions is None or bool(ctx.files_with(self.extensions))
 
+    def binary(self):
+        return tool_path(self.executable)
+
     def available(self) -> bool:
-        return tool_path(self.executable) is not None
+        return self.binary() is not None
 
     def run(self, ctx: Context) -> Result:
         raise NotImplementedError
 
-    def exec(self, args, ctx, ok_codes=(0,), stream="stdout"):
+    def exec(self, args, ctx, ok_codes=(0,), stream="stdout", cwd=None):
         proc = subprocess.run(
-            [tool_path(self.executable), *args],
-            cwd=ctx.root,
+            [self.binary(), *args],
+            cwd=cwd or ctx.root,
             capture_output=True,
             text=True,
             timeout=TOOL_TIMEOUT,

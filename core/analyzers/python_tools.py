@@ -9,7 +9,7 @@ RUFF_RULES = [
     ("F7", "major", "bug"),
     ("PLE", "major", "bug"),
     ("B", "major", "bug"),
-    ("S", "major", "vulnerability"),
+    ("S", "major", "security_hotspot"),
 ]
 
 BANDIT_SEVERITY = {"HIGH": "critical", "MEDIUM": "major", "LOW": "minor"}
@@ -65,13 +65,17 @@ class Bandit(Analyzer):
             severity = BANDIT_SEVERITY.get(item["issue_severity"], "minor")
             if item["issue_confidence"] == "LOW":
                 severity = DOWNGRADE[severity]
+            # Low-severity or low-confidence findings are things to review, not confirmed vulnerabilities.
+            # So are bandit's "blacklist" checks (B3xx/B4xx), which flag risky APIs rather than misuse.
+            confirmed = (item["issue_severity"] != "LOW" and item["issue_confidence"] != "LOW"
+                         and item["test_name"] != "blacklist")
             lines = item.get("line_range") or [item["line_number"]]
             result.findings.append(
                 Finding(
                     "bandit",
                     f"{item['test_id']}:{item['test_name']}",
                     severity,
-                    "vulnerability",
+                    "vulnerability" if confirmed else "security_hotspot",
                     item["issue_text"],
                     ctx.rel(item["filename"]),
                     item["line_number"],

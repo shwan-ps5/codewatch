@@ -1,8 +1,7 @@
-from pathlib import Path
-
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from core.git import GitError, Mirror
+from core.git import GitError, Mirror, validate_repo_url
 from core.models import DEFAULT_GATE, GateCondition, Project
 
 
@@ -14,13 +13,20 @@ class Command(BaseCommand):
         parser.add_argument("repo")
         parser.add_argument("--name")
         parser.add_argument("--main-branch", help="Defaults to the repository's HEAD branch")
+        parser.add_argument("--owner", help="Username (default: the first administrator)")
 
-    def handle(self, key, repo, name, main_branch, **_):
+    def handle(self, key, repo, name, main_branch, owner, **_):
         if Project.objects.filter(key=key).exists():
             raise CommandError(f"Project {key} already exists")
-        local = Path(repo).expanduser()
-        repo_url = str(local.resolve()) if local.exists() else repo
-        project = Project(key=key, name=name or key, repo_url=repo_url)
+        users = get_user_model().objects
+        owner_user = users.filter(username=owner).first() if owner else users.filter(is_superuser=True).first()
+        if owner_user is None:
+            raise CommandError("No such owner")
+        try:
+            repo_url = validate_repo_url(repo, allow_local=True)
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
+        project = Project(key=key, name=name or key, repo_url=repo_url, owner=owner_user)
         mirror = Mirror(project)
         try:
             mirror.sync()

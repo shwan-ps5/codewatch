@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}Account · codewatch{% endblock %}
+{% block crumbs %}<li aria-current="page">Account</li>{% endblock %}
+{% block content %}
+<h1>Account: {{ user.username }}</h1>
+<p><a href="{% url 'password_change' %}">Change password</a></p>
+{% if new_token %}
+<section class="card" aria-labelledby="new-token-h" role="alert">
+<h2 id="new-token-h">New token</h2>
+<p>Copy it now; it won't be shown again.</p>
+<p class="token"><code>{{ new_token }}</code></p>
+</section>
+{% endif %}
+<section class="card" aria-labelledby="tokens-h">
+<h2 id="tokens-h">API tokens</h2>
+<p class="muted">Used by <code>codewatch-scan</code>, CI and the MCP server. API base: <code>{{ api_base }}</code></p>
+<table>
+<caption class="sr-only">Your API tokens</caption>
+<thead><tr><th scope="col">Name</th><th scope="col">Scope</th><th scope="col">Prefix</th><th scope="col">Created</th><th scope="col">Last used</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+<tbody>
+{% for t in tokens %}<tr><td>{{ t.name }}</td><td>{{ t.scope }}</td><td><code>{{ t.prefix }}…</code></td><td>{{ t.created_at|date:"Y-m-d" }}</td><td>{{ t.last_used_at|date:"Y-m-d H:i"|default:"never" }}</td>
+<td><form class="inline" method="post">{% csrf_token %}<input type="hidden" name="revoke" value="{{ t.pk }}"><button aria-label="Revoke token {{ t.name }}">Revoke</button></form></td></tr>
+{% empty %}<tr><td colspan="6" class="muted">No tokens yet.</td></tr>{% endfor %}
+</tbody></table>
+</section>
+<section class="card" aria-labelledby="create-h" style="max-width:640px">
+<h2 id="create-h">Create a token</h2>
+<form method="post">{% csrf_token %}{% include "core/form_table.html" %}<p><button>Create token</button></p></form>
+</section>
+{% endblock %}

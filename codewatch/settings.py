@@ -49,6 +49,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.LoginRequiredMiddleware',
+    'core.middleware.ForcePasswordChangeMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -135,3 +137,10 @@ CODEWATCH_DEFAULT_EXCLUSIONS = [
     "**/build/**",
     "**/*.min.js",
 ]
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "index"
+LOGOUT_REDIRECT_URL = "login"
+CODEWATCH_MAX_COVERAGE_UPLOAD = 50 * 1024 * 1024
+# codewatch-scan uploads carry issues plus the source of files with issues (gzip-compressed).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 200 * 1024 * 1024

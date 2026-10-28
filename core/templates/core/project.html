@@ -1,24 +1,31 @@
 {% extends "core/base.html" %}{% load codewatch %}
 {% block title %}{{ project.name }} · codewatch{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><a href="{% url 'settings' project.key %}">Settings</a>{% endblock %}
+{% block crumbs %}<li aria-current="page">{{ project.name }}</li>{% endblock %}
 {% block content %}
-{% if running %}<div class="card">Running: {% for a in running %}<b>{{ a.branch }}</b> (started {{ a.started_at|timesince }} ago) {% endfor %} <a href="">refresh</a></div>{% endif %}
-<div class="card"><h3>Branches</h3><table>
-<tr><th>Branch</th><th>Commit</th><th>Gate</th><th>New issues</th><th>Issues</th><th>New coverage</th><th>Analysed</th><th></th></tr>
+<h1>{{ project.name }}</h1>
+<p class="muted">{% if project.repo_url %}Server-side scans from <code>{{ project.repo_url }}</code>.{% else %}Scanned from local copies with <code>codewatch-scan --project {{ project.key }}</code>.{% endif %}
+{% if can_admin %} <a href="{% url 'settings' project.key %}">Project settings</a>{% endif %}</p>
+{% if running %}<p class="card" role="status">Running: {% for a in running %}<strong>{{ a.branch }}</strong> (started {{ a.started_at|timesince }} ago) {% endfor %} <a href="">Refresh</a></p>{% endif %}
+<div class="card"><table>
+<caption>Branches</caption>
+<thead><tr><th scope="col">Branch</th><th scope="col">Commit</th><th scope="col">Quality gate</th><th scope="col">New issues</th><th scope="col">Issues</th><th scope="col">New coverage</th><th scope="col">Analysed</th>{% if can_scan and project.repo_url %}<th scope="col"><span class="sr-only">Actions</span></th>{% endif %}</tr></thead>
+<tbody>
 {% for a in latest %}{% with m=a.metrics_dict %}
-<tr><td><a href="{% url 'analysis' project.key a.pk %}">{{ a.branch }}</a>{% if a.branch == project.main_branch %} <span class="muted">(main)</span>{% endif %}</td>
-<td><code>{{ a.commit|slice:":8" }}</code></td><td>{% include "core/gate_badge.html" with analysis=a %}</td>
-<td>{{ m.new_issues|num }}</td><td>{{ m.issues|num }}</td><td>{{ m.new_coverage|num }}</td>
-<td class="muted">{{ a.started_at|timesince }} ago</td>
-<td><form class="inline" method="post" action="{% url 'scan' project.key %}">{% csrf_token %}<input type="hidden" name="branch" value="{{ a.branch }}"><button>Rescan</button></form></td></tr>
-{% endwith %}{% endfor %}
-{% for b in unscanned %}
-<tr><td>{{ b }}</td><td colspan="6" class="muted">not analysed</td>
-<td><form class="inline" method="post" action="{% url 'scan' project.key %}">{% csrf_token %}<input type="hidden" name="branch" value="{{ b }}"><button>Scan</button></form></td></tr>
-{% endfor %}
-</table></div>
-<div class="card"><h3>History</h3><table>
-<tr><th>Started</th><th>Branch</th><th>Commit</th><th>Status</th><th>Gate</th></tr>
-{% for a in history %}<tr><td><a href="{% url 'analysis' project.key a.pk %}">{{ a.started_at|date:"Y-m-d H:i" }}</a></td><td>{{ a.branch }}</td><td><code>{{ a.commit|slice:":8" }}</code></td><td>{{ a.status }}</td><td>{% include "core/gate_badge.html" with analysis=a %}</td></tr>{% endfor %}
-</table></div>
+<tr><th scope="row"><a href="{% url 'analysis' project.key a.pk %}">{{ a.branch }}</a>{% if a.branch == project.main_branch %} <span class="muted">(main)</span>{% endif %}</th>
+<td><code>{{ a.commit|slice:":8" }}</code>{% if a.dirty %} <span class="muted">+ local changes</span>{% endif %}</td><td>{% include "core/gate_badge.html" with analysis=a %}</td>
+<td>{{ m.new_issues|num }}</td><td>{{ m.issues|num }}</td><td>{{ m.new_coverage|num }}{% if m.new_coverage is not None %}%{% endif %}</td>
+<td>{{ a.started_at|timesince }} ago{% if a.scanned_by %} by {{ a.scanned_by.username }}{% endif %}</td>
+{% if can_scan and project.repo_url %}<td><form class="inline" method="post" action="{% url 'scan' project.key %}">{% csrf_token %}<input type="hidden" name="branch" value="{{ a.branch }}"><button aria-label="Rescan {{ a.branch }}">Rescan</button></form></td>{% endif %}</tr>
+{% endwith %}{% empty %}<tr><td colspan="8" class="muted">No analyses yet.</td></tr>{% endfor %}
+{% if can_scan and project.repo_url %}{% for b in unscanned %}
+<tr><th scope="row">{{ b }}</th><td colspan="6" class="muted">Not analysed</td>
+<td><form class="inline" method="post" action="{% url 'scan' project.key %}">{% csrf_token %}<input type="hidden" name="branch" value="{{ b }}"><button aria-label="Scan {{ b }}">Scan</button></form></td></tr>
+{% endfor %}{% endif %}
+</tbody></table></div>
+<div class="card"><table>
+<caption>History</caption>
+<thead><tr><th scope="col">Started</th><th scope="col">Branch</th><th scope="col">Commit</th><th scope="col">Source</th><th scope="col">Status</th><th scope="col">Quality gate</th></tr></thead>
+<tbody>
+{% for a in history %}<tr><th scope="row"><a href="{% url 'analysis' project.key a.pk %}">{{ a.started_at|date:"Y-m-d H:i" }}</a></th><td>{{ a.branch }}</td><td><code>{{ a.commit|slice:":8" }}</code></td><td>{% if a.origin == "client" %}local scan{% if a.scanned_by %} by {{ a.scanned_by.username }}{% endif %}{% else %}server{% endif %}</td><td>{{ a.status }}</td><td>{% include "core/gate_badge.html" with analysis=a %}</td></tr>{% endfor %}
+</tbody></table></div>
 {% endblock %}

@@ -1,5 +1,13 @@
 from .models import SEVERITIES, IssueResolution, Metric
 
+TYPE_KEY = {
+    "bug": "bugs",
+    "vulnerability": "vulnerabilities",
+    "security_hotspot": "security_hotspots",
+    "code_smell": "code_smells",
+    "accessibility": "accessibility_issues",
+}
+
 
 def issue_metrics(analysis):
     """Issue counts, overall and on new code, ignoring issues marked won't-fix or false positive."""
@@ -8,15 +16,14 @@ def issue_metrics(analysis):
     )
     counts = {}
     for scope in ("", "new_"):
-        for key in ("issues", "bugs", "vulnerabilities", "code_smells", *(f"{s}_issues" for s in SEVERITIES)):
+        for key in (*TYPE_KEY.values(), "issues", *(f"{s}_issues" for s in SEVERITIES)):
             counts[scope + key] = 0
-    type_key = {"bug": "bugs", "vulnerability": "vulnerabilities", "code_smell": "code_smells"}
     for fp, type_, severity, is_new in analysis.issues.values_list("fingerprint", "type", "severity", "is_new"):
         if fp in resolved:
             continue
         for scope in ("", "new_") if is_new else ("",):
             counts[scope + "issues"] += 1
-            counts[scope + type_key[type_]] += 1
+            counts[scope + TYPE_KEY[type_]] += 1
             counts[f"{scope}{severity}_issues"] += 1
     return counts
 

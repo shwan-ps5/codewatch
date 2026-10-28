@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% block title %}{{ target.username }} · Users{% endblock %}
+{% block crumbs %}<li><a href="{% url 'users' %}">Users</a></li><li aria-current="page">{{ target.username }}</li>{% endblock %}
+{% block content %}
+<h1>{{ target.username }}</h1>
+<section class="card" aria-labelledby="reset-h" style="max-width:720px">
+<h2 id="reset-h">Reset password</h2>
+<p class="muted">They will be asked to change it when they next log in.</p>
+<form method="post">{% csrf_token %}{% include "core/form_table.html" %}<p><button>Set password</button></p></form>
+</section>
+<section class="card" aria-labelledby="status-h">
+<h2 id="status-h">Status</h2>
+<form method="post">{% csrf_token %}<button name="toggle_active" value="1">{% if target.is_active %}Deactivate{% else %}Activate{% endif %} {{ target.username }}</button></form>
+</section>
+{% endblock %}

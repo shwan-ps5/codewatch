@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% block title %}Users · codewatch{% endblock %}
+{% block crumbs %}<li aria-current="page">Users</li>{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<div class="card"><table>
+<caption class="sr-only">All users</caption>
+<thead><tr><th scope="col">Username</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Last login</th></tr></thead>
+<tbody>
+{% for u in users %}<tr><th scope="row"><a href="{% url 'user_edit' u.pk %}">{{ u.username }}</a></th><td>{{ u.email }}</td>
+<td>{% if u.is_superuser %}Administrator{% else %}User{% endif %}</td><td>{% if u.is_active %}Active{% else %}<span class="muted">Deactivated</span>{% endif %}</td>
+<td>{{ u.last_login|date:"Y-m-d H:i"|default:"never" }}</td></tr>{% endfor %}
+</tbody></table></div>
+<section class="card" aria-labelledby="add-h" style="max-width:720px">
+<h2 id="add-h">Add a user</h2>
+<form method="post">{% csrf_token %}{% include "core/form_table.html" %}<p><button>Add user</button></p></form>
+</section>
+{% endblock %}

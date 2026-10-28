@@ -5,7 +5,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from .base import CODE, JS, PY, Analyzer, C, Finding, Result
+from .base import CODE, JS, PY, Analyzer, C, Finding, Result, node_tool
 from .python_tools import complexity_severity
 
 SEMGREP_SEVERITY = {"ERROR": "critical", "WARNING": "major", "INFO": "minor"}
@@ -62,13 +62,20 @@ class Semgrep(Analyzer):
         result = Result()
         for item in data["results"]:
             extra = item["extra"]
-            category = extra.get("metadata", {}).get("category", "")
             result.findings.append(
                 Finding("semgrep", item["check_id"], SEMGREP_SEVERITY.get(extra.get("severity"), "minor"),
-                        SEMGREP_TYPE.get(category, "code_smell"), extra["message"].strip(),
+                        semgrep_type(item["check_id"], extra.get("metadata", {})), extra["message"].strip(),
                         ctx.rel(item["path"]), item["start"]["line"], item["end"]["line"])
             )
         return result
+
+
+def semgrep_type(check_id, metadata):
+    category = metadata.get("category", "")
+    # "audit" rules flag security-sensitive code that needs a human look rather than a confirmed flaw.
+    if category == "security" and (".audit." in check_id or "audit" in metadata.get("subcategory", [])):
+        return "security_hotspot"
+    return SEMGREP_TYPE.get(category, "code_smell")
 
 
 class Cppcheck(Analyzer):
@@ -99,15 +106,18 @@ class Cppcheck(Analyzer):
 
 
 class Jscpd(Analyzer):
-    name = "jscpd"
-    executable = "npx"
+    name = executable = "jscpd"
     extensions = CODE
+
+    def binary(self):
+        return node_tool("jscpd")
 
     def run(self, ctx):
         with tempfile.TemporaryDirectory() as out_dir:
-            self.exec(["--yes", "jscpd@4", "--reporters", "json", "--output", out_dir, "--silent",
+            self.exec(["--reporters", "json", "--output", out_dir, "--silent",
                        "--absolute", "--format", JSCPD_FORMATS, "--min-tokens", "70",
-                       *(["--ignore", ",".join(ctx.exclusions)] if ctx.exclusions else []), "."], ctx)
+                       *(["--ignore", ",".join(ctx.exclusions)] if ctx.exclusions else []), str(ctx.root)],
+                      ctx, cwd=out_dir)
             report = Path(out_dir) / "jscpd-report.json"
             data = json.loads(report.read_text()) if report.exists() else {"duplicates": [], "statistics": {}}
         tracked = set(ctx.files)

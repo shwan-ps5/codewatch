@@ -1,10 +1,12 @@
 from pathlib import Path
 
+from core.analyzers.accessibility import blank_template_syntax
 from core.analyzers.base import Finding
 from core.analyzers.coverage import parse_cobertura, parse_lcov, resolve
 from core.analyzers.dependencies import declaration_line, manifests
+from core.collect import excluded, new_code_metrics, parse_diff
 from core.fingerprint import assign_fingerprints
-from core.runner import excluded, is_new, new_code_metrics
+from core.runner import is_new
 
 
 def finding(line, rule="F401", path="a.py"):
@@ -40,12 +42,24 @@ def test_excluded_matches_root_and_nested():
 
 
 def test_is_new_on_changed_line_or_unseen_in_changed_file():
-    f = finding(5)
-    assert is_new(f, "fp", {"a.py": {5}}, None)
-    assert not is_new(f, "fp", {"a.py": {6}}, None)
-    assert is_new(f, "fp", {"a.py": {6}}, {"other"})
-    assert not is_new(f, "fp", {"a.py": {6}}, {"fp"})
-    assert not is_new(f, "fp", {"b.py": {5}}, set())
+    i = {"path": "a.py", "line": 5, "fingerprint": "fp"}
+    assert is_new(i, {"a.py": {5}}, None)
+    assert not is_new(i, {"a.py": {6}}, None)
+    assert is_new(i, {"a.py": {6}}, {"other"})
+    assert not is_new(i, {"a.py": {6}}, {"fp"})
+    assert not is_new(i, {"b.py": {5}}, set())
+
+
+def test_parse_diff():
+    diff = "+++ b/a.py\n@@ -1,0 +2,2 @@\n+x\n+y\n+++ /dev/null\n@@ -3 +0,0 @@\n+++ b/c.py\n@@ -4 +4 @@\n"
+    assert parse_diff(diff) == {"a.py": {2, 3}, "c.py": {4}}
+
+
+def test_blank_template_syntax_keeps_positions():
+    src = '{% load x %}<img alt="{{ caption }}">\n{% if a %}<p>{# note #}</p>{% endif %}'
+    out = blank_template_syntax(src)
+    assert len(out) == len(src) and out.count("\n") == 1
+    assert "{%" not in out and 'alt="xxxxxxxxxxxxx"' in out
 
 
 def test_new_code_metrics():
@@ -88,3 +102,8 @@ def test_manifests_requires_dependencies(tmp_path):
     (tmp_path / "pyproject.toml").write_text('[tool.ruff]\nline-length = 100\n')
     (tmp_path / "requirements-dev.txt").write_text("pytest\n")
     assert manifests(["pyproject.toml", "requirements-dev.txt"], tmp_path) == ["requirements-dev.txt"]
+
+
+def test_bound_text_is_not_empty():
+    out = blank_template_syntax('<h2 x-text="team"></h2><p v-html="x">\n</p><h3></h3>')
+    assert out == '<h2 x-text="team">x</h2><p v-html="x">x\n</p><h3></h3>'

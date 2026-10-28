@@ -1,14 +1,36 @@
 {% extends "core/base.html" %}
 {% block title %}Settings · {{ project.name }}{% endblock %}
-{% block crumbs %}<a href="{% url 'project' project.key %}">{{ project.name }}</a><span>Settings</span>{% endblock %}
+{% block crumbs %}<li><a href="{% url 'project' project.key %}">{{ project.name }}</a></li><li aria-current="page">Settings</li>{% endblock %}
 {% block content %}
+<h1>Settings for {{ project.name }}</h1>
 <form method="post">{% csrf_token %}
-<div class="card"><h3>Project</h3><table>{{ form.as_table }}</table></div>
-<div class="card"><h3>Quality gate</h3><p class="muted">The gate fails when any condition is met. Conditions on metrics an analysis didn't produce are skipped.</p>
+<section class="card" aria-labelledby="proj-h"><h2 id="proj-h">Project</h2>{% include "core/form_table.html" %}</section>
+<section class="card" aria-labelledby="gate-h"><h2 id="gate-h">Quality gate</h2>
+<p class="muted">The gate fails when any condition is met. Conditions on metrics an analysis didn't produce are skipped.</p>
 {{ formset.management_form }}
-<table><tr><th>Metric</th><th>Fails when</th><th>Threshold</th><th>Delete</th></tr>
-{% for f in formset %}<tr>{{ f.id }}<td>{{ f.metric }}</td><td>{{ f.op }}</td><td>{{ f.threshold }}</td><td>{{ f.DELETE }}</td></tr>{% endfor %}
-</table></div>
-<button>Save</button>
+<table><caption class="sr-only">Gate conditions</caption>
+<thead><tr><th scope="col">Metric</th><th scope="col">Fails when</th><th scope="col">Threshold</th><th scope="col">Delete</th></tr></thead><tbody>
+{% for f in formset %}<tr>{{ f.id }}
+<td><label class="sr-only" for="{{ f.metric.auto_id }}">Metric</label>{{ f.metric }}</td>
+<td><label class="sr-only" for="{{ f.op.auto_id }}">Fails when</label>{{ f.op }}</td>
+<td><label class="sr-only" for="{{ f.threshold.auto_id }}">Threshold</label>{{ f.threshold }}</td>
+<td><label class="sr-only" for="{{ f.DELETE.auto_id }}">Delete condition</label>{{ f.DELETE }}</td></tr>{% endfor %}
+</tbody></table></section>
+<p><button>Save settings</button></p>
 </form>
+<section class="card" aria-labelledby="members-h"><h2 id="members-h">Members</h2>
+<p class="muted">Owner: {{ project.owner.username|default:"none" }}. Contributors can upload scans with their own token and resolve issues; viewers can only see results.</p>
+<table><caption class="sr-only">Project members</caption>
+<thead><tr><th scope="col">User</th><th scope="col">Role</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+{% for m in members %}<tr><th scope="row">{{ m.user.username }}</th><td>{{ m.get_role_display }}</td>
+<td><form class="inline" method="post" action="{% url 'members' project.key %}">{% csrf_token %}<input type="hidden" name="remove" value="{{ m.pk }}"><button aria-label="Remove {{ m.user.username }}">Remove</button></form></td></tr>
+{% empty %}<tr><td colspan="3" class="muted">No members yet.</td></tr>{% endfor %}
+</tbody></table>
+<form method="post" action="{% url 'members' project.key %}" class="filters" style="margin-top:12px">{% csrf_token %}
+<label>Username{{ member_form.username }}</label><label>Role{{ member_form.role }}</label><button>Add member</button>
+</form></section>
+<section class="card" aria-labelledby="danger-h"><h2 id="danger-h">Delete project</h2>
+<form method="post" action="{% url 'delete_project' project.key %}" class="filters">{% csrf_token %}
+<label>Type <code>{{ project.key }}</code> to confirm<input name="confirm" autocomplete="off"></label><button>Delete project</button>
+</form></section>
 {% endblock %}

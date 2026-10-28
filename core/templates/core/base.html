@@ -4,37 +4,73 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}codewatch{% endblock %}</title>
 <style>
-:root { --bg:#fafafa; --fg:#1d1d1f; --muted:#6b7280; --card:#fff; --line:#e5e7eb; --accent:#2563eb;
-  --ok:#15803d; --bad:#b91c1c; --warn:#b45309; --code:#f3f4f6; --hl:#fef3c7; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e5e7eb; --muted:#9ca3af; --card:#171a21;
-  --line:#2a2f3a; --accent:#60a5fa; --ok:#4ade80; --bad:#f87171; --warn:#fbbf24; --code:#11141a; --hl:#3a2f12; } }
+:root { --bg:#fafafa; --fg:#1d1d1f; --muted:#4b5563; --card:#fff; --line:#d1d5db; --accent:#1d4ed8;
+  --ok:#166534; --bad:#b91c1c; --warn:#92400e; --code:#f3f4f6; --hl:#fef3c7; --badge-fg:#fff; --focus:#1d4ed8; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e5e7eb; --muted:#a8b0bd; --card:#171a21;
+  --line:#3a414f; --accent:#93c5fd; --ok:#4ade80; --bad:#fca5a5; --warn:#fcd34d; --code:#11141a; --hl:#3a2f12;
+  --badge-fg:#0f1115; --focus:#93c5fd; } }
 * { box-sizing:border-box; }
-body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-header { padding:12px 20px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
-header a.brand { font-weight:700; }
+body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+.skip { position:absolute; left:-999px; top:8px; background:var(--card); padding:8px 12px; z-index:10; }
+.skip:focus { left:8px; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+header { padding:10px 20px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+header .brand { font-weight:700; }
+header nav ul { list-style:none; margin:0; padding:0; display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+nav.crumbs ol { list-style:none; margin:0; padding:0; display:flex; gap:6px; flex-wrap:wrap; }
+nav.crumbs li + li::before { content:"/"; margin-right:6px; color:var(--muted); }
+.spacer { flex:1; }
 main { padding:20px; max-width:1200px; margin:0 auto; }
-a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+h1 { font-size:1.5rem; margin:0 0 16px; } h2 { font-size:1.15rem; margin:0 0 10px; }
+a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
 table { width:100%; border-collapse:collapse; background:var(--card); }
+caption { text-align:left; font-weight:600; padding:0 0 8px; font-size:1.05rem; }
 th, td { padding:6px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
-th { font-weight:600; color:var(--muted); font-size:12px; text-transform:uppercase; }
+thead th { font-weight:600; color:var(--muted); font-size:13px; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:16px; overflow-x:auto; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
 .pass { color:var(--ok); font-weight:600; } .fail { color:var(--bad); font-weight:600; } .muted { color:var(--muted); }
-.sev { display:inline-block; min-width:62px; font-size:12px; font-weight:600; }
+.sev { display:inline-block; min-width:64px; font-size:13px; font-weight:600; }
 .sev-blocker,.sev-critical { color:var(--bad); } .sev-major { color:var(--warn); } .sev-minor,.sev-info { color:var(--muted); }
-.new { background:var(--accent); color:#fff; border-radius:3px; padding:0 4px; font-size:11px; }
-code, pre { font-family:ui-monospace,monospace; font-size:12px; }
+.new { background:var(--accent); color:var(--badge-fg); border-radius:3px; padding:0 5px; font-size:12px; font-weight:600; }
+code, pre { font-family:ui-monospace,monospace; font-size:13px; }
 .src td { padding:0 8px; border:0; } .src .ln { color:var(--muted); text-align:right; user-select:none; width:1%; }
 .src pre { margin:0; white-space:pre-wrap; } .src tr.has { background:var(--hl); }
 .src .iss td { padding:4px 8px 6px 60px; background:var(--code); }
 form.inline { display:inline; }
-input, select, textarea, button { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:4px; padding:3px 6px; }
-button { cursor:pointer; }
-.filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+input, select, textarea, button { font:inherit; color:inherit; background:var(--card); border:1px solid var(--muted); border-radius:4px; padding:4px 8px; }
+button { cursor:pointer; } button.link { border:0; background:none; color:var(--accent); text-decoration:underline; padding:0; }
+.filters { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:12px; }
+.filters label { display:flex; flex-direction:column; font-size:13px; }
+.filters label.check { flex-direction:row; gap:6px; align-items:center; }
+.messages { list-style:none; padding:0; margin:0 0 16px; }
+.messages li { padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:var(--card); margin-bottom:6px; }
+.messages .error { border-color:var(--bad); }
+.form-table th { width:220px; color:var(--fg); font-weight:600; }
+.helptext { display:block; color:var(--muted); font-size:13px; }
+.errorlist { color:var(--bad); margin:0; padding-left:18px; }
+.token { font-size:15px; padding:10px; background:var(--code); border:1px dashed var(--line); word-break:break-all; }
 </style>
 </head>
 <body>
-<header><a class="brand" href="{% url 'index' %}">codewatch</a>{% block crumbs %}{% endblock %}</header>
-<main>{% block content %}{% endblock %}</main>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <a class="brand" href="{% url 'index' %}">codewatch</a>
+  {% block crumbs_wrap %}<nav class="crumbs" aria-label="Breadcrumb"><ol>{% block crumbs %}{% endblock %}</ol></nav>{% endblock %}
+  <span class="spacer"></span>
+  {% if user.is_authenticated %}
+  <nav aria-label="Account"><ul>
+    <li><a href="{% url 'new_project' %}">New project</a></li>
+    {% if user.is_superuser %}<li><a href="{% url 'users' %}">Users</a></li>{% endif %}
+    <li><a href="{% url 'account' %}">{{ user.username }}</a></li>
+    <li><form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link">Log out</button></form></li>
+  </ul></nav>
+  {% endif %}
+</header>
+<main id="main" tabindex="-1">
+{% if messages %}<ul class="messages" role="status">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+{% block content %}{% endblock %}
+</main>
 </body>
 </html>

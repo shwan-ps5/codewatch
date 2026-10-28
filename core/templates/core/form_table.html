@@ -1,0 +1,10 @@
+{% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
+<table class="form-table" role="presentation">
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% for field in form.visible_fields %}
+<tr><th>{% if field.use_fieldset %}{{ field.label }}{% else %}{{ field.label_tag }}{% endif %}</th>
+<td>{% if field.use_fieldset %}<fieldset style="border:0;padding:0;margin:0"><legend class="sr-only">{{ field.label }}</legend>{{ field }}</fieldset>{% else %}{{ field }}{% endif %}
+{% if field.help_text %}<span class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</span>{% endif %}
+{% if field.errors %}<div role="alert">{{ field.errors }}</div>{% endif %}</td></tr>
+{% endfor %}
+</table>
