@@ -1,0 +1,24 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block title %}{{ project.name }} · codewatch{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><a href="{% url 'settings' project.key %}">Settings</a>{% endblock %}
+{% block content %}
+{% if running %}<div class="card">Running: {% for a in running %}<b>{{ a.branch }}</b> (started {{ a.started_at|timesince }} ago) {% endfor %} <a href="">refresh</a></div>{% endif %}
+<div class="card"><h3>Branches</h3><table>
+<tr><th>Branch</th><th>Commit</th><th>Gate</th><th>New issues</th><th>Issues</th><th>New coverage</th><th>Analysed</th><th></th></tr>
+{% for a in latest %}{% with m=a.metrics_dict %}
+<tr><td><a href="{% url 'analysis' project.key a.pk %}">{{ a.branch }}</a>{% if a.branch == project.main_branch %} <span class="muted">(main)</span>{% endif %}</td>
+<td><code>{{ a.commit|slice:":8" }}</code></td><td>{% include "core/gate_badge.html" with analysis=a %}</td>
+<td>{{ m.new_issues|num }}</td><td>{{ m.issues|num }}</td><td>{{ m.new_coverage|num }}</td>
+<td class="muted">{{ a.started_at|timesince }} ago</td>
+<td><form class="inline" method="post" action="{% url 'scan' project.key %}">{% csrf_token %}<input type="hidden" name="branch" value="{{ a.branch }}"><button>Rescan</button></form></td></tr>
+{% endwith %}{% endfor %}
+{% for b in unscanned %}
+<tr><td>{{ b }}</td><td colspan="6" class="muted">not analysed</td>
+<td><form class="inline" method="post" action="{% url 'scan' project.key %}">{% csrf_token %}<input type="hidden" name="branch" value="{{ b }}"><button>Scan</button></form></td></tr>
+{% endfor %}
+</table></div>
+<div class="card"><h3>History</h3><table>
+<tr><th>Started</th><th>Branch</th><th>Commit</th><th>Status</th><th>Gate</th></tr>
+{% for a in history %}<tr><td><a href="{% url 'analysis' project.key a.pk %}">{{ a.started_at|date:"Y-m-d H:i" }}</a></td><td>{{ a.branch }}</td><td><code>{{ a.commit|slice:":8" }}</code></td><td>{{ a.status }}</td><td>{% include "core/gate_badge.html" with analysis=a %}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

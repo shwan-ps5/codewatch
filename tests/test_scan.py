@@ -1,0 +1,107 @@
+import subprocess
+
+import pytest
+from django.core.management import call_command
+
+from core import gate
+from core.models import Analysis, IssueResolution, Project
+
+
+def sh(repo, *args):
+    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+
+@pytest.fixture
+def repo(tmp_path, settings):
+    settings.CODEWATCH_CACHE = tmp_path / "cache"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    sh(repo, "init", "-q", "-b", "main")
+    sh(repo, "config", "user.email", "t@example.com")
+    sh(repo, "config", "user.name", "t")
+    (repo / "app.py").write_text("import os\n\n\ndef f():\n    return 1\n")
+    sh(repo, "add", ".")
+    sh(repo, "commit", "-qm", "init")
+    return repo
+
+
+@pytest.fixture
+def project(repo):
+    call_command("addproject", "demo", str(repo))
+    p = Project.objects.get(key="demo")
+    # ruff alone keeps the test fast and offline.
+    p.disabled_analyzers = ["bandit", "radon", "lizard", "semgrep", "cppcheck", "jscpd", "pip-audit"]
+    p.save()
+    return p
+
+
+@pytest.mark.django_db
+def test_branch_new_code_and_gate(repo, project):
+    call_command("scan", "demo")
+    main = Analysis.objects.get(branch="main")
+    assert main.status == "success"
+    assert main.issues.filter(rule="F401").count() == 1
+    assert not main.issues.filter(is_new=True).exists()
+
+    sh(repo, "checkout", "-qb", "feature")
+    (repo / "app.py").write_text("# moved down\nimport os\n\n\ndef f():\n    return undefined_name\n")
+    sh(repo, "commit", "-qam", "feature")
+    call_command("scan", "demo", "--branch", "feature")
+
+    feature = Analysis.objects.get(branch="feature")
+    assert feature.reference_commit == main.commit
+    new = list(feature.issues.filter(is_new=True).values_list("rule", flat=True))
+    assert new == ["F821"], "shifted F401 must keep its identity; only the undefined name is new"
+    assert feature.gate_passed is False
+    failing = {d["metric"] for d in feature.gate_details if d["status"] == "error"}
+    assert failing == {"new_bugs", "new_critical_issues"}
+
+    issue = feature.issues.get(rule="F821")
+    IssueResolution.objects.create(project=project, fingerprint=issue.fingerprint, status="false_positive")
+    gate.refresh(feature)
+    assert feature.gate_passed is True
+
+
+@pytest.mark.django_db
+def test_main_rescan_uses_previous_analysis_as_reference(repo, project):
+    call_command("scan", "demo")
+    first = Analysis.objects.get()
+    (repo / "app.py").write_text((repo / "app.py").read_text() + "\nimport sys\n")
+    sh(repo, "commit", "-qam", "more")
+    call_command("scan", "demo")
+    second = Analysis.objects.latest("started_at")
+    assert second.reference_commit == first.commit
+    assert list(second.issues.filter(is_new=True).values_list("rule", flat=True)) == ["F401"]
+
+
+@pytest.mark.django_db
+def test_failing_gate_exit_code(repo, project):
+    (repo / "app.py").write_text("x = undefined_name\n")
+    sh(repo, "commit", "-qam", "bad")
+    call_command("scan", "demo")
+    sh(repo, "checkout", "-qb", "feature")
+    (repo / "app.py").write_text("x = undefined_name\ny = other_undefined\n")
+    sh(repo, "commit", "-qam", "worse")
+    with pytest.raises(SystemExit):
+        call_command("scan", "demo", "--branch", "feature", "--fail-on-gate")
+
+
+@pytest.mark.django_db
+def test_new_code_coverage_from_cobertura(repo, project, tmp_path):
+    call_command("scan", "demo")
+    sh(repo, "checkout", "-qb", "feature")
+    (repo / "app.py").write_text("import os\n\n\ndef f():\n    return 1\n\n\ndef g():\n    a = 1\n    return a\n")
+    sh(repo, "commit", "-qam", "g")
+    report = tmp_path / "coverage.xml"
+    report.write_text(
+        f'<coverage><sources><source>{repo}</source></sources><packages><package><classes>'
+        '<class filename="app.py"><lines><line number="1" hits="1"/><line number="4" hits="1"/>'
+        '<line number="5" hits="1"/><line number="8" hits="1"/><line number="9" hits="0"/>'
+        '<line number="10" hits="0"/></lines></class></classes></package></packages></coverage>'
+    )
+    call_command("scan", "demo", "--branch", "feature", "--coverage", str(report), "--coverage-base", str(repo))
+    m = Analysis.objects.get(branch="feature").metrics_dict
+    assert m["coverage"] == 66.7
+    assert m["new_coverage"] == 33.3
+    gate_row = next(d for d in Analysis.objects.get(branch="feature").gate_details if d["metric"] == "new_coverage")
+    assert gate_row["status"] == "error"

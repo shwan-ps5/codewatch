@@ -1,0 +1,40 @@
+{% load codewatch %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}codewatch{% endblock %}</title>
+<style>
+:root { --bg:#fafafa; --fg:#1d1d1f; --muted:#6b7280; --card:#fff; --line:#e5e7eb; --accent:#2563eb;
+  --ok:#15803d; --bad:#b91c1c; --warn:#b45309; --code:#f3f4f6; --hl:#fef3c7; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e5e7eb; --muted:#9ca3af; --card:#171a21;
+  --line:#2a2f3a; --accent:#60a5fa; --ok:#4ade80; --bad:#f87171; --warn:#fbbf24; --code:#11141a; --hl:#3a2f12; } }
+* { box-sizing:border-box; }
+body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+header { padding:12px 20px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+header a.brand { font-weight:700; }
+main { padding:20px; max-width:1200px; margin:0 auto; }
+a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+table { width:100%; border-collapse:collapse; background:var(--card); }
+th, td { padding:6px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+th { font-weight:600; color:var(--muted); font-size:12px; text-transform:uppercase; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:16px; overflow-x:auto; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+.pass { color:var(--ok); font-weight:600; } .fail { color:var(--bad); font-weight:600; } .muted { color:var(--muted); }
+.sev { display:inline-block; min-width:62px; font-size:12px; font-weight:600; }
+.sev-blocker,.sev-critical { color:var(--bad); } .sev-major { color:var(--warn); } .sev-minor,.sev-info { color:var(--muted); }
+.new { background:var(--accent); color:#fff; border-radius:3px; padding:0 4px; font-size:11px; }
+code, pre { font-family:ui-monospace,monospace; font-size:12px; }
+.src td { padding:0 8px; border:0; } .src .ln { color:var(--muted); text-align:right; user-select:none; width:1%; }
+.src pre { margin:0; white-space:pre-wrap; } .src tr.has { background:var(--hl); }
+.src .iss td { padding:4px 8px 6px 60px; background:var(--code); }
+form.inline { display:inline; }
+input, select, textarea, button { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:4px; padding:3px 6px; }
+button { cursor:pointer; }
+.filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+</style>
+</head>
+<body>
+<header><a class="brand" href="{% url 'index' %}">codewatch</a>{% block crumbs %}{% endblock %}</header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

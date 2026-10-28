@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codewatch"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.2,<6",
+    "ruff",
+    "radon",
+    "bandit",
+    "lizard",
+    "semgrep",
+    "pip-audit",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-django"]
+
+[tool.setuptools.packages.find]
+include = ["core*", "codewatch*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "codewatch.settings"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["core/migrations"]
+
+[tool.ruff.lint]
+# Django model Meta/choices attributes are idiomatic class-level lists.
+extend-ignore = ["RUF012"]
