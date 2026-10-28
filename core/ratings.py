@@ -17,7 +17,7 @@ RATED_TYPES = {"bug": "reliability", "vulnerability": "security", "accessibility
 
 
 def grade(rating):
-    return GRADES[int(rating) - 1] if rating else "–"
+    return GRADES[int(rating) - 1] if rating else "\u2013"
 
 
 def worst(severities):
@@ -63,4 +63,4 @@ def compute(rows, resolved_hotspots, metrics, scope):
 
 
 def score_grade(score):
-    return next((g for g, limit in zip(GRADES, (90, 75, 60, 40)) if score >= limit), "E")
+    return next((g for g, limit in zip(GRADES, (90, 75, 60, 40), strict=False) if score >= limit), "E")

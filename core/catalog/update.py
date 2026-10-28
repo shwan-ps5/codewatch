@@ -13,8 +13,9 @@ from ..analyzers.base import TOOLS_DIR
 from . import RUNTIME_DIR, imported_dir, read_json, reload
 from .build import build
 
-PYTHON_ANALYZERS = ["ruff", "bandit", "radon", "lizard", "semgrep", "pip-audit", "complexipy", "basedpyright",
+PYTHON_ANALYZERS = ["ruff", "bandit", "radon", "lizard", "pip-audit", "complexipy", "basedpyright",
                     "detect-secrets"]
+ISOLATED_ANALYZERS = ["semgrep", "checkov"]
 # Held at a major version because a dependent plugin doesn't support the next one yet.
 NODE_MAJOR_PINS = {"eslint": "9", "@eslint/js": "9"}
 STATUS_FILE = RUNTIME_DIR / "status.json"
@@ -44,9 +45,10 @@ def run_step(args, log, cwd=None):
 
 def upgrade_tools(log):
     ok = run_step([sys.executable, "-m", "pip", "install", "-q", "-U", *PYTHON_ANALYZERS], log)
-    checkov = TOOLS_DIR / "checkov-venv" / "bin" / "pip"
-    if checkov.exists():
-        ok &= run_step([str(checkov), "install", "-q", "-U", "checkov"], log)
+    for name in ISOLATED_ANALYZERS:
+        pip = TOOLS_DIR / f"{name}-venv" / "bin" / "pip"
+        if pip.exists():
+            ok &= run_step([str(pip), "install", "-q", "-U", name], log)
     package = TOOLS_DIR / "package.json"
     if package.exists():
         deps = json.loads(package.read_text()).get("dependencies", {})
@@ -71,13 +73,13 @@ def run_update(upgrade=False, log=print):
             upgrade_tools(record)
         previous = read_json(imported_dir() / "rules.json", [])
         meta = build(RUNTIME_DIR / "imported", log=record, previous=previous)
-        reload()
-        write_status(state="done", finished_at=now(), log=lines[-200:], rules=meta["rules"],
-                     failed_sources=meta["failed_sources"])
-        return meta
     except Exception as exc:
         write_status(state="failed", finished_at=now(), log=lines[-200:], error=str(exc)[:2000])
         raise
+    reload()
+    write_status(state="done", finished_at=now(), log=lines[-200:], rules=meta["rules"],
+                 failed_sources=meta["failed_sources"])
+    return meta
 
 
 def now():

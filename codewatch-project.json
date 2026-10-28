@@ -1,0 +1,6 @@
+{
+  "projectKey": "codewatch",
+  "projectName": "codewatch",
+  "mainBranch": "main",
+  "exclusions": ["catalog/imported/**"]
+}

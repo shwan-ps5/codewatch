@@ -6,7 +6,7 @@ register = template.Library()
 @register.filter
 def num(value):
     if value is None:
-        return "–"
+        return "\u2013"
     return f"{value:g}" if isinstance(value, float) else value
 
 
@@ -26,7 +26,7 @@ def grade(rating):
 def score_grade(score):
     from core.ratings import score_grade as to_grade
 
-    return to_grade(score) if score is not None else "–"
+    return to_grade(score) if score is not None else "\u2013"
 
 
 @register.simple_tag

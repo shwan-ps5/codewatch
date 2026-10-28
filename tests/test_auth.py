@@ -14,7 +14,7 @@ def test_pages_require_login():
 @pytest.mark.django_db
 def test_default_admin_must_change_password():
     c = Client()
-    assert c.post("/login/", {"username": "admin", "password": "admin"}).status_code == 302
+    assert c.post("/login/", {"username": "admin", "password": "admin"}).status_code == 302  # pragma: allowlist secret
     assert c.get("/").url == "/account/password/"
     resp = c.post("/account/password/", {
         "old_password": "admin", "new_password1": "a-much-better-pass-42", "new_password2": "a-much-better-pass-42",

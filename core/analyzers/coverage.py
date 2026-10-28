@@ -1,5 +1,6 @@
-import xml.etree.ElementTree as ET
 from pathlib import Path
+
+import defusedxml.ElementTree as ET
 
 from .base import Analyzer, Result
 
@@ -16,6 +17,8 @@ class Coverage(Analyzer):
         return ctx.coverage_report is not None
 
     def run(self, ctx):
+        if ctx.coverage_report is None:
+            return Result()
         report = Path(ctx.coverage_report)
         lines = parse_lcov(report) if report.suffix in (".info", ".lcov") else parse_cobertura(report)
         result = Result()
@@ -66,10 +69,12 @@ def parse_cobertura(report):
     sources = [s.text.strip() for s in root.iter("source") if s.text and s.text.strip()]
     for cls in root.iter("class"):
         filename = cls.get("filename")
+        if not filename:
+            continue
         hits = {}
         for line in cls.iter("line"):
-            n = int(line.get("number"))
-            hits[n] = max(hits.get(n, 0), int(line.get("hits", 0)))
+            n = int(line.get("number", "0"))
+            hits[n] = max(hits.get(n, 0), int(line.get("hits", "0")))
         yield [str(Path(s) / filename) for s in sources] + [filename], hits
 
 

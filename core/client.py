@@ -97,6 +97,7 @@ def fetch_config(url, token, key, repo, args, conf):
     cfg, created = server_config(url, token, key, repo, args, conf)
     # Local opt-outs (e.g. a slow tool) add to the server's list rather than replacing it.
     cfg.disabled_analyzers = sorted(set(cfg.disabled_analyzers) | set(conf.get("disabledAnalyzers", [])))
+    cfg.exclusions = list(dict.fromkeys([*cfg.exclusions, *conf.get("exclusions", [])]))
     return cfg, created
 
 
@@ -262,7 +263,7 @@ def add_scan_args(p):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(prog="codewatch", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(prog="codewatch", description=(__doc__ or "codewatch").splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     add_scan_args(sub.add_parser("scan", help="Analyse the working copy and upload the results"))
     cov = sub.add_parser("coverage", help="Run the tests with coverage, writing a report scan picks up")

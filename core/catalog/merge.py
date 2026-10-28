@@ -26,7 +26,7 @@ def custom_rule(r, path):
         "id": f"codewatch/{r['id']}", "tool": "codewatch", "code": r["id"],
         "title": meta.get("title") or r["message"].split(".")[0].strip(),
         "languages": [normal_language(lang) for lang in r.get("languages", [])],
-        "type": meta.get("type") or SEMGREP_TYPE.get(meta.get("category"), "code_smell"),
+        "type": meta.get("type") or SEMGREP_TYPE.get(meta.get("category", ""), "code_smell"),
         "severity": SEMGREP_SEVERITY.get(r.get("severity"), "minor"), "summary": r["message"].strip(),
         "docs": "", "license": f"custom ({path.name})", "origin": "custom",
         "references": [{"label": url, "url": url} for url in listed(meta, "references")],
@@ -37,11 +37,7 @@ def custom_rule(r, path):
 
 
 def load_custom_rules(paths):
-    out = []
-    for path in paths:
-        for r in (yaml.safe_load(path.read_text()) or {}).get("rules", []):
-            out.append(custom_rule(r, path))
-    return out
+    return [custom_rule(r, path) for path in paths for r in (yaml.safe_load(path.read_text()) or {}).get("rules", [])]
 
 
 def add_mapping(rule, field, values, label):

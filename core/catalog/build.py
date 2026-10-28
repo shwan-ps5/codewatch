@@ -6,23 +6,19 @@ import json
 import subprocess
 from datetime import UTC, datetime
 
-from ..analyzers.base import TOOLS_DIR, tool_path
+from ..analyzers.base import TOOLS_DIR, isolated_tool, tool_path
 from . import sources, standards
 
-VERSION_COMMANDS = {
-    "ruff": ["ruff", "--version"], "bandit": ["bandit", "--version"], "semgrep": ["semgrep", "--version"],
-    "basedpyright": ["basedpyright", "--version"], "complexipy": ["complexipy", "--version"],
-    "detect-secrets": ["detect-secrets", "--version"], "cppcheck": ["cppcheck", "--version"],
-    "pip-audit": ["pip-audit", "--version"],
-}
+VERSIONED_TOOLS = ["ruff", "bandit", "semgrep", "basedpyright", "complexipy", "detect-secrets", "cppcheck",
+                   "pip-audit"]
 
 
 def tool_versions():
     versions = {}
-    for name, (exe, *args) in VERSION_COMMANDS.items():
-        path = tool_path(exe)
+    for name in VERSIONED_TOOLS:
+        path = isolated_tool(name) or tool_path(name)
         if path:
-            out = subprocess.run([path, *args], capture_output=True, text=True, check=False).stdout.strip()
+            out = subprocess.run([path, "--version"], capture_output=True, text=True, check=False).stdout.strip()
             versions[name] = out.splitlines()[0] if out else "?"
     package = TOOLS_DIR / "package.json"
     if package.exists():

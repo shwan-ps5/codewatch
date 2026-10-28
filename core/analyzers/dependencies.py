@@ -54,52 +54,47 @@ class PipAudit(Analyzer):
     def applies(self, ctx):
         return bool(manifests(ctx.files, ctx.root))
 
+    def audit(self, ctx, manifest):
+        args = [str(Path(manifest).parent)] if manifest.endswith(".toml") else ["-r", manifest]
+        out = self.exec([*args, "--format", "json", "--progress-spinner", "off"], ctx, ok_codes=(0, 1))
+        return json.loads(out)["dependencies"]
+
     def run(self, ctx):
-        result = Result()
-        vulnerable = set()
-        pending = []
+        pending, seen = [], set()
         for manifest in manifests(ctx.files, ctx.root):
-            if manifest.endswith(".toml"):
-                args = [str(Path(manifest).parent)]
-            else:
-                args = ["-r", manifest]
-            out = self.exec([*args, "--format", "json", "--progress-spinner", "off"], ctx, ok_codes=(0, 1))
             text = (ctx.root / manifest).read_text()
-            seen = set()
-            for dep in json.loads(out)["dependencies"]:
+            for dep in self.audit(ctx, manifest):
                 for vuln in dep.get("vulns", []):
-                    key = (dep["name"], vuln["id"])
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    vulnerable.add(normalize(dep["name"]))
-                    pending.append((manifest, text, dep, vuln))
-
-        def build(item):
-            manifest, text, dep, vuln = item
-            ids = [vuln["id"], *vuln.get("aliases", [])]
-            cve = next((a for a in ids if a.startswith("CVE-")), vuln["id"])
-            line = declaration_line(text, dep["name"])
-            fix = ", ".join(vuln.get("fix_versions") or []) or "none available"
-            where = "" if line else " (transitive)"
-            summary = next(
-                (ln.strip() for ln in (vuln.get("description") or "").splitlines()
-                 if ln.strip() and not ln.lstrip().startswith("#")), ""
-            )[:300]
-            return Finding(
-                "pip-audit", cve, osv_severity(ids), "vulnerability",
-                f"{dep['name']} {dep['version']}{where}: {cve} — fixed in {fix}. {summary}",
-                manifest, line,
-            )
-
+                    if (manifest, dep["name"], vuln["id"]) not in seen:
+                        seen.add((manifest, dep["name"], vuln["id"]))
+                        pending.append((manifest, text, dep, vuln))
+        result = Result()
         with ThreadPoolExecutor(max_workers=8) as pool:
-            result.findings = list(pool.map(build, pending))
-        result.metrics["vulnerable_dependencies"] = len(vulnerable)
+            result.findings = list(pool.map(vulnerability_finding, pending))
+        result.metrics["vulnerable_dependencies"] = len({normalize(dep["name"]) for _, _, dep, _ in pending})
         result.metrics["dependency_vulnerabilities"] = len(result.findings)
         result.metrics["dependency_critical_vulnerabilities"] = sum(
             f.severity in ("blocker", "critical") for f in result.findings
         )
         return result
+
+
+def advisory_summary(vuln):
+    """First prose line of an advisory; GitHub advisories start with Markdown headings."""
+    lines = (vuln.get("description") or "").splitlines()
+    return next((ln.strip() for ln in lines if ln.strip() and not ln.lstrip().startswith("#")), "")[:300]
+
+
+def vulnerability_finding(item):
+    manifest, text, dep, vuln = item
+    ids = [vuln["id"], *vuln.get("aliases", [])]
+    cve = next((a for a in ids if a.startswith("CVE-")), vuln["id"])
+    line = declaration_line(text, dep["name"])
+    fix = ", ".join(vuln.get("fix_versions") or []) or "none available"
+    where = "" if line else " (transitive)"
+    return Finding("pip-audit", cve, osv_severity(ids), "vulnerability",
+                   f"{dep['name']} {dep['version']}{where}: {cve} \u2014 fixed in {fix}. {advisory_summary(vuln)}",
+                   manifest, line)
 
 
 def declaration_line(text, package):

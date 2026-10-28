@@ -28,7 +28,7 @@ FILTERS = {
     "cwe": lambda r, v: v.isdigit() and int(v) in r["cwe"],
     "owasp": lambda r, v: v in r["owasp"],
     "wcag": lambda r, v: v in r["wcag"],
-    "duplicates": lambda r, v: bool(r.get("same_as")),
+    "duplicates": lambda r, _v: bool(r.get("same_as")),
     "q": lambda r, v: v.lower() in f"{r['id']} {r['title']} {r['summary']}".lower(),
 }
 
@@ -79,7 +79,7 @@ def rule_detail(request, rule_id):
     return render(request, "core/rule.html", {
         "rule": rule,
         # Safe to mark: MARKDOWN is configured with html=False, so raw HTML in the source is escaped.
-        "doc": mark_safe(MARKDOWN.render(doc)) if doc else None,
+        "doc": mark_safe(MARKDOWN.render(doc)) if doc else None,  # nosec B308 B703 # nosemgrep
         "cwes": [{"id": c, "name": names.get(str(c), ""), **(details.get(str(c)) or {})} for c in rule["cwe"]],
         "same_as": [r for r in (catalog.find(i) for i in rule.get("same_as", [])) if r],
     })

@@ -341,7 +341,7 @@ def project_members(request, key):
         return redirect("settings", key=key)
     form = MemberForm(request.POST)
     if not form.is_valid():
-        messages.error(request, "; ".join(e for errs in form.errors.values() for e in errs))
+        messages.error(request, "; ".join(e for errs in (form.errors or {}).values() for e in errs))
     elif form.cleaned_data["username"].pk == project.owner_id:
         messages.error(request, "That user already owns this project.")
     else:

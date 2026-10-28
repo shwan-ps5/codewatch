@@ -12,13 +12,13 @@ dependencies = [
     "radon",
     "bandit",
     "lizard",
-    "semgrep",
     "pip-audit",
     "complexipy",
     "basedpyright",
     "detect-secrets",
     "markdown-it-py",
     "PyYAML",
+    "defusedxml",
 ]
 
 [project.scripts]
@@ -28,7 +28,7 @@ codewatch-mcp = "core.mcp_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-django", "coverage"]
-mcp = ["mcp>=1.0"]
+mcp = ["mcp>=1.30,<2"]
 
 [tool.setuptools.packages.find]
 include = ["core*", "codewatch*"]

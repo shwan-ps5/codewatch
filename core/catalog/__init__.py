@@ -24,7 +24,7 @@ ANY = "any"
 # Issues whose rule is not a catalogue code: pip-audit names the advisory, detect-secrets the secret type.
 ISSUE_RULE_ALIASES = {
     "pip-audit": "pip-audit/vulnerable-dependency",
-    "detect-secrets": "detect-secrets/hard-coded-secret",
+    "detect-secrets": "detect-secrets/hard-coded-secret",  # pragma: allowlist secret
 }
 
 
@@ -118,22 +118,35 @@ def speaks(rule, lang):
     return lang in rule["languages"] or ANY in rule["languages"]
 
 
-def coverage(rules, standards, languages):
-    """Per Top 25 CWE, OWASP category and WCAG criterion: how many rules address it, per language.
+class Coverage:
+    """How many rules address each standard entry, per language.
 
     A rule counts towards a CWE if it targets it or a more specific weakness beneath it.
     """
-    parents = standards.get("cwe_parents", {})
-    covers = [(r, expanded_cwes(r["cwe"], parents)) for r in rules if not r.get("disabled")]
 
-    def count(cwes, lang, owasp_id=None):
-        return sum(1 for r, exp in covers if speaks(r, lang) and (exp & cwes or owasp_id in r["owasp"]))
+    def __init__(self, rules, standards):
+        self.standards = standards
+        parents = standards.get("cwe_parents", {})
+        self.covers = [(r, expanded_cwes(r["cwe"], parents)) for r in rules if not r.get("disabled")]
 
-    top25 = [{"cwe": c, "rank": i + 1, "name": standards["cwe_names"].get(str(c), ""),
-              "by_language": {lang: count({c}, lang) for lang in languages}}
-             for i, c in enumerate(standards["top25"]["cwes"])]
-    owasp = [{**cat, "by_language": {lang: count(set(cat["cwes"]), lang, cat["id"]) for lang in languages}}
-             for cat in standards["owasp"]["categories"]]
-    wcag = [{**sc, "rules": sum(1 for r, _ in covers if sc["sc"] in r["wcag"])}
-            for sc in standards.get("wcag", {}).get("criteria", [])]
-    return top25, owasp, wcag
+    def count(self, cwes, lang, owasp_id=None):
+        return sum(1 for r, exp in self.covers if speaks(r, lang) and (exp & cwes or owasp_id in r["owasp"]))
+
+    def top25(self, languages):
+        names = self.standards["cwe_names"]
+        return [{"cwe": c, "rank": i + 1, "name": names.get(str(c), ""),
+                 "by_language": {lang: self.count({c}, lang) for lang in languages}}
+                for i, c in enumerate(self.standards["top25"]["cwes"])]
+
+    def owasp(self, languages):
+        return [{**cat, "by_language": {lang: self.count(set(cat["cwes"]), lang, cat["id"]) for lang in languages}}
+                for cat in self.standards["owasp"]["categories"]]
+
+    def wcag(self):
+        return [{**sc, "rules": sum(1 for r, _ in self.covers if sc["sc"] in r["wcag"])}
+                for sc in self.standards.get("wcag", {}).get("criteria", [])]
+
+
+def coverage(rules, standards, languages):
+    c = Coverage(rules, standards)
+    return c.top25(languages), c.owasp(languages), c.wcag()

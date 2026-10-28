@@ -19,5 +19,5 @@ def assign_fingerprints(findings, read_line):
         key = (f.tool, f.rule, f.path, anchor)
         seen[key] += 1
         raw = "\0".join([*key, str(seen[key])])
-        fingerprints[id(f)] = hashlib.sha1(raw.encode()).hexdigest()
+        fingerprints[id(f)] = hashlib.sha1(raw.encode(), usedforsecurity=False).hexdigest()
     return [fingerprints[id(f)] for f in findings]

@@ -1,9 +1,10 @@
 import ast
 import json
+import re
 import tempfile
 from pathlib import Path
 
-from .base import JS, PY, TOOLS_DIR, Analyzer, Finding, Result, node_tool
+from .base import JS, PY, TOOLS_DIR, Analyzer, Finding, Result, isolated_tool, node_tool
 from .python_tools import complexity_severity
 
 SECRET_HEURISTICS = {"Base64 High Entropy String", "Hex High Entropy String", "Secret Keyword"}
@@ -62,6 +63,21 @@ class CognitiveComplexity(Analyzer):
         return result
 
 
+# Without Django's mypy plugin, pyright misreads model fields (descriptors) and a few Django internals.
+# These message shapes are only ever those misreadings, so they're dropped rather than reported.
+KNOWN_FALSE_POSITIVES = [
+    re.compile(r'parameter "default" of type "type\[NOT_PROVIDED\]"'),
+    re.compile(r'not assignable to declared type "cached_property"'),
+    re.compile(r'Method "__str__" overrides class "Model" in an incompatible manner'),
+    re.compile(r'on type "\w{1,60}Field"'),
+    re.compile(r'Object of type "\(\.\.\.\) -> object" cannot be used with "with"'),
+]
+
+
+def known_false_positive(message):
+    return any(p.search(message) for p in KNOWN_FALSE_POSITIVES)
+
+
 class TypeCheck(Analyzer):
     """Type errors (wrong arguments, None access, bad returns) with basedpyright in standard mode."""
 
@@ -87,7 +103,7 @@ class TypeCheck(Analyzer):
             out = self.exec(["--outputjson", "--project", str(cfg)], ctx, ok_codes=(0, 1))
         result = Result()
         for d in json.loads(out or "{}").get("generalDiagnostics", []):
-            if d["severity"] != "error":
+            if d["severity"] != "error" or known_false_positive(d["message"]):
                 continue
             start, end = d["range"]["start"]["line"] + 1, d["range"]["end"]["line"] + 1
             result.findings.append(
@@ -129,8 +145,7 @@ class Checkov(Analyzer):
     executable = "checkov"
 
     def binary(self):
-        path = TOOLS_DIR / "checkov-venv" / "bin" / "checkov"
-        return str(path) if path.exists() else super().binary()
+        return isolated_tool("checkov") or super().binary()
 
     def applies(self, ctx):
         return any(self.is_iac(f) for f in ctx.files)
