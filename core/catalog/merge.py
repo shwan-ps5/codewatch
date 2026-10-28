@@ -2,8 +2,6 @@
 import copy
 import re
 
-import yaml
-
 CWE_RE = re.compile(r"CWE-(\d+)")
 CWE_URL = "https://cwe.mitre.org/data/definitions/{}.html"
 WCAG_URL = "https://www.w3.org/WAI/WCAG22/quickref/#{}"
@@ -21,7 +19,7 @@ def normal_language(lang):
     return "javascript" if lang in ("js", "ts", "typescript") else lang
 
 
-def custom_rule(r, path):
+def custom_rule(r, path, origin="custom"):
     meta = r.get("metadata") or {}
     return {
         "id": f"codewatch/{r['id']}", "tool": CODEWATCH, "code": r["id"],
@@ -29,7 +27,7 @@ def custom_rule(r, path):
         "languages": [normal_language(lang) for lang in r.get("languages", [])],
         "type": meta.get("type") or SEMGREP_TYPE.get(meta.get("category", ""), "code_smell"),
         "severity": SEMGREP_SEVERITY.get(r.get("severity"), "minor"), "summary": r["message"].strip(),
-        "docs": "", "license": f"custom ({path.name})", "origin": "custom",
+        "docs": "", "license": f"{origin} ({path.name})", "origin": origin,
         "references": [{"label": url, "url": url} for url in listed(meta, "references")],
         "cwe": sorted({int(m) for c in listed(meta, "cwe") for m in CWE_RE.findall(c)}),
         "wcag": [str(w) for w in listed(meta, "wcag")],
@@ -37,8 +35,11 @@ def custom_rule(r, path):
     }
 
 
-def load_custom_rules(paths):
-    return [custom_rule(r, path) for path in paths for r in (yaml.safe_load(path.read_text()) or {}).get("rules", [])]
+def load_rule_files(rule_files):
+    """Rules from (path, origin) pairs: codewatch's built-in files and the project's custom ones."""
+    from . import rules_in
+
+    return [custom_rule(r, path, origin) for path, origin in rule_files for r in rules_in(path)]
 
 
 def add_mapping(rule, field, values, label):
@@ -105,8 +106,8 @@ def builtin_rules():
              "license": CODEWATCH, "origin": CODEWATCH, **copy.deepcopy(r)} for r in RULES]
 
 
-def merge(imported, standards, mappings, overrides, custom_paths):
-    rules = [copy.deepcopy(r) for r in imported] + builtin_rules() + load_custom_rules(custom_paths)
+def merge(imported, standards, mappings, overrides, rule_files):
+    rules = [copy.deepcopy(r) for r in imported] + builtin_rules() + load_rule_files(rule_files)
     for r in rules:
         r.setdefault("origin", "imported")
     apply_mappings(rules, mappings)

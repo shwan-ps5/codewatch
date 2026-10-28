@@ -1,0 +1,122 @@
+# codewatch built-in rules for JavaScript/TypeScript web code (Express, Angular, MongoDB).
+rules:
+  - id: codewatch.js.angular-bypass-sanitizer
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Angular's sanitizer is bypassed for a value that isn't a fixed string, so HTML or script in it reaches the
+      page. Let Angular sanitize it (bind to [innerHTML] without bypassing), or only bypass for constants.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Angular sanitizer bypassed for dynamic data
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://angular.dev/best-practices/security#bypass-security-apis-sparingly
+        - https://angular.dev/api/platform-browser/DomSanitizer
+    patterns:
+      - pattern: $SANITIZER.$BYPASS($VALUE)
+      - metavariable-regex: {metavariable: $BYPASS, regex: '^bypassSecurityTrust(Html|Script|Style|Url|ResourceUrl)$'}
+      - pattern-not: $SANITIZER.$BYPASS("...")
+      - pattern-not: $SANITIZER.$BYPASS(`...`)
+
+  - id: codewatch.js.substring-url-allowlist
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      A URL is checked against an allowlist with a substring test, so "https://evil.example/?https://good.example"
+      passes. Parse the URL (new URL(value)) and compare its origin or hostname exactly.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: URL allowlist checked with a substring test
+      cwe: ["CWE-20: Improper Input Validation", "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+        - https://developer.mozilla.org/en-US/docs/Web/API/URL
+    patterns:
+      - pattern-either:
+          - pattern: $URL.includes($ALLOWED)
+          - pattern: $URL.indexOf($ALLOWED) !== -1
+          - pattern: $URL.indexOf($ALLOWED) > -1
+          - pattern: $URL.indexOf($ALLOWED) >= 0
+      - metavariable-regex: {metavariable: $URL, regex: '(?i).*(url|uri|redirect|href|location|target|returnto|next)'}
+      - metavariable-regex: {metavariable: $ALLOWED, regex: '(?i).*(allow|white|trusted|safe|permitted)'}
+
+  - id: codewatch.js.nosql-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      A value from the request body is placed directly in a MongoDB query. A JSON body can send an object such as
+      {"$ne": null} instead of a string and change what the query matches. Convert it to the expected type
+      (String(), Number()) or validate it first.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request body used in a MongoDB query
+      cwe: ["CWE-943: Improper Neutralization of Special Elements in Data Query Logic"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+        - https://www.mongodb.com/docs/manual/core/server-side-javascript/
+    pattern-sources:
+      - pattern: $REQ.body
+      - pattern: $REQ.query
+    pattern-sanitizers:
+      - pattern: String(...)
+      - pattern: Number(...)
+      - pattern: parseInt(...)
+      - pattern: $X.toString()
+    pattern-sinks:
+      - patterns:
+          - pattern: $COLL.$METHOD($QUERY, ...)
+          - metavariable-regex: {metavariable: $COLL, regex: '(?i).*(collection|mongo)'}
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: '^(find|findOne|update|updateOne|updateMany|remove|deleteOne|deleteMany|count|countDocuments|findOneAndUpdate|findOneAndDelete|findOneAndReplace|replaceOne)$'
+          - focus-metavariable: $QUERY
+
+  - id: codewatch.js.unauthenticated-metrics
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >-
+      The metrics endpoint is served with no middleware in front of it, so anyone can read internal counters,
+      paths and versions. Put it behind authentication or serve it on an internal-only port.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Metrics endpoint without authentication
+      cwe: ["CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://prometheus.io/docs/operating/security/
+    pattern-either:
+      - pattern: $APP.get("/metrics", $HANDLER)
+      - pattern: $APP.use("/metrics", $HANDLER)
+
+  - id: codewatch.js.weak-hash
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      MD4, MD5 and SHA-1 are broken for security use. Use SHA-256 or better, or a password hash
+      (scrypt, argon2, bcrypt) for passwords.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Weak hash algorithm
+      cwe: ["CWE-328: Use of Weak Hash"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://nodejs.org/api/crypto.html#cryptocreatehashalgorithm-options
+        - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+    patterns:
+      - pattern: $CRYPTO.createHash($ALGO, ...)
+      - metavariable-regex: {metavariable: $ALGO, regex: '(?i)^[''"`](md4|md5|sha1|sha-1|ripemd160)[''"`]$'}

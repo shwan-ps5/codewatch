@@ -107,7 +107,11 @@ Every condition can be changed per project under **Settings**.
 
 `/rules/` is a public, searchable catalogue of every rule (about 4,100), with what's wrong, how to fix it and examples where the source documentation is freely licensed (ruff, bandit, ESLint, stylelint, jsx-a11y), plus MITRE CWE descriptions, mitigations and example code for security rules. Each rule links to its origin and its standards: CWE, OWASP Top 10 (2025), WCAG 2.2, PEPs. `/standards/` shows coverage of the CWE Top 25, OWASP Top 10 and WCAG A/AA by language, with gaps marked.
 
-The catalogue has two layers:
+The catalogue has three parts:
+
+- `catalog/codewatch/rules/*.yml`: codewatch's own built-in rules (taint rules for Flask/Django/FastAPI request data reaching SQL, shell, eval, file paths, XPath, LDAP, redirects, sessions and HTML responses; weak hashes, insecure cookies, XXE; Django views without method restrictions; `|safe`/`autoescape off` in templates; Angular sanitizer bypasses, NoSQL injection and substring URL allowlists in JS/TS). They ship with codewatch and run in every scan.
+
+The rest of the catalogue has two layers:
 
 - `catalog/imported/` is generated from the analyzers' own metadata and from MITRE, W3C and the Semgrep registry, and is **replaced on every import**. Rules from restrictively licensed sources (Semgrep registry, cppcheck's GPL messages) are recorded by ID, classification and CWE only.
 - `catalog/custom/` is **never touched by an import**:
@@ -116,6 +120,17 @@ The catalogue has two layers:
   - `overrides.json`: change a rule's severity, type or title, or disable it.
 
 Admins can press **Update rules now** (optionally upgrading the analyzers first) on `/rules/`. Updates also run automatically every `CODEWATCH_CATALOG_UPDATE_DAYS` days (default 7, `0` disables; set `CODEWATCH_CATALOG_UPGRADE_TOOLS=1` to include analyzer upgrades), or from cron with `manage.py updatecatalog [--upgrade-tools]`. A server's imports go to its cache directory; `manage.py buildcatalog` refreshes the snapshot committed in `catalog/imported/`.
+
+## Benchmarks
+
+`codewatch benchmark` scans third-party code with published ground truth, pinned to a commit (never executed), and writes results to `benchmarks/results/`. Two modes are scored: **verdict** counts only findings that claim a vulnerability (data reaching a dangerous call, or a definite flaw such as a weak hash or an insecure cookie), which is what the Security rating uses; **review** adds security hotspots, i.e. everything a reviewer is asked to look at.
+
+| Suite | Verdict | Review |
+|---|---|---|
+| [OWASP Benchmark for Python](https://github.com/OWASP-Benchmark/BenchmarkPython): 1,230 labelled cases, 14 CWEs | finds 74%, false alarms 35%, score **+40%** | finds 84%, false alarms 59%, score +25% |
+| [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 7 flagged (20%) | 15 flagged (43%) |
+
+The score is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. Known limits: Semgrep's open-source engine doesn't evaluate constant branches, so benchmark cases that switch data off with `if 7 * 42 > 200` style conditions still raise false alarms; many Juice Shop challenges are business-logic flaws (missing ownership checks, weak security questions) that no static analyzer can recognise. Juice Shop measures detection only, since its unmarked code isn't labelled safe.
 
 ## Claude / MCP
 

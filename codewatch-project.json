@@ -2,5 +2,8 @@
   "projectKey": "codewatch",
   "projectName": "codewatch",
   "mainBranch": "main",
-  "exclusions": ["catalog/imported/**"]
+  "exclusions": [
+    "catalog/imported/**",
+    "benchmarks/results/**"
+  ]
 }

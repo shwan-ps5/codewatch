@@ -12,7 +12,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 
 from . import gate
 from .analyzers import ANALYZERS
@@ -62,6 +62,7 @@ def refresh_gates(project):
             gate.refresh(analysis)
 
 
+@require_safe
 def index(request):
     catalog_update.maybe_launch()
     projects = [(p, next(iter(p.latest_analyses()), None)) for p in Project.visible_to(request.user).order_by("key")]
@@ -105,6 +106,7 @@ def new_project(request):
     return render(request, "core/new_project.html", {"form": form})
 
 
+@require_safe
 def project_detail(request, key):
     project = get_project(request, key)
     latest = project.latest_analyses()
@@ -140,6 +142,7 @@ TYPE_ROWS = [("bug", "bugs"), ("vulnerability", "vulnerabilities"), ("security_h
              ("code_smell", "code_smells"), ("accessibility", "accessibility_issues")]
 
 
+@require_safe
 def analysis_detail(request, key, pk):
     analysis = get_analysis(request, key, pk)
     m = analysis.metrics_dict
@@ -187,6 +190,7 @@ def filter_issues(analysis, params):
     return issues, resolutions, status
 
 
+@require_safe
 def issue_list(request, key, pk):
     analysis = get_analysis(request, key, pk)
     issues, resolutions, status = filter_issues(analysis, request.GET)
@@ -246,6 +250,7 @@ def source_text(analysis, path):
     return None
 
 
+@require_safe
 def source_view(request, key, pk):
     analysis = get_analysis(request, key, pk)
     path = request.GET.get("path", "")

@@ -34,7 +34,7 @@ def test_merge_applies_custom_layer_without_touching_imports(tmp_path):
                          "    metadata: {category: security, cwe: ['CWE-95: Eval Injection']}\n")
     mappings = {"cwe": {"ruff/S602": [78]}}
     overrides = {"bandit/B602:subprocess_popen_with_shell_equals_true": {"severity": "critical", "bogus": 1}}
-    rules = {r["id"]: r for r in merge(IMPORTED, STANDARDS, mappings, overrides, [rule_file])}
+    rules = {r["id"]: r for r in merge(IMPORTED, STANDARDS, mappings, overrides, [(rule_file, "custom")])}
 
     assert "_same_as" in IMPORTED[0], "the imported data itself is never modified"
     s602 = rules["ruff/S602"]
@@ -145,3 +145,35 @@ def test_rule_api():
     assert data["cwe"] == [78] and "ruff/S602" in data["same_as"] and data["explanation"]
     assert data["cwe_guidance"][0]["mitigations"]
     catalog.reload()
+
+
+def test_table_semantics():
+    from core.analyzers.codewatch_checks import table_problems
+
+    assert table_problems('<table role="presentation"><tr><th>A</th><td>1</td></tr></table>') == [
+        (1, "layout-table-with-headers")]
+    assert table_problems("<table><tr><td>1</td></tr></table>") == [(1, "data-table-without-headers")]
+    assert table_problems('<table><tr><th scope="col">x</th></tr><tr><td>1</td></tr></table>') == []
+    assert table_problems('<table role="none"><tr><td>layout</td></tr></table>') == []
+
+
+def test_security_findings_are_verdicts_only_with_data_flow():
+    from core.analyzers.multi_tools import semgrep_type
+
+    assert semgrep_type("python.flask.security.injection.x", {"category": "security", "subcategory": ["vuln"]}) == "vulnerability"
+    assert semgrep_type("python.lang.security.audit.x", {"category": "security", "subcategory": ["vuln"]}) == "security_hotspot"
+    assert semgrep_type("python.lang.security.x", {"category": "security", "subcategory": ["audit"]}) == "security_hotspot"
+    assert semgrep_type("python.lang.correctness.x", {"category": "correctness"}) == "bug"
+
+
+def test_builtin_rules_load_and_a_broken_custom_file_is_skipped(tmp_path, monkeypatch, capsys):
+    import yaml
+
+    (tmp_path / "rules").mkdir()
+    (tmp_path / "rules" / "broken.yml").write_text("rules: [ {id: x, pattern: a: b ")
+    monkeypatch.setattr(catalog, "CUSTOM_DIR", tmp_path)
+    rules = yaml.safe_load(catalog.custom_semgrep_rules())["rules"]
+    ids = {r["id"] for r in rules}
+    assert "codewatch.python.web.sql-injection" in ids and "codewatch.js.nosql-injection" in ids
+    assert "skipping rule file" in capsys.readouterr().err
+    assert not any("&" in str(r) for r in rules), "anchors are expanded before semgrep sees them"

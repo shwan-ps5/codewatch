@@ -23,6 +23,8 @@ from .base import (
 )
 from .python_tools import complexity_severity
 
+# Lines naming a commit, checksum or integrity hash: high-entropy by design, not credentials.
+NOT_SECRET_LINES = r"""(?i)["']?(commit|sha\d{0,3}|hash|digest|integrity|checksum|etag)["']?\s{0,5}[:=]"""
 SECRET_HEURISTICS = {"Base64 High Entropy String", "Hex High Entropy String", "Secret Keyword"}
 DOCKERFILES = ("Dockerfile", "Containerfile")
 
@@ -136,7 +138,7 @@ class Secrets(Analyzer):
     executable = "detect-secrets"
 
     def run(self, ctx):
-        out = self.exec(["scan", *ctx.files], ctx)
+        out = self.exec(["scan", "--exclude-lines", NOT_SECRET_LINES, *ctx.files], ctx)
         result = Result()
         for path, items in json.loads(out)["results"].items():
             by_line = {}

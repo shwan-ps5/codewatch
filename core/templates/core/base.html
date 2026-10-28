@@ -48,6 +48,10 @@ button { cursor:pointer; } button.link { border:0; background:none; color:var(--
 .messages li { padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:var(--card); margin-bottom:6px; }
 .messages .error { border-color:var(--bad); }
 .form-table th { width:220px; color:var(--fg); font-weight:600; }
+.form-grid { display:grid; gap:0; }
+.form-row { display:grid; grid-template-columns:220px 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); }
+.form-label { font-weight:600; } .form-field fieldset { border:0; padding:0; margin:0; }
+@media (max-width: 640px) { .form-row { grid-template-columns:1fr; gap:4px; } }
 .helptext { display:block; color:var(--muted); font-size:13px; }
 .errorlist { color:var(--bad); margin:0; padding-left:18px; }
 .rating { display:inline-flex; align-items:center; justify-content:center; min-width:1.9em; height:1.9em; border-radius:50%; font-weight:700; color:#111; }
