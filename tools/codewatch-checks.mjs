@@ -90,9 +90,10 @@ for (const r of [...regexes, ...spec.pythonRegexes]) {
       checked.push({ ...r, complexity: result.complexity?.type, summary: result.complexity?.summary,
                      attack: result.attack?.pattern });
     }
-  } catch (err) {
+  } catch {
     // Patterns JavaScript can't parse (some Python-only syntax) are skipped rather than guessed at.
   }
 }
 
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path chosen by codewatch, not by scanned code
 writeFileSync(process.argv[3], JSON.stringify({ literals, regexes: checked }));

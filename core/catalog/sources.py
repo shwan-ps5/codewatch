@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import defusedxml.ElementTree as ET
@@ -37,7 +38,7 @@ from ..analyzers.multi_tools import CPPCHECK_NOISE, CPPCHECK_SEVERITY, SEMGREP_S
 from ..analyzers.python_tools import BANDIT_SEVERITY, RUFF_EXTEND_IGNORE, RUFF_RULES
 
 PYTHON, JS, C, HTML, CSS, WEB, IAC, ANY = "python", "javascript", "c/c++", "html", "css", "web", "iac", "any"
-BANDIT, ESLINT, DETECT_SECRETS = "bandit", "eslint", "detect-secrets"
+BANDIT, ESLINT, DETECT_SECRETS = "bandit", "eslint", "detect-secrets"  # pragma: allowlist secret
 SEMGREP_PACK_URL = "https://semgrep.dev/c/p/default"
 ESLINT_DOC_URL = "https://raw.githubusercontent.com/eslint/eslint/main/docs/src/rules/{}.md"
 CWE_RE = re.compile(r"CWE-(\d+)")
@@ -61,18 +62,41 @@ def humanize(name):
     return " ".join(words).capitalize() if words else name
 
 
-def rule(tool, code, title, languages, type_, severity, *, license_, summary="", docs="", refs=(), cwe=(),
-         wcag=(), owasp=(), doc=None, same_as=()):
-    entry = {
-        "id": f"{tool}/{code}", "tool": tool, "code": code, "title": title, "languages": list(languages),
-        "type": type_, "severity": severity, "summary": summary, "docs": docs, "license": license_,
-        "references": list(refs), "cwe": sorted(set(cwe)), "wcag": sorted(set(wcag)), "owasp": list(owasp),
-    }
-    if doc:
-        entry["_doc"] = doc
-    if same_as:
-        entry["_same_as"] = list(same_as)
-    return entry
+@dataclass
+class RuleSpec:
+    tool: str
+    code: str
+    title: str
+    languages: list
+    type: str
+    severity: str
+    license_: str
+    summary: str = ""
+    docs: str = ""
+    refs: list = field(default_factory=list)
+    cwe: list = field(default_factory=list)
+    wcag: list = field(default_factory=list)
+    owasp: list = field(default_factory=list)
+    doc: str | None = None
+    same_as: list = field(default_factory=list)
+
+    def entry(self):
+        entry = {
+            "id": f"{self.tool}/{self.code}", "tool": self.tool, "code": self.code, "title": self.title,
+            "languages": list(self.languages), "type": self.type, "severity": self.severity,
+            "summary": self.summary, "docs": self.docs, "license": self.license_, "references": list(self.refs),
+            "cwe": sorted(set(self.cwe)), "wcag": sorted(set(self.wcag)), "owasp": list(self.owasp),
+        }
+        if self.doc:
+            entry["_doc"] = self.doc
+        if self.same_as:
+            entry["_same_as"] = list(self.same_as)
+        return entry
+
+
+def rule(*args, **fields):
+    """Catalogue entry: tool, code, title, languages, type, severity, then keyword fields of RuleSpec."""
+    return RuleSpec(*args, **fields).entry()
 
 
 def link_tokens(text):

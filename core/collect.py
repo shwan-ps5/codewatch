@@ -259,19 +259,31 @@ def read_sources(root, paths):
     return sources
 
 
-def make_context(cfg, root, files, branch, coverage_report, coverage_base):
+@dataclass
+class ScanInput:
+    """What to analyse: files under root on a branch, lines changed since the reference (or None), coverage."""
+
+    root: Path
+    files: list[str]
+    branch: str
+    changed: dict | None = None
+    coverage_report: Path | None = None
+    coverage_base: Path | None = None
+
+
+def make_context(cfg, scan, files):
     return Context(
-        root=Path(root),
+        root=Path(scan.root),
         files=files,
         complexity_threshold=cfg.complexity_threshold,
         semgrep_config=cfg.semgrep_config,
         exclusions=cfg.exclusions,
-        a11y_urls=[u.replace("{branch}", branch) for u in cfg.a11y_urls],
+        a11y_urls=[u.replace("{branch}", scan.branch) for u in cfg.a11y_urls],
         cognitive_threshold=cfg.cognitive_complexity_threshold,
         max_literal_repeats=cfg.duplicate_literal_threshold,
         custom_rules=cfg.custom_rules,
-        coverage_report=Path(coverage_report) if coverage_report else None,
-        coverage_base=Path(coverage_base) if coverage_base else None,
+        coverage_report=Path(scan.coverage_report) if scan.coverage_report else None,
+        coverage_base=Path(scan.coverage_base) if scan.coverage_base else None,
     )
 
 
@@ -279,10 +291,11 @@ def code_only(changed, tracked):
     return {p: lines for p, lines in changed.items() if p in tracked and Path(p).suffix.lower() in CODE}
 
 
-def collect(cfg, root, files, branch, changed, coverage_report=None, coverage_base=None, log=print):
-    """Analyse `files` under `root`. `changed` maps path -> changed lines since the reference, or None."""
-    files = [f for f in files if not excluded(f, cfg.exclusions)]
-    ctx = make_context(cfg, root, files, branch, coverage_report, coverage_base)
+def collect(cfg, scan, log=print):
+    """Analyse a ScanInput with the project's ScanConfig; returns the upload payload."""
+    files = [f for f in scan.files if not excluded(f, cfg.exclusions)]
+    changed = scan.changed
+    ctx = make_context(cfg, scan, files)
     combined, tools = run_analyzers(cfg, ctx, log)
     metrics = combined.metrics
     reader = LineReader(ctx.root)
