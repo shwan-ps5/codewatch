@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block title %}{{ path }} · {{ project.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'project' project.key %}">{{ project.name }}</a><a href="{% url 'analysis' project.key analysis.pk %}">{{ analysis.branch }}</a><span><code>{{ path }}</code></span>{% endblock %}
+{% block content %}
+{% if file_issues %}<div class="card">{% for i in file_issues %}<div><span class="sev sev-{{ i.severity }}">{{ i.severity }}</span> {% if i.is_new %}<span class="new">new</span> {% endif %}{{ i.message }} <code class="muted">{{ i.tool }}:{{ i.rule }}</code></div>{% endfor %}</div>{% endif %}
+<div class="card"><table class="src">
+{% for n, text, issues in lines %}
+<tr id="L{{ n }}" {% if issues %}class="has"{% endif %}><td class="ln">{{ n }}</td><td><pre>{{ text }}</pre></td></tr>
+{% for i in issues %}<tr class="iss"><td colspan="2"><span class="sev sev-{{ i.severity }}">{{ i.severity }}</span> {% if i.is_new %}<span class="new">new</span> {% endif %}{{ i.message }} <code class="muted">{{ i.tool }}:{{ i.rule }}</code></td></tr>{% endfor %}
+{% endfor %}
+</table></div>
+{% endblock %}

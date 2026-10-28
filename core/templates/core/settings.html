@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}Settings · {{ project.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'project' project.key %}">{{ project.name }}</a><span>Settings</span>{% endblock %}
+{% block content %}
+<form method="post">{% csrf_token %}
+<div class="card"><h3>Project</h3><table>{{ form.as_table }}</table></div>
+<div class="card"><h3>Quality gate</h3><p class="muted">The gate fails when any condition is met. Conditions on metrics an analysis didn't produce are skipped.</p>
+{{ formset.management_form }}
+<table><tr><th>Metric</th><th>Fails when</th><th>Threshold</th><th>Delete</th></tr>
+{% for f in formset %}<tr>{{ f.id }}<td>{{ f.metric }}</td><td>{{ f.op }}</td><td>{{ f.threshold }}</td><td>{{ f.DELETE }}</td></tr>{% endfor %}
+</table></div>
+<button>Save</button>
+</form>
+{% endblock %}

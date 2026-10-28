@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block content %}
+<div class="card"><table>
+<tr><th>Project</th><th>Main branch</th><th>Gate</th><th>Issues</th><th>Coverage</th><th>Duplication</th><th>Last analysis</th></tr>
+{% for p, a in projects %}{% with m=a.metrics_dict %}
+<tr><td><a href="{% url 'project' p.key %}">{{ p.name }}</a></td><td>{{ p.main_branch }}</td>
+<td>{% include "core/gate_badge.html" with analysis=a %}</td>
+<td>{{ m.issues|num }}</td><td>{{ m.coverage|num }}{% if m.coverage is not None %}%{% endif %}</td>
+<td>{{ m.duplicated_lines_percent|num }}{% if m.duplicated_lines_percent is not None %}%{% endif %}</td>
+<td class="muted">{{ a.started_at|timesince|default:"never" }}{% if a %} ago{% endif %}</td></tr>
+{% endwith %}{% empty %}
+<tr><td colspan="7" class="muted">No projects yet. Add one with <code>manage.py addproject KEY PATH_OR_URL</code>.</td></tr>
+{% endfor %}
+</table></div>
+{% endblock %}
