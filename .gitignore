@@ -6,3 +6,4 @@ tools/node_modules/
 coverage.xml
 .coverage
 tools/checkov-venv/
+tools/semgrep-venv/

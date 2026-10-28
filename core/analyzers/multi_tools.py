@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from .base import CODE, JS, PY, Analyzer, C, Finding, Result, node_tool
+from .base import CODE, JS, PY, Analyzer, C, Finding, Result, isolated_tool, node_tool
 from .python_tools import complexity_severity
 
 SEMGREP_SEVERITY = {"ERROR": "critical", "WARNING": "major", "INFO": "minor"}
@@ -56,6 +56,10 @@ class Lizard(Analyzer):
 class Semgrep(Analyzer):
     name = executable = "semgrep"
     extensions = CODE | {".yml", ".yaml", ".html"}
+
+    def binary(self):
+        # Own venv: semgrep pins dependencies (e.g. an old mcp) that conflict with codewatch's.
+        return isolated_tool("semgrep") or super().binary()
 
     def run(self, ctx):
         with tempfile.NamedTemporaryFile("w", suffix=".yml") as custom:
@@ -139,7 +143,7 @@ class Jscpd(Analyzer):
         for dup in data["duplicates"]:
             sides = [dup["firstFile"], dup["secondFile"]]
             paths = [ctx.rel(s["name"]) for s in sides]
-            for side, path, other_side, other in zip(sides, paths, sides[::-1], paths[::-1]):
+            for side, path, other_side, other in zip(sides, paths, sides[::-1], paths[::-1], strict=True):
                 if path not in tracked:
                     continue
                 start, end = side["start"], side["end"]

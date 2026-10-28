@@ -5,13 +5,14 @@ from django.conf import settings
 from django.db import models
 
 from .catalog import custom_semgrep_rules
+from .collect import DEFAULT_EXCLUSIONS
 
 SEVERITIES = ["blocker", "critical", "major", "minor", "info"]
 ISSUE_TYPES = ["bug", "vulnerability", "security_hotspot", "code_smell", "accessibility"]
 
 
 def default_exclusions():
-    return list(settings.CODEWATCH_DEFAULT_EXCLUSIONS)
+    return list(DEFAULT_EXCLUSIONS)
 
 
 class Project(models.Model):
@@ -95,6 +96,9 @@ class ProjectMember(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["project", "user"], name="uniq_member")]
 
+    def __str__(self):
+        return f"{self.user} ({self.role}) on {self.project}"
+
 
 class Analysis(models.Model):
     RUNNING, SUCCESS, FAILED = "running", "success", "failed"
@@ -144,10 +148,16 @@ class Issue(models.Model):
     class Meta:
         ordering = ["path", "line"]
 
+    def __str__(self):
+        return f"{self.tool}:{self.rule} at {self.path}:{self.line}"
+
 
 class SourceBlob(models.Model):
     sha = models.CharField(max_length=64, primary_key=True)
     content = models.TextField()
+
+    def __str__(self):
+        return self.sha[:12]
 
 
 class AnalysisSource(models.Model):
@@ -158,6 +168,9 @@ class AnalysisSource(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["analysis", "path"], name="uniq_source")]
 
+    def __str__(self):
+        return f"{self.analysis} {self.path}"
+
 
 class Metric(models.Model):
     analysis = models.ForeignKey(Analysis, on_delete=models.CASCADE, related_name="metrics")
@@ -166,6 +179,9 @@ class Metric(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["analysis", "key"], name="uniq_metric")]
+
+    def __str__(self):
+        return f"{self.key}={self.value:g}"
 
 
 class IssueResolution(models.Model):
@@ -180,6 +196,9 @@ class IssueResolution(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["project", "fingerprint"], name="uniq_resolution")]
+
+    def __str__(self):
+        return f"{self.fingerprint[:8]} {self.status}"
 
 
 class GateCondition(models.Model):
@@ -197,10 +216,16 @@ class GateCondition(models.Model):
     def fails(self, value):
         return value > self.threshold if self.op == self.GT else value < self.threshold
 
+    def __str__(self):
+        return f"{self.metric} {self.op} {self.threshold:g}"
+
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     must_change_password = models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.user)
 
 
 def hash_token(raw):
@@ -235,6 +260,9 @@ class ApiToken(models.Model):
         if token is None or not token.user.is_active:
             return None
         return token
+
+    def __str__(self):
+        return f"{self.user}: {self.name} ({self.prefix}\u2026)"
 
 
 DEFAULT_GATE = [

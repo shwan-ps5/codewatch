@@ -12,7 +12,7 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-from .base import JS, PY, TOOLS_DIR, Analyzer, Finding, Result, node_tool
+from .base import JS, PY, TOOLS_DIR, Analyzer, Finding, Result, is_test_file, node_tool
 
 MIN_LITERAL_LENGTH = 5
 RE_MODULES = {"re", "regex"}
@@ -100,6 +100,15 @@ def to_js_syntax(pattern):
     return pattern.replace(r"\A", "^").replace(r"\Z", "$")
 
 
+def anchored(pattern, function):
+    """re.match/fullmatch only try position 0, so analyse them as anchored rather than as a search."""
+    if function in ("match", "fullmatch") and not pattern.startswith("^"):
+        pattern = f"^(?:{pattern})"
+    if function == "fullmatch" and not pattern.endswith("$"):
+        pattern += "$"
+    return pattern
+
+
 def python_regexes(tree, path):
     out = []
     for node in ast.walk(tree):
@@ -109,8 +118,8 @@ def python_regexes(tree, path):
             continue
         first = node.args[0]
         if isinstance(first, ast.Constant) and isinstance(first.value, str):
-            out.append({"path": path, "line": node.lineno, "pattern": to_js_syntax(first.value),
-                        "flags": python_flags(node), "original": first.value})
+            out.append({"path": path, "line": node.lineno, "flags": python_flags(node), "original": first.value,
+                        "pattern": anchored(to_js_syntax(first.value), node.func.attr)})
     return out
 
 
@@ -130,12 +139,15 @@ class CodewatchChecks(Analyzer):
                 tree = ast.parse((ctx.root / path).read_text(errors="replace"))
             except (SyntaxError, ValueError):
                 continue
-            for value, lines in python_literals(tree, ctx.max_literal_repeats):
-                result.findings.append(literal_finding(path, value, lines))
+            if not is_test_file(path):
+                for value, lines in python_literals(tree, ctx.max_literal_repeats):
+                    result.findings.append(literal_finding(path, value, lines))
             regexes += python_regexes(tree, path)
         node_out = self.run_node(ctx, regexes)
         for lit in node_out["literals"]:
-            result.findings.append(literal_finding(ctx.rel(lit["path"]), lit["value"], lit["lines"]))
+            path = ctx.rel(lit["path"])
+            if not is_test_file(path):
+                result.findings.append(literal_finding(path, lit["value"], lit["lines"]))
         for r in node_out["regexes"]:
             result.findings.append(regex_finding(ctx.rel(r["path"]), r))
         return result

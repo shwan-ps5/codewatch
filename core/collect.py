@@ -19,10 +19,23 @@ MAX_SOURCE_BYTES = 512 * 1024
 MAX_TOTAL_SOURCE_BYTES = 50 * 1024 * 1024
 
 
+DEFAULT_EXCLUSIONS = [
+    "**/node_modules/**",
+    "**/migrations/**",
+    "**/vendor/**",
+    "**/third_party/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/*.min.js",
+    "**/package-lock.json",
+    "**/yarn.lock",
+    "**/poetry.lock",
+    "**/uv.lock",
+]
 @dataclass
 class ScanConfig:
     main_branch: str = ""
-    exclusions: list[str] = field(default_factory=list)
+    exclusions: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUSIONS))
     disabled_analyzers: list[str] = field(default_factory=list)
     semgrep_config: str = "p/default"
     complexity_threshold: int = 10
@@ -218,7 +231,7 @@ def count_code_lines(reader, files):
 
 def new_code_metrics(new_code, covered, coverable, duplicated):
     new_lines = sum(len(v) for v in new_code.values())
-    metrics = {"new_lines": new_lines}
+    metrics: dict[str, float] = {"new_lines": new_lines}
     to_cover = sum(len(lines & coverable.get(p, set())) for p, lines in new_code.items())
     if coverable and to_cover:
         hit = sum(len(lines & covered.get(p, set())) for p, lines in new_code.items())
@@ -289,7 +302,7 @@ def build_payload(root, combined, tools, fingerprints, changed):
     return {
         "tools": tools,
         "metrics": combined.metrics,
-        "issues": [{**asdict(f), "fingerprint": fp} for f, fp in zip(combined.findings, fingerprints)],
+        "issues": [{**asdict(f), "fingerprint": fp} for f, fp in zip(combined.findings, fingerprints, strict=True)],
         "changed_lines": None if changed is None else {
             p: sorted(lines) for p, lines in changed.items() if p in issue_paths
         },

@@ -10,12 +10,13 @@ import re
 import subprocess
 import tempfile
 import urllib.request
-import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import defusedxml.ElementTree as ET
+
 from ..analyzers.accessibility import HTML_VALIDATE_CONFIG
-from ..analyzers.base import TOOLS_DIR, by_prefix, node_tool, tool_path
+from ..analyzers.base import TOOLS_DIR, by_prefix, isolated_tool, node_tool, tool_path
 from ..analyzers.extra import eslint_classify
 from ..analyzers.multi_tools import CPPCHECK_NOISE, CPPCHECK_SEVERITY, SEMGREP_SEVERITY, semgrep_type
 from ..analyzers.python_tools import BANDIT_SEVERITY, RUFF_EXTEND_IGNORE, RUFF_RULES
@@ -23,7 +24,7 @@ from ..analyzers.python_tools import BANDIT_SEVERITY, RUFF_EXTEND_IGNORE, RUFF_R
 PYTHON, JS, C, HTML, CSS, WEB, IAC, ANY = "python", "javascript", "c/c++", "html", "css", "web", "iac", "any"
 SEMGREP_PACK_URL = "https://semgrep.dev/c/p/default"
 ESLINT_DOC_URL = "https://raw.githubusercontent.com/eslint/eslint/main/docs/src/rules/{}.md"
-LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
+LINK_RE = re.compile(r"\[([^\]\n]{1,300})\]\((https?://[^)\s]{1,2000})\)")
 CWE_RE = re.compile(r"CWE-(\d+)")
 BANDIT_DOC_RE = re.compile(r"/(b\d{3})[_-]", re.IGNORECASE)
 JS_LANGS = {"javascript", "typescript", "js", "ts"}
@@ -116,7 +117,8 @@ def bandit():
 
 def bandit_plugin(plugin, issue):
     fn = plugin.plugin
-    source = inspect.getsource(inspect.getmodule(fn))
+    module = inspect.getmodule(fn)
+    source = inspect.getsource(module) if module else ""
     cwes = {getattr(issue.Cwe, n) for n in re.findall(r"cwe=issue\.Cwe\.(\w+)", source)} - {0}
     doc = inspect.getdoc(fn) or ""
     paragraphs = [p for p in doc.split("\n\n")[1:] if p and not p.startswith(("..", ":"))]
@@ -193,24 +195,25 @@ def cppcheck():
         return []
     out = []
     for e in ET.fromstring(run(path, "--errorlist")).iter("error"):
-        if e.get("severity") not in CPPCHECK_SEVERITY or e.get("id") in CPPCHECK_NOISE:
+        level, code, cwe = e.get("severity", ""), e.get("id", ""), e.get("cwe", "0")
+        if level not in CPPCHECK_SEVERITY or code in CPPCHECK_NOISE:
             continue
-        severity, type_ = CPPCHECK_SEVERITY[e.get("severity")]
+        severity, type_ = CPPCHECK_SEVERITY[level]
         # cppcheck's messages are GPL; the catalogue keeps the ID, classification and CWE only.
-        out.append(rule("cppcheck", e.get("id"), humanize(e.get("id")), [C], type_, severity,
+        out.append(rule("cppcheck", code, humanize(code), [C], type_, severity,
                         license_="GPL-3.0 (cppcheck): ID only", docs="https://cppcheck.sourceforge.io/manual.html",
-                        cwe=[int(e.get("cwe"))] if e.get("cwe", "0") != "0" else []))
+                        cwe=[int(cwe)] if cwe != "0" else []))
     return out
 
 
 def checkov():
-    binary = TOOLS_DIR / "checkov-venv" / "bin" / "checkov"
-    if not binary.exists():
+    binary = isolated_tool("checkov")
+    if not binary:
         return []
     out, seen = [], set()
     for framework in ("dockerfile", "terraform", "github_actions", "kubernetes"):
         # --list only prints a Markdown table: | n | Id | Type | Entity | Policy | IaC | Resource Link |
-        for line in run(str(binary), "--list", "--framework", framework).splitlines():
+        for line in run(binary, "--list", "--framework", framework).splitlines():
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             if len(cells) < 7 or not cells[1].startswith("CKV") or cells[1] in seen:
                 continue
@@ -235,7 +238,7 @@ def clean_eslint_doc(text):
     text = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.DOTALL)
     text = re.sub(r"^::: ?(incorrect|correct)[^\n]*$", lambda m: f"**{m[1].capitalize()} code:**", text, flags=re.MULTILINE)
     text = re.sub(r"^:::\s*$", "", text, flags=re.MULTILINE)
-    return re.sub(r"\{%.*?%\}", "", text).strip()
+    return re.sub(r"\{%[^%]{0,500}%\}", "", text).strip()
 
 
 def local_doc(path):
@@ -257,7 +260,7 @@ def eslint_doc(rule_id):
 def eslint(data):
     ids = [r["id"] for r in data.get("eslint", [])]
     with ThreadPoolExecutor(max_workers=8) as pool:
-        texts = dict(zip(ids, pool.map(eslint_doc, ids)))
+        texts = dict(zip(ids, pool.map(eslint_doc, ids), strict=True))
     out = []
     for r in data.get("eslint", []):
         severity, type_ = eslint_classify(r["id"], 2)

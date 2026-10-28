@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path chosen by codewatch, not by scanned code
 const { urls, timeoutMs = 30000, colorScheme = "light" } = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const MAX_NODES = 20;
 

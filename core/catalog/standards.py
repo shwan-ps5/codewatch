@@ -2,8 +2,9 @@
 import io
 import json
 import re
-import xml.etree.ElementTree as ET
 import zipfile
+
+import defusedxml.ElementTree as ET
 
 CWE_XML_URL = "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
 WCAG_JSON_URL = "https://www.w3.org/WAI/WCAG22/wcag.json"
@@ -44,7 +45,7 @@ class Cwe:
         with zipfile.ZipFile(io.BytesIO(xml_zip)) as z:
             self.root = ET.fromstring(z.read(next(n for n in z.namelist() if n.endswith(".xml"))))
         self.ns = {"c": self.root.tag.split("}")[0][1:]}
-        self.weaknesses = {int(w.get("ID")): w for w in self.root.iterfind(".//c:Weakness", self.ns)}
+        self.weaknesses = {int(w.get("ID", "0")): w for w in self.root.iterfind(".//c:Weakness", self.ns)}
 
     def find(self, path, node=None):
         return (node if node is not None else self.root).iterfind(path, self.ns)

@@ -20,10 +20,13 @@ def server(monkeypatch):
     def request(url, token, data=None, timeout=600):
         path = url.removeprefix("http://testserver")
         if data is None:
-            resp = django_client.get(path, **auth(token))
+            resp = django_client.get(path, headers=auth(token))
         else:
-            resp = django_client.generic("POST", path, gzip.compress(json.dumps(data).encode()),
-                                         content_type="application/json", HTTP_CONTENT_ENCODING="gzip", **auth(token))
+            body = gzip.compress(json.dumps(data).encode())
+            resp = django_client.generic(
+                "POST", path, body,  # pyright: ignore[reportArgumentType] - Django sends bytes bodies as-is
+                content_type="application/json", headers={**auth(token), "Content-Encoding": "gzip"},
+            )
         return resp.status_code, resp.json()
 
     monkeypatch.setattr(cli, "request", request)
@@ -75,20 +78,20 @@ def test_api_issue_listing_detail_and_resolve(repo, alice, server):
     token = token_for(alice)
     scan(repo, token)
     c = Client()
-    data = c.get("/api/projects/demo/issues/?type=code_smell,bug", **auth(token)).json()
+    data = c.get("/api/projects/demo/issues/?type=code_smell,bug", headers=auth(token)).json()
     issue = next(i for i in data["issues"] if i["rule"] == "F401")
     assert issue["path"] == "app.py" and issue["line"] == 1
 
-    detail = c.get(f"/api/issues/{issue['id']}/?context=1", **auth(token)).json()
+    detail = c.get(f"/api/issues/{issue['id']}/?context=1", headers=auth(token)).json()
     assert detail["snippet"][0] == {"line": 1, "text": "import os"}
 
     read = token_for(alice, ApiToken.READ)
     resp = c.post(f"/api/issues/{issue['id']}/resolve/", json.dumps({"status": "false_positive", "comment": "ok"}),
-                  content_type="application/json", **auth(read))
+                  content_type="application/json", headers=auth(read))
     assert resp.status_code == 200
-    open_rules = [i["rule"] for i in c.get("/api/projects/demo/issues/", **auth(read)).json()["issues"]]
+    open_rules = [i["rule"] for i in c.get("/api/projects/demo/issues/", headers=auth(read)).json()["issues"]]
     assert "F401" not in open_rules
-    assert c.get("/api/projects/", **auth("cw_wrong")).status_code == 401
+    assert c.get("/api/projects/", headers=auth("cw_wrong")).status_code == 401
 
 
 def test_init_writes_config_and_hook(repo, monkeypatch):

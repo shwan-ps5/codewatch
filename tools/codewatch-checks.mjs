@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const ts = require("typescript");
 const { checkSync } = require("recheck");
 
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path chosen by codewatch, not by scanned code
 const spec = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const literals = [];
 const regexes = [];
@@ -29,6 +30,7 @@ function isStructural(node) {
 }
 
 function scanJs(path) {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path chosen by codewatch, not by scanned code
   const text = readFileSync(path, "utf8");
   const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, scriptKind(path));
   const seen = new Map();

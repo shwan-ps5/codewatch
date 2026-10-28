@@ -128,15 +128,6 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CODEWATCH_CACHE = Path(os.environ.get("CODEWATCH_CACHE", Path.home() / ".cache" / "codewatch"))
-CODEWATCH_DEFAULT_EXCLUSIONS = [
-    "**/node_modules/**",
-    "**/migrations/**",
-    "**/vendor/**",
-    "**/third_party/**",
-    "**/dist/**",
-    "**/build/**",
-    "**/*.min.js",
-]
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "index"

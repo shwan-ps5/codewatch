@@ -141,7 +141,7 @@ def test_rule_api():
 
     raw = ApiToken.issue(User.objects.get(username="admin"), "t", ApiToken.READ)[1]
     data = Client().get("/api/rules/bandit/B602:subprocess_popen_with_shell_equals_true/",
-                        HTTP_AUTHORIZATION=f"Bearer {raw}").json()
+                        headers={"Authorization": f"Bearer {raw}"}).json()
     assert data["cwe"] == [78] and "ruff/S602" in data["same_as"] and data["explanation"]
     assert data["cwe_guidance"][0]["mitigations"]
     catalog.reload()

@@ -59,7 +59,7 @@ def test_blank_template_syntax_keeps_positions():
     src = '{% load x %}<img alt="{{ caption }}">\n{% if a %}<p>{# note #}</p>{% endif %}'
     out = blank_template_syntax(src)
     assert len(out) == len(src) and out.count("\n") == 1
-    assert "{%" not in out and 'alt="xxxxxxxxxxxxx"' in out
+    assert "{%" not in out and 'alt="xxxcaptionxxx"' in out
 
 
 def test_new_code_metrics():
@@ -107,3 +107,61 @@ def test_manifests_requires_dependencies(tmp_path):
 def test_bound_text_is_not_empty():
     out = blank_template_syntax('<h2 x-text="team"></h2><p v-html="x">\n</p><h3></h3>')
     assert out == '<h2 x-text="team">x</h2><p v-html="x">x\n</p><h3></h3>'
+
+
+def test_rule_family_prefixes():
+    from core.analyzers.base import by_prefix
+    from core.analyzers.python_tools import RUFF_RULES
+
+    default = ("minor", "code_smell")
+    assert by_prefix("S602", RUFF_RULES, default) == ("major", "security_hotspot")
+    assert by_prefix("SIM108", RUFF_RULES, default) == default, "S must not swallow SIM"
+    assert by_prefix("BLE001", RUFF_RULES, default) == ("minor", "bug"), "B must not swallow BLE"
+    assert by_prefix("E902", RUFF_RULES, default) == ("blocker", "bug")
+
+
+def test_framework_required_arguments():
+    from core.analyzers.python_tools import framework_required
+
+    assert framework_required("ARG001", "Unused function argument: `request`", "app/views.py")
+    assert framework_required("ARG001", "Unused function argument: `x`", "tests/test_views.py")
+    assert not framework_required("ARG001", "Unused function argument: `x`", "app/views.py")
+    assert not framework_required("F401", "`os` imported but unused", "tests/test_views.py")
+
+
+def test_test_file_detection():
+    from core.analyzers.base import is_test_file
+
+    for path in ("tests/test_a.py", "app/tests/x.py", "test_a.py", "a_test.py", "src/a.spec.ts", "b.test.jsx"):
+        assert is_test_file(path), path
+    for path in ("app/testing.py", "contest.py", "src/latest.js"):
+        assert not is_test_file(path), path
+
+
+def test_match_patterns_are_anchored():
+    from core.analyzers.codewatch_checks import anchored
+
+    assert anchored("a+b", "match") == "^(?:a+b)"
+    assert anchored("a+b", "fullmatch") == "^(?:a+b)$"
+    assert anchored("a+b", "search") == "a+b"
+
+
+def test_known_type_checker_false_positives():
+    from core.analyzers.extra import known_false_positive
+
+    assert known_false_positive('Argument of type "Literal[3]" cannot be assigned to parameter "default" of type '
+                                '"type[NOT_PROVIDED]" in function "__init__"')
+    assert known_false_positive('"__getitem__" method not defined on type "CharField"')
+    assert not known_false_positive('"splitlines" is not a known attribute of "None"')
+
+
+def test_new_projects_get_default_exclusions():
+    from core.collect import DEFAULT_EXCLUSIONS, ScanConfig
+
+    assert ScanConfig().exclusions == DEFAULT_EXCLUSIONS
+    assert ScanConfig().exclusions is not DEFAULT_EXCLUSIONS
+
+
+def test_distinct_template_values_stay_distinct():
+    out = blank_template_syntax("<h2>{{ std.top25.name }}</h2><h2>{{ std.owasp.name }}</h2>")
+    assert out.count("<h2>") == 2 and "top25" in out and "owasp" in out

@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -71,6 +72,12 @@ def tool_path(name):
     return str(local) if local.exists() else shutil.which(name)
 
 
+def isolated_tool(name):
+    """Python analyzers kept in their own venv under tools/ because their pins clash with codewatch's."""
+    path = TOOLS_DIR / f"{name}-venv" / "bin" / name
+    return str(path) if path.exists() else None
+
+
 def node_tool(name):
     """Pinned Node analyzers from tools/ (npm ci --prefix tools); never npx, which would honour a scanned repo's .npmrc."""
     path = TOOLS_DIR / "node_modules" / ".bin" / name
@@ -108,8 +115,17 @@ class Analyzer:
         return proc.stdout if stream == "stdout" else proc.stderr
 
 
+TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]{0,200}\.py$|_test\.py$|\.(test|spec)\.[jt]sx?$")
+
+
+def is_test_file(path):
+    return bool(TEST_PATH_RE.search(path))
+
+
 def by_prefix(code, table, default):
+    """First table row whose prefix is the code's whole rule family: "S" matches S602 but not SIM108."""
     for prefix, *mapping in table:
-        if code.startswith(prefix):
+        rest = code[len(prefix):]
+        if code.startswith(prefix) and (not rest or rest[0].isdigit() or prefix[-1].isdigit()):
             return tuple(mapping)
     return default

@@ -11,7 +11,7 @@ Like sonar-scanner, scans normally run **on the developer's machine** against th
 ```bash
 git clone https://github.com/shwan-ps5/codewatch && cd codewatch
 python3 -m venv venv && venv/bin/pip install -e '.[dev,mcp]'
-make tools                      # Node analyzers, checkov, headless Chromium for axe (needs Node 20+)
+make tools                      # Node analyzers, semgrep and checkov (own venvs), headless Chromium (needs Node 20+)
 venv/bin/python manage.py migrate
 make run                        # http://127.0.0.1:8100
 ```

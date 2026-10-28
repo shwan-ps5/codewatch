@@ -4,7 +4,7 @@ run:
 tools:
 	npm ci --prefix tools
 	tools/node_modules/.bin/playwright install --only-shell chromium
-	python3 -m venv tools/checkov-venv && tools/checkov-venv/bin/pip install -q checkov
+	for t in semgrep checkov; do python3 -m venv tools/$$t-venv && tools/$$t-venv/bin/pip install -q $$t; done
 
 test:
 	venv/bin/pytest -q

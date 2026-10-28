@@ -8,9 +8,12 @@ from .base import TOOLS_DIR, Analyzer, Finding, Result, node_tool
 
 TEMPLATES = {".html", ".htm", ".djhtml", ".jinja", ".jinja2", ".j2"}
 JSX = {".jsx", ".tsx"}
-TEMPLATE_TAG = re.compile(r"\{%.*?%\}|\{#.*?#\}|\{\{.*?\}\}", re.DOTALL)
+TAG_DELIMITERS = (("{%", "%}"), ("{#", "#}"), ("{{", "}}"))
 # Alpine/Vue fill these at runtime, so an empty element in the template isn't empty on the page.
-BOUND_EMPTY = re.compile(r"(<(\w+)\b[^>]*\s(?:x-text|x-html|v-text|v-html)\s*=[^>]*>)(\s*)(</\2>)")
+# Bounded quantifiers keep this linear on hostile input (an unclosed "<" repeated many times).
+BOUND_EMPTY = re.compile(
+    r"(<(\w{1,40})\b[^<>]{0,2000}\s(?:x-text|x-html|v-text|v-html)\s{0,20}=[^<>]{0,2000}>)(\s{0,200})(</\2>)"
+)
 AXE_SEVERITY = {"critical": "critical", "serious": "major", "moderate": "minor", "minor": "info"}
 HTML_VALIDATE_CONFIG = {
     "extends": ["html-validate:a11y"],
@@ -33,16 +36,36 @@ HTML_VALIDATE_CONFIG = {
 }
 
 
+def blank_tag(tag, is_output):
+    """Spaces for {% %}/{# #}; for {{ }} keep the variable's letters so different values stay distinct
+    (e.g. two headings filled from different variables don't look like duplicates)."""
+    if not is_output:
+        return "".join(c if c == "\n" else " " for c in tag)
+    return "".join(c if c.isalnum() or c == "\n" else "x" for c in tag)
+
+
+def next_tag(text, start):
+    found = [(pos, opener, closer) for opener, closer in TAG_DELIMITERS if (pos := text.find(opener, start)) != -1]
+    return min(found) if found else None
+
+
 def blank_template_syntax(text):
     """Strip Django/Jinja tags so the HTML parses, keeping every line and column where it was.
 
-    Output expressions become "x" runs so attributes like alt="{{ caption }}" still count as non-empty.
+    Output expressions keep their letters so attributes like alt="{{ caption }}" still count as non-empty.
+    A plain scan rather than a regex, so hostile templates can't trigger backtracking.
     """
-    def repl(m):
-        fill = "x" if m[0].startswith("{{") else " "
-        return "".join(c if c == "\n" else fill for c in m[0])
-
-    return BOUND_EMPTY.sub(r"\1x\3\4", TEMPLATE_TAG.sub(repl, text))
+    out, i = [], 0
+    while (tag := next_tag(text, i)) is not None:
+        pos, opener, closer = tag
+        end = text.find(closer, pos + 2)
+        if end == -1:
+            break
+        end += 2
+        out += [text[i:pos], blank_tag(text[pos:end], opener == "{{")]
+        i = end
+    out.append(text[i:])
+    return BOUND_EMPTY.sub(r"\1x\3\4", "".join(out))
 
 
 class HtmlA11y(Analyzer):
