@@ -79,6 +79,10 @@ def test_codewatch_pages_pass_axe(repo, alice, bob, server, tmp_path):  # noqa: 
         "new-project": (alice, "/projects/new/"),
         "users": (admin, "/users/"),
         "user-edit": (admin, f"/users/{bob.pk}/"),
+        "rules": (None, "/rules/?language=python"),
+        "rule": (None, "/rules/bandit/B602:subprocess_popen_with_shell_equals_true/"),
+        "standards": (None, "/standards/"),
+        "ratings": (None, "/ratings/"),
     }
     urls = []
     for name, (user, path) in pages.items():

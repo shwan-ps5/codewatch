@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}{% load codewatch %}
+{% block title %}Standards coverage · codewatch{% endblock %}
+{% block crumbs %}<li aria-current="page">Standards</li>{% endblock %}
+{% block content %}
+<h1>Standards coverage</h1>
+<p>How many of codewatch's {{ rule_count }} rules address each weakness or category, by language. A rule counts towards a CWE if it targets that CWE or a more specific one beneath it in MITRE's hierarchy. A zero is a gap. Automated rules can only partially cover most of these, so a non-zero count doesn't mean a weakness is fully prevented.</p>
+<p class="muted">Data: {{ std.source }}; CWE {{ std.cwe_version }} ({{ std.cwe_date }}). {{ std.wcag.source }}.</p>
+
+<section class="card" aria-labelledby="top25-h"><h2 id="top25-h">{{ std.top25.name }}</h2>
+<table><caption class="sr-only">Rules per language for each Top 25 weakness</caption>
+<thead><tr><th scope="col">Rank</th><th scope="col">Weakness</th>{% for c, n in langs %}<th scope="col">{{ n }}</th>{% endfor %}</tr></thead><tbody>
+{% for t in top25 %}<tr><td>{{ t.rank }}</td><th scope="row"><a href="{% url 'rules' %}?cwe={{ t.cwe }}">CWE-{{ t.cwe }}</a> {{ t.name }}</th>
+{% for c, n in langs %}{% with v=t.by_language|get:c %}<td{% if not v %} class="fail"{% endif %}>{% if v %}{{ v }}{% else %}gap{% endif %}</td>{% endwith %}{% endfor %}</tr>{% endfor %}
+</tbody></table></section>
+
+<section class="card" aria-labelledby="owasp-h"><h2 id="owasp-h">{{ std.owasp.name }}</h2>
+<table><caption class="sr-only">Rules per language for each OWASP category</caption>
+<thead><tr><th scope="col">Category</th>{% for c, n in langs %}<th scope="col">{{ n }}</th>{% endfor %}</tr></thead><tbody>
+{% for o in owasp %}<tr><th scope="row"><a href="{% url 'rules' %}?owasp={{ o.id|urlencode }}">{{ o.id }}</a> {{ o.name }}</th>
+{% for c, n in langs %}{% with v=o.by_language|get:c %}<td{% if not v %} class="fail"{% endif %}>{% if v %}{{ v }}{% else %}gap{% endif %}</td>{% endwith %}{% endfor %}</tr>{% endfor %}
+</tbody></table></section>
+
+<section class="card" aria-labelledby="wcag-h"><h2 id="wcag-h">WCAG 2.2 levels A and AA</h2>
+<p>Automated checks reach {{ wcag_summary.A.0 }} of {{ wcag_summary.A.1 }} level A and {{ wcag_summary.AA.0 }} of {{ wcag_summary.AA.1 }} level AA success criteria. The rest need manual testing, as they do with any tool.</p>
+<table><caption class="sr-only">Rules per WCAG success criterion</caption>
+<thead><tr><th scope="col">Criterion</th><th scope="col">Level</th><th scope="col">Rules</th></tr></thead><tbody>
+{% for sc in wcag %}<tr><th scope="row"><a href="{{ sc.url }}" rel="noopener noreferrer">{{ sc.sc }} {{ sc.title }}</a></th><td>{{ sc.level }}</td>
+<td>{% if sc.rules %}<a href="{% url 'rules' %}?wcag={{ sc.sc }}">{{ sc.rules }}</a>{% else %}<span class="muted">manual</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></section>
+{% endblock %}

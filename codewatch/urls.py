@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from core import api, views
+from core import api, catalog_views, views
 
 urlpatterns = [
     path("", views.index, name="index"),
@@ -12,6 +12,11 @@ urlpatterns = [
     path("users/", views.users, name="users"),
     path("users/<int:pk>/", views.user_edit, name="user_edit"),
     path("projects/new/", views.new_project, name="new_project"),
+    path("rules/", catalog_views.rules, name="rules"),
+    path("rules/update/", catalog_views.update_rules, name="update_rules"),
+    path("rules/<path:rule_id>/", catalog_views.rule_detail, name="rule"),
+    path("standards/", catalog_views.standards, name="standards"),
+    path("ratings/", catalog_views.ratings_help, name="ratings"),
     path("p/<slug:key>/", views.project_detail, name="project"),
     path("p/<slug:key>/scan/", views.start_scan, name="scan"),
     path("p/<slug:key>/settings/", views.project_settings, name="settings"),
@@ -31,4 +36,5 @@ urlpatterns = [
     path("api/analyses/<int:pk>/", api.analysis),
     path("api/issues/<int:pk>/", api.issue_detail),
     path("api/issues/<int:pk>/resolve/", api.resolve),
+    path("api/rules/<path:rule_id>/", api.rule),
 ]

@@ -4,6 +4,8 @@ import secrets
 from django.conf import settings
 from django.db import models
 
+from .catalog import custom_semgrep_rules
+
 SEVERITIES = ["blocker", "critical", "major", "minor", "info"]
 ISSUE_TYPES = ["bug", "vulnerability", "security_hotspot", "code_smell", "accessibility"]
 
@@ -22,7 +24,13 @@ class Project(models.Model):
     exclusions = models.JSONField(default=default_exclusions, blank=True)
     disabled_analyzers = models.JSONField(default=list, blank=True)
     semgrep_config = models.CharField(max_length=200, default="p/default")
-    complexity_threshold = models.PositiveIntegerField(default=10)
+    complexity_threshold = models.PositiveIntegerField(default=10, help_text="Cyclomatic complexity per function")
+    cognitive_complexity_threshold = models.PositiveIntegerField(
+        default=15, help_text="Cognitive complexity per function (Python)"
+    )
+    duplicate_literal_threshold = models.PositiveIntegerField(
+        default=3, help_text="Flag a string literal repeated more than this many times in a file"
+    )
     a11y_urls = models.JSONField(
         default=list, blank=True, help_text="Live pages to check with axe-core; {branch} is replaced by the branch name"
     )
@@ -49,6 +57,9 @@ class Project(models.Model):
             "disabled_analyzers": self.disabled_analyzers,
             "semgrep_config": self.semgrep_config,
             "complexity_threshold": self.complexity_threshold,
+            "cognitive_complexity_threshold": self.cognitive_complexity_threshold,
+            "duplicate_literal_threshold": self.duplicate_literal_threshold,
+            "custom_rules": custom_semgrep_rules(),
             "a11y_urls": self.a11y_urls,
             "main_analyses": [{"commit": a.commit, "reference_commit": a.reference_commit} for a in main],
         }
@@ -128,6 +139,7 @@ class Issue(models.Model):
     line = models.PositiveIntegerField(null=True)
     end_line = models.PositiveIntegerField(null=True)
     is_new = models.BooleanField(default=False)
+    also_reported_by = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["path", "line"]
@@ -234,4 +246,6 @@ DEFAULT_GATE = [
     ("new_duplicated_lines_percent", GateCondition.GT, 3),
     ("dependency_critical_vulnerabilities", GateCondition.GT, 0),
     ("new_accessibility_issues", GateCondition.GT, 0),
+    ("new_maintainability_rating", GateCondition.GT, 1),
+    ("new_security_review_rating", GateCondition.GT, 1),
 ]

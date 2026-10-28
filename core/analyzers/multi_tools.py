@@ -5,6 +5,8 @@ import os
 import tempfile
 from pathlib import Path
 
+import yaml
+
 from .base import CODE, JS, PY, Analyzer, C, Finding, Result, node_tool
 from .python_tools import complexity_severity
 
@@ -53,17 +55,29 @@ class Lizard(Analyzer):
 
 class Semgrep(Analyzer):
     name = executable = "semgrep"
-    extensions = CODE
+    extensions = CODE | {".yml", ".yaml", ".html"}
 
     def run(self, ctx):
-        args = ["scan", "--config", ctx.semgrep_config, "--json", "--metrics=off", "--quiet",
-                "--disable-version-check", *ctx.files_with(CODE)]
-        data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
+        with tempfile.NamedTemporaryFile("w", suffix=".yml") as custom:
+            configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
+            custom_ids = []
+            if ctx.custom_rules:
+                custom.write(ctx.custom_rules)
+                custom.flush()
+                configs += ["--config", custom.name]
+                custom_ids = [r["id"] for r in yaml.safe_load(ctx.custom_rules).get("rules", [])]
+            if not configs:
+                return Result()
+            args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check",
+                    *ctx.files_with(CODE)]
+            data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
         result = Result()
         for item in data["results"]:
             extra = item["extra"]
+            # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
+            custom_id = next((cid for cid in custom_ids if item["check_id"].endswith(cid)), None)
             result.findings.append(
-                Finding("semgrep", item["check_id"], SEMGREP_SEVERITY.get(extra.get("severity"), "minor"),
+                Finding("codewatch" if custom_id else "semgrep", custom_id or item["check_id"], SEMGREP_SEVERITY.get(extra.get("severity"), "minor"),
                         semgrep_type(item["check_id"], extra.get("metadata", {})), extra["message"].strip(),
                         ctx.rel(item["path"]), item["start"]["line"], item["end"]["line"])
             )

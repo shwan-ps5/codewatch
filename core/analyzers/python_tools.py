@@ -2,14 +2,28 @@ import json
 
 from .base import PY, Analyzer, Finding, Result, by_prefix
 
+# Rule families enabled on top of a project's own ruff config; S (bandit) is left to bandit itself.
+RUFF_EXTEND_SELECT = [
+    "B", "SIM", "C4", "PERF", "RET", "ARG", "ERA", "FIX", "PLE", "PLW", "PLR", "PIE", "RUF", "DTZ", "BLE",
+    "TRY", "ASYNC", "DJ", "LOG", "G", "INT", "EXE", "T10",
+]
+# Codes that are noise for whole-repo quality tracking (style nits, or covered by radon/complexipy).
+RUFF_EXTEND_IGNORE = ["PLR2004", "PLR0911", "PLR0912", "PLR0915", "PLR0914", "PLR0917", "TRY003", "RUF012"]
+
 RUFF_RULES = [
     ("E9", "blocker", "bug"),
     ("F82", "critical", "bug"),
     ("F63", "major", "bug"),
     ("F7", "major", "bug"),
     ("PLE", "major", "bug"),
+    ("ASYNC", "major", "bug"),
+    ("T10", "major", "bug"),
     ("B", "major", "bug"),
+    ("PLW", "minor", "bug"),
+    ("DTZ", "minor", "bug"),
+    ("BLE", "minor", "bug"),
     ("S", "major", "security_hotspot"),
+    ("FIX", "info", "code_smell"),
 ]
 
 BANDIT_SEVERITY = {"HIGH": "critical", "MEDIUM": "major", "LOW": "minor"}
@@ -27,7 +41,9 @@ class Ruff(Analyzer):
     def run(self, ctx):
         files = ctx.files_with(PY)
         out = self.exec(
-            ["check", "--output-format", "json", "--exit-zero", "--no-cache", "--extend-select", "B", *files], ctx
+            ["check", "--output-format", "json", "--exit-zero", "--no-cache",
+             "--extend-select", ",".join(RUFF_EXTEND_SELECT), "--extend-ignore", ",".join(RUFF_EXTEND_IGNORE),
+             *files], ctx
         )
         result = Result()
         for item in json.loads(out or "[]"):

@@ -11,7 +11,7 @@ Like sonar-scanner, scans normally run **on the developer's machine** against th
 ```bash
 git clone https://github.com/shwan-ps5/codewatch && cd codewatch
 python3 -m venv venv && venv/bin/pip install -e '.[dev,mcp]'
-make tools                      # Node analyzers + headless Chromium for axe (needs Node 20+)
+make tools                      # Node analyzers, checkov, headless Chromium for axe (needs Node 20+)
 venv/bin/python manage.py migrate
 make run                        # http://127.0.0.1:8100
 ```
@@ -65,26 +65,57 @@ The project owner adds people under **Settings → Members**:
 
 Administrators see every project.
 
-## What it checks
+## Languages
 
-| Analyzer | Covers |
+| Language / target | What runs |
 |---|---|
-| ruff, bandit, radon | Python lint, security, complexity, maintainability |
-| lizard | complexity for JS/TS, C/C++ and others |
-| semgrep CE | bugs, vulnerabilities and security hotspots across languages (config per project, default `p/default`) |
-| cppcheck | C/C++ |
-| jscpd | duplication |
-| pip-audit + OSV | known CVEs in Python dependencies (`requirements*.txt`, `pyproject.toml`), rated by advisory severity |
-| html-a11y (html-validate) | static WCAG checks on HTML/Django/Jinja templates: alt text, labels, empty headings, landmarks, ARIA |
-| jsx-a11y (ESLint) | accessibility rules for JSX/TSX |
-| axe (axe-core + Chromium) | runtime WCAG 2.2 AA on live pages: colour contrast, ARIA, focus, landmarks. Set **Accessibility URLs** per project (e.g. `http://localhost:8000/`); `{branch}` is replaced by the branch name |
-| coverage | imports Cobertura XML / LCOV; paths from other machines are matched by suffix |
+| **Python** (incl. Django, Flask, FastAPI) | ruff (bugs, smells, Django rules), bandit (security), basedpyright (type errors such as None access and wrong arguments), radon (cyclomatic complexity, maintainability index), complexipy (cognitive complexity), semgrep registry rules (incl. Django/Flask/FastAPI security), pip-audit (dependency CVEs), codewatch checks |
+| **JavaScript / TypeScript** | ESLint core rules plus eslint-plugin-security, lizard (complexity), semgrep, codewatch checks; jsx-a11y for JSX/TSX |
+| **HTML / Django & Jinja templates** | html-validate accessibility rules (template tags are blanked, Alpine/Vue bindings understood) |
+| **CSS** | stylelint (invalid values, unknown properties, duplicates) |
+| **Live pages** | axe-core in headless Chromium: WCAG 2.2 AA including colour contrast |
+| **C / C++** | cppcheck, lizard, semgrep |
+| **Dockerfile, Terraform, Kubernetes, GitHub Actions** | checkov |
+| **Any file** | detect-secrets (hard-coded secrets), jscpd (duplication) |
+| **Java, Go, Ruby, PHP, Kotlin, Rust, C#…** | semgrep registry rules and lizard complexity only, for now |
 
-Issue types: bug, vulnerability, **security hotspot** (security-sensitive code to review: semgrep audit rules, low-confidence or blacklist bandit checks), code smell, accessibility.
+codewatch's own checks (Python and JS/TS): **string literals repeated more than N times** in a file (default 3), and **regexes vulnerable to catastrophic backtracking (ReDoS)**, analysed with recheck. Cognitive complexity is flagged above 15 by default; thresholds are per project.
 
-**New code**: on a branch, everything changed since its merge-base with the main branch (plus uncommitted/untracked files for local scans); on main, everything since the previous analysis. An issue is new if it is on a changed line, or absent from the reference analysis in a changed file. Issues are fingerprinted by rule + file + source text, so they keep their identity, and any won't-fix / false-positive resolution, when code moves.
+Issue types: bug, vulnerability, **security hotspot** (security-sensitive code to review), code smell, accessibility. When several tools report the same problem on the same line, it becomes one issue that lists the others ("also reported by").
 
-The default quality gate fails on new blocker/critical issues, new bugs, new vulnerabilities, new accessibility issues, new-code coverage below 80%, new-code duplication above 3%, and any critical dependency CVE. Edit it per project under **Settings**.
+**New code**: on a branch, everything changed since its merge-base with the main branch (plus uncommitted/untracked files for local scans); on main, everything since the previous analysis. Issues are fingerprinted by rule + file + source text, so they keep their identity, and any won't-fix / false-positive resolution, when code moves.
+
+## Ratings and the quality gate
+
+Each analysis gets A–E ratings, overall and on new code: **reliability**, **security** and **accessibility** (worst open issue of that type), **maintainability** (SQALE technical-debt ratio) and **security review** (share of hotspots reviewed), combined into a 0–100 **health score**. The `/ratings/` page explains the formulas.
+
+Default gate compared with the "Sonar way" gate as Sonar documents it publicly:
+
+| Condition on new code | codewatch default | Sonar way |
+|---|---|---|
+| New issues | none that are blocker/critical, no bugs, no vulnerabilities, maintainability A | no new issues (ratings A) |
+| Security hotspots | security review A (≥ 80% reviewed) | all reviewed |
+| Coverage | ≥ 80% | ≥ 80% |
+| Duplication | ≤ 3% | ≤ 3% |
+| Small changes | coverage/duplication skipped under 20 new lines | same |
+| Dependency CVEs | no critical ones (overall) | not in the free edition |
+| Accessibility | no new accessibility issues | not included |
+
+Every condition can be changed per project under **Settings**.
+
+## Rule catalogue
+
+`/rules/` is a public, searchable catalogue of every rule (about 4,100), with what's wrong, how to fix it and examples where the source documentation is freely licensed (ruff, bandit, ESLint, stylelint, jsx-a11y), plus MITRE CWE descriptions, mitigations and example code for security rules. Each rule links to its origin and its standards: CWE, OWASP Top 10 (2025), WCAG 2.2, PEPs. `/standards/` shows coverage of the CWE Top 25, OWASP Top 10 and WCAG A/AA by language, with gaps marked.
+
+The catalogue has two layers:
+
+- `catalog/imported/` is generated from the analyzers' own metadata and from MITRE, W3C and the Semgrep registry, and is **replaced on every import**. Rules from restrictively licensed sources (Semgrep registry, cppcheck's GPL messages) are recorded by ID, classification and CWE only.
+- `catalog/custom/` is **never touched by an import**:
+  - `rules/*.yml`: your own checks in [Semgrep rule syntax](https://semgrep.dev/docs/writing-rules/rule-syntax). They run in every scan, including local `codewatch scan` runs (the server sends them with the project config). Add `metadata.cwe`, `owasp` and `references` and they appear in the catalogue and coverage.
+  - `mappings.json`: extra CWE / WCAG / OWASP mappings for rules whose tool doesn't publish them, and `equivalent` groups of rules that perform the same check.
+  - `overrides.json`: change a rule's severity, type or title, or disable it.
+
+Admins can press **Update rules now** (optionally upgrading the analyzers first) on `/rules/`. Updates also run automatically every `CODEWATCH_CATALOG_UPDATE_DAYS` days (default 7, `0` disables; set `CODEWATCH_CATALOG_UPGRADE_TOOLS=1` to include analyzer upgrades), or from cron with `manage.py updatecatalog [--upgrade-tools]`. A server's imports go to its cache directory; `manage.py buildcatalog` refreshes the snapshot committed in `catalog/imported/`.
 
 ## Claude / MCP
 
@@ -95,7 +126,7 @@ claude mcp add codewatch -e CODEWATCH_URL=http://127.0.0.1:8100 -e CODEWATCH_TOK
   -- /path/to/codewatch/venv/bin/codewatch-mcp
 ```
 
-Tools: `list_projects`, `quality_gate`, `list_issues` (filter by branch, new code, type, severity, tool, path), `list_security_hotspots`, `get_issue` (with source snippet), `resolve_issue`, `start_server_scan`. Paths are repo-relative, so the agent can fix issues in its local checkout and rescan with `codewatch scan`.
+Tools: `list_projects`, `quality_gate`, `list_issues` (filter by branch, new code, type, severity, tool, path), `list_security_hotspots`, `get_issue` (with source snippet and rule summary), `get_rule` (explanation, fix guidance and examples), `resolve_issue`, `start_server_scan`. Paths are repo-relative, so the agent can fix issues in its local checkout and rescan with `codewatch scan`.
 
 ## HTTP API
 
@@ -106,7 +137,8 @@ All endpoints take `Authorization: Bearer <token>`.
 | GET | `/api/projects/` | projects you can see, with latest analysis per branch |
 | GET | `/api/projects/<key>/status/?branch=` | latest analysis: gate, metrics, tools |
 | GET | `/api/projects/<key>/issues/?branch=&new=1&type=&severity=&tool=&path=&status=&limit=&offset=` | issues, most severe first |
-| GET | `/api/issues/<id>/?context=5` | one issue with source snippet |
+| GET | `/api/issues/<id>/?context=5` | one issue with source snippet and its rule |
+| GET | `/api/rules/<rule id>/` | catalogue rule with explanation and CWE fix guidance |
 | POST | `/api/issues/<id>/resolve/` | `{"status": "false_positive" \| "wont_fix" \| "reopen", "comment": ""}` |
 | GET | `/api/projects/<key>/config/` | scan settings used by the client (scan scope) |
 | POST | `/api/projects/<key>/analyses/` | upload a `codewatch scan` payload (scan scope; gzip JSON) |

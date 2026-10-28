@@ -4,13 +4,24 @@
 {% block content %}
 <h1>{{ analysis.branch }} <code>{{ analysis.commit|slice:":8" }}</code></h1>
 {% if analysis.status == "failed" %}<section class="card" role="alert"><h2 class="fail">Analysis failed</h2><pre>{{ analysis.error }}</pre></section>{% endif %}
+<section aria-labelledby="scores-h"><h2 id="scores-h" class="sr-only">Ratings</h2>
+<div class="scores">
+<div class="card"><span class="label">Health score</span>{% with g=m.health_score|score_grade %}<span><span class="rating big rating-{{ g }}" role="img" aria-label="Health {{ g }}">{{ g }}</span> {{ m.health_score|num }} / 100</span>{% endwith %}<a class="sub" href="{% url 'ratings' %}">How it's calculated</a></div>
+<div class="card"><span class="label">Reliability</span><span>{% include "core/rating.html" with value=m.reliability_rating what="Reliability" big=1 %} {{ m.bugs|num }} bugs</span><span class="sub">New code: {{ m.new_reliability_rating|grade }}</span></div>
+<div class="card"><span class="label">Security</span><span>{% include "core/rating.html" with value=m.security_rating what="Security" big=1 %} {{ m.vulnerabilities|num }} vulnerabilities</span><span class="sub">New code: {{ m.new_security_rating|grade }}</span></div>
+<div class="card"><span class="label">Security review</span><span>{% include "core/rating.html" with value=m.security_review_rating what="Security review" big=1 %} {{ m.security_hotspots|num }} open hotspots</span><span class="sub">New code: {{ m.new_security_review_rating|grade }}</span></div>
+<div class="card"><span class="label">Maintainability</span><span>{% include "core/rating.html" with value=m.maintainability_rating what="Maintainability" big=1 %} {{ m.debt_ratio_percent|num }}% debt</span><span class="sub">New code: {{ m.new_maintainability_rating|grade }}</span></div>
+<div class="card"><span class="label">Accessibility</span><span>{% include "core/rating.html" with value=m.accessibility_rating what="Accessibility" big=1 %} {{ m.accessibility_issues|num }} issues</span><span class="sub">New code: {{ m.new_accessibility_rating|grade }}</span></div>
+<div class="card"><span class="label">Coverage</span><span>{{ m.coverage|num }}{% if m.coverage is not None %}%{% endif %}</span><span class="sub">New code: {{ m.new_coverage|num }}{% if m.new_coverage is not None %}%{% endif %}</span></div>
+<div class="card"><span class="label">Duplication</span><span>{{ m.duplicated_lines_percent|num }}{% if m.duplicated_lines_percent is not None %}%{% endif %}</span><span class="sub">New code: {{ m.new_duplicated_lines_percent|num }}{% if m.new_duplicated_lines_percent is not None %}%{% endif %}</span></div>
+</div></section>
 <section class="card" aria-labelledby="gate-h"><h2 id="gate-h">Quality gate: {% include "core/gate_badge.html" %}</h2>
 <p class="muted">{% if analysis.reference_commit %}New code = changes since <code>{{ analysis.reference_commit|slice:":8" }}</code> on {{ analysis.reference_branch }}.{% else %}No reference yet, so there is no new code on this analysis.{% endif %}
 {% if analysis.dirty %} Scanned with uncommitted local changes.{% endif %}</p>
 <table><caption class="sr-only">Quality gate conditions</caption>
 <thead><tr><th scope="col">Metric</th><th scope="col">Fails when</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>
 {% for d in analysis.gate_details %}<tr><th scope="row">{{ d.metric|label }}</th><td>{% if d.op == "gt" %}greater than{% else %}less than{% endif %} {{ d.threshold|num }}</td><td>{{ d.value|num }}</td>
-<td class="{% if d.status == 'error' %}fail{% elif d.status == 'ok' %}pass{% else %}muted{% endif %}">{% if d.status == 'error' %}Failed{% elif d.status == 'ok' %}OK{% else %}No value{% endif %}</td></tr>{% endfor %}
+<td class="{% if d.status == 'error' %}fail{% elif d.status == 'ok' %}pass{% else %}muted{% endif %}">{% if d.status == 'error' %}Failed{% elif d.status == 'ok' %}OK{% elif d.status == 'too_few_lines' %}Skipped: under 20 new lines{% else %}No value{% endif %}</td></tr>{% endfor %}
 </tbody></table></section>
 <div class="grid">
 <div class="card"><table><caption>By severity</caption><thead><tr><th scope="col">Severity</th><th scope="col">New</th><th scope="col">Overall</th></tr></thead><tbody>

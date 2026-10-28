@@ -14,6 +14,11 @@ dependencies = [
     "lizard",
     "semgrep",
     "pip-audit",
+    "complexipy",
+    "basedpyright",
+    "detect-secrets",
+    "markdown-it-py",
+    "PyYAML",
 ]
 
 [project.scripts]
