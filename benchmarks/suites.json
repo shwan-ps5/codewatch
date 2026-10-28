@@ -1,0 +1,26 @@
+{
+  "_about": "Third-party code with published ground truth, pinned to a commit. Scanned, never executed.",
+  "suites": [
+    {
+      "name": "owasp-benchmark-python",
+      "language": "python",
+      "repo": "https://github.com/OWASP-Benchmark/BenchmarkPython.git",
+      "commit": "f1291485808b66e20ddb6b01b10dc71b3df8c8ba",
+      "license": "GPL-3.0",
+      "kind": "owasp-benchmark",
+      "expected": "expectedresults-0.1.csv",
+      "test_dir": "testcode",
+      "about": "OWASP Benchmark for Python: each test case is a small Flask handler that is or is not really vulnerable to one CWE. Measures detection and false alarms."
+    },
+    {
+      "name": "juice-shop",
+      "language": "javascript",
+      "repo": "https://github.com/juice-shop/juice-shop.git",
+      "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
+      "license": "MIT",
+      "kind": "vuln-snippets",
+      "challenges": "data/static/challenges.yml",
+      "about": "OWASP Juice Shop (Node/Express/Angular): lines marked 'vuln-code-snippet vuln-line' are the known vulnerable lines of its coding challenges. Measures detection only; unmarked code is not labelled safe."
+    }
+  ]
+}

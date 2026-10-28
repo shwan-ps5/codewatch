@@ -294,10 +294,20 @@ def build_parser():
     init.add_argument("--url")
     init.add_argument("--hook", choices=["pre-push", "pre-commit", "none"], default="none")
     init.add_argument("--strict", action="store_true", help="Make the hook block when the quality gate fails")
+    bench = sub.add_parser("benchmark", help="Score codewatch against suites with known vulnerabilities")
+    bench.add_argument("suites", nargs="*", help="Suite names from benchmarks/suites.json (default: all)")
     return parser
 
 
-COMMANDS = {"scan": cmd_scan, "coverage": cmd_coverage, "init": cmd_init}
+def cmd_benchmark(args):
+    from .benchmark import run as run_benchmarks
+
+    for name, result in run_benchmarks(args.suites or None, log=log).items():
+        log(f"{name}: {json.dumps(result['overall'])}")
+    return 0
+
+
+COMMANDS = {"scan": cmd_scan, "coverage": cmd_coverage, "init": cmd_init, "benchmark": cmd_benchmark}
 
 
 def run(args):

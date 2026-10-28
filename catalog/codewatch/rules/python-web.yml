@@ -1,0 +1,457 @@
+# codewatch built-in rules for Python web code (Flask, Django, FastAPI, Starlette).
+# Taint rules report a vulnerability only when data from the HTTP request reaches a dangerous call, so plain use
+# of an API is left to the hotspot rules. Shared pieces are YAML anchors.
+rules:
+  - id: codewatch.python.web.command-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request reaches a shell or process command, so a user can run their own commands.
+      Pass arguments as a list without a shell, validate them against an allowlist, or quote with shlex.quote().
+    metadata: &meta-command
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used in an OS command
+      cwe: ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+        - https://docs.python.org/3/library/subprocess.html#security-considerations
+    pattern-sources: &web-sources
+      - pattern: flask.request
+      - pattern: request
+      - pattern: starlette.requests.Request
+    pattern-propagators: &propagators
+      - {pattern: '$TO.append($FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.extend($FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.insert($I, $FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.add($FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.update($FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.set($SECTION, $KEY, $FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.put($FROM)', from: $FROM, to: $TO}
+      - {pattern: '$TO.write($FROM)', from: $FROM, to: $TO}
+    pattern-sanitizers:
+      - pattern: shlex.quote(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: subprocess.$FUNC($CMD, ...)
+              - pattern: os.system($CMD)
+              - pattern: os.popen($CMD, ...)
+              - patterns:
+                  - pattern: os.$EXEC($CMD, ...)
+                  - metavariable-regex: {metavariable: $EXEC, regex: '^(exec[lv]p?e?|spawn[lv]p?e?)$'}
+          - focus-metavariable: $CMD
+
+  - id: codewatch.python.web.code-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is evaluated as Python code. Never pass user input to eval/exec/compile;
+      use ast.literal_eval for literals or an explicit mapping of allowed operations.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data evaluated as code
+      cwe: ["CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://docs.python.org/3/library/functions.html#eval
+        - https://owasp.org/www-community/attacks/Code_Injection
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: eval($CODE, ...)
+              - pattern: exec($CODE, ...)
+              - pattern: compile($CODE, ...)
+          - focus-metavariable: $CODE
+
+  - id: codewatch.python.web.sql-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is built into an SQL statement. Use query parameters
+      (cursor.execute(sql, params), the ORM, or sqlalchemy.text() with bound parameters) instead of string formatting.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data built into SQL
+      cwe: ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html
+        - https://docs.djangoproject.com/en/stable/topics/db/sql/#passing-parameters-into-raw
+        - https://peps.python.org/pep-0249/
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CUR.execute($SQL, ...)
+              - pattern: $CUR.executemany($SQL, ...)
+              - pattern: $CUR.executescript($SQL)
+              - pattern: $MODEL.objects.raw($SQL, ...)
+              - pattern: $QS.extra(where=$SQL, ...)
+              - pattern: sqlalchemy.text($SQL)
+          - focus-metavariable: $SQL
+
+  - id: codewatch.python.web.path-traversal
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is used in a file path, so "../" can reach files outside the intended directory.
+      Use werkzeug.utils.secure_filename / os.path.basename, or resolve the path and check it stays inside the base.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used in a file path
+      cwe: ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://werkzeug.palletsprojects.com/en/stable/utils/#werkzeug.utils.secure_filename
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - pattern: os.path.basename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+      - pattern: secure_filename(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: open($PATH, ...)
+              - pattern: io.open($PATH, ...)
+              - pattern: codecs.open($PATH, ...)
+              - pattern: os.open($PATH, ...)
+              - pattern: pathlib.Path($PATH, ...)
+              - pattern: os.remove($PATH)
+              - pattern: os.unlink($PATH)
+              - pattern: os.rename($PATH, ...)
+              - pattern: os.listdir($PATH)
+              - pattern: shutil.$OP($PATH, ...)
+              - pattern: flask.send_file($PATH, ...)
+              - pattern: send_file($PATH, ...)
+              - pattern: django.http.FileResponse(open($PATH, ...), ...)
+          - focus-metavariable: $PATH
+
+  - id: codewatch.python.web.xss
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is written into an HTML response without escaping. Render it through an
+      auto-escaping template, or escape it with html.escape()/markupsafe.escape() first.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data in an HTML response without escaping
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+        - https://flask.palletsprojects.com/en/stable/web-security/#cross-site-scripting-xss
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - pattern: html.escape(...)
+      - pattern: markupsafe.escape(...)
+      - pattern: flask.escape(...)
+      - pattern: django.utils.html.escape(...)
+      - pattern: bleach.clean(...)
+      - pattern: flask.jsonify(...)
+      - pattern: jsonify(...)
+      - pattern: json.dumps(...)
+      # Project helpers named like escape_html / html_escape are treated as escaping functions.
+      - patterns:
+          - pattern: $ESCAPE(...)
+          - metavariable-regex: {metavariable: $ESCAPE, regex: '(?i)(^|[._])\w{0,30}escape\w{0,30}$'}
+    pattern-sinks:
+      - patterns:
+          - pattern-inside: |
+              @$APP.route(...)
+              def $VIEW(...):
+                ...
+          - pattern: return $BODY
+          - focus-metavariable: $BODY
+      - patterns:
+          - pattern-either:
+              - pattern: flask.make_response($BODY, ...)
+              - pattern: make_response($BODY, ...)
+              - pattern: flask.Response($BODY, ...)
+              - pattern: flask.render_template_string($BODY, ...)
+              - pattern: render_template_string($BODY, ...)
+              - pattern: markupsafe.Markup($BODY)
+              - pattern: django.http.HttpResponse($BODY, ...)
+              - pattern: django.utils.safestring.mark_safe($BODY)
+              - pattern: mark_safe($BODY)
+          - focus-metavariable: $BODY
+
+  - id: codewatch.python.web.xpath-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is built into an XPath query. Pass it as an XPath variable
+      (e.g. tree.xpath("//user[@name=$name]", name=value)) instead of formatting it into the query.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data built into XPath
+      cwe: ["CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://owasp.org/www-community/attacks/XPATH_Injection
+        - https://lxml.de/xpathxslt.html#the-xpath-method
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: lxml.etree.XPath($QUERY, ...)
+              - pattern: lxml.etree.ETXPath($QUERY, ...)
+              - pattern: $TREE.xpath($QUERY, ...)
+              - pattern: elementpath.select($ROOT, $QUERY, ...)
+              - pattern: $TREE.findall($QUERY, ...)
+              - pattern: $TREE.find($QUERY, ...)
+          - focus-metavariable: $QUERY
+
+  - id: codewatch.python.web.ldap-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is built into an LDAP search filter. Escape it with
+      ldap3.utils.conv.escape_filter_chars() (or ldap.filter.escape_filter_chars) first.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data built into an LDAP filter
+      cwe: ["CWE-90: Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+        - https://ldap3.readthedocs.io/en/latest/searches.html
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - patterns:
+          - pattern: $ESCAPE(...)
+          - metavariable-regex: {metavariable: $ESCAPE, regex: '(?i)escape'}
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CONN.search($BASE, $FILTER, ...)
+              - pattern: $CONN.search(..., search_filter=$FILTER, ...)
+              - pattern: $CONN.search_s($BASE, $SCOPE, $FILTER, ...)
+              - pattern: $CONN.search_st($BASE, $SCOPE, $FILTER, ...)
+              - pattern: $CONN.search_ext_s($BASE, $SCOPE, $FILTER, ...)
+          - focus-metavariable: $FILTER
+
+  - id: codewatch.python.web.open-redirect
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Data from the HTTP request decides where the user is redirected, so a link to this site can forward
+      users to any other site. Redirect only to relative paths or an allowlist of hosts
+      (Django: url_has_allowed_host_and_scheme).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used as a redirect target
+      cwe: ["CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+        - https://docs.djangoproject.com/en/stable/ref/utils/#django.utils.http.url_has_allowed_host_and_scheme
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: flask.redirect($URL, ...)
+              - pattern: redirect($URL, ...)
+              - pattern: django.http.HttpResponseRedirect($URL, ...)
+              - pattern: django.http.HttpResponsePermanentRedirect($URL, ...)
+              - pattern: starlette.responses.RedirectResponse($URL, ...)
+          - focus-metavariable: $URL
+
+  - id: codewatch.python.web.trust-boundary
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Unvalidated data from the HTTP request is stored in the server-side session, where later code will trust it.
+      Validate it (type, range, allowlist) before storing it.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data stored in the session unvalidated
+      cwe: ["CWE-501: Trust Boundary Violation"]
+      owasp: ["A06:2025 - Insecure Design"]
+      references:
+        - https://cwe.mitre.org/data/definitions/501.html
+        - https://flask.palletsprojects.com/en/stable/api/#sessions
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either: &session-store
+              - pattern: flask.session[$KEY] = $VALUE
+              - pattern: session[$KEY] = $VALUE
+              - pattern: $REQ.session[$KEY] = $VALUE
+          - focus-metavariable: $KEY
+      - patterns:
+          - pattern-either: *session-store
+          - focus-metavariable: $VALUE
+
+  - id: codewatch.python.web.unsafe-deserialization
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is deserialized with a loader that can run code (pickle, marshal, yaml.load
+      without SafeLoader). Use JSON or yaml.safe_load for untrusted data.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data deserialized unsafely
+      cwe: ["CWE-502: Deserialization of Untrusted Data"]
+      owasp: ["A08:2025 - Software or Data Integrity Failures"]
+      references:
+        - https://docs.python.org/3/library/pickle.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: pickle.loads($DATA, ...)
+              - pattern: pickle.load($DATA, ...)
+              - pattern: _pickle.loads($DATA, ...)
+              - pattern: marshal.loads($DATA, ...)
+              - pattern: shelve.open($DATA, ...)
+              - pattern: jsonpickle.decode($DATA, ...)
+              - pattern: dill.loads($DATA, ...)
+              - patterns:
+                  - pattern: yaml.load($DATA, ...)
+                  - pattern-not: yaml.load($DATA, Loader=yaml.SafeLoader, ...)
+                  - pattern-not: yaml.load($DATA, Loader=yaml.CSafeLoader, ...)
+              - pattern: yaml.unsafe_load($DATA, ...)
+          - focus-metavariable: $DATA
+
+  - id: codewatch.python.web.weak-random-token
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      A value from the non-cryptographic `random` module is used as a session or cookie value, so it can be
+      predicted. Use the `secrets` module (secrets.token_urlsafe(), secrets.randbelow()).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Predictable random value used as a token
+      cwe: ["CWE-330: Use of Insufficiently Random Values"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://docs.python.org/3/library/random.html
+        - https://docs.python.org/3/library/secrets.html
+    pattern-sources:
+      - patterns:
+          - pattern: random.$FUNC(...)
+          - metavariable-regex: {metavariable: $FUNC, regex: '^(?!SystemRandom$)\w{1,40}$'}
+    pattern-propagators: *propagators
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RESP.set_cookie($NAME, $VALUE, ...)
+              - pattern: flask.session[$KEY] = $VALUE
+              - pattern: session[$KEY] = $VALUE
+              - pattern: $SESSION[$KEY] = $VALUE
+          - focus-metavariable: $VALUE
+
+  - id: codewatch.python.weak-hash
+    languages: [python]
+    severity: WARNING
+    message: >-
+      MD4, MD5 and SHA-1 are broken for security use. Use SHA-256 or better, or a password hash
+      (hashlib.scrypt, argon2, Django's password hashers) for passwords. If this hash isn't used for security,
+      pass usedforsecurity=False.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Weak hash algorithm
+      cwe: ["CWE-328: Use of Weak Hash"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://docs.python.org/3/library/hashlib.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - patterns:
+              - pattern: hashlib.new($ALGO, ...)
+              - metavariable-regex: {metavariable: $ALGO, regex: '(?i)^[''"](md4|md5|sha1|sha-1|md5-sha1|ripemd160)[''"]$'}
+      - pattern-not: hashlib.$F(..., usedforsecurity=False, ...)
+
+  - id: codewatch.python.insecure-cookie
+    languages: [python]
+    severity: WARNING
+    message: >-
+      This cookie can be sent over plain HTTP, where it can be intercepted. Set secure=True
+      (and httponly=True unless JavaScript needs it).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Cookie without the Secure flag
+      cwe: ["CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#restrict_access_to_cookies
+        - https://flask.palletsprojects.com/en/stable/api/#flask.Response.set_cookie
+    patterns:
+      - pattern: $RESP.set_cookie(...)
+      - pattern-not: $RESP.set_cookie(..., secure=True, ...)
+      - pattern-not: $RESP.delete_cookie(...)
+
+  - id: codewatch.python.xml-external-entities
+    languages: [python]
+    severity: ERROR
+    message: >-
+      External entity resolution is switched on for this XML parser, so a crafted document can read local files
+      or make network requests (XXE). Leave it off, or parse untrusted XML with defusedxml.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: XML external entities enabled
+      cwe: ["CWE-611: Improper Restriction of XML External Entity Reference"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+        - https://docs.python.org/3/library/xml.html#xml-vulnerabilities
+    pattern-either:
+      - pattern: $P.setFeature(xml.sax.handler.feature_external_ges, True)
+      - pattern: $P.setFeature(xml.sax.handler.feature_external_pes, True)
+      - pattern: lxml.etree.XMLParser(..., resolve_entities=True, ...)
+      - pattern: lxml.etree.XMLParser(..., no_network=False, ...)
