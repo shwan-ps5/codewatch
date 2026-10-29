@@ -1,10 +1,11 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 from core.analyzers.accessibility import blank_template_syntax
 from core.analyzers.base import Finding
 from core.analyzers.coverage import parse_cobertura, parse_lcov, resolve
 from core.analyzers.dependencies import declaration_line, manifests
-from core.collect import excluded, new_code_metrics, parse_diff
+from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
 from core.fingerprint import assign_fingerprints
 from core.runner import is_new
 
@@ -186,3 +187,66 @@ def test_hashes_are_not_secrets():
         assert pattern.search(line), line
     for line in ('"password": "hunter2hunter2"', "API_KEY = 'abc'", "token: xyz"):
         assert not pattern.search(line), line
+
+
+class LinearRepo:
+    """Commits c0..cN on one line of history; tags map names to commits."""
+
+    def __init__(self, n, tags=None):
+        self.commits = [f"c{i}" for i in range(n)]
+        self.tags = tags or {}
+
+    def has_commit(self, commit):
+        return commit in self.commits
+
+    def is_ancestor(self, a, b):
+        return self.commits.index(a) <= self.commits.index(b)
+
+    def resolve_commit(self, ref):
+        return self.tags.get(ref) or (ref if ref in self.commits else None)
+
+
+NOW = datetime(2026, 10, 29, tzinfo=UTC)
+
+
+def main_cfg(period, analysed):
+    """Main analyses of the given (commit, day-of-October) pairs, newest first as the server sends them."""
+    return ScanConfig(main_branch="main", new_code_period=period, main_analyses=[
+        {"commit": c, "reference_commit": "", "started_at": datetime(2026, 10, day, tzinfo=UTC).isoformat()}
+        for c, day in sorted(analysed, key=lambda x: -x[1])
+    ])
+
+
+def test_parse_period():
+    assert parse_period("") == ("previous", None)
+    assert parse_period(" 30d ") == ("days", 30)
+    assert parse_period("v1.4") == ("ref", "v1.4")
+    assert parse_period("--output=/tmp/x") == ("previous", None)
+
+
+def test_blank_period_compares_with_previous_analysis():
+    cfg = main_cfg("", [("c1", 1), ("c5", 20), ("c8", 28)])
+    assert choose_reference("main", "c9", cfg, LinearRepo(10), NOW) == ("c8", "c8")
+
+
+def test_days_period_uses_newest_analysis_older_than_cutoff():
+    # Many small commits since c5 can't each reset the window.
+    cfg = main_cfg("7d", [("c1", 1), ("c5", 20), ("c7", 25), ("c8", 28)])
+    assert choose_reference("main", "c9", cfg, LinearRepo(10), NOW) == ("c5", "c5")
+
+
+def test_days_period_on_a_young_project_uses_the_first_analysis():
+    cfg = main_cfg("30d", [("c5", 20), ("c8", 28)])
+    assert choose_reference("main", "c9", cfg, LinearRepo(10), NOW) == ("c5", "c5")
+
+
+def test_ref_period_uses_the_tag_and_the_analysis_before_it():
+    cfg = main_cfg("v1", [("c1", 1), ("c5", 20), ("c8", 28)])
+    assert choose_reference("main", "c9", cfg, LinearRepo(10, {"v1": "c3"}), NOW) == ("c3", "c1")
+
+
+def test_unusable_ref_period_falls_back_to_previous_analysis():
+    cfg = main_cfg("v9", [("c1", 1), ("c8", 28)])
+    assert choose_reference("main", "c9", cfg, LinearRepo(10), NOW) == ("c8", "c8")
+    ahead = LinearRepo(10, {"v9": "c9"})
+    assert choose_reference("main", "c6", main_cfg("v9", [("c1", 1), ("c5", 20)]), ahead, NOW) == ("c5", "c5")

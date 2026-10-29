@@ -13,6 +13,10 @@ def sh(repo, *args):
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
+def sh_out(repo, *args):
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+
+
 @pytest.fixture
 def repo(tmp_path, settings):
     settings.CODEWATCH_CACHE = tmp_path / "cache"

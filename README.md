@@ -83,7 +83,7 @@ codewatch's own checks (Python and JS/TS): **string literals repeated more than 
 
 Issue types: bug, vulnerability, **security hotspot** (security-sensitive code to review), code smell, accessibility. When several tools report the same problem on the same line, it becomes one issue that lists the others ("also reported by").
 
-**New code**: on a branch, everything changed since its merge-base with the main branch (plus uncommitted/untracked files for local scans); on main, everything since the previous analysis. Issues are fingerprinted by rule + file + source text, so they keep their identity, and any won't-fix / false-positive resolution, when code moves.
+**New code**: on a branch, everything changed since its merge-base with the main branch (plus uncommitted/untracked files for local scans); on main, everything since the previous analysis by default. Because that window restarts with every scan, a run of small commits can each fall under the 20-line minimum for coverage and duplication checks. Set **New code on the main branch** in project settings to `30d` (since the newest analysis at least 30 days old) or to a tag, branch or commit such as `v1.4` to keep the window open across scans; a ref that doesn't resolve or isn't in main's history falls back to the previous analysis. Issues are fingerprinted by rule + file + source text, so they keep their identity, and any won't-fix / false-positive resolution, when code moves.
 
 ## Ratings and the quality gate
 

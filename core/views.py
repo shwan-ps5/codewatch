@@ -17,6 +17,7 @@ from django.views.decorators.http import require_POST, require_safe
 from . import gate
 from .analyzers import ANALYZERS
 from .catalog import update as catalog_update
+from .collect import parse_period
 from .git import GitError, Mirror, validate_repo_url
 from .jobs import launch_scan
 from .models import (
@@ -281,7 +282,7 @@ class ProjectSettingsForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = ["name", "main_branch", "semgrep_config", "complexity_threshold", "cognitive_complexity_threshold",
-                  "duplicate_literal_threshold", "exclusions", "a11y_urls", "disabled_analyzers"]
+                  "duplicate_literal_threshold", "new_code_period", "exclusions", "a11y_urls", "disabled_analyzers"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -294,6 +295,12 @@ class ProjectSettingsForm(forms.ModelForm):
 
     def clean_exclusions(self):
         return self.lines(self.cleaned_data["exclusions"])
+
+    def clean_new_code_period(self):
+        value = self.cleaned_data["new_code_period"].strip()
+        if value and parse_period(value)[0] == "previous":
+            raise forms.ValidationError("Use a number of days such as 30d, or a tag, branch or commit name")
+        return value
 
     def clean_a11y_urls(self):
         urls = self.lines(self.cleaned_data["a11y_urls"])
