@@ -66,6 +66,9 @@ class Mirror:
     def rev_parse(self, ref):
         return git("rev-parse", "--verify", f"{ref}^{{commit}}", cwd=self.path).strip()
 
+    def resolve_commit(self, ref):
+        return git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}", cwd=self.path, check=False).strip() or None
+
     def resolve_main(self, main_branch):
         return self.rev_parse(main_branch)
 

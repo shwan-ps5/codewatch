@@ -1,11 +1,13 @@
 import hashlib
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from .catalog import custom_semgrep_rules
-from .collect import DEFAULT_EXCLUSIONS
+from .collect import DEFAULT_EXCLUSIONS, parse_period
 
 SEVERITIES = ["blocker", "critical", "major", "minor", "info"]
 ISSUE_TYPES = ["bug", "vulnerability", "security_hotspot", "code_smell", "accessibility"]
@@ -35,6 +37,11 @@ class Project(models.Model):
     a11y_urls = models.JSONField(
         default=list, blank=True, help_text="Live pages to check with axe-core; {branch} is replaced by the branch name"
     )
+    new_code_period = models.CharField(
+        max_length=200, blank=True, verbose_name="New code on the main branch",
+        help_text="Blank: since the previous analysis. 30d: since the newest analysis at least 30 days old. "
+                  "Anything else is a tag, branch or commit, e.g. v1.4.",
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="projects"
     )
@@ -51,7 +58,7 @@ class Project(models.Model):
 
     def scan_config(self):
         """Settings the codewatch-scan client needs, mirroring collect.ScanConfig."""
-        main = self.analyses.filter(branch=self.main_branch, status=Analysis.SUCCESS).order_by("-started_at")[:50]
+        main = self.main_analyses_for_reference()
         return {
             "main_branch": self.main_branch,
             "exclusions": self.exclusions,
@@ -62,8 +69,23 @@ class Project(models.Model):
             "duplicate_literal_threshold": self.duplicate_literal_threshold,
             "custom_rules": custom_semgrep_rules(),
             "a11y_urls": self.a11y_urls,
-            "main_analyses": [{"commit": a.commit, "reference_commit": a.reference_commit} for a in main],
+            "new_code_period": self.new_code_period,
+            "main_analyses": [
+                {"commit": a.commit, "reference_commit": a.reference_commit, "started_at": a.started_at.isoformat()}
+                for a in main
+            ],
         }
+
+    def main_analyses_for_reference(self):
+        """Recent main analyses, newest first, plus what a days-based new-code period needs further back:
+        the newest few older than the cutoff, and the first ever (the fallback for a younger project)."""
+        done = self.analyses.filter(branch=self.main_branch, status=Analysis.SUCCESS).order_by("-started_at")
+        main = list(done[:50])
+        kind, days = parse_period(self.new_code_period)
+        if kind == "days":
+            older = [*done.filter(started_at__lte=timezone.now() - timedelta(days=days))[:10], *done.reverse()[:1]]
+            main += [a for a in dict.fromkeys(older) if a not in main]
+        return main
 
     def role_of(self, user):
         if user.is_superuser or self.owner_id == user.pk:

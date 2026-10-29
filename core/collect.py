@@ -8,6 +8,7 @@ import re
 import subprocess
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .analyzers import ANALYZERS
@@ -17,6 +18,9 @@ from .fingerprint import assign_fingerprints
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 MAX_SOURCE_BYTES = 512 * 1024
 MAX_TOTAL_SOURCE_BYTES = 50 * 1024 * 1024
+# new_code_period values: "30d" (days), otherwise a git ref; a leading "-" would be read as a git option.
+DAYS_RE = re.compile(r"^(\d{1,4})d$")
+REF_RE = re.compile(r"^\w[\w./~^@{}-]{0,199}$")
 
 
 DEFAULT_EXCLUSIONS = [
@@ -43,7 +47,8 @@ class ScanConfig:
     duplicate_literal_threshold: int = 3
     custom_rules: str = ""
     a11y_urls: list[str] = field(default_factory=list)
-    # Recent successful main-branch analyses, newest first: [{"commit": ..., "reference_commit": ...}]
+    new_code_period: str = ""
+    # Successful main-branch analyses, newest first: [{"commit": ..., "reference_commit": ..., "started_at": ...}]
     main_analyses: list[dict] = field(default_factory=list)
 
     @classmethod
@@ -114,6 +119,9 @@ class LocalRepo:
     def merge_base(self, a, b):
         return self.git("merge-base", a, b, check=False).strip() or None
 
+    def resolve_commit(self, ref):
+        return self.git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}", check=False).strip() or None
+
     def resolve_main(self, main_branch):
         """Prefer the remote-tracking ref: a local main is often stale."""
         for ref in (f"origin/{main_branch}", main_branch):
@@ -133,23 +141,63 @@ class LocalRepo:
         return changed
 
 
-def choose_reference(branch, head, cfg, repo):
+def choose_reference(branch, head, cfg, repo, now=None):
     """(reference_commit, reference_analysis_commit) defining "new code".
 
-    Branches compare with their merge-base on main; main compares with its previous analysis. The reference
-    analysis is the newest main analysis at or before the reference commit, whose issues count as already known.
+    Branches compare with their merge-base on main. Main compares with the project's new_code_period (an
+    analysis at least N days old, or a git ref), else with its previous analysis. The reference analysis is the
+    newest main analysis at or before the reference commit, whose issues count as already known.
     """
-    ref = reference_commit(branch, head, cfg, repo)
+    ref = reference_commit(branch, head, cfg, repo, now)
     if not ref:
         return None, None
     commits = [a["commit"] for a in cfg.main_analyses]
     return ref, next((c for c in commits if c == ref or is_ancestor(repo, c, ref)), None)
 
 
-def reference_commit(branch, head, cfg, repo):
+def parse_period(period):
+    """("days", N), ("ref", name), or ("previous", None) for blank or unrecognised values."""
+    period = (period or "").strip()
+    if m := DAYS_RE.match(period):
+        return "days", int(m[1])
+    if REF_RE.match(period):
+        return "ref", period
+    return "previous", None
+
+
+def reference_commit(branch, head, cfg, repo, now=None):
     if branch != cfg.main_branch:
         main = repo.resolve_main(cfg.main_branch)
         return repo.merge_base(main, head) if main else None
+    kind, value = parse_period(cfg.new_code_period)
+    # A ref that doesn't resolve or isn't in main's history falls back, so the gate keeps its new-code checks.
+    if kind == "ref":
+        commit = repo.resolve_commit(value)
+        if commit and is_ancestor(repo, commit, head):
+            return commit
+    elif kind == "days":
+        commit = days_reference(head, cfg, repo, value, now)
+        if commit:
+            return commit
+    return previous_reference(head, cfg, repo)
+
+
+def started(analysis):
+    value = analysis.get("started_at")
+    return datetime.fromisoformat(value) if value else None
+
+
+def days_reference(head, cfg, repo, days, now=None):
+    """Newest main analysis at least `days` old; the oldest one if the project is younger than that."""
+    cutoff = (now or datetime.now(UTC)) - timedelta(days=days)
+    old = [a for a in cfg.main_analyses if (t := started(a)) and t <= cutoff]
+    commit = next((a["commit"] for a in old if is_ancestor(repo, a["commit"], head)), None)
+    if commit:
+        return commit
+    return next((a["commit"] for a in reversed(cfg.main_analyses) if is_ancestor(repo, a["commit"], head)), None)
+
+
+def previous_reference(head, cfg, repo):
     if not cfg.main_analyses:
         return None
     if cfg.main_analyses[0]["commit"] == head:

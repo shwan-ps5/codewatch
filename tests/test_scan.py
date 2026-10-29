@@ -1,11 +1,15 @@
 
+from datetime import timedelta
+
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 
 from core import gate
 from core.models import Analysis, IssueResolution, Metric, Project
+from core.views import ProjectSettingsForm
 
-from .conftest import ONLY_RUFF, sh
+from .conftest import ONLY_RUFF, sh, sh_out
 
 
 @pytest.fixture
@@ -66,6 +70,52 @@ def test_main_rescan_uses_previous_analysis_as_reference(repo, project):
     second = Analysis.objects.latest("started_at")
     assert second.reference_commit == first.commit
     assert list(second.issues.filter(is_new=True).values_list("rule", flat=True)) == ["F401"]
+
+
+def commit_change(repo, line):
+    (repo / "app.py").write_text((repo / "app.py").read_text() + line)
+    sh(repo, "commit", "-qam", line.strip())
+
+
+@pytest.mark.django_db
+def test_main_new_code_since_a_tag_spans_several_scans(repo, project):
+    call_command("scan", "demo")
+    commit_change(repo, "\nimport sys\n")
+    sh(repo, "tag", "v1")
+    tagged = sh_out(repo, "rev-parse", "HEAD")
+    call_command("scan", "demo")
+    project.new_code_period = "v1"
+    project.save()
+    commit_change(repo, "\nimport json\n")
+    call_command("scan", "demo")
+    commit_change(repo, "\nimport re\n")
+    call_command("scan", "demo")
+    latest = Analysis.objects.latest("started_at")
+    assert latest.reference_commit == tagged
+    assert sorted(latest.issues.filter(is_new=True, rule="F401").values_list("message", flat=True)) == [
+        "`json` imported but unused", "`re` imported but unused"]
+
+
+@pytest.mark.django_db
+def test_main_new_code_by_days(repo, project):
+    call_command("scan", "demo")
+    old = Analysis.objects.get()
+    Analysis.objects.filter(pk=old.pk).update(started_at=timezone.now() - timedelta(days=40))
+    commit_change(repo, "\nimport sys\n")
+    call_command("scan", "demo")
+    project.new_code_period = "30d"
+    project.save()
+    commit_change(repo, "\nimport json\n")
+    call_command("scan", "demo")
+    assert Analysis.objects.latest("started_at").reference_commit == old.commit
+
+
+@pytest.mark.django_db
+def test_settings_form_rejects_an_invalid_new_code_period(project):
+    data = {"name": "demo", "main_branch": "main", "semgrep_config": "p/default", "complexity_threshold": 10,
+            "cognitive_complexity_threshold": 15, "duplicate_literal_threshold": 3, "exclusions": "", "a11y_urls": ""}
+    assert ProjectSettingsForm({**data, "new_code_period": "30d"}, instance=project).is_valid()
+    assert "new_code_period" in ProjectSettingsForm({**data, "new_code_period": "-x"}, instance=project).errors
 
 
 @pytest.mark.django_db
