@@ -8,7 +8,7 @@
 <caption class="sr-only">Source of {{ path }} with issues shown below the affected lines</caption>
 <tbody>
 {% for n, text, issues in lines %}
-<tr id="L{{ n }}" {% if issues %}class="has"{% endif %}><td class="ln">{{ n }}</td><td><pre>{{ text }}</pre></td></tr>
+<tr id="L{{ n }}" {% if issues %}class="has"{% endif %}><th scope="row" class="ln">{{ n }}</th><td><pre>{{ text }}</pre></td></tr>
 {% for i in issues %}<tr class="iss"><td colspan="2"><span class="sev sev-{{ i.severity }}">{{ i.severity }}</span> {% if i.is_new %}<span class="new">new</span> {% endif %}{{ i.message }} <code class="muted">{{ i.tool }}:{{ i.rule }}</code></td></tr>{% endfor %}
 {% endfor %}
 </tbody></table></div>
