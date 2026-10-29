@@ -165,6 +165,8 @@ class TableSemantics(HTMLParser):
 
     LAYOUT_ROLES = {"presentation", "none"}
     HEADER_TAGS = {"th", "caption", "thead"}
+    # A caption names the table but doesn't identify any cell, so it doesn't make a data table accessible.
+    CELL_HEADERS = {"th"}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -174,10 +176,11 @@ class TableSemantics(HTMLParser):
         attrs = dict(attrs)
         if tag == "table":
             self.stack.append({"line": self.getpos()[0], "layout": attrs.get("role") in self.LAYOUT_ROLES,
-                               "headers": False, "cells": False})
+                               "headers": False, "cell_headers": False, "cells": False})
         elif self.stack:
             table = self.stack[-1]
             table["headers"] |= tag in self.HEADER_TAGS or "scope" in attrs
+            table["cell_headers"] |= tag in self.CELL_HEADERS or "scope" in attrs or "headers" in attrs
             table["cells"] |= tag == "td"
 
     def handle_endtag(self, tag):
@@ -186,7 +189,7 @@ class TableSemantics(HTMLParser):
         table = self.stack.pop()
         if table["layout"] and table["headers"]:
             self.problems.append((table["line"], "layout-table-with-headers"))
-        elif not table["layout"] and table["cells"] and not table["headers"]:
+        elif not table["layout"] and table["cells"] and not table["cell_headers"]:
             self.problems.append((table["line"], "data-table-without-headers"))
 
 

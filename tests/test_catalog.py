@@ -155,6 +155,8 @@ def test_table_semantics():
     assert table_problems("<table><tr><td>1</td></tr></table>") == [(1, "data-table-without-headers")]
     assert table_problems('<table><tr><th scope="col">x</th></tr><tr><td>1</td></tr></table>') == []
     assert table_problems('<table role="none"><tr><td>layout</td></tr></table>') == []
+    assert table_problems("<table><caption>c</caption><tr><td>1</td></tr></table>") == [
+        (1, "data-table-without-headers")]
 
 
 def test_security_findings_are_verdicts_only_with_data_flow():

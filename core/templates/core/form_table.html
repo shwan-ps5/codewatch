@@ -5,8 +5,7 @@
 <div class="form-row">
 <div class="form-label">{% if field.use_fieldset %}<span aria-hidden="true">{{ field.label }}</span>{% else %}{{ field.label_tag }}{% endif %}</div>
 <div class="form-field">{% if field.use_fieldset %}<fieldset><legend class="sr-only">{{ field.label }}</legend>{{ field }}</fieldset>{% else %}{{ field }}{% endif %}
-{# Help text comes from Python form definitions, never from users, and Django's own forms render it unescaped too. #}
-{% if field.help_text %}<span class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</span>{% endif %}{# nosemgrep #}
+{% if field.help_text %}<span class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</span>{% endif %}
 {% if field.errors %}<div role="alert">{{ field.errors }}</div>{% endif %}</div>
 </div>
 {% endfor %}
