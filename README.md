@@ -81,7 +81,7 @@ Administrators see every project.
 
 codewatch's own checks (Python and JS/TS): **string literals repeated more than N times** in a file (default 3), and **regexes vulnerable to catastrophic backtracking (ReDoS)**, analysed with recheck. Cognitive complexity is flagged above 15 by default; thresholds are per project.
 
-codewatch also ships its own Semgrep rules (`catalog/codewatch/rules/`). Taint rules follow request data (Flask, Django, FastAPI, Starlette, Express, Koa, browser URL APIs) into SQL, NoSQL, OS commands, file paths, templates and HTML, redirects and `Location` headers, outgoing URLs (SSRF), regular expressions, XML parsers, deserializers, LDAP/XPath queries and the session, and stop at validation such as an allowlist check, `int()`, `re.escape()` or a `startswith` guard that returns. Pattern rules catch flaws visible without a request source: quoted values formatted into SQL, tar extraction without a filter, template auto-escaping switched off, recursive merges open to prototype pollution, weak hashes used for passwords or signatures, weak ciphers and static IVs, disabled TLS verification and hard-coded JWT secrets.
+codewatch also ships its own Semgrep rules (`catalog/codewatch/rules/`). Taint rules follow request data (Flask, Django, FastAPI, Starlette, Express, Koa, browser URL APIs) into SQL, NoSQL, OS commands, file paths, templates and HTML, redirects and `Location` headers, outgoing URLs (SSRF), regular expressions, XML parsers, deserializers, LDAP/XPath queries and the session, and stop at validation such as an allowlist check, `int()`, `re.escape()` or a `startswith` guard that returns. Pattern rules catch flaws visible without a request source: quoted values formatted into SQL, tar extraction without a filter, template auto-escaping switched off, recursive merges open to prototype pollution, weak hashes used for passwords or signatures, weak ciphers and static IVs, disabled TLS verification, hard-coded JWT secrets and stack traces sent in responses. Hotspot rules flag uploads stored under the client's file name without a type check, exception messages from a broad `except` sent to the client, a whole request body written to a model (mass assignment) and redirects built from the request's own path.
 
 Issue types: bug, vulnerability, **security hotspot** (security-sensitive code to review), code smell, accessibility. When several tools report the same problem on the same line, it becomes one issue that lists the others ("also reported by").
 
@@ -111,7 +111,7 @@ Every condition can be changed per project under **Settings**.
 
 The catalogue has three parts:
 
-- `catalog/codewatch/rules/*.yml`: codewatch's own built-in rules (taint rules for Flask/Django/FastAPI request data reaching SQL, shell, eval, file paths, XPath, LDAP, redirects, sessions and HTML responses; weak hashes, insecure cookies, XXE; Django views without method restrictions; `|safe`/`autoescape off` in templates; Angular sanitizer bypasses, NoSQL injection and substring URL allowlists in JS/TS). They ship with codewatch and run in every scan.
+- `catalog/codewatch/rules/*.yml`: codewatch's own built-in rules (taint rules for Flask/Django/FastAPI request data reaching SQL, shell, eval, file paths, XPath, LDAP, redirects, sessions and HTML responses; weak hashes, insecure cookies, XXE; Django views without method restrictions; `|safe`/`autoescape off` in templates; Angular sanitizer bypasses, NoSQL injection and substring URL allowlists in JS/TS; uploads, error details and mass assignment in both). They ship with codewatch and run in every scan.
 
 The rest of the catalogue has two layers:
 
@@ -130,9 +130,9 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 | Suite | Verdict | Review |
 |---|---|---|
 | [OWASP Benchmark for Python](https://github.com/OWASP-Benchmark/BenchmarkPython): 1,230 labelled cases, 14 CWEs | finds 100%, false alarms 0% | finds 100%, false alarms 35% |
-| [SecurityEval](https://github.com/s2e-lab/SecurityEval): 121 insecure Python samples filed by CWE | 50 of 121 flagged | 74 of 121 flagged |
-| SecurityEval Copilot answers, manually labelled (held out) | finds 34%, false alarms 0% | finds 49%, false alarms 6% |
-| SecurityEval InCoder answers, manually labelled (held out) | finds 31%, false alarms 0% | finds 44%, false alarms 0% |
+| [SecurityEval](https://github.com/s2e-lab/SecurityEval): 121 insecure Python samples filed by CWE | 51 of 121 flagged | 77 of 121 flagged |
+| SecurityEval Copilot answers, manually labelled (held out) | finds 34%, false alarms 0% | finds 51%, false alarms 6% |
+| SecurityEval InCoder answers, manually labelled (held out) | finds 31%, false alarms 0% | finds 47%, false alarms 0% |
 | [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 15 of 35 flagged | 16 of 35 flagged |
 | [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
 | [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |

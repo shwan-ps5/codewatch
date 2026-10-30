@@ -109,6 +109,481 @@
       "clean_glob": "clean-*.js",
       "held_out": false,
       "about": "vulnerable-node's SAST seeds: one known vulnerability per file plus clean controls that must stay quiet. Not held out: its first scan missed the SQL concatenation, NoSQL operator, prototype pollution and deserialization seeds and raised a false alarm on a clean control, which led to the JS guard sanitizer, SQL value-formatting and prototype-pollution rules. Measures detection and false alarms."
+    },
+    {
+      "name": "cve-pairs-python",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": false,
+      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens).",
+      "cases": [
+        {
+          "id": "GHSA-f2mf-q878-gh58",
+          "cve": "CVE-2026-21892",
+          "repo": "https://github.com/Parsl/parsl.git",
+          "fix": "013a928461e70f38a33258bd525a351ed828e974",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "Parsl Monitoring Visualization Vulnerable to SQL Injection"
+        },
+        {
+          "id": "GHSA-h6m6-jj8v-94jj",
+          "cve": "CVE-2024-5225",
+          "repo": "https://github.com/BerriAI/litellm.git",
+          "fix": "f75c15d6cd535aa78014378ad532de1df6be2f56",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQL injection in litellm",
+          "scope": [
+            "litellm/proxy"
+          ]
+        },
+        {
+          "id": "GHSA-gjxm-x497-4h6h",
+          "cve": "CVE-2025-0655",
+          "repo": "https://github.com/man-group/dtale.git",
+          "fix": "1e26ed3ca12fe83812b90f12a2b3e5fb0b740f7a",
+          "cwe": [
+            77,
+            78
+          ],
+          "license": "LGPL-2.1",
+          "summary": "Duplicate Advisory: D-Tale Command Injection vulnerability"
+        },
+        {
+          "id": "GHSA-2689-cw26-6cpj",
+          "cve": "CVE-2024-53305",
+          "repo": "https://github.com/benbusby/whoogle-search.git",
+          "fix": "223f00c3c0533423114f99b30c561278bc0b42ba",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Whoogle allows attackers to execute arbitrary code via supplying a crafted search query"
+        },
+        {
+          "id": "GHSA-xv5p-fjw5-vrj6",
+          "cve": "CVE-2025-62703",
+          "repo": "https://github.com/fugue-project/fugue.git",
+          "fix": "6f25326779fd1f528198098d6287c5a863176fc0",
+          "cwe": [
+            78,
+            502
+          ],
+          "license": "Apache-2.0",
+          "summary": "Fugue is Vulnerable to Remote Code Execution\u00a0by Pickle Deserialization via FlaskRPCServer"
+        },
+        {
+          "id": "GHSA-8whx-v8qq-pq64",
+          "cve": "CVE-2026-29038",
+          "repo": "https://github.com/dgtlmoon/changedetection.io.git",
+          "fix": "ec7d56f85d1e9690fca7cb4711c1fb20dffec780",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "changedetection.io has Reflected XSS in its RSS Tag Error Response",
+          "scope": [
+            "changedetectionio"
+          ]
+        },
+        {
+          "id": "GHSA-w228-rfpx-fhm4",
+          "cve": null,
+          "repo": "https://github.com/Clinical-Genomics/cg.git",
+          "fix": "96e6a968a5a3639cc40ad251ad65952e4f38dd25",
+          "cwe": [
+            601
+          ],
+          "license": "none",
+          "summary": "cg vulnerable to an Open Redirect Vulnerability on Referer Header"
+        },
+        {
+          "id": "GHSA-9x43-5qcq-h79q",
+          "cve": "CVE-2021-46898",
+          "repo": "https://github.com/sehmaschine/django-grappelli.git",
+          "fix": "4ca94bcda0fa2720594506853d85e00c8212968f",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "Django Grappelli Open Redirect vulnerability"
+        },
+        {
+          "id": "GHSA-pfwg-rxf4-97c3",
+          "cve": "CVE-2021-28125",
+          "repo": "https://github.com/apache/superset.git",
+          "fix": "eb35b804acf4d84cb70d02743e04b8afebbee029",
+          "cwe": [
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "Open Redirect in Apache Superset",
+          "scope": [
+            "superset"
+          ]
+        },
+        {
+          "id": "GHSA-6rmf-cv6p-4h27",
+          "cve": "CVE-2022-4589",
+          "repo": "https://github.com/cyface/django-termsandconditions.git",
+          "fix": "03396a1c2e0af95e12a45c5faef7e47a4b513e1a",
+          "cwe": [
+            601
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "Terms and Conditions Module vulnerable to Open Redirect"
+        },
+        {
+          "id": "GHSA-g3cm-qg2v-2hj5",
+          "cve": "CVE-2024-24808",
+          "repo": "https://github.com/pyload/pyload.git",
+          "fix": "fe94451dcc2be90b3889e2fd9d07b483c8a6dccd",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "pyLoad open redirect vulnerability due to improper validation of the is_safe_url function",
+          "scope": [
+            "src/pyload/webui"
+          ]
+        },
+        {
+          "id": "GHSA-frvj-c5qp-xj4w",
+          "cve": "CVE-2026-59221",
+          "repo": "https://github.com/open-webui/open-webui.git",
+          "fix": "05098d25a58d03738e01c4e85e8852c3b4ad849c",
+          "cwe": [
+            22,
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "open-webui terminal proxy path traversal guard bypass via 9x encoded traversal",
+          "scope": [
+            "backend/open_webui"
+          ]
+        },
+        {
+          "id": "GHSA-f9fq-78ch-4wmj",
+          "cve": "CVE-2022-43985",
+          "repo": "https://github.com/apache/airflow.git",
+          "fix": "9fb4814d29d934cef3b02fb3b2547f9fb76aaa97",
+          "cwe": [
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "Apache Airflow Open Redirect vulnerability",
+          "scope": [
+            "airflow/www"
+          ]
+        },
+        {
+          "id": "GHSA-8gh5-qqh8-hq3x",
+          "cve": "CVE-2025-46571",
+          "repo": "https://github.com/open-webui/open-webui.git",
+          "fix": "ef2aeb7c0eb976bac759e59ac359c94a5b8dc7e0",
+          "cwe": [
+            79,
+            87
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open WebUI  allows limited stored XSS vila uploaded html file",
+          "scope": [
+            "backend/open_webui"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-javascript",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": false,
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens).",
+      "cases": [
+        {
+          "id": "GHSA-p849-8hwh-84j9",
+          "cve": "CVE-2026-52887",
+          "repo": "https://github.com/nocobase/nocobase.git",
+          "fix": "68d64e3fcfb8be2ae4f3bfc9e1ee3f85b87c89ce",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "NocoBase: SQL injection in /api/myInAppChannels:list filter to PG-superuser RCE",
+          "scope": [
+            "packages/plugins/@nocobase/plugin-notification-in-app-message"
+          ]
+        },
+        {
+          "id": "GHSA-79wm-x847-7cvg",
+          "cve": "CVE-2026-73222",
+          "repo": "https://github.com/davila7/claude-code-templates.git",
+          "fix": "bc4618b07232633c1c0aac12a43e436268d31783",
+          "cwe": [
+            78,
+            306,
+            352
+          ],
+          "license": "MIT",
+          "summary": "Claude Code Templates: Unauthenticated OS command injection (RCE) in Claude Code Studio server (--studio)",
+          "scope": [
+            "cli-tool/src"
+          ]
+        },
+        {
+          "id": "GHSA-7mfx-xg57-53c9",
+          "cve": "CVE-2026-106490",
+          "repo": "https://github.com/backstage/backstage.git",
+          "fix": "40ecc4c2e88b0218125b0a3405d1f6315b321974",
+          "cwe": [
+            22,
+            23
+          ],
+          "license": "Apache-2.0",
+          "summary": "Backstage: Improper input validation in TechDocs static content requests",
+          "scope": [
+            "plugins/techdocs-backend"
+          ]
+        },
+        {
+          "id": "GHSA-9ghw-48h5-v2w5",
+          "cve": "CVE-2026-106491",
+          "repo": "https://github.com/backstage/backstage.git",
+          "fix": "233287d0ce3133e41549bf92a7470c940a41753c",
+          "cwe": [
+            20,
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Backstage: Improper input validation in proxy-backend",
+          "scope": [
+            "plugins/proxy-backend"
+          ]
+        },
+        {
+          "id": "GHSA-cv3r-c5h8-f4g5",
+          "cve": "CVE-2026-61560",
+          "repo": "https://github.com/zereight/gitlab-mcp.git",
+          "fix": "e436ee4ad067b64584ec9312c9e9c9a2641c1976",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "@zereight/mcp-gitlab: Unauthenticated arbitrary file read via `upload_markdown` enables PAT exfiltration and full account takeover"
+        },
+        {
+          "id": "GHSA-8wqc-v2q8-vff2",
+          "cve": "CVE-2026-59149",
+          "repo": "https://github.com/mockoon/mockoon.git",
+          "fix": "b42bdfb7f82e83f0e81bea8e6fe41adf5ec82585",
+          "cwe": [
+            22,
+            23
+          ],
+          "license": "MIT",
+          "summary": "@Mockoon/commons-server: Path traversal in templated `filePath` lets a request escape the served directory (prefix-only base check)",
+          "scope": [
+            "packages/commons-server"
+          ]
+        },
+        {
+          "id": "GHSA-w6x9-28jw-hq7j",
+          "cve": "CVE-2026-63643",
+          "repo": "https://github.com/MagicMirrorOrg/MagicMirror.git",
+          "fix": "58c2a5e675a7d367b64d72e1d35680d202ff5c9f",
+          "cwe": [
+            441,
+            918
+          ],
+          "license": "MIT",
+          "summary": "MagicMirror: ssrf calendar .js",
+          "scope": [
+            "js"
+          ]
+        },
+        {
+          "id": "GHSA-v279-v2xm-whq9",
+          "cve": "CVE-2021-4260",
+          "repo": "https://github.com/mannyvergel/oils-js.git",
+          "fix": "fad8fbae824a7d367dacb90d56cb02c5cb999d42",
+          "cwe": [
+            601
+          ],
+          "license": "MIT",
+          "summary": "Oils JS vulnerable to Open Redirect"
+        },
+        {
+          "id": "GHSA-vmg4-6gfg-83qx",
+          "cve": "CVE-2026-71553",
+          "repo": "https://github.com/apostrophecms/apostrophe.git",
+          "fix": "5a3746aaed49761e171c2cbfe793267c959829fd",
+          "cwe": [
+            1321
+          ],
+          "license": "none",
+          "summary": "ApostropheCMS: 2nd-order prototype pollution via PATCH leading to single-request persistent DoS",
+          "scope": [
+            "packages/apostrophe/modules"
+          ]
+        },
+        {
+          "id": "GHSA-83w8-p2f5-377r",
+          "cve": "CVE-2026-15074",
+          "repo": "https://github.com/fastify/fastify-static.git",
+          "fix": "db4276f846ba56b21f93768cd6636ee5e2fc58b1",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "@fastify/static vulnerable to route guard bypass via path traversal"
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind Python CVE fix pairs, chosen the same way. Scanned only when named, at the end of a round of rule work; never used to write or tune rules. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it.",
+      "cases": [
+        {
+          "id": "GHSA-8m59-7xv8-735h",
+          "cve": "CVE-2026-54386",
+          "repo": "https://github.com/marimo-team/marimo.git",
+          "fix": "fdd55c8cf6260ae23bb411dc9d9269def5cf75d6",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "marimo contains a reflected cross-site scripting vulnerability in the notebook page",
+          "scope": [
+            "marimo/_server"
+          ]
+        },
+        {
+          "id": "GHSA-28mg-98xm-q493",
+          "cve": "CVE-2022-0697",
+          "repo": "https://github.com/archivy/archivy.git",
+          "fix": "2d8cb29853190d42572b36deb61127e68d6be574",
+          "cwe": [
+            601
+          ],
+          "license": "MIT",
+          "summary": "Open Redirect in archivy"
+        },
+        {
+          "id": "GHSA-mcmc-c59m-pqq8",
+          "cve": "CVE-2023-26043",
+          "repo": "https://github.com/GeoNode/geonode.git",
+          "fix": "2fdfe919f299b21f1609bf898f9dcfde58770ac0",
+          "cwe": [
+            611
+          ],
+          "license": "NOASSERTION",
+          "summary": "GeoServer style upload functionality vulnerable to XML External Entity (XXE) injection",
+          "scope": [
+            "geonode/geoserver"
+          ]
+        },
+        {
+          "id": "GHSA-564j-v29w-rqr6",
+          "cve": null,
+          "repo": "https://github.com/khoj-ai/khoj.git",
+          "fix": "4daf16e5f916641304e11d56a6071ad365c21a18",
+          "cwe": [
+            601
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Khoj Open Redirect Vulnerability in Login Page",
+          "scope": [
+            "src/khoj"
+          ]
+        },
+        {
+          "id": "GHSA-5923-r76v-mprm",
+          "cve": "CVE-2025-67502",
+          "repo": "https://github.com/remram44/taguette.git",
+          "fix": "67de2d2612e7e2572c61cd9627f89c2bfd0f2a36",
+          "cwe": [
+            601
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "Open Redirect Vulnerability in Taguette"
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind JavaScript/TypeScript CVE fix pairs, chosen the same way. Scanned only when named, at the end of a round of rule work; never used to write or tune rules. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it.",
+      "cases": [
+        {
+          "id": "GHSA-79qf-vqgc-7xx3",
+          "cve": "CVE-2026-63667",
+          "repo": "https://github.com/apostrophecms/apostrophe.git",
+          "fix": "87cccf44a23d09420875ca8a3765eb3db843836a",
+          "cwe": [
+            22
+          ],
+          "license": "none",
+          "summary": "ApostropheCMS: Arbitrary file read via import-export attachment-name path traversal",
+          "scope": [
+            "packages/import-export"
+          ]
+        },
+        {
+          "id": "GHSA-cjc9-q5gf-327p",
+          "cve": "CVE-2026-70593",
+          "repo": "https://github.com/TryGhost/Ghost.git",
+          "fix": "fbaa92327e52607036a1e42204c9eadcc751d82c",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Ghost: Theme Upload Path Traversal",
+          "scope": [
+            "ghost/core/core/server"
+          ]
+        },
+        {
+          "id": "GHSA-m44r-7c5h-m6mj",
+          "cve": "CVE-2026-53728",
+          "repo": "https://github.com/medplum/medplum.git",
+          "fix": "7ae10035ddadde4dba7b18d3156553940465b3a1",
+          "cwe": [
+            345,
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "Medplum: Improper Validation of Redirect URI in External Auth Callback allows Authorization Code Leakage",
+          "scope": [
+            "packages/server/src"
+          ]
+        },
+        {
+          "id": "GHSA-3573-4c68-g8cc",
+          "cve": "CVE-2026-22032",
+          "repo": "https://github.com/directus/directus.git",
+          "fix": "dad9576ea9362905cc4de8028d3877caff36dc23",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "Directus has open redirect in SAML",
+          "scope": [
+            "api/src"
+          ]
+        }
+      ]
     }
   ]
 }

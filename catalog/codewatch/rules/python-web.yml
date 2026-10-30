@@ -408,6 +408,11 @@ rules:
                       metavariable: $INIT
                       pattern-either: *pathlib-value
               - pattern: shutil.$OP($PATH, ...)
+              # werkzeug's FileStorage.save(path) for an upload, or an image saved under a request-made name.
+              # Django storages reject "..", so their save() isn't a sink.
+              - patterns:
+                  - pattern: $FILE.save($PATH, ...)
+                  - metavariable-regex: {metavariable: $FILE, regex: '(?i)^(?!.*storage)'}
               - pattern: flask.send_file($PATH, ...)
               - pattern: send_file($PATH, ...)
               - pattern: django.http.FileResponse(open($PATH, ...), ...)
@@ -446,6 +451,9 @@ rules:
       # Jinja templates escape what they're given; redirect() escapes the URL in its body.
       - pattern: flask.render_template(...)
       - pattern: render_template(...)
+      - pattern: django.shortcuts.render(...)
+      - pattern: django.template.loader.render_to_string(...)
+      - pattern: django.template.response.TemplateResponse(...)
       - pattern: flask.redirect(...)
       - pattern: redirect(...)
       - pattern: url_for(...)
@@ -619,7 +627,25 @@ rules:
           - pattern: $REQ.referrer
           - pattern: $REQ.headers.get("Referer", ...)
           - pattern: $REQ.META.get("HTTP_REFERER", ...)
-    pattern-sinks:
+      # The request's own path stays on this site unless it starts with "//"; open-redirect-path covers that.
+      - &request-path
+        pattern-either:
+          - pattern: request.path
+          - pattern: request.path_info
+          - pattern: request.full_path
+          - pattern: request.get_full_path(...)
+          - pattern: request.get_full_path_info(...)
+          - pattern: flask.request.path
+          - pattern: flask.request.full_path
+      # Added after "?", "#" or "&", a value can change the query or fragment but not where the link goes.
+      - pattern-either:
+          - pattern: '"=~/^[?#\x26]/" % $X'
+          - pattern: '"=~/^[?#\x26]/" + $X'
+          - pattern: '"=~/^[?#\x26]/".format(...)'
+          - pattern: urllib.parse.urlencode(...)
+      # A model looked up by the value: redirect() sends the user to the stored object's own URL.
+      - pattern: $MODEL.objects.$QUERY(...)
+    pattern-sinks: &redirect-sinks
       - patterns:
           - pattern-either:
               - pattern: flask.redirect($URL, ...)
@@ -1050,3 +1076,306 @@ rules:
           - metavariable-regex: *log-level
           - metavariable-regex: {metavariable: $FMT, regex: '%-?\d*s'}
           - focus-metavariable: $ARG
+
+  - id: codewatch.python.web.open-redirect-path
+    mode: taint
+    languages: [python]
+    severity: INFO
+    message: >-
+      The redirect target is built from the request's own path. That stays on this site unless the path can
+      start with "//" (a request for "//evil.example/..." becomes a redirect to another host): check that the
+      URL patterns can't match such a path, or collapse repeated slashes first.
+    # For review: whether "//host" can reach this view depends on the URL configuration.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Redirect built from the request path
+      interprocedural: false
+      cwe: ["CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+    pattern-sources:
+      - *request-path
+    pattern-sanitizers:
+      - *validated-guard
+      - *known-safe
+      - patterns:
+          - pattern: re.sub($PATTERN, "/", ...)
+          - metavariable-regex: {metavariable: $PATTERN, regex: '^r?[''"]/(\{2,\}|/\+|\+)[''"]$'}
+    pattern-sinks: *redirect-sinks
+
+  - id: codewatch.python.web.unrestricted-upload
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      An uploaded file is stored under the name the client sent, extension included, and nothing checks the
+      type. An .html, .svg or script file served back from this site runs as part of it. Check the extension
+      against an allowlist, or store the file under a generated name with an extension you choose.
+    # For review: harmless if the folder is never served or executed; secure_filename() stops "../" only.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Upload stored under the client's file name
+      interprocedural: false
+      cwe: ["CWE-434: Unrestricted Upload of File with Dangerous Type"]
+      owasp: ["A06:2025 - Insecure Design"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+        - https://flask.palletsprojects.com/en/stable/patterns/fileuploads/
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.files[$KEY].filename
+          - pattern: request.files.get(...).filename
+          - pattern: flask.request.files[$KEY].filename
+          - pattern: flask.request.files.get(...).filename
+          - pattern: request.FILES[$KEY].name
+          - pattern: request.FILES.get(...).name
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $F = request.files[$KEY]
+                  ...
+              - pattern-inside: |
+                  $F = request.files.get(...)
+                  ...
+              - pattern-inside: |
+                  for $F in request.files.getlist(...):
+                    ...
+              - pattern-inside: |
+                  for $F in request.files.values():
+                    ...
+          - pattern: $F.filename
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $F = request.FILES[$KEY]
+                  ...
+              - pattern-inside: |
+                  $F = request.FILES.get(...)
+                  ...
+              - pattern-inside: |
+                  for $F in request.FILES.getlist(...):
+                    ...
+          - pattern: $F.name
+      # FastAPI / Starlette: def upload(file: UploadFile = File(...))
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  def $H(..., $F: UploadFile, ...):
+                    ...
+              - pattern-inside: |
+                  async def $H(..., $F: UploadFile, ...):
+                    ...
+              - pattern-inside: |
+                  def $H(..., $F: UploadFile = $DEFAULT, ...):
+                    ...
+              - pattern-inside: |
+                  async def $H(..., $F: UploadFile = $DEFAULT, ...):
+                    ...
+          - pattern: $F.filename
+    pattern-sanitizers:
+      - *known-safe
+      # Inside, or after, a check that looks at the name's extension or type: if allowed_file(f.filename): ...
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if $COND:
+                    ...
+              - pattern-inside: |
+                  if $COND:
+                    ...
+                    return ...
+                  ...
+              - pattern-inside: |
+                  if $COND:
+                    ...
+                    raise ...
+                  ...
+              - pattern-inside: |
+                  if $COND:
+                    ...
+                    abort(...)
+                  ...
+          - metavariable-regex:
+              metavariable: $COND
+              regex: '(?i)(allow|permit|valid|ext|suffix|mime|content_type|image)'
+      # Only the stem kept, so the stored file gets an extension the code chose.
+      - pattern: os.path.splitext(...)[0]
+      - pattern: pathlib.Path(...).stem
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $FILE.save($PATH, ...)
+              - pattern: $STORAGE.save($PATH, ...)
+              - pattern: open($PATH, "=~/[wax]/", ...)
+              - pattern: open($PATH, mode="=~/[wax]/", ...)
+              - pattern: aiofiles.open($PATH, "=~/[wax]/", ...)
+              - pattern: shutil.copyfileobj($SRC, open($PATH, ...), ...)
+              - pattern: shutil.move($SRC, $PATH)
+              - pattern: shutil.copy($SRC, $PATH)
+              - pattern: pathlib.Path($PATH).write_bytes(...)
+          - focus-metavariable: $PATH
+
+  - id: codewatch.python.web.stack-trace-exposure
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      A stack trace is sent back in the response. It shows file paths, code and sometimes data to whoever made
+      the request. Log it on the server and return a generic error message instead.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Stack trace sent in the response
+      interprocedural: false
+      cwe: ["CWE-209: Generation of Error Message Containing Sensitive Information"]
+      owasp: ["A10:2025 - Mishandling of Exceptional Conditions"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: traceback.format_exc(...)
+              - pattern: traceback.format_exception(...)
+              - pattern: traceback.format_tb(...)
+              - pattern: traceback.format_stack(...)
+              - pattern: traceback.extract_tb(...)
+          - pattern-not-inside: |
+              if <... $X.debug ...>:
+                ...
+          - pattern-not-inside: |
+              if <... $X.DEBUG ...>:
+                ...
+          - pattern-not-inside: |
+              if <... DEBUG ...>:
+                ...
+    pattern-sinks: &error-response-sinks
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @$APP.$ROUTE(...)
+                  def $VIEW(...):
+                    ...
+              - pattern-inside: |
+                  @$APP.$ROUTE(...)
+                  async def $VIEW(...):
+                    ...
+          - metavariable-regex: {metavariable: $ROUTE, regex: ^(route|get|post|put|patch|delete|api_route|errorhandler)$}
+          - pattern: return $BODY
+          - focus-metavariable: $BODY
+      - pattern-either:
+          - pattern: flask.jsonify(...)
+          - pattern: jsonify(...)
+          - pattern: flask.make_response(...)
+          - pattern: make_response(...)
+          - pattern: flask.Response(...)
+          - pattern: flask.abort(...)
+          - pattern: abort(...)
+          - pattern: django.http.HttpResponse(...)
+          - pattern: django.http.JsonResponse(...)
+          - pattern: django.http.HttpResponseServerError(...)
+          - pattern: django.http.HttpResponseBadRequest(...)
+          - pattern: starlette.responses.$RESPONSE(...)
+          - pattern: fastapi.responses.$RESPONSE(...)
+          - pattern: fastapi.HTTPException(...)
+          - pattern: starlette.exceptions.HTTPException(...)
+          - pattern: rest_framework.response.Response(...)
+
+  - id: codewatch.python.web.exception-message-in-response
+    mode: taint
+    languages: [python]
+    severity: INFO
+    message: >-
+      The text of an unexpected exception is sent back in the response. Messages from databases, file and
+      network errors can show queries, paths, hosts or data. Log the exception and return a generic message.
+    # For review: catching Exception means the message comes from anywhere; a specific exception's message is
+    # usually written for the user and isn't reported.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Exception message sent in the response
+      interprocedural: false
+      cwe: ["CWE-209: Generation of Error Message Containing Sensitive Information"]
+      owasp: ["A10:2025 - Mishandling of Exceptional Conditions"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  try:
+                    ...
+                  except Exception as $E:
+                    ...
+              - pattern-inside: |
+                  try:
+                    ...
+                  except BaseException as $E:
+                    ...
+          - pattern: $E
+          - pattern-not-inside: |
+              if <... $X.debug ...>:
+                ...
+          - pattern-not-inside: |
+              if <... $X.DEBUG ...>:
+                ...
+          - pattern-not-inside: |
+              if <... DEBUG ...>:
+                ...
+    pattern-sanitizers:
+      # The exception's class name says what failed without saying anything about the data.
+      - pattern: type(...)
+      - pattern: $E.__class__
+    pattern-sinks: *error-response-sinks
+
+  - id: codewatch.python.web.mass-assignment
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Every field of the request body is passed to a model, so a client can also set fields the form never
+      offers (is_admin, owner, price). Pass only the fields this view should change, or load the body through a
+      serializer/schema that lists them.
+    # For review: fine if the model has no field a client mustn't set.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Whole request body assigned to a model
+      cwe: ["CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes"]
+      owasp: ["A08:2025 - Software or Data Integrity Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html
+    patterns:
+      # The body itself, or a variable holding it: not a dict built from chosen fields of it.
+      - pattern-either:
+          - patterns:
+              - pattern-either: &py-model-writes
+                  - patterns:
+                      - pattern-either:
+                          - pattern: $MODEL(..., **$DATA, ...)
+                          - pattern: $MODEL.objects.$CREATE(..., **$DATA, ...)
+                          - pattern: $MODEL.objects.$QUERY(...).update(..., **$DATA, ...)
+                      - metavariable-regex: {metavariable: $MODEL, regex: '^[A-Z]\w*$'}
+                  - pattern: $MODEL.query.$FILTER(...).update($DATA, ...)
+                  - pattern: |
+                      for $K, $V in $DATA.items():
+                        ...
+                        setattr($OBJ, $K, $V)
+              - metavariable-regex: &whole-body
+                  metavariable: $DATA
+                  regex: '^(request\.(json|form|values|POST|data)|request\.(get_json|form\.to_dict|POST\.dict)\(.*\)|json\.loads\(request\.(body|data)\))$'
+          - patterns:
+              - pattern-either: *py-model-writes
+              - pattern-inside: |
+                  $DATA = $BODY
+                  ...
+              - metavariable-regex:
+                  <<: *whole-body
+                  metavariable: $BODY
+      - focus-metavariable: $DATA

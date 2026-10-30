@@ -168,3 +168,91 @@ rules:
       - pattern: '$NUNJUCKS.configure({..., autoescape: false, ...})'
       - pattern: 'new $ENV(..., {..., autoescape: false, ...})'
       - pattern: '$HANDLEBARS.compile($TEMPLATE, {..., noEscape: true, ...})'
+
+  - id: codewatch.js.unrestricted-upload
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      An uploaded file is stored under the name the client sent, extension included. An .html, .svg or script
+      file served back from this site runs as part of it. Check the extension and type against an allowlist
+      (multer's fileFilter), or store the file under a generated name with an extension you choose.
+    # For review: harmless if the folder is never served; multer and busboy already drop any directory part.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Upload stored under the client's file name
+      cwe: ["CWE-434: Unrestricted Upload of File with Dangerous Type"]
+      owasp: ["A06:2025 - Insecure Design"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+        - https://github.com/expressjs/multer#diskstorage
+    pattern-either:
+      # multer.diskStorage({ filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname) })
+      - patterns:
+          - pattern-inside: multer.diskStorage({...})
+          - pattern: '$CB(null, <... $FILE.originalname ...>)'
+          - pattern-not: '$CB(null, <... path.parse($FILE.originalname).name ...>)'
+      # express-fileupload: file.mv(dir + file.name)
+      - patterns:
+          - pattern: '$FILE.mv(<... $FILE.name ...>, ...)'
+
+  - id: codewatch.js.mass-assignment
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      The whole request body is written to a model, so a client can also set fields the form never offers
+      (isAdmin, role, ownerId, price). Pick the fields this route should change, or validate the body against a
+      schema that strips unknown keys.
+    # For review: fine if the model has no field a client mustn't set, or validation middleware strips them.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Whole request body assigned to a model
+      cwe: ["CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes"]
+      owasp: ["A08:2025 - Software or Data Integrity Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html
+    patterns:
+      # The body itself, spread into an object, or a variable holding it.
+      - pattern-either:
+          - patterns:
+              - pattern-either: &js-model-writes
+                  - patterns:
+                      - pattern-either:
+                          - pattern: $MODEL.create($BODY, ...)
+                          - pattern: $MODEL.insertMany($BODY, ...)
+                          - pattern: $MODEL.build($BODY, ...)
+                          - pattern: $MODEL.update($BODY, ...)
+                          - pattern: $MODEL.findByIdAndUpdate($ID, $BODY, ...)
+                          - pattern: $MODEL.findOneAndUpdate($FILTER, $BODY, ...)
+                          - pattern: $MODEL.updateOne($FILTER, $BODY, ...)
+                          - pattern: $MODEL.updateMany($FILTER, $BODY, ...)
+                          - pattern: new $MODEL($BODY)
+                      - metavariable-regex: {metavariable: $MODEL, regex: '^[A-Z]\w*$'}
+                  - pattern: $REPO.save($BODY)
+                  - pattern: '$PRISMA.$TABLE.create({..., data: $BODY, ...})'
+                  - pattern: '$PRISMA.$TABLE.update({..., data: $BODY, ...})'
+                  - pattern: '$PRISMA.$TABLE.upsert({..., update: $BODY, ...})'
+                  - pattern: Object.assign($TARGET, $BODY)
+                  - pattern: $DOC.set($BODY)
+              - metavariable-regex: &js-whole-body
+                  metavariable: $BODY
+                  regex: '^((req|request|ctx\.request)\.body|\{[\s\S]*\.\.\.\s*(req|request|ctx\.request)\.body\s*(,[\s\S]*)?\})$'
+          - patterns:
+              - pattern-either: *js-model-writes
+              - pattern-either:
+                  - pattern-inside: |
+                      const $BODY = $WHOLE;
+                      ...
+                  - pattern-inside: |
+                      let $BODY = $WHOLE;
+                      ...
+                  - pattern-inside: |
+                      $BODY = $WHOLE;
+                      ...
+              - metavariable-regex:
+                  <<: *js-whole-body
+                  metavariable: $WHOLE
+      - focus-metavariable: $BODY

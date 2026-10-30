@@ -1,10 +1,10 @@
 {
  "verdict": {
   "overall": {
-   "found": 50,
+   "found": 51,
    "total": 121,
-   "recall": 0.413,
-   "any_security": 0.512
+   "recall": 0.421,
+   "any_security": 0.529
   },
   "categories": {
    "CWE-20": {
@@ -68,7 +68,7 @@
     "total": 1
    },
    "CWE-209": {
-    "found": 0,
+    "found": 1,
     "total": 1
    },
    "CWE-215": {
@@ -583,9 +583,11 @@
    {
     "path": "Testcases_Insecure_Code/CWE-209/codeql_1.py",
     "cwe": 209,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.stack-trace-exposure"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-215/codeql_1.py",
@@ -891,8 +893,10 @@
     "path": "Testcases_Insecure_Code/CWE-434/pearce_1.py",
     "cwe": 434,
     "found": false,
-    "any_security": false,
-    "by": []
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-434/pearce_2.py",
@@ -1272,10 +1276,10 @@
  },
  "review": {
   "overall": {
-   "found": 74,
+   "found": 77,
    "total": 121,
-   "recall": 0.612,
-   "any_security": 0.76
+   "recall": 0.636,
+   "any_security": 0.777
   },
   "categories": {
    "CWE-20": {
@@ -1339,7 +1343,7 @@
     "total": 1
    },
    "CWE-209": {
-    "found": 0,
+    "found": 1,
     "total": 1
    },
    "CWE-215": {
@@ -1447,7 +1451,7 @@
     "total": 1
    },
    "CWE-434": {
-    "found": 0,
+    "found": 2,
     "total": 2
    },
    "CWE-454": {
@@ -1896,9 +1900,11 @@
    {
     "path": "Testcases_Insecure_Code/CWE-209/codeql_1.py",
     "cwe": 209,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.stack-trace-exposure"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-215/codeql_1.py",
@@ -2228,17 +2234,21 @@
    {
     "path": "Testcases_Insecure_Code/CWE-434/pearce_1.py",
     "cwe": 434,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.unrestricted-upload"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-434/pearce_2.py",
     "cwe": 434,
-    "found": false,
+    "found": true,
     "any_security": true,
     "by": [
-     "codewatch:codewatch.python.web.path-traversal"
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.unrestricted-upload"
     ]
    },
    {
@@ -2664,19 +2674,19 @@
  },
  "suite": "securityeval",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T13:32:04+00:00",
+ "scanned_at": "2026-10-30T22:11:17+00:00",
  "overall": {
   "verdict": {
-   "found": 50,
+   "found": 51,
    "total": 121,
-   "recall": 0.413,
-   "any_security": 0.512
+   "recall": 0.421,
+   "any_security": 0.529
   },
   "review": {
-   "found": 74,
+   "found": 77,
    "total": 121,
-   "recall": 0.612,
-   "any_security": 0.76
+   "recall": 0.636,
+   "any_security": 0.777
   }
  }
 }

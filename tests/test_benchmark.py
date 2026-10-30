@@ -87,7 +87,7 @@ def test_run_scores_and_writes_results(tmp_path, monkeypatch, cwes):
     monkeypatch.setattr(benchmark, "CACHE", tmp_path / "cache")
     (tmp_path / "cache").mkdir()
     monkeypatch.setattr(benchmark, "fetch", lambda s: checkout)
-    monkeypatch.setattr(benchmark, "scan", lambda root, log: [issue("tc/T1.py", "xss")])
+    monkeypatch.setattr(benchmark, "scan", lambda root, log, paths=(): [issue("tc/T1.py", "xss")])
     monkeypatch.setattr(benchmark.catalog, "load", lambda: ({}, {"cwe_parents": PARENTS}))
 
     out = benchmark.run(["demo"], log=lambda *a: None)
@@ -103,3 +103,82 @@ def test_render_snippets_lists_missed_challenges():
     result = benchmark.score_snippets_mode({"c1": [("a.ts", 1)]}, {"c1": "XSS"}, {})
     text = "\n".join(benchmark.render_snippets("review", result))
     assert "0 of 1 vulnerable challenges flagged" in text and "| c1 | XSS | missed |" in text
+
+
+FIX_DIFF = """diff --git a/app/views.py b/app/views.py
+--- a/app/views.py
++++ b/app/views.py
+@@ -10,2 +10,3 @@ def show():
+-    q = "SELECT * FROM t WHERE id = " + request.args["id"]
+-    db.execute(q)
++    q = "SELECT * FROM t WHERE id = %s"
++    db.execute(q, (request.args["id"],))
++    log(q)
+@@ -40,0 +42 @@ def other():
++    check()
+diff --git a/tests/test_views.py b/tests/test_views.py
+--- a/tests/test_views.py
++++ b/tests/test_views.py
+@@ -1 +1 @@
+-old
++new
+diff --git a/web/new.ts b/web/new.ts
+--- /dev/null
++++ b/web/new.ts
+@@ -0,0 +1,2 @@
++a
++b
+"""
+
+
+def test_fix_spots_cover_changed_source_lines_and_skip_tests():
+    spots = benchmark.fix_spots(FIX_DIFF, (".py",))
+    assert spots == {"before": {"app/views.py": [(10, 11), (40, 41)]}, "after": {"app/views.py": [(10, 12), (42, 42)]}}
+    assert benchmark.fix_spots(FIX_DIFF, (".ts",))["after"] == {"web/new.ts": [(1, 2)]}
+
+
+def pair_issue(rule, line, code, kind="vulnerability"):
+    return {**issue("app/views.py", rule, kind=kind, line=line), "code": code}
+
+
+SPOTS = {"before": {"app/views.py": [(10, 11)]}, "after": {"app/views.py": [(10, 12)]}}
+CASE = {"id": "GHSA-1", "repo": "r", "cwe": [89]}
+
+
+def test_pair_detected_when_the_fix_silences_the_finding(cwes):
+    sides = {"before": [pair_issue("sqli", 11, "db.execute(q)"), pair_issue("xss", 11, "db.execute(q)")],
+             "after": [pair_issue("sqli", 80, "unrelated()")]}
+    r = benchmark.score_pair(CASE, SPOTS, sides, benchmark.MODES["verdict"], PARENTS)
+    assert r["detected"] and not r["still_flagged"] and r["by"] == ["codewatch:sqli@11"]
+
+
+def test_pair_still_flagged_when_the_finding_survives_the_fix(cwes):
+    far = pair_issue("sqli", 70, "cursor.execute(sql)")
+    sides = {"before": [far], "after": [{**far, "line": 71}, pair_issue("sqli", 30, "x()", kind="security_hotspot")]}
+    verdict = benchmark.score_pair(CASE, SPOTS, sides, benchmark.MODES["verdict"], PARENTS)
+    assert not verdict["detected"] and verdict["still_flagged"] is False
+    near = {"before": [pair_issue("sqli", 10, "q = a + b")], "after": [pair_issue("sqli", 10, "q = a + b")]}
+    r = benchmark.score_pair(CASE, SPOTS, near, benchmark.MODES["verdict"], PARENTS)
+    assert r["detected"] and r["still_by"] == ["codewatch:sqli@10"]
+
+
+def test_pair_mode_counts_detection_and_fixed_code_alarms(cwes):
+    scanned = {"GHSA-1": (SPOTS, {"before": [pair_issue("sqli", 10, "a")], "after": [pair_issue("sqli", 12, "b")]}),
+               "GHSA-2": (SPOTS, {"before": [], "after": []})}
+    result = benchmark.score_pairs_mode([CASE, {**CASE, "id": "GHSA-2"}], scanned, benchmark.MODES["verdict"], PARENTS)
+    assert {k: result["overall"][k] for k in ("tp", "fn", "fp", "tn")} == {"tp": 1, "fn": 1, "fp": 1, "tn": 1}
+    text = "\n".join(benchmark.render_pairs("verdict", result))
+    assert "| GHSA-2 | 89 | missed | quiet |" in text
+
+
+def test_run_skips_blind_suites_unless_named(tmp_path, monkeypatch):
+    suites = [{"name": "open", "kind": "x"}, {"name": "blind", "kind": "x", "blind": True}]
+    (tmp_path / "suites.json").write_text(json.dumps({"suites": suites}))
+    monkeypatch.setattr(benchmark, "ROOT", tmp_path)
+    ran = []
+    monkeypatch.setattr(benchmark, "run_suite", lambda suite, log: ran.append(suite["name"]) or {})
+    monkeypatch.setattr(benchmark, "write", lambda suite, result: None)
+    monkeypatch.setattr(benchmark, "MODES", {})
+    benchmark.run(log=lambda *a: None)
+    benchmark.run(["blind"], log=lambda *a: None)
+    assert ran == ["open", "blind"]

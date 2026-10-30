@@ -27,7 +27,7 @@ NEARBY_LINES = 3
 
 
 def git(*args, cwd):
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
 
 
 def fetch(suite):
@@ -40,12 +40,14 @@ def fetch(suite):
     return target
 
 
-def scan(root, log):
-    files = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True, text=True,
-                           check=True).stdout.split("\0")
-    files = [f for f in files if f]
+def scan(root, log, paths=()):
+    files = [f for f in git("ls-files", "-z", "--", *paths, cwd=root).split("\0") if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
-    return collect(cfg, ScanInput(root, files, "benchmark"), log)["issues"]
+    out = collect(cfg, ScanInput(root, files, "benchmark"), log)
+    # A suite scored without Semgrep would look like a run of misses and quiet fixed code.
+    if (semgrep := out["tools"].get("semgrep", {})).get("status") == "error":
+        raise RuntimeError(f"semgrep failed on {root}: {semgrep['detail']}")
+    return out["issues"]
 
 
 def related(a, b, parents):
@@ -254,22 +256,143 @@ def score_labelled(root, suite, issues):
     return {mode: score_labelled_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
 
 
+# --- CVE fix pairs: the commit before a published fix (vulnerable) and the fix itself ------------------------
+
+
+SOURCE_EXTENSIONS = {"python": (".py",), "javascript": (".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx")}
+TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|spec|e2e)/|(^|/)(test_[^/]*|[^/]*_test\.py|tests?\.py)$"
+                          r"|\.(test|spec)\.[cm]?[jt]sx?$|\.d\.ts$")
+HUNK_RE = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+def fetch_pair(suite, case):
+    """Fix commit and its parent, blobs fetched lazily; a case's scope limits the checkout to those folders."""
+    target = CACHE / suite["name"] / case["id"]
+    target.mkdir(parents=True, exist_ok=True)
+    if not (target / ".git").exists():
+        git("init", "-q", cwd=target)
+        git("remote", "add", "origin", case["repo"], cwd=target)
+        if case.get("scope"):
+            git("sparse-checkout", "set", *case["scope"], cwd=target)
+    git("fetch", "-q", "--depth", "2", "--filter=blob:none", "origin", case["fix"], cwd=target)
+    return target, git("rev-parse", f"{case['fix']}^", cwd=target).strip()
+
+
+def span(start, count):
+    """Lines a hunk side covers; a pure insertion or deletion (count 0) is the gap after line `start`."""
+    start, count = int(start), int(count or 1)
+    return (max(start, 1), start + 1) if count == 0 else (start, start + count - 1)
+
+
+def fix_spots(diff, extensions):
+    """{"before": {path: [(first, last)]}, "after": ...} for non-test source files changed by the fix."""
+    spots = {"before": defaultdict(list), "after": defaultdict(list)}
+    old = new = None
+    for line in diff.splitlines():
+        if line.startswith("--- "):
+            old = line[6:] if line.startswith("--- a/") else None
+        elif line.startswith("+++ "):
+            new = line[6:] if line.startswith("+++ b/") else None
+        elif match := HUNK_RE.match(line):
+            for side, path, (start, count) in (("before", old, match.group(1, 2)), ("after", new, match.group(3, 4))):
+                if path and path.endswith(extensions) and not TEST_PATH_RE.search(path):
+                    spots[side][path].append(span(start, count))
+    return {side: dict(paths) for side, paths in spots.items()}
+
+
+def with_code(root, issues):
+    """Each finding with its stripped source line, so the same finding can be recognised on both sides of a fix."""
+    lines = {}
+    for i in issues:
+        if i["path"] not in lines:
+            path = root / i["path"]
+            lines[i["path"]] = path.read_text(errors="replace").splitlines() if path.is_file() else []
+        text = lines[i["path"]]
+        i["code"] = text[i["line"] - 1].strip() if i["line"] and i["line"] <= len(text) else ""
+    return issues
+
+
+def scan_pair(suite, case, log):
+    root, parent = fetch_pair(suite, case)
+    spots = fix_spots(git("diff", "-U0", "--no-renames", parent, case["fix"], cwd=root),
+                      SOURCE_EXTENSIONS[suite["language"]])
+    sides = {}
+    for side, commit in (("before", parent), ("after", case["fix"])):
+        git("checkout", "-q", "--force", commit, cwd=root)
+        found = [i for i in scan(root, log, case.get("scope", [])) if i["type"] in SECURITY_TYPES]
+        sides[side] = with_code(root, [i for i in found if i["path"] in spots[side]])
+    return spots, sides
+
+
+def near(issue, spans):
+    return any(first - NEARBY_LINES <= (issue["line"] or 0) <= last + NEARBY_LINES for first, last in spans)
+
+
+def score_pair(case, spots, sides, types, parents):
+    """Detected: a finding of the advisory's weakness at the fixed spot, or one the fix makes go away. Still
+    flagged (a false alarm on fixed code): such a finding survives the fix, or a new one appears at the fix."""
+    def relevant(side):
+        return [i for i in sides[side] if i["type"] in types
+                and any(related(c, w, parents) for c in issue_cwes(i) for w in case["cwe"])]
+
+    def key(i):
+        return i["path"], i["rule"], i["code"]
+
+    before, after = relevant("before"), relevant("after")
+    after_keys = {key(i) for i in after}
+    hits = [i for i in before if near(i, spots["before"][i["path"]]) or key(i) not in after_keys]
+    hit_keys = {key(i) for i in hits}
+    still = [i for i in after if key(i) in hit_keys or near(i, spots["after"][i["path"]])]
+    return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], "detected": bool(hits),
+            "still_flagged": bool(still), "by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in hits}),
+            "still_by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in still})}
+
+
+def score_pairs_mode(cases, scanned, types, parents):
+    totals, per_cwe, results = {"tp": 0, "fn": 0, "fp": 0, "tn": 0}, defaultdict(lambda: {"tp": 0, "fn": 0, "fp": 0, "tn": 0}), []
+    for case in cases:
+        r = score_pair(case, *scanned[case["id"]], types, parents)
+        for key in ("tp" if r["detected"] else "fn", "fp" if r["still_flagged"] else "tn"):
+            totals[key] += 1
+            per_cwe[f"CWE-{case['cwe'][0]}"][key] += 1
+        results.append(r)
+    return {"overall": rates(totals), "categories": dict(sorted(per_cwe.items())), "cases": results}
+
+
+def score_cve_pairs(suite, log):
+    parents = catalog.load()[1].get("cwe_parents", {})
+    scanned = {}
+    for case in suite["cases"]:
+        log(f"   {case['id']}: {case['repo']} {case['fix'][:10]}")
+        scanned[case["id"]] = scan_pair(suite, case, log)
+    (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(scanned))
+    return {mode: score_pairs_mode(suite["cases"], scanned, types, parents) for mode, types in MODES.items()}
+
+
 SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets, "cwe-folders": score_cwe_folders,
            "labelled-files": score_labelled, "seed-files": score_seeds}
 
 
+def run_suite(suite, log):
+    if suite["kind"] == "cve-pairs":
+        log(f"== {suite['name']}: {len(suite['cases'])} fix commits")
+        return score_cve_pairs(suite, log)
+    log(f"== {suite['name']}: fetching {suite['commit'][:10]}")
+    root = fetch(suite)
+    issues = scan(root, log)
+    (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(issues))
+    return SCORERS[suite["kind"]](root, suite, issues)
+
+
 def run(names=None, log=print):
+    """Score the named suites, or every suite except blind ones, which run only when named."""
     suites = json.loads((ROOT / "suites.json").read_text())["suites"]
     out = {}
     for suite in suites:
-        if names and suite["name"] not in names:
+        if (names and suite["name"] not in names) or (not names and suite.get("blind")):
             continue
-        log(f"== {suite['name']}: fetching {suite['commit'][:10]}")
-        root = fetch(suite)
-        issues = scan(root, log)
-        (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(issues))
-        scored = SCORERS[suite["kind"]](root, suite, issues)
-        result = {**scored, "suite": suite["name"], "commit": suite["commit"],
+        scored = run_suite(suite, log)
+        result = {**scored, "suite": suite["name"], "commit": suite.get("commit", "per case"),
                   "scanned_at": datetime.now(UTC).isoformat(timespec="seconds"),
                   "overall": {mode: scored[mode]["overall"] for mode in MODES}}
         write(suite, result)
@@ -324,13 +447,24 @@ def render_labelled(mode, r):
             *(f"| {k} | {v['tp']} | {v['fn']} | {v['fp']} | {v['tn']} |" for k, v in r["categories"].items()), ""]
 
 
+def render_pairs(mode, r):
+    o = r["overall"]
+    return [f"## {mode.capitalize()} mode", "",
+            (f"**Detection {o['tpr']:.0%} ({o['tp']} of {o['tp'] + o['fn']} vulnerable commits), still flagged after "
+             f"the fix {o['fpr']:.0%} ({o['fp']} of {o['fp'] + o['tn']})**"), "",
+            "| Advisory | CWE | Vulnerable commit | Fixed commit |", "|---|---|---|---|",
+            *(f"| {c['id']} | {', '.join(map(str, c['cwe']))} | {', '.join(c['by']) or 'missed'} | "
+              f"{', '.join(c['still_by']) or 'quiet'} |" for c in r["cases"]), ""]
+
+
 RENDERERS = {"owasp-benchmark": render_owasp, "vuln-snippets": render_snippets, "cwe-folders": render_cwe,
-             "labelled-files": render_labelled, "seed-files": render_labelled}
+             "labelled-files": render_labelled, "seed-files": render_labelled, "cve-pairs": render_pairs}
 
 
 def render(suite, result):
-    lines = [f"# {suite['name']}", "", suite["about"], "",
-             f"Commit `{suite['commit'][:10]}` ({suite['license']}), scanned {result['scanned_at']}.", "",
+    pinned = (f"Commit `{suite['commit'][:10]}` ({suite['license']})" if "commit" in suite
+              else "Fix commits and licenses pinned per case in `benchmarks/suites.json`")
+    lines = [f"# {suite['name']}", "", suite["about"], "", f"{pinned}, scanned {result['scanned_at']}.", "",
              "Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.", ""]
     renderer = RENDERERS[suite["kind"]]
     for mode in MODES:

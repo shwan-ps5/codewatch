@@ -2,7 +2,7 @@
 
 OWASP Benchmark for Python: each test case is a small Flask handler that is or is not really vulnerable to one CWE. Measures detection and false alarms.
 
-Commit `f129148580` (GPL-3.0), scanned 2026-10-30T13:25:34+00:00.
+Commit `f129148580` (GPL-3.0), scanned 2026-10-30T22:10:37+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
