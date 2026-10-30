@@ -231,9 +231,16 @@ def single():
         rule("pip-audit", "vulnerable-dependency", "Dependency with a known vulnerability", [PYTHON],
              VULNERABILITY, "varies", license_="Apache-2.0 (pip-audit)",
              summary="A dependency has a published advisory (severity taken from the advisory).",
-             docs="https://github.com/pypa/pip-audit",
+             docs="https://github.com/pypa/pip-audit", cwe=[1395], owasp=["A03:2025"],
              refs=[{"label": "OSV vulnerability database", "url": "https://osv.dev"},
                    {"label": "PyPA Advisory Database", "url": "https://github.com/pypa/advisory-database"}]),
+        rule("osv", "vulnerable-dependency", "Dependency with a known vulnerability", [JS],
+             VULNERABILITY, "varies", license_="CC-BY-4.0 (OSV data)",
+             summary="A package version pinned in package-lock.json, yarn.lock or pnpm-lock.yaml has a published "
+                     "advisory (severity taken from the advisory).",
+             docs="https://google.github.io/osv.dev/post-v1-querybatch/", cwe=[1395], owasp=["A03:2025"],
+             refs=[{"label": "OSV vulnerability database", "url": "https://osv.dev"},
+                   {"label": "GitHub Advisory Database", "url": "https://github.com/advisories"}]),
     ]
 
 
