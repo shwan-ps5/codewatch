@@ -10,10 +10,6 @@ ONLY_RUFF = [a.name for a in ANALYZERS if a.name not in ("ruff", "coverage")]
 
 
 def sh(repo, *args):
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
-
-
-def sh_out(repo, *args):
     return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
 
 

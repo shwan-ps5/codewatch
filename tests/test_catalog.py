@@ -10,9 +10,10 @@ from django.test import Client
 from core import catalog, ratings
 from core.analyzers.base import Context
 from core.analyzers.codewatch_checks import CodewatchChecks, python_literals, python_regexes, to_js_syntax
+from core.analyzers.multi_tools import Semgrep
 from core.catalog import update
 from core.catalog.merge import merge
-from core.runner import dedupe
+from core.duplicates import dedupe
 
 IMPORTED = [
     {"id": "ruff/S602", "tool": "ruff", "code": "S602", "title": "Shell true", "languages": ["python"],
@@ -179,3 +180,35 @@ def test_builtin_rules_load_and_a_broken_custom_file_is_skipped(tmp_path, monkey
     assert "codewatch.python.web.sql-injection" in ids and "codewatch.js.nosql-injection" in ids
     assert "skipping rule file" in capsys.readouterr().err
     assert not any("&" in str(r) for r in rules), "anchors are expanded before semgrep sees them"
+
+
+def test_method_restriction_rule_covers_any_views_module(tmp_path):
+    semgrep = Semgrep()
+    if not semgrep.available():
+        pytest.skip("semgrep not installed")
+    (tmp_path / "catalog_views.py").write_text(
+        "from django.shortcuts import render\n"
+        "from django.views.decorators.http import require_safe\n\n\n"
+        "@login_not_required\n"
+        "def open_view(request):\n"
+        "    Room.objects.create(name=request.GET['n'])\n"
+        "    return render(request, 'a.html')\n\n\n"
+        "@require_safe\n"
+        "@login_not_required\n"
+        "def safe_view(request):\n"
+        "    Room.objects.create(name='x')\n"
+        "    return render(request, 'a.html')\n\n\n"
+        "def read_only(request):\n"
+        "    return render(request, 'a.html', {'rooms': Room.objects.all()})\n\n\n"
+        "def form_view(request):\n"
+        "    if request.method == 'POST':\n"
+        "        Room.objects.get(pk=1).delete()\n"
+        "    return render(request, 'a.html')\n\n\n"
+        "def submit(request):\n"
+        "    name = request.POST.get('name')\n"
+        "    return render(request, 'a.html', {'n': name})\n"
+    )
+    ctx = Context(root=tmp_path, files=["catalog_views.py"], semgrep_config="",
+                  custom_rules=catalog.custom_semgrep_rules())
+    hits = [f.line for f in semgrep.run(ctx).findings if f.rule.endswith("view-without-method-restriction")]
+    assert hits == [5, 28], "only views that change state without a method restriction"

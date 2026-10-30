@@ -41,7 +41,9 @@ def fetch(suite):
 
 
 def scan(root, log):
-    files = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True).stdout.split()
+    files = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True, text=True,
+                           check=True).stdout.split("\0")
+    files = [f for f in files if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
     return collect(cfg, ScanInput(root, files, "benchmark"), log)["issues"]
 
@@ -52,8 +54,13 @@ def related(a, b, parents):
 
 
 def issue_cwes(issue):
-    entry = catalog.lookup(issue["tool"], issue["rule"])
-    return set(entry["cwe"]) if entry else set()
+    """CWEs of the rule, and of every other rule that reported the same finding before it was merged."""
+    cwes = set()
+    for tool, rule in [(issue["tool"], issue["rule"]),
+                       *(s.split(":", 1) for s in issue.get("also_reported_by") or [] if ":" in s)]:
+        entry = catalog.lookup(tool, rule)
+        cwes.update(entry["cwe"] if entry else [])
+    return cwes
 
 
 # Verdict mode counts only findings that claim a vulnerability (data flow or definite flaw), which is what the
@@ -151,7 +158,85 @@ def score_snippets(root, suite, issues):
             for mode, types in MODES.items()}
 
 
-SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets}
+# --- CWE-labelled folders (SecurityEval style) -------------------------------------------------------------
+
+
+CWE_DIR_RE = re.compile(r"CWE-(\d{1,5})")
+
+
+def cwe_cases(root, suite):
+    """Every file under test_dir/CWE-<n>/ (or a folder the suite maps to a CWE) is a vulnerable sample of it."""
+    folders = suite.get("folders", {})
+    extensions = tuple(suite.get("extensions", [".py"]))
+    cases = []
+    for path in sorted((root / suite["test_dir"]).glob("*/*")):
+        if not path.name.endswith(extensions):
+            continue
+        match = CWE_DIR_RE.fullmatch(path.parent.name)
+        cwe = int(match[1]) if match else folders.get(path.parent.name)
+        if cwe:
+            cases.append({"path": path.relative_to(root).as_posix(), "cwe": cwe})
+    return cases
+
+
+def score_cwe_mode(cases, by_file, parents):
+    per_cwe, results = defaultdict(lambda: {"found": 0, "total": 0}), []
+    for case in cases:
+        findings = by_file.get(case["path"], [])
+        hit = flagged(case, findings, parents)
+        per_cwe[case["cwe"]]["total"] += 1
+        per_cwe[case["cwe"]]["found"] += hit
+        results.append({**case, "found": hit, "any_security": bool(findings),
+                        "by": sorted({f"{i['tool']}:{i['rule']}" for i in findings})})
+    found = sum(r["found"] for r in results)
+    flagged_any = sum(r["any_security"] for r in results)
+    return {"overall": {"found": found, "total": len(results), "recall": round(found / len(results), 3),
+                        "any_security": round(flagged_any / len(results), 3)},
+            "categories": {f"CWE-{k}": v for k, v in sorted(per_cwe.items())}, "cases": results}
+
+
+def score_cwe_folders(root, suite, issues):
+    parents = catalog.load()[1].get("cwe_parents", {})
+    cases = cwe_cases(root, suite)
+    return {mode: score_cwe_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
+
+
+# --- Labelled files (a CSV of CWE, file and a manual vulnerable/safe verdict) --------------------------------
+
+
+def labelled_cases(root, suite):
+    with open(root / suite["labels"], newline="", encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
+    cases = []
+    for row in rows:
+        verdict, match = row.get(suite["label_column"], "").strip(), CWE_DIR_RE.fullmatch(row["CWEID"].strip())
+        path = f"{suite['test_dir']}/{row['CWEID'].strip()}/{row['SampleID'].strip()}"
+        if verdict in ("0", "1") and match and (root / path).exists():
+            cases.append({"path": path, "cwe": int(match[1]), "real": verdict == "1"})
+    return cases
+
+
+def score_labelled_mode(cases, by_file, parents):
+    totals, per_cwe, mistakes = {"tp": 0, "fn": 0, "fp": 0, "tn": 0}, defaultdict(lambda: {"tp": 0, "fn": 0, "fp": 0, "tn": 0}), []
+    for case in cases:
+        hit = flagged(case, by_file.get(case["path"], []), parents)
+        key = ("tp" if hit else "fn") if case["real"] else ("fp" if hit else "tn")
+        totals[key] += 1
+        per_cwe[f"CWE-{case['cwe']}"][key] += 1
+        if case["real"] != hit:
+            mistakes.append({**case, "flagged": hit,
+                             "by": sorted({f"{i['tool']}:{i['rule']}" for i in by_file.get(case["path"], [])})})
+    return {"overall": rates(totals), "categories": dict(sorted(per_cwe.items())), "mistakes": mistakes}
+
+
+def score_labelled(root, suite, issues):
+    parents = catalog.load()[1].get("cwe_parents", {})
+    cases = labelled_cases(root, suite)
+    return {mode: score_labelled_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
+
+
+SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets, "cwe-folders": score_cwe_folders,
+           "labelled-files": score_labelled}
 
 
 def run(names=None, log=print):
@@ -202,11 +287,33 @@ def render_snippets(mode, r):
             ""]
 
 
+def render_cwe(mode, r):
+    o = r["overall"]
+    return [f"## {mode.capitalize()} mode", "",
+            (f"**{o['found']} of {o['total']} vulnerable files flagged for their CWE ({o['recall']:.0%}); "
+             f"{o['any_security']:.0%} have some security finding**"), "",
+            "| CWE | Flagged | Files |", "|---|---|---|",
+            *(f"| {k} | {v['found']} | {v['total']} |" for k, v in r["categories"].items()), ""]
+
+
+def render_labelled(mode, r):
+    o = r["overall"]
+    return [f"## {mode.capitalize()} mode", "",
+            (f"**Detection {o['tpr']:.0%} ({o['tp']} of {o['tp'] + o['fn']} vulnerable files), false alarms "
+             f"{o['fpr']:.0%} ({o['fp']} of {o['fp'] + o['tn']} safe files)**"), "",
+            "| CWE | Detected | Missed | False alarms | Correctly quiet |", "|---|---|---|---|---|",
+            *(f"| {k} | {v['tp']} | {v['fn']} | {v['fp']} | {v['tn']} |" for k, v in r["categories"].items()), ""]
+
+
+RENDERERS = {"owasp-benchmark": render_owasp, "vuln-snippets": render_snippets, "cwe-folders": render_cwe,
+             "labelled-files": render_labelled}
+
+
 def render(suite, result):
     lines = [f"# {suite['name']}", "", suite["about"], "",
              f"Commit `{suite['commit'][:10]}` ({suite['license']}), scanned {result['scanned_at']}.", "",
              "Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.", ""]
-    renderer = render_owasp if suite["kind"] == "owasp-benchmark" else render_snippets
+    renderer = RENDERERS[suite["kind"]]
     for mode in MODES:
         lines += renderer(mode, result[mode])
     return "\n".join(lines) + "\n"

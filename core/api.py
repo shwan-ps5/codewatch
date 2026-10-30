@@ -103,6 +103,7 @@ def issue_json(issue, resolution=None):
         "end_line": issue.end_line,
         "is_new": issue.is_new,
         "fingerprint": issue.fingerprint,
+        "also_reported_by": issue.also_reported_by,
         "resolution": resolution and {"status": resolution.status, "comment": resolution.comment},
     }
 
@@ -191,7 +192,6 @@ def issue_detail(request, pk):
     data["project"] = issue.analysis.project.key
     data["analysis"] = analysis_json(request, issue.analysis)
     data["snippet"] = snippet(issue, min(int(request.GET.get("context", 5)), 50))
-    data["also_reported_by"] = issue.also_reported_by
     entry = catalog.lookup(issue.tool, issue.rule)
     data["rule"] = rule_json(entry, full=False) if entry else None
     return JsonResponse(data)

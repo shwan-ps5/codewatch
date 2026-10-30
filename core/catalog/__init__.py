@@ -106,7 +106,7 @@ def changes():
 
 
 def reload():
-    for cached in (load, index, docs):
+    for cached in (load, index, docs, bandit_by_test_id):
         cached.cache_clear()
 
 
@@ -114,9 +114,18 @@ def find(rule_id):
     return index().get(rule_id)
 
 
+@lru_cache(maxsize=1)
+def bandit_by_test_id():
+    return {r["id"].split("/", 1)[1].split(":", 1)[0]: r for r in load()[0] if r["id"].startswith("bandit/")}
+
+
 def lookup(tool, code):
     """Catalogue entry for an issue's tool + rule; bandit issues carry "B105:name", ruff "F841", etc."""
-    return find(ISSUE_RULE_ALIASES.get(tool) or f"{tool}/{code}")
+    entry = find(ISSUE_RULE_ALIASES.get(tool) or f"{tool}/{code}")
+    if entry is None and tool == "bandit":
+        # bandit renames tests between releases (B324:hashlib vs B324:hashlib_insecure_functions); the id is stable.
+        entry = bandit_by_test_id().get(code.split(":", 1)[0])
+    return entry
 
 
 def ancestors(cwe, parents):

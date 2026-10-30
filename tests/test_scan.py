@@ -9,7 +9,7 @@ from core import gate
 from core.models import Analysis, IssueResolution, Metric, Project
 from core.views import ProjectSettingsForm
 
-from .conftest import ONLY_RUFF, sh, sh_out
+from .conftest import ONLY_RUFF, sh
 
 
 @pytest.fixture
@@ -82,7 +82,7 @@ def test_main_new_code_since_a_tag_spans_several_scans(repo, project):
     call_command("scan", "demo")
     commit_change(repo, "\nimport sys\n")
     sh(repo, "tag", "v1")
-    tagged = sh_out(repo, "rev-parse", "HEAD")
+    tagged = sh(repo, "rev-parse", "HEAD")
     call_command("scan", "demo")
     project.new_code_period = "v1"
     project.save()

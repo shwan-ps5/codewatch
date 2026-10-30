@@ -1,9 +1,9 @@
 {
  "verdict": {
   "overall": {
-   "found": 7,
+   "found": 13,
    "total": 35,
-   "recall": 0.2
+   "recall": 0.371
   },
   "categories": {
    "Broken Access Control": {
@@ -11,7 +11,7 @@
     "total": 4
    },
    "Broken Anti Automation": {
-    "found": 0,
+    "found": 1,
     "total": 1
    },
    "Broken Authentication": {
@@ -23,7 +23,7 @@
     "total": 2
    },
    "Injection": {
-    "found": 1,
+    "found": 6,
     "total": 8
    },
    "Miscellaneous": {
@@ -133,8 +133,10 @@
       23
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
    },
    {
     "challenge": "directoryListingChallenge",
@@ -223,8 +225,10 @@
       34
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
    },
    {
     "challenge": "loginBenderChallenge",
@@ -235,8 +239,10 @@
       34
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
    },
    {
     "challenge": "loginJimChallenge",
@@ -247,8 +253,10 @@
       34
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
    },
    {
     "challenge": "nftMintChallenge",
@@ -395,8 +403,10 @@
       374
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.rate-limit-spoofable-key"
+    ]
    },
    {
     "challenge": "resetPasswordUvoginChallenge",
@@ -461,8 +471,10 @@
       23
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
    },
    {
     "challenge": "vulnerableDockerImageChallenge",
@@ -530,9 +542,9 @@
  },
  "review": {
   "overall": {
-   "found": 15,
+   "found": 16,
    "total": 35,
-   "recall": 0.429
+   "recall": 0.457
   },
   "categories": {
    "Broken Access Control": {
@@ -540,7 +552,7 @@
     "total": 4
    },
    "Broken Anti Automation": {
-    "found": 0,
+    "found": 1,
     "total": 1
    },
    "Broken Authentication": {
@@ -666,7 +678,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+     "codewatch:codewatch.js.sql-injection"
     ]
    },
    {
@@ -762,7 +774,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+     "codewatch:codewatch.js.sql-injection"
     ]
    },
    {
@@ -776,7 +788,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+     "codewatch:codewatch.js.sql-injection"
     ]
    },
    {
@@ -790,7 +802,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+     "codewatch:codewatch.js.sql-injection"
     ]
    },
    {
@@ -938,8 +950,10 @@
       374
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.rate-limit-spoofable-key"
+    ]
    },
    {
     "challenge": "resetPasswordUvoginChallenge",
@@ -964,8 +978,7 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.angular-bypass-sanitizer",
-     "eslint:security/detect-object-injection"
+     "codewatch:codewatch.js.angular-bypass-sanitizer"
     ]
    },
    {
@@ -1007,7 +1020,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+     "codewatch:codewatch.js.sql-injection"
     ]
    },
    {
@@ -1076,17 +1089,17 @@
  },
  "suite": "juice-shop",
  "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
- "scanned_at": "2026-10-28T23:36:03+00:00",
+ "scanned_at": "2026-10-30T01:38:46+00:00",
  "overall": {
   "verdict": {
-   "found": 7,
+   "found": 13,
    "total": 35,
-   "recall": 0.2
+   "recall": 0.371
   },
   "review": {
-   "found": 15,
+   "found": 16,
    "total": 35,
-   "recall": 0.429
+   "recall": 0.457
   }
  }
 }

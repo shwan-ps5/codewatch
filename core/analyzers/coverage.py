@@ -1,8 +1,10 @@
+import ast
 from pathlib import Path
 
 import defusedxml.ElementTree as ET
 
-from .base import Analyzer, Result
+from .base import Analyzer, Result, is_test_file
+from .codewatch_checks import docstring_nodes
 
 
 class Coverage(Analyzer):
@@ -22,14 +24,22 @@ class Coverage(Analyzer):
         report = Path(ctx.coverage_report)
         lines = parse_lcov(report) if report.suffix in (".info", ".lcov") else parse_cobertura(report)
         result = Result()
-        collect(result, lines, set(ctx.files), Path(ctx.coverage_base or report.parent))
-        coverable = sum(len(v) for v in result.coverable_lines.values())
-        covered = sum(len(v) for v in result.covered_lines.values())
-        result.metrics["lines_to_cover"] = coverable
-        result.metrics["uncovered_lines"] = coverable - covered
-        if coverable:
-            result.metrics["coverage"] = round(100 * covered / coverable, 1)
+        # Tests run in full by definition; counting them would inflate coverage of the code under test.
+        sources = [f for f in ctx.files if not is_test_file(f)]
+        collect(result, lines, set(sources), Path(ctx.coverage_base or report.parent))
+        if any(p.endswith(".py") for p in result.coverable_lines):
+            add_unreported(result, Path(ctx.root), sources)
+        result.metrics.update(summary(result))
         return result
+
+
+def summary(result):
+    coverable = sum(len(v) for v in result.coverable_lines.values())
+    covered = sum(len(v) for v in result.covered_lines.values())
+    metrics: dict[str, float] = {"lines_to_cover": coverable, "uncovered_lines": coverable - covered}
+    if coverable:
+        metrics["coverage"] = round(100 * covered / coverable, 1)
+    return metrics
 
 
 def collect(result, lines, tracked, base):
@@ -43,6 +53,34 @@ def collect(result, lines, tracked, base):
             continue
         result.coverable_lines.setdefault(path, set()).update(hits)
         result.covered_lines.setdefault(path, set()).update(n for n, count in hits.items() if count > 0)
+
+
+def add_unreported(result, root, files):
+    """Python files the test run never imported are untested, not unmeasured: count all their statements."""
+    for path in files:
+        if not path.endswith(".py") or path in result.coverable_lines:
+            continue
+        try:
+            lines = statement_lines((root / path).read_text(errors="replace"))
+        except (OSError, SyntaxError, ValueError):
+            continue
+        if lines:
+            result.coverable_lines[path] = lines
+            result.covered_lines[path] = set()
+
+
+def statement_lines(source):
+    """Executable lines as coverage.py reports them: statements, decorators and except clauses, not docstrings."""
+    tree = ast.parse(source)
+    docstrings = docstring_nodes(tree)
+    lines = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ExceptHandler):
+            lines.add(node.lineno)
+        elif isinstance(node, ast.stmt) and not (isinstance(node, ast.Expr) and id(node.value) in docstrings):
+            lines.add(node.lineno)
+            lines.update(d.lineno for d in getattr(node, "decorator_list", []))
+    return lines
 
 
 def match_suffix(candidates, by_name):

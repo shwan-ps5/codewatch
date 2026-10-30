@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from core.analyzers.accessibility import blank_template_syntax
-from core.analyzers.base import Finding
-from core.analyzers.coverage import parse_cobertura, parse_lcov, resolve
+from core.analyzers.base import Context, Finding, Result
+from core.analyzers.coverage import Coverage, add_unreported, parse_cobertura, parse_lcov, resolve, statement_lines
 from core.analyzers.dependencies import declaration_line, manifests
 from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
 from core.fingerprint import assign_fingerprints
@@ -84,6 +84,48 @@ def test_parse_cobertura(tmp_path):
     [(candidates, hits)] = list(parse_cobertura(report))
     assert hits == {1: 1, 2: 0}
     assert resolve(candidates[0], Path("/repo")) == "src/pkg/m.py"
+
+
+def test_coverage_ignores_test_files(tmp_path):
+    (tmp_path / "tests").mkdir()
+    for name in ("app.py", "tests/test_app.py", "tests/conftest.py"):
+        (tmp_path / name).write_text("x = 1\ny = 2\n")
+    report = tmp_path / "coverage.xml"
+    report.write_text(
+        "<coverage><packages><package><classes>"
+        '<class filename="app.py"><lines><line number="1" hits="1"/><line number="2" hits="0"/></lines></class>'
+        '<class filename="tests/test_app.py"><lines><line number="1" hits="1"/><line number="2" hits="1"/></lines></class>'
+        "</classes></package></packages></coverage>"
+    )
+    ctx = Context(root=tmp_path, files=["app.py", "tests/test_app.py", "tests/conftest.py"], coverage_report=report)
+    result = Coverage().run(ctx)
+    assert set(result.coverable_lines) == {"app.py"}, "reported or not, test files never count"
+    assert result.metrics["coverage"] == 50.0
+
+
+def test_statement_lines_match_coverage_py():
+    source = (
+        '"""Module docstring."""\n'
+        "import os\n\n\n"
+        "@decorator\n"
+        "@other\n"
+        "def f():\n"
+        '    """Docstring."""\n'
+        "    try:\n"
+        "        return os.sep\n"
+        "    except OSError:\n"
+        "        return None\n"
+    )
+    assert statement_lines(source) == {2, 5, 6, 7, 9, 10, 11, 12}
+
+
+def test_python_files_missing_from_the_report_count_as_uncovered(tmp_path):
+    (tmp_path / "unused.py").write_text("import os\nx = 1\n")
+    result = Result()
+    result.coverable_lines["app.py"] = {1}
+    add_unreported(result, tmp_path, ["app.py", "unused.py", "missing.py"])
+    assert result.coverable_lines == {"app.py": {1}, "unused.py": {1, 2}}
+    assert result.covered_lines["unused.py"] == set()
 
 
 def test_parse_lcov(tmp_path):

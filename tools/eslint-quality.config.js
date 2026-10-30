@@ -28,7 +28,20 @@ const quality = {
   "max-depth": [WARN, 4],
   "max-params": [WARN, 6],
   "max-nested-callbacks": [WARN, 4],
+  // `a ?? 32 - 32` reads as `(a ?? 32) - 32` but parses as `a ?? 0`.
+  // Each group pairs ?? with one operator, so ordinary arithmetic like a + b * c is not flagged.
+  "no-mixed-operators": [ERROR, { groups: ["+", "-", "*", "/", "%", "**"].map((op) => ["??", op]) }],
+  "no-restricted-syntax": [
+    WARN,
+    {
+      selector: "CallExpression[callee.property.name=/^reduce(Right)?$/][arguments.length=1]",
+      message: "reduce() without an initial value throws on an empty array",
+    },
+  ],
 };
+
+// Flags every obj[variable] access; in practice nearly all of its findings are false positives.
+const securityRules = { ...security.configs.recommended.rules, "security/detect-object-injection": "off" };
 
 export default [
   {
@@ -42,7 +55,7 @@ export default [
       globals: { ...globals.browser, ...globals.node, ...globals.es2021 },
     },
     linterOptions: { reportUnusedDisableDirectives: "off" },
-    rules: { ...js.configs.recommended.rules, ...security.configs.recommended.rules, ...quality },
+    rules: { ...js.configs.recommended.rules, ...securityRules, ...quality },
   },
   { files: ["**/*.cjs"], languageOptions: { sourceType: "commonjs" } },
   // The TypeScript compiler already resolves names; no-undef misfires on types.

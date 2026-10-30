@@ -4,12 +4,14 @@ import traceback
 from django.db import transaction
 from django.utils import timezone
 
-from . import catalog, gate
+from . import gate
 from .collect import ScanConfig, ScanInput, choose_reference, collect
+from .duplicates import dedupe
 from .git import Mirror
 from .models import Analysis, AnalysisSource, Issue, Metric, SourceBlob
 
-ISSUE_FIELDS = ("tool", "rule", "severity", "type", "message", "path", "line", "end_line", "fingerprint")
+ISSUE_FIELDS = ("tool", "rule", "severity", "type", "message", "path", "line", "end_line", "fingerprint",
+                "also_reported_by")
 
 
 def ensure_main_branch(project, mirror):
@@ -87,39 +89,6 @@ def ingest(analysis, payload):
         analysis.save()
         gate.refresh(analysis)
     return analysis
-
-
-SEVERITY_RANK = {"blocker": 0, "critical": 1, "major": 2, "minor": 3, "info": 4}
-SECURITY_TYPES = {"vulnerability", "security_hotspot"}
-
-
-def same_check(a, b):
-    """Two findings on one line are the same problem if the catalogue says the rules are equivalent,
-    or both are security findings for a shared CWE."""
-    ra, rb = catalog.lookup(a["tool"], a["rule"]), catalog.lookup(b["tool"], b["rule"])
-    if not (ra and rb):
-        return False
-    if rb["id"] in ra.get("same_as", []):
-        return True
-    return a["type"] in SECURITY_TYPES and b["type"] in SECURITY_TYPES and bool(set(ra["cwe"]) & set(rb["cwe"]))
-
-
-def dedupe(issues):
-    """Keep the most severe of each group of duplicate findings, noting which other tools also reported it."""
-    by_line, kept = {}, []
-    for issue in sorted(issues, key=lambda i: SEVERITY_RANK.get(i["severity"], 5)):
-        issue["also_reported_by"] = []
-        if issue["line"] is None:
-            kept.append(issue)
-            continue
-        group = by_line.setdefault((issue["path"], issue["line"]), [])
-        twin = next((k for k in group if k["tool"] != issue["tool"] and same_check(k, issue)), None)
-        if twin:
-            twin["also_reported_by"].append(f"{issue['tool']}:{issue['rule']}")
-        else:
-            group.append(issue)
-            kept.append(issue)
-    return kept
 
 
 def reference_fingerprints(project, commit):

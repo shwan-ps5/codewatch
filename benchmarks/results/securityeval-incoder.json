@@ -1,0 +1,1892 @@
+{
+ "verdict": {
+  "overall": {
+   "tp": 23,
+   "fn": 65,
+   "fp": 0,
+   "tn": 42,
+   "tpr": 0.261,
+   "fpr": 0.0,
+   "score": 0.261
+  },
+  "categories": {
+   "CWE-113": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-116": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-117": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-1204": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-193": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-20": {
+    "tp": 0,
+    "fn": 5,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-200": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-209": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-215": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-22": {
+    "tp": 1,
+    "fn": 3,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-250": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-252": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-259": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-269": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-283": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-284": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-285": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-295": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 3
+   },
+   "CWE-297": {
+    "tp": 1,
+    "fn": 1,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-306": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-312": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-319": {
+    "tp": 1,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-321": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-326": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-327": {
+    "tp": 1,
+    "fn": 3,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-329": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-330": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-331": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-339": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-347": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 3
+   },
+   "CWE-352": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-367": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-377": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-379": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-384": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-385": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-400": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-406": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-414": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-425": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-434": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-454": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-462": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-477": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-488": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-502": {
+    "tp": 1,
+    "fn": 3,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-521": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-522": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-595": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-601": {
+    "tp": 4,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-605": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-611": {
+    "tp": 0,
+    "fn": 6,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-641": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-643": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-703": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-730": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-732": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-759": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-760": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-776": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-78": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-79": {
+    "tp": 3,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-798": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-80": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-827": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-835": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-841": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-89": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-90": {
+    "tp": 2,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-918": {
+    "tp": 2,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-94": {
+    "tp": 2,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-941": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-943": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-95": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-99": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   }
+  },
+  "mistakes": [
+   {
+    "path": "Testcases_InCoder/CWE-020/author_1.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-020/author_2.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-020/codeql_1.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-020/codeql_2.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.unsafe-deserialization",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-020/codeql_3.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-022/author_1.py",
+    "cwe": 22,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-022/author_2.py",
+    "cwe": 22,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-022/codeql_2.py",
+    "cwe": 22,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "semgrep:trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-089/author_1.py",
+    "cwe": 89,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-089/codeql_1.py",
+    "cwe": 89,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-095/author_1.py",
+    "cwe": 95,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-099/sonar_1.py",
+    "cwe": 99,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-113/sonar_1.py",
+    "cwe": 113,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-113/sonar_2.py",
+    "cwe": 113,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-117/codeql_1.py",
+    "cwe": 117,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-1204/sonar_1.py",
+    "cwe": 1204,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-209/codeql_1.py",
+    "cwe": 209,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-215/author_1.py",
+    "cwe": 215,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-250/mitre_1.py",
+    "cwe": 250,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-252/author_1.py",
+    "cwe": 252,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-259/author_1.py",
+    "cwe": 259,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-259/author_2.py",
+    "cwe": 259,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-283/mitre_1.py",
+    "cwe": 283,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-285/codeql_1.py",
+    "cwe": 285,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-297/sonar_2.py",
+    "cwe": 297,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-319/author_1.py",
+    "cwe": 319,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-321/author_1.py",
+    "cwe": 321,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.weak-hash",
+     "semgrep:python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-326/author_1.py",
+    "cwe": 326,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-326/author_2.py",
+    "cwe": 326,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-327/codeql_2.py",
+    "cwe": 327,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.tls-verification-disabled"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-327/codeql_3.py",
+    "cwe": 327,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-327/codeql_4.py",
+    "cwe": 327,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-331/author_1.py",
+    "cwe": 331,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-367/author_1.py",
+    "cwe": 367,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-385/mitre_1.py",
+    "cwe": 385,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-400/sonar_1.py",
+    "cwe": 400,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-414/author_1.py",
+    "cwe": 414,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-425/author_1.py",
+    "cwe": 425,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-434/pearce_1.py",
+    "cwe": 434,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-434/pearce_2.py",
+    "cwe": 434,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-454/author_1.py",
+    "cwe": 454,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-462/mitre_1.py",
+    "cwe": 462,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-502/author_1.py",
+    "cwe": 502,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-502/codeql_1.py",
+    "cwe": 502,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-502/mitre_1.py",
+    "cwe": 502,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-521/sonar_2.py",
+    "cwe": 521,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-522/pearce_1.py",
+    "cwe": 522,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.weak-hash",
+     "codewatch:codewatch.python.web.sql-injection",
+     "semgrep:python.django.security.injection.sql.sql-injection-using-db-cursor-execute.sql-injection-db-cursor-execute",
+     "semgrep:python.flask.security.injection.tainted-sql-string.tainted-sql-string"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-601/sonar_3.py",
+    "cwe": 601,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-605/author_1.py",
+    "cwe": 605,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/author_1.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/codeql_1.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_1.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_2.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_3.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_4.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-641/sonar_1.py",
+    "cwe": 641,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-703/author_3.py",
+    "cwe": 703,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-730/codeql_1.py",
+    "cwe": 730,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xpath-injection"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-730/codeql_2.py",
+    "cwe": 730,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-759/mitre_1.py",
+    "cwe": 759,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-776/codeql_1.py",
+    "cwe": 776,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "semgrep:python.lang.security.use-defused-xml-parse.use-defused-xml-parse"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-798/author_1.py",
+    "cwe": 798,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-827/sonar_1.py",
+    "cwe": 827,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-841/mitre_1.py",
+    "cwe": 841,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-943/sonar_1.py",
+    "cwe": 943,
+    "real": true,
+    "flagged": false,
+    "by": []
+   }
+  ]
+ },
+ "review": {
+  "overall": {
+   "tp": 34,
+   "fn": 54,
+   "fp": 0,
+   "tn": 42,
+   "tpr": 0.386,
+   "fpr": 0.0,
+   "score": 0.386
+  },
+  "categories": {
+   "CWE-113": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-116": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-117": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-1204": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-193": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-20": {
+    "tp": 2,
+    "fn": 3,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-200": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-209": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-215": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-22": {
+    "tp": 3,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-250": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-252": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-259": {
+    "tp": 1,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-269": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-283": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-284": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-285": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-295": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 3
+   },
+   "CWE-297": {
+    "tp": 1,
+    "fn": 1,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-306": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-312": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-319": {
+    "tp": 1,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-321": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-326": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-327": {
+    "tp": 1,
+    "fn": 3,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-329": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-330": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-331": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-339": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-347": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 3
+   },
+   "CWE-352": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-367": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-377": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-379": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-384": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-385": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-400": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-406": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-414": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-425": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-434": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-454": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-462": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-477": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-488": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-502": {
+    "tp": 4,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-521": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-522": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-595": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-601": {
+    "tp": 4,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-605": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-611": {
+    "tp": 0,
+    "fn": 6,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-641": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-643": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-703": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 2
+   },
+   "CWE-730": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-732": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-759": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-760": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-776": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-78": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-79": {
+    "tp": 3,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-798": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-80": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-827": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-835": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-841": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-89": {
+    "tp": 0,
+    "fn": 2,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-90": {
+    "tp": 2,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-918": {
+    "tp": 2,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-94": {
+    "tp": 2,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-941": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 1
+   },
+   "CWE-943": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-95": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-99": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   }
+  },
+  "mistakes": [
+   {
+    "path": "Testcases_InCoder/CWE-020/codeql_1.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-020/codeql_2.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B403:blacklist",
+     "codewatch:codewatch.python.web.unsafe-deserialization",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-020/codeql_3.py",
+    "cwe": 20,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-022/author_1.py",
+    "cwe": 22,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-089/author_1.py",
+    "cwe": 89,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-089/codeql_1.py",
+    "cwe": 89,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-099/sonar_1.py",
+    "cwe": 99,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-113/sonar_1.py",
+    "cwe": 113,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-113/sonar_2.py",
+    "cwe": 113,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-117/codeql_1.py",
+    "cwe": 117,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-1204/sonar_1.py",
+    "cwe": 1204,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B413:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-209/codeql_1.py",
+    "cwe": 209,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-215/author_1.py",
+    "cwe": 215,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B105:hardcoded_password_string",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-250/mitre_1.py",
+    "cwe": 250,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-252/author_1.py",
+    "cwe": 252,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-259/author_1.py",
+    "cwe": 259,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-283/mitre_1.py",
+    "cwe": 283,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-285/codeql_1.py",
+    "cwe": 285,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-297/sonar_2.py",
+    "cwe": 297,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "semgrep:python.lang.security.audit.insecure-transport.ssl.no-set-ciphers.no-set-ciphers"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-319/author_1.py",
+    "cwe": 319,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-326/author_1.py",
+    "cwe": 326,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-326/author_2.py",
+    "cwe": 326,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B413:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-327/codeql_2.py",
+    "cwe": 327,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.tls-verification-disabled"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-327/codeql_3.py",
+    "cwe": 327,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-327/codeql_4.py",
+    "cwe": 327,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-331/author_1.py",
+    "cwe": 331,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-367/author_1.py",
+    "cwe": 367,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-385/mitre_1.py",
+    "cwe": 385,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-400/sonar_1.py",
+    "cwe": 400,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-414/author_1.py",
+    "cwe": 414,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-425/author_1.py",
+    "cwe": 425,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-434/pearce_1.py",
+    "cwe": 434,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-434/pearce_2.py",
+    "cwe": 434,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-454/author_1.py",
+    "cwe": 454,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-462/mitre_1.py",
+    "cwe": 462,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-521/sonar_2.py",
+    "cwe": 521,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B105:hardcoded_password_string",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-522/pearce_1.py",
+    "cwe": 522,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg",
+     "bandit:B324:hashlib",
+     "codewatch:codewatch.python.weak-hash",
+     "codewatch:codewatch.python.web.sql-injection",
+     "semgrep:python.django.security.injection.sql.sql-injection-using-db-cursor-execute.sql-injection-db-cursor-execute",
+     "semgrep:python.django.security.injection.tainted-sql-string.tainted-sql-string",
+     "semgrep:python.flask.security.injection.tainted-sql-string.tainted-sql-string"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-601/sonar_3.py",
+    "cwe": 601,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-605/author_1.py",
+    "cwe": 605,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "semgrep:python.lang.security.audit.network.bind.avoid-bind-to-all-interfaces"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/author_1.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/codeql_1.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_1.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_2.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_3.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-611/sonar_4.py",
+    "cwe": 611,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B317:blacklist",
+     "bandit:B406:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-641/sonar_1.py",
+    "cwe": 641,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-703/author_3.py",
+    "cwe": 703,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-730/codeql_1.py",
+    "cwe": 730,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xpath-injection"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-730/codeql_2.py",
+    "cwe": 730,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-759/mitre_1.py",
+    "cwe": 759,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-776/codeql_1.py",
+    "cwe": 776,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "bandit:B314:blacklist",
+     "bandit:B405:blacklist",
+     "semgrep:python.lang.security.use-defused-xml-parse.use-defused-xml-parse"
+    ]
+   },
+   {
+    "path": "Testcases_InCoder/CWE-827/sonar_1.py",
+    "cwe": 827,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-841/mitre_1.py",
+    "cwe": 841,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_InCoder/CWE-943/sonar_1.py",
+    "cwe": 943,
+    "real": true,
+    "flagged": false,
+    "by": []
+   }
+  ]
+ },
+ "suite": "securityeval-incoder",
+ "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
+ "scanned_at": "2026-10-30T02:06:30+00:00",
+ "overall": {
+  "verdict": {
+   "tp": 23,
+   "fn": 65,
+   "fp": 0,
+   "tn": 42,
+   "tpr": 0.261,
+   "fpr": 0.0,
+   "score": 0.261
+  },
+  "review": {
+   "tp": 34,
+   "fn": 54,
+   "fp": 0,
+   "tn": 42,
+   "tpr": 0.386,
+   "fpr": 0.0,
+   "score": 0.386
+  }
+ }
+}

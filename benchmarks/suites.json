@@ -21,6 +21,81 @@
       "kind": "vuln-snippets",
       "challenges": "data/static/challenges.yml",
       "about": "OWASP Juice Shop (Node/Express/Angular): lines marked 'vuln-code-snippet vuln-line' are the known vulnerable lines of its coding challenges. Measures detection only; unmarked code is not labelled safe."
+    },
+    {
+      "name": "securityeval",
+      "language": "python",
+      "repo": "https://github.com/s2e-lab/SecurityEval.git",
+      "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
+      "license": "none stated (research dataset)",
+      "kind": "cwe-folders",
+      "test_dir": "Testcases_Insecure_Code",
+      "held_out": false,
+      "about": "SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses against SonarQube were used to add codewatch's crypto/TLS rules."
+    },
+    {
+      "name": "securityeval-copilot",
+      "language": "python",
+      "repo": "https://github.com/s2e-lab/SecurityEval.git",
+      "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
+      "license": "none stated (research dataset)",
+      "kind": "labelled-files",
+      "test_dir": "Testcases_Copilot",
+      "labels": "Result/testcases_copilot.csv",
+      "label_column": "Manual",
+      "held_out": true,
+      "about": "SecurityEval's Copilot-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms."
+    },
+    {
+      "name": "securityeval-incoder",
+      "language": "python",
+      "repo": "https://github.com/s2e-lab/SecurityEval.git",
+      "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
+      "license": "none stated (research dataset)",
+      "kind": "labelled-files",
+      "test_dir": "Testcases_InCoder",
+      "labels": "Result/testcases_incoder.csv",
+      "label_column": "Manual",
+      "held_out": true,
+      "about": "SecurityEval's InCoder-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms."
+    },
+    {
+      "name": "vulnerable-snippets-js",
+      "language": "javascript",
+      "repo": "https://github.com/snoopysecurity/Vulnerable-Code-Snippets.git",
+      "commit": "07669239ed45467b3c169b9747b3ccdc229632ca",
+      "license": "none stated",
+      "kind": "cwe-folders",
+      "test_dir": ".",
+      "extensions": [
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx"
+      ],
+      "folders": {
+        "SQL Injection": 89,
+        "NoSQL Injection": 943,
+        "Command Injection": 78,
+        "Code Injection": 94,
+        "Code Execution": 94,
+        "Path Traversal": 22,
+        "Open Redirect": 601,
+        "XSS": 79,
+        "SSRF": 918,
+        "XXE": 611,
+        "Unsafe Deserialization": 502,
+        "Prototype Pollution": 1321,
+        "ReDoS": 1333,
+        "PostMessage Security": 345,
+        "Sensitive Data Exposure": 200,
+        "Denial Of Service": 400,
+        "Server Side Template Injection": 1336,
+        "LDAP Injection": 90,
+        "XPATH Injection": 643
+      },
+      "held_out": true,
+      "about": "Vulnerable-Code-Snippets: small vulnerable JS/TS examples filed by weakness. Held out: never used to write or tune codewatch rules. Measures detection only; every snippet is vulnerable."
     }
   ]
 }

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .analyzers import ANALYZERS
 from .analyzers.base import CODE, Context, Result
+from .duplicates import dedupe
 from .fingerprint import assign_fingerprints
 
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
@@ -102,11 +103,12 @@ class LocalRepo:
         return bool(self.git("status", "--porcelain").strip())
 
     def files(self):
-        listed = self.git("ls-files", "--cached", "--others", "--exclude-standard").splitlines()
+        # -z: without it git quotes paths with non-ASCII characters, and those would no longer exist on disk.
+        listed = self.git("ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0")
         return sorted({f for f in listed if (self.root / f).is_file()})
 
     def untracked(self):
-        return self.git("ls-files", "--others", "--exclude-standard").splitlines()
+        return [f for f in self.git("ls-files", "-z", "--others", "--exclude-standard").split("\0") if f]
 
     def has_commit(self, commit):
         return bool(commit) and subprocess.run(
@@ -125,7 +127,7 @@ class LocalRepo:
     def resolve_main(self, main_branch):
         """Prefer the remote-tracking ref: a local main is often stale."""
         for ref in (f"origin/{main_branch}", main_branch):
-            commit = self.git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}", check=False).strip()
+            commit = self.resolve_commit(ref)
             if commit:
                 return commit
         return None
@@ -155,11 +157,16 @@ def choose_reference(branch, head, cfg, repo, now=None):
     return ref, next((c for c in commits if c == ref or is_ancestor(repo, c, ref)), None)
 
 
+def period_days(period) -> int | None:
+    m = DAYS_RE.match((period or "").strip())
+    return int(m[1]) if m else None
+
+
 def parse_period(period):
     """("days", N), ("ref", name), or ("previous", None) for blank or unrecognised values."""
     period = (period or "").strip()
-    if m := DAYS_RE.match(period):
-        return "days", int(m[1])
+    if (days := period_days(period)) is not None:
+        return "days", days
     if REF_RE.match(period):
         return "ref", period
     return "previous", None
@@ -363,7 +370,8 @@ def build_payload(root, combined, tools, fingerprints, changed):
     return {
         "tools": tools,
         "metrics": combined.metrics,
-        "issues": [{**asdict(f), "fingerprint": fp} for f, fp in zip(combined.findings, fingerprints, strict=True)],
+        "issues": dedupe([{**asdict(f), "fingerprint": fp}
+                          for f, fp in zip(combined.findings, fingerprints, strict=True)]),
         "changed_lines": None if changed is None else {
             p: sorted(lines) for p, lines in changed.items() if p in issue_paths
         },
