@@ -490,6 +490,24 @@ def test_taint_follows_one_call_into_a_helper(tmp_path):
     assert found == {("app.py", 18, "path-traversal")}
 
 
+def test_taint_follows_helpers_several_calls_deep(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "store.py": "import os\n\n\ndef read(name):\n    return open(os.path.join('/srv', name)).read()\n",
+        "service.py": ("from store import read\n\n\n"
+                       "def load(kind, name):\n    return read(name)\n\n\n"
+                       "def fixed(name):\n    return read('index.html')\n"),
+        "views.py": ("from flask import request\nfrom service import load, fixed\n\n\n"
+                     "def page():\n"
+                     "    fixed(request.args['p'])\n"
+                     "    return load('page', request.args['p'])\n"),
+        "elsewhere.py": "from flask import request\n\n\ndef load(kind, name):\n    return name\n\n\n"
+                        "def other():\n    return load(1, request.args['p'])\n",
+    })
+    assert found == {("views.py", 7, "path-traversal")}
+
+
 def test_injection_rules_without_a_request_source(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
@@ -667,3 +685,76 @@ def test_python_autoescape_off_and_hash_chosen_by_constant(tmp_path):
         "def otp(key):\n"
         "    return hashlib.new(ALGORITHM, key).hexdigest()\n")})
     assert found == {("app.py", 9, "template-autoescape-disabled"), ("app.py", 15, "weak-hash")}
+
+
+def test_request_data_as_url_pattern_log_line_and_location(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app.py": (
+            "import logging\nimport re\n\nimport requests\nfrom flask import Flask, Response, request\n\n"
+            "app = Flask(__name__)\nlog = logging.getLogger(__name__)\n\n\n"
+            "@app.route('/a')\n"
+            "def a():\n"
+            "    requests.get(request.args['url'])\n"
+            "    requests.get('https://api.example.com/items/' + request.args['id'])\n"
+            "    requests.get(f\"https://api.example.com/{request.args['id']}\")\n"
+            "    re.search(request.args['p'], 'text')\n"
+            "    re.search(re.escape(request.args['p']), 'text')\n"
+            "    log.info('name ' + request.args['name'])\n"
+            "    log.info('name %r', request.args['name'])\n"
+            "    log.info('name %s', repr(request.args['name']))\n"
+            "    response = Response('moved', 302)\n"
+            "    response.headers['Location'] = request.args['next']\n"
+            "    return response\n"),
+        "app.js": (
+            "app.get('/b', (req, res) => {\n"
+            "  const re = new RegExp(req.query.q)\n"
+            "  const ok = new RegExp(escapeRegExp(req.query.q))\n"
+            "  res.setHeader('Location', req.query.next)\n"
+            "  res.end()\n"
+            "})\n"),
+    })
+    assert found == {("app.py", 13, "ssrf"), ("app.py", 16, "regex-injection"), ("app.py", 22, "open-redirect"),
+                     ("app.js", 2, "regex-injection"), ("app.js", 4, "open-redirect")}
+
+
+def test_parameters_of_functions_nothing_calls_are_left_for_review(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    files = {
+        "lib.py": ("import pickle\n\n\n"
+                   "def load(blob):\n    return pickle.loads(blob)\n\n\n"
+                   "def evaluate(expr):\n    return eval(expr)\n\n\n"
+                   "def _private(expr):\n    return eval(expr)\n"),
+        "main.py": "from lib import evaluate\n\nprint(evaluate('1 + 1'))\n",
+        "dao.js": ("async function findUser(body) {\n  return db.collection('users').findOne(body)\n}\n"
+                   "module.exports = { findUser }\n"),
+    }
+    for name, text in files.items():
+        (tmp_path / name).write_text(text)
+    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    found = {(f.path, f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings
+             if "nothing in the project calls" in f.message}
+    assert found == {("lib.py", 5, "unsafe-deserialization", "security_hotspot"),
+                     ("dao.js", 2, "nosql-injection", "security_hotspot")}
+
+
+def test_local_named_request_referrer_redirect_and_log_lines(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    files = {"app.py": (
+        "import logging\nimport urllib.request\n\nfrom flask import Flask, redirect, request as flask_request\n\n"
+        "app = Flask(__name__)\nlog = logging.getLogger(__name__)\n\n\n"
+        "def download(url):\n"
+        "    request = urllib.request.Request(url, headers={'User-Agent': 'x'})\n"
+        "    return urllib.request.urlopen(request).read()\n\n\n"
+        "@app.route('/back')\n"
+        "def back():\n"
+        "    log.info('back from ' + flask_request.args['from'])\n"
+        "    download('https://example.com/a')\n"
+        "    return redirect(flask_request.referrer or '/')\n")}
+    (tmp_path / "app.py").write_text(files["app.py"])
+    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    found = {(f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings}
+    assert found == {(17, "log-injection", "security_hotspot")}

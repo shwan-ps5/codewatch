@@ -1,13 +1,13 @@
 {
  "verdict": {
   "overall": {
-   "tp": 23,
-   "fn": 65,
+   "tp": 27,
+   "fn": 61,
    "fp": 0,
    "tn": 42,
-   "tpr": 0.261,
+   "tpr": 0.307,
    "fpr": 0.0,
-   "score": 0.261
+   "score": 0.307
   },
   "categories": {
    "CWE-113": {
@@ -305,8 +305,8 @@
     "tn": 1
    },
    "CWE-601": {
-    "tp": 4,
-    "fn": 1,
+    "tp": 5,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -317,8 +317,8 @@
     "tn": 0
    },
    "CWE-611": {
-    "tp": 0,
-    "fn": 6,
+    "tp": 2,
+    "fn": 4,
     "fp": 0,
     "tn": 0
    },
@@ -341,8 +341,8 @@
     "tn": 2
    },
    "CWE-730": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 1
    },
@@ -425,8 +425,8 @@
     "tn": 0
    },
    "CWE-918": {
-    "tp": 2,
-    "fn": 0,
+    "tp": 1,
+    "fn": 1,
     "fp": 0,
     "tn": 0
    },
@@ -816,31 +816,8 @@
     ]
    },
    {
-    "path": "Testcases_InCoder/CWE-601/sonar_3.py",
-    "cwe": 601,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
-   },
-   {
     "path": "Testcases_InCoder/CWE-605/author_1.py",
     "cwe": 605,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_InCoder/CWE-611/author_1.py",
-    "cwe": 611,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_InCoder/CWE-611/codeql_1.py",
-    "cwe": 611,
     "real": true,
     "flagged": false,
     "by": []
@@ -891,22 +868,6 @@
     "by": []
    },
    {
-    "path": "Testcases_InCoder/CWE-730/codeql_1.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xpath-injection"
-    ]
-   },
-   {
-    "path": "Testcases_InCoder/CWE-730/codeql_2.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "Testcases_InCoder/CWE-759/mitre_1.py",
     "cwe": 759,
     "real": true,
@@ -942,6 +903,15 @@
     "by": []
    },
    {
+    "path": "Testcases_InCoder/CWE-918/codeql_2.py",
+    "cwe": 918,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
     "path": "Testcases_InCoder/CWE-943/sonar_1.py",
     "cwe": 943,
     "real": true,
@@ -952,13 +922,13 @@
  },
  "review": {
   "overall": {
-   "tp": 34,
-   "fn": 54,
+   "tp": 39,
+   "fn": 49,
    "fp": 0,
    "tn": 42,
-   "tpr": 0.386,
+   "tpr": 0.443,
    "fpr": 0.0,
-   "score": 0.386
+   "score": 0.443
   },
   "categories": {
    "CWE-113": {
@@ -1256,8 +1226,8 @@
     "tn": 1
    },
    "CWE-601": {
-    "tp": 4,
-    "fn": 1,
+    "tp": 5,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -1268,8 +1238,8 @@
     "tn": 0
    },
    "CWE-611": {
-    "tp": 0,
-    "fn": 6,
+    "tp": 2,
+    "fn": 4,
     "fp": 0,
     "tn": 0
    },
@@ -1292,8 +1262,8 @@
     "tn": 2
    },
    "CWE-730": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 1
    },
@@ -1711,15 +1681,6 @@
     ]
    },
    {
-    "path": "Testcases_InCoder/CWE-601/sonar_3.py",
-    "cwe": 601,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
-   },
-   {
     "path": "Testcases_InCoder/CWE-605/author_1.py",
     "cwe": 605,
     "real": true,
@@ -1727,20 +1688,6 @@
     "by": [
      "semgrep:python.lang.security.audit.network.bind.avoid-bind-to-all-interfaces"
     ]
-   },
-   {
-    "path": "Testcases_InCoder/CWE-611/author_1.py",
-    "cwe": 611,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_InCoder/CWE-611/codeql_1.py",
-    "cwe": 611,
-    "real": true,
-    "flagged": false,
-    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-611/sonar_1.py",
@@ -1791,22 +1738,6 @@
     "by": []
    },
    {
-    "path": "Testcases_InCoder/CWE-730/codeql_1.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xpath-injection"
-    ]
-   },
-   {
-    "path": "Testcases_InCoder/CWE-730/codeql_2.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "Testcases_InCoder/CWE-759/mitre_1.py",
     "cwe": 759,
     "real": true,
@@ -1849,25 +1780,25 @@
  },
  "suite": "securityeval-incoder",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T10:45:39+00:00",
+ "scanned_at": "2026-10-30T13:33:16+00:00",
  "overall": {
   "verdict": {
-   "tp": 23,
-   "fn": 65,
+   "tp": 27,
+   "fn": 61,
    "fp": 0,
    "tn": 42,
-   "tpr": 0.261,
+   "tpr": 0.307,
    "fpr": 0.0,
-   "score": 0.261
+   "score": 0.307
   },
   "review": {
-   "tp": 34,
-   "fn": 54,
+   "tp": 39,
+   "fn": 49,
    "fp": 0,
    "tn": 42,
-   "tpr": 0.386,
+   "tpr": 0.443,
    "fpr": 0.0,
-   "score": 0.386
+   "score": 0.443
   }
  }
 }

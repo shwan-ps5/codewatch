@@ -2,13 +2,13 @@
 
 SecurityEval's InCoder-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T10:45:39+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T13:33:16+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**Detection 26% (23 of 88 vulnerable files), false alarms 0% (0 of 42 safe files)**
+**Detection 31% (27 of 88 vulnerable files), false alarms 0% (0 of 42 safe files)**
 
 | CWE | Detected | Missed | False alarms | Correctly quiet |
 |---|---|---|---|---|
@@ -61,13 +61,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-521 | 0 | 1 | 0 | 1 |
 | CWE-522 | 0 | 1 | 0 | 1 |
 | CWE-595 | 0 | 0 | 0 | 1 |
-| CWE-601 | 4 | 1 | 0 | 0 |
+| CWE-601 | 5 | 0 | 0 | 0 |
 | CWE-605 | 0 | 1 | 0 | 0 |
-| CWE-611 | 0 | 6 | 0 | 0 |
+| CWE-611 | 2 | 4 | 0 | 0 |
 | CWE-641 | 0 | 1 | 0 | 0 |
 | CWE-643 | 1 | 0 | 0 | 1 |
 | CWE-703 | 0 | 1 | 0 | 2 |
-| CWE-730 | 0 | 2 | 0 | 1 |
+| CWE-730 | 2 | 0 | 0 | 1 |
 | CWE-732 | 0 | 0 | 0 | 1 |
 | CWE-759 | 0 | 1 | 0 | 0 |
 | CWE-760 | 0 | 0 | 0 | 1 |
@@ -81,7 +81,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-841 | 0 | 1 | 0 | 0 |
 | CWE-89 | 0 | 2 | 0 | 0 |
 | CWE-90 | 2 | 0 | 0 | 0 |
-| CWE-918 | 2 | 0 | 0 | 0 |
+| CWE-918 | 1 | 1 | 0 | 0 |
 | CWE-94 | 2 | 0 | 0 | 1 |
 | CWE-941 | 0 | 0 | 0 | 1 |
 | CWE-943 | 0 | 1 | 0 | 0 |
@@ -90,7 +90,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 ## Review mode
 
-**Detection 39% (34 of 88 vulnerable files), false alarms 0% (0 of 42 safe files)**
+**Detection 44% (39 of 88 vulnerable files), false alarms 0% (0 of 42 safe files)**
 
 | CWE | Detected | Missed | False alarms | Correctly quiet |
 |---|---|---|---|---|
@@ -143,13 +143,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-521 | 0 | 1 | 0 | 1 |
 | CWE-522 | 0 | 1 | 0 | 1 |
 | CWE-595 | 0 | 0 | 0 | 1 |
-| CWE-601 | 4 | 1 | 0 | 0 |
+| CWE-601 | 5 | 0 | 0 | 0 |
 | CWE-605 | 0 | 1 | 0 | 0 |
-| CWE-611 | 0 | 6 | 0 | 0 |
+| CWE-611 | 2 | 4 | 0 | 0 |
 | CWE-641 | 0 | 1 | 0 | 0 |
 | CWE-643 | 1 | 0 | 0 | 1 |
 | CWE-703 | 0 | 1 | 0 | 2 |
-| CWE-730 | 0 | 2 | 0 | 1 |
+| CWE-730 | 2 | 0 | 0 | 1 |
 | CWE-732 | 0 | 0 | 0 | 1 |
 | CWE-759 | 0 | 1 | 0 | 0 |
 | CWE-760 | 0 | 0 | 0 | 1 |

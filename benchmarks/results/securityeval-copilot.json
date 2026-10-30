@@ -1,13 +1,13 @@
 {
  "verdict": {
   "overall": {
-   "tp": 27,
-   "fn": 69,
+   "tp": 33,
+   "fn": 63,
    "fp": 0,
    "tn": 34,
-   "tpr": 0.281,
+   "tpr": 0.344,
    "fpr": 0.0,
-   "score": 0.281
+   "score": 0.344
   },
   "categories": {
    "CWE-113": {
@@ -227,8 +227,8 @@
     "tn": 0
    },
    "CWE-400": {
-    "tp": 0,
-    "fn": 1,
+    "tp": 1,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -305,8 +305,8 @@
     "tn": 0
    },
    "CWE-601": {
-    "tp": 3,
-    "fn": 2,
+    "tp": 5,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -317,8 +317,8 @@
     "tn": 0
    },
    "CWE-611": {
-    "tp": 0,
-    "fn": 6,
+    "tp": 2,
+    "fn": 4,
     "fp": 0,
     "tn": 0
    },
@@ -341,8 +341,8 @@
     "tn": 3
    },
    "CWE-730": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 1
    },
@@ -425,8 +425,8 @@
     "tn": 0
    },
    "CWE-918": {
-    "tp": 2,
-    "fn": 0,
+    "tp": 1,
+    "fn": 1,
     "fp": 0,
     "tn": 0
    },
@@ -731,13 +731,6 @@
     "by": []
    },
    {
-    "path": "Testcases_Copilot/CWE-400/sonar_1.py",
-    "cwe": 400,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "Testcases_Copilot/CWE-414/author_1.py",
     "cwe": 414,
     "real": true,
@@ -822,36 +815,8 @@
     "by": []
    },
    {
-    "path": "Testcases_Copilot/CWE-601/sonar_3.py",
-    "cwe": 601,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-601/sonar_4.py",
-    "cwe": 601,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "Testcases_Copilot/CWE-605/author_1.py",
     "cwe": 605,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-611/author_1.py",
-    "cwe": 611,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-611/codeql_1.py",
-    "cwe": 611,
     "real": true,
     "flagged": false,
     "by": []
@@ -900,22 +865,6 @@
     "real": true,
     "flagged": false,
     "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-730/codeql_1.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-730/codeql_2.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
    },
    {
     "path": "Testcases_Copilot/CWE-759/mitre_1.py",
@@ -974,6 +923,15 @@
     "by": []
    },
    {
+    "path": "Testcases_Copilot/CWE-918/codeql_2.py",
+    "cwe": 918,
+    "real": true,
+    "flagged": false,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
     "path": "Testcases_Copilot/CWE-943/sonar_1.py",
     "cwe": 943,
     "real": true,
@@ -984,13 +942,13 @@
  },
  "review": {
   "overall": {
-   "tp": 38,
-   "fn": 58,
+   "tp": 47,
+   "fn": 49,
    "fp": 2,
    "tn": 32,
-   "tpr": 0.396,
+   "tpr": 0.49,
    "fpr": 0.059,
-   "score": 0.337
+   "score": 0.431
   },
   "categories": {
    "CWE-113": {
@@ -1006,8 +964,8 @@
     "tn": 0
    },
    "CWE-117": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 1
    },
@@ -1210,8 +1168,8 @@
     "tn": 0
    },
    "CWE-400": {
-    "tp": 0,
-    "fn": 1,
+    "tp": 1,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -1288,8 +1246,8 @@
     "tn": 0
    },
    "CWE-601": {
-    "tp": 3,
-    "fn": 2,
+    "tp": 5,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -1300,8 +1258,8 @@
     "tn": 0
    },
    "CWE-611": {
-    "tp": 0,
-    "fn": 6,
+    "tp": 2,
+    "fn": 4,
     "fp": 0,
     "tn": 0
    },
@@ -1324,8 +1282,8 @@
     "tn": 3
    },
    "CWE-730": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 1
    },
@@ -1486,6 +1444,7 @@
     "flagged": true,
     "by": [
      "bandit:B310:blacklist",
+     "codewatch:codewatch.python.web.ssrf",
      "semgrep:python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected"
     ]
    },
@@ -1549,24 +1508,6 @@
     "flagged": false,
     "by": [
      "codewatch:regex-backtracking"
-    ]
-   },
-   {
-    "path": "Testcases_Copilot/CWE-117/codeql_1.py",
-    "cwe": 117,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
-   },
-   {
-    "path": "Testcases_Copilot/CWE-117/sonar_1.py",
-    "cwe": 117,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
     ]
    },
    {
@@ -1700,13 +1641,6 @@
     "by": []
    },
    {
-    "path": "Testcases_Copilot/CWE-400/sonar_1.py",
-    "cwe": 400,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "Testcases_Copilot/CWE-414/author_1.py",
     "cwe": 414,
     "real": true,
@@ -1777,20 +1711,6 @@
     "by": []
    },
    {
-    "path": "Testcases_Copilot/CWE-601/sonar_3.py",
-    "cwe": 601,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-601/sonar_4.py",
-    "cwe": 601,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "Testcases_Copilot/CWE-605/author_1.py",
     "cwe": 605,
     "real": true,
@@ -1798,20 +1718,6 @@
     "by": [
      "semgrep:python.lang.security.audit.network.bind.avoid-bind-to-all-interfaces"
     ]
-   },
-   {
-    "path": "Testcases_Copilot/CWE-611/author_1.py",
-    "cwe": 611,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-611/codeql_1.py",
-    "cwe": 611,
-    "real": true,
-    "flagged": false,
-    "by": []
    },
    {
     "path": "Testcases_Copilot/CWE-611/sonar_1.py",
@@ -1862,22 +1768,6 @@
     "by": [
      "bandit:B314:blacklist",
      "bandit:B405:blacklist"
-    ]
-   },
-   {
-    "path": "Testcases_Copilot/CWE-730/codeql_1.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_Copilot/CWE-730/codeql_2.py",
-    "cwe": 730,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
     ]
    },
    {
@@ -1936,25 +1826,25 @@
  },
  "suite": "securityeval-copilot",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T10:45:07+00:00",
+ "scanned_at": "2026-10-30T13:32:40+00:00",
  "overall": {
   "verdict": {
-   "tp": 27,
-   "fn": 69,
+   "tp": 33,
+   "fn": 63,
    "fp": 0,
    "tn": 34,
-   "tpr": 0.281,
+   "tpr": 0.344,
    "fpr": 0.0,
-   "score": 0.281
+   "score": 0.344
   },
   "review": {
-   "tp": 38,
-   "fn": 58,
+   "tp": 47,
+   "fn": 49,
    "fp": 2,
    "tn": 32,
-   "tpr": 0.396,
+   "tpr": 0.49,
    "fpr": 0.059,
-   "score": 0.337
+   "score": 0.431
   }
  }
 }

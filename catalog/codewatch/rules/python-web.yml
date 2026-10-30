@@ -21,7 +21,12 @@ rules:
         - https://docs.python.org/3/library/subprocess.html#security-considerations
     pattern-sources: &web-sources
       - pattern: flask.request
-      - pattern: request
+      # A view's request, not a local such as `request = urllib.request.Request(url)`.
+      - patterns:
+          - pattern: request
+          - pattern-not-inside: |
+              request = $MAKE(...)
+              ...
       - pattern: starlette.requests.Request
     pattern-propagators: &propagators
       - {pattern: '$TO.append($FROM)', from: $FROM, to: $TO}
@@ -608,6 +613,12 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      # Back to the page the user came from: only the site that linked here chose it, so it can't send anyone
+      # anywhere they weren't already.
+      - pattern-either:
+          - pattern: $REQ.referrer
+          - pattern: $REQ.headers.get("Referer", ...)
+          - pattern: $REQ.META.get("HTTP_REFERER", ...)
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -616,6 +627,20 @@ rules:
               - pattern: django.http.HttpResponseRedirect($URL, ...)
               - pattern: django.http.HttpResponsePermanentRedirect($URL, ...)
               - pattern: starlette.responses.RedirectResponse($URL, ...)
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern: $RESP.headers[$NAME] = $URL
+              - pattern: $RESP[$NAME] = $URL
+              - pattern: $HEADERS.add($NAME, $URL, ...)
+              - pattern: $HEADERS.set($NAME, $URL, ...)
+              - pattern: $HEADERS.setdefault($NAME, $URL)
+          - metavariable-regex: {metavariable: $NAME, regex: '(?i)^[''"]location[''"]$'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern: '$RESPONSE(..., headers={..., $NAME: $URL, ...}, ...)'
+          - metavariable-regex: {metavariable: $NAME, regex: '(?i)^[''"]location[''"]$'}
           - focus-metavariable: $URL
 
   - id: codewatch.python.web.trust-boundary
@@ -807,9 +832,9 @@ rules:
     languages: [python]
     severity: ERROR
     message: >-
-      Request data is parsed as XML by a parser with external entity resolution switched on, so a crafted
-      document can read local files or make network requests (XXE). Leave entity resolution off, or parse with
-      defusedxml.
+      Request data is parsed as XML by a parser that resolves external entities (switched on, or lxml's default
+      before 5.0), so a crafted document can read local files or make network requests (XXE). Turn entity
+      resolution off (XMLParser(resolve_entities=False)), or parse with defusedxml.
     metadata:
       category: security
       subcategory: [vuln]
@@ -854,6 +879,13 @@ rules:
               - pattern: lxml.etree.parse($DATA, $P, ...)
               - pattern: lxml.etree.parse($DATA, parser=$P, ...)
           - focus-metavariable: $DATA
+      # lxml's default parser resolved external entities until 5.0, and which lxml is installed isn't visible here.
+      - patterns:
+          - pattern-either:
+              - pattern: lxml.etree.fromstring($DATA)
+              - pattern: lxml.etree.XML($DATA)
+              - pattern: lxml.etree.parse($DATA)
+          - focus-metavariable: $DATA
 
   - id: codewatch.python.template-autoescape-disabled
     languages: [python]
@@ -887,3 +919,134 @@ rules:
               pattern-either:
                 - pattern: jinja2.PackageLoader(...)
                 - pattern: jinja2.FileSystemLoader(...)
+
+  - id: codewatch.python.web.ssrf
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request decides which URL the server fetches, so a user can make it call internal
+      services or cloud metadata endpoints (SSRF). Build the URL from a fixed scheme and host, or check the host
+      against an allowlist.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used as a URL the server fetches
+      cwe: ["CWE-918: Server-Side Request Forgery (SSRF)"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - *validated-guard
+      - *known-safe
+      # Only the path or query is user data when the scheme and host are fixed in front of it.
+      - patterns:
+          - pattern-either:
+              - pattern: '"$PREFIX" + $X'
+              - pattern: '"$PREFIX" % $X'
+              - pattern: '"$PREFIX".format(...)'
+          - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"]?https?://[^/''"{%]+/'}
+      - patterns:
+          - pattern: $URL
+          - metavariable-pattern:
+              metavariable: $URL
+              patterns:
+                - pattern: f"..."
+                - pattern-regex: '^f[''"]https?://[^/{''"]+/'
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: requests.$METHOD($URL, ...)
+              - pattern: httpx.$METHOD($URL, ...)
+          - metavariable-regex: {metavariable: $METHOD, regex: ^(get|post|put|patch|delete|head|options|stream)$}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern: requests.request($M, $URL, ...)
+              - pattern: httpx.request($M, $URL, ...)
+              - pattern: urllib.request.urlopen($URL, ...)
+              - pattern: urllib.request.Request($URL, ...)
+              - pattern: urllib.request.urlretrieve($URL, ...)
+          - focus-metavariable: $URL
+
+  - id: codewatch.python.web.regex-injection
+    mode: taint
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Data from the HTTP request is used as a regular expression, so a user can send a pattern that takes
+      exponential time to match (ReDoS) or matches more than intended. Escape it with re.escape(), or match
+      literally with `in`.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used as a regular expression
+      cwe: ["CWE-730: OWASP Top Ten 2004 Category A9 - Denial of Service", "CWE-1333: Inefficient Regular Expression Complexity"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - *validated-guard
+      - *known-safe
+      - pattern: re.escape(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: re.$FUNC($PATTERN, ...)
+              - pattern: regex.$FUNC($PATTERN, ...)
+          - metavariable-regex: {metavariable: $FUNC, regex: ^(compile|search|match|fullmatch|findall|finditer|sub|subn|split)$}
+          - focus-metavariable: $PATTERN
+
+  - id: codewatch.python.web.log-injection
+    mode: taint
+    languages: [python]
+    severity: INFO
+    message: >-
+      Data from the HTTP request is written to the log as it is, so a value with line breaks can forge log
+      entries in a plain-text log. Strip or escape CR and LF first (or log repr(value)).
+    # For review: whether a forged line matters depends on the log format (JSON logs escape it) and who reads it.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Request data written to the log unescaped
+      cwe: ["CWE-117: Improper Output Neutralization for Logs"]
+      owasp: ["A09:2025 - Security Logging and Alerting Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - *validated-guard
+      - *known-safe
+      - pattern: repr(...)
+      - pattern: json.dumps(...)
+      - patterns:
+          - pattern: $S.replace($NL, ...)
+          - metavariable-regex: {metavariable: $NL, regex: '\\[rn]'}
+    # The message itself, or a later argument that a %s in a literal format string inserts as it is (%r and %d
+    # don't let a line break through).
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: logging.$LEVEL($MSG, ...)
+              - patterns:
+                  - pattern: $LOGGER.$LEVEL($MSG, ...)
+                  - metavariable-regex: &logger-name {metavariable: $LOGGER, regex: '(?i)^(.*\.)?_?(log|logger|logging|\w+_log(ger)?)$'}
+          - metavariable-regex: &log-level {metavariable: $LEVEL, regex: ^(debug|info|warning|warn|error|critical|exception|fatal)$}
+          - focus-metavariable: $MSG
+      - patterns:
+          - pattern-either:
+              - pattern: logging.$LEVEL("$FMT", ..., $ARG, ...)
+              - patterns:
+                  - pattern: $LOGGER.$LEVEL("$FMT", ..., $ARG, ...)
+                  - metavariable-regex: *logger-name
+          - metavariable-regex: *log-level
+          - metavariable-regex: {metavariable: $FMT, regex: '%-?\d*s'}
+          - focus-metavariable: $ARG
