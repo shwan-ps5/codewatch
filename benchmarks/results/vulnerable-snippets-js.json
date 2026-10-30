@@ -1,14 +1,14 @@
 {
  "verdict": {
   "overall": {
-   "found": 9,
+   "found": 11,
    "total": 22,
-   "recall": 0.409,
-   "any_security": 0.409
+   "recall": 0.5,
+   "any_security": 0.5
   },
   "categories": {
    "CWE-22": {
-    "found": 0,
+    "found": 1,
     "total": 2
    },
    "CWE-78": {
@@ -48,7 +48,7 @@
     "total": 1
    },
    "CWE-918": {
-    "found": 0,
+    "found": 1,
     "total": 1
    },
    "CWE-943": {
@@ -109,9 +109,11 @@
    {
     "path": "Path Traversal/expresstest.js",
     "cwe": 22,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.path-traversal"
+    ]
    },
    {
     "path": "Path Traversal/gq.js",
@@ -186,9 +188,11 @@
    {
     "path": "SSRF/express.js",
     "cwe": 918,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.ssrf"
+    ]
    },
    {
     "path": "Sensitive Data Exposure/graphql.ts",
@@ -242,14 +246,14 @@
  },
  "review": {
   "overall": {
-   "found": 11,
+   "found": 13,
    "total": 22,
-   "recall": 0.5,
-   "any_security": 0.636
+   "recall": 0.591,
+   "any_security": 0.682
   },
   "categories": {
    "CWE-22": {
-    "found": 1,
+    "found": 2,
     "total": 2
    },
    "CWE-78": {
@@ -289,7 +293,7 @@
     "total": 1
    },
    "CWE-918": {
-    "found": 0,
+    "found": 1,
     "total": 1
    },
    "CWE-943": {
@@ -352,9 +356,10 @@
    {
     "path": "Path Traversal/expresstest.js",
     "cwe": 22,
-    "found": false,
+    "found": true,
     "any_security": true,
     "by": [
+     "codewatch:codewatch.js.path-traversal",
      "semgrep:javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage",
      "semgrep:javascript.express.security.audit.xss.direct-response-write.direct-response-write"
     ]
@@ -441,9 +446,11 @@
    {
     "path": "SSRF/express.js",
     "cwe": 918,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.ssrf"
+    ]
    },
    {
     "path": "Sensitive Data Exposure/graphql.ts",
@@ -501,19 +508,19 @@
  },
  "suite": "vulnerable-snippets-js",
  "commit": "07669239ed45467b3c169b9747b3ccdc229632ca",
- "scanned_at": "2026-10-30T01:44:27+00:00",
+ "scanned_at": "2026-10-30T10:35:58+00:00",
  "overall": {
   "verdict": {
-   "found": 9,
-   "total": 22,
-   "recall": 0.409,
-   "any_security": 0.409
-  },
-  "review": {
    "found": 11,
    "total": 22,
    "recall": 0.5,
-   "any_security": 0.636
+   "any_security": 0.5
+  },
+  "review": {
+   "found": 13,
+   "total": 22,
+   "recall": 0.591,
+   "any_security": 0.682
   }
  }
 }

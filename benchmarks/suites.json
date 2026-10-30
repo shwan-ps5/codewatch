@@ -96,6 +96,19 @@
       },
       "held_out": true,
       "about": "Vulnerable-Code-Snippets: small vulnerable JS/TS examples filed by weakness. Held out: never used to write or tune codewatch rules. Measures detection only; every snippet is vulnerable."
+    },
+    {
+      "name": "vulnerable-node-seeds",
+      "language": "javascript",
+      "repo": "https://github.com/cr0hn/vulnerable-node.git",
+      "commit": "d68f2a3c9277ece2c2feb9976052033bdecd7fbe",
+      "license": "BSD-3-Clause",
+      "kind": "seed-files",
+      "test_dir": "sast/seeds",
+      "ground_truth": "sast/ground-truth.yaml",
+      "clean_glob": "clean-*.js",
+      "held_out": false,
+      "about": "vulnerable-node's SAST seeds: one known vulnerability per file plus clean controls that must stay quiet. Not held out: its first scan missed the SQL concatenation, NoSQL operator, prototype pollution and deserialization seeds and raised a false alarm on a clean control, which led to the JS guard sanitizer, SQL value-formatting and prototype-pollution rules. Measures detection and false alarms."
     }
   ]
 }

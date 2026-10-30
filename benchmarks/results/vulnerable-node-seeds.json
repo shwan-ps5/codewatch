@@ -1,0 +1,236 @@
+{
+ "verdict": {
+  "overall": {
+   "tp": 11,
+   "fn": 1,
+   "fp": 0,
+   "tn": 2,
+   "tpr": 0.917,
+   "fpr": 0.0,
+   "score": 0.917
+  },
+  "categories": {
+   "CWE-1321": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-1333": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-22": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-327": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-502": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-601": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-79": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-798": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-89": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-918": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-943": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-95": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "clean controls": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 0,
+    "tn": 2
+   }
+  },
+  "mistakes": [
+   {
+    "path": "sast/seeds/nosql-operator.js",
+    "cwe": 943,
+    "real": true,
+    "flagged": false,
+    "by": []
+   }
+  ]
+ },
+ "review": {
+  "overall": {
+   "tp": 11,
+   "fn": 1,
+   "fp": 1,
+   "tn": 1,
+   "tpr": 0.917,
+   "fpr": 0.5,
+   "score": 0.417
+  },
+  "categories": {
+   "CWE-1321": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-1333": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-22": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-327": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-502": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-601": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-79": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-798": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-89": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-918": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-943": {
+    "tp": 0,
+    "fn": 1,
+    "fp": 0,
+    "tn": 0
+   },
+   "CWE-95": {
+    "tp": 1,
+    "fn": 0,
+    "fp": 0,
+    "tn": 0
+   },
+   "clean controls": {
+    "tp": 0,
+    "fn": 0,
+    "fp": 1,
+    "tn": 1
+   }
+  },
+  "mistakes": [
+   {
+    "path": "sast/seeds/nosql-operator.js",
+    "cwe": 943,
+    "real": true,
+    "flagged": false,
+    "by": []
+   },
+   {
+    "path": "sast/seeds/clean-escaped.js",
+    "cwe": null,
+    "real": false,
+    "flagged": true,
+    "by": [
+     "semgrep:javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage",
+     "semgrep:javascript.express.security.audit.xss.direct-response-write.direct-response-write",
+     "semgrep:javascript.express.security.injection.raw-html-format.raw-html-format"
+    ]
+   }
+  ]
+ },
+ "suite": "vulnerable-node-seeds",
+ "commit": "d68f2a3c9277ece2c2feb9976052033bdecd7fbe",
+ "scanned_at": "2026-10-30T10:46:13+00:00",
+ "overall": {
+  "verdict": {
+   "tp": 11,
+   "fn": 1,
+   "fp": 0,
+   "tn": 2,
+   "tpr": 0.917,
+   "fpr": 0.0,
+   "score": 0.917
+  },
+  "review": {
+   "tp": 11,
+   "fn": 1,
+   "fp": 1,
+   "tn": 1,
+   "tpr": 0.917,
+   "fpr": 0.5,
+   "score": 0.417
+  }
+ }
+}

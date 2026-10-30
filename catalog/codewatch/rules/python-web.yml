@@ -175,6 +175,38 @@ rules:
                   except:
                     ...
                   ...
+              # A resolved path checked against its base directory: if not str(p).startswith(str(base)): return
+              - pattern-inside: |
+                  if <... str($X).startswith(...) ...>:
+                    ...
+                    return ...
+                  ...
+              - pattern-inside: |
+                  if <... str($X).startswith(...) ...>:
+                    ...
+                    raise ...
+                  ...
+              - pattern-inside: |
+                  if <... $X.is_relative_to(...) ...>:
+                    ...
+                    return ...
+                  ...
+              - pattern-inside: |
+                  if <... $X.is_relative_to(...) ...>:
+                    ...
+                    raise ...
+                  ...
+              # A failed check that replaces the value: if urlsplit(next).netloc != "": next = url_for("index")
+              - pattern-inside: |
+                  if <... urllib.parse.urlsplit($X).$PART ...>:
+                    ...
+                    $X = $SAFE
+                  ...
+              - pattern-inside: |
+                  if <... urllib.parse.urlparse($X).$PART ...>:
+                    ...
+                    $X = $SAFE
+                  ...
               # A forbidden-character check that bails out: if "'" in name: return ...
               - pattern-inside: |
                   if <... "..." in $X ...>:
@@ -194,12 +226,33 @@ rules:
                   if <... $X in $ALLOWED ...>:
                     ...
           - pattern: $X
-      # Functions named as validators (safe_next, validate_url, sanitize_path, clean_*) return checked data;
-      # the analysis doesn't look inside other functions, so their names are taken at face value.
-      - &named-sanitizer
-        patterns:
-          - pattern: $CHECK(...)
-          - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?(safe|valid|sanitiz|clean|is_allowed)\w{0,40}$'}
+      # Shared: functions named as validators (safe_next, validate_url, sanitize_path, clean_*) return checked
+      # data, taken at face value since the analysis doesn't look inside them; and request.path in a route with
+      # no variable parts, whose value routing has already fixed.
+      - &known-safe
+        pattern-either:
+          - patterns:
+              - pattern: $CHECK(...)
+              - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?((get_|make_|to_)?safe|valid|sanitiz|clean|is_allowed)\w{0,40}$'}
+          # Numbers can't carry markup, paths or quotes; url_for() only builds links to this app's own routes.
+          - pattern: int(...)
+          - pattern: float(...)
+          - pattern: bool(...)
+          - pattern: len(...)
+          - pattern: flask.url_for(...)
+          - pattern: url_for(...)
+          - patterns:
+              - pattern: request.$PART.get(..., type=$NUMERIC, ...)
+              - metavariable-regex: {metavariable: $NUMERIC, regex: ^(int|float|bool)$}
+          - patterns:
+              - pattern-either:
+                  - pattern: flask.request.path
+                  - pattern: request.path
+              - pattern-inside: |
+                  @$APP.route("$ROUTE", ...)
+                  def $VIEW(...):
+                    ...
+              - metavariable-regex: {metavariable: $ROUTE, regex: '^[^<]*$'}
       - pattern: shlex.quote(...)
     pattern-sinks:
       - patterns:
@@ -233,7 +286,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -264,7 +317,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -297,8 +350,12 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
       - pattern: os.path.basename(...)
+      - pattern: pathlib.Path(...).name
+      - pattern: pathlib.Path(...).stem
+      - pattern: pathlib.PurePath(...).name
+      - pattern: pathlib.PurePath(...).stem
       - pattern: werkzeug.utils.secure_filename(...)
       - pattern: secure_filename(...)
     pattern-sinks:
@@ -313,6 +370,38 @@ rules:
               - pattern: os.unlink($PATH)
               - pattern: os.rename($PATH, ...)
               - pattern: os.listdir($PATH)
+              - pattern: os.path.exists($PATH)
+              - pattern: os.path.isfile($PATH)
+              - pattern: os.path.isdir($PATH)
+              - pattern: os.stat($PATH)
+              # A pathlib.Path built from request data, used once it's built: (base / name).read_text()
+              - patterns:
+                  - pattern: $PATH.$USE(...)
+                  - metavariable-regex:
+                      metavariable: $USE
+                      regex: ^(exists|is_file|is_dir|stat|open|read_text|read_bytes|write_text|write_bytes|unlink|rmdir|mkdir|touch|rename|replace|iterdir|glob|rglob|chmod)$
+                  - metavariable-pattern:
+                      metavariable: $PATH
+                      pattern-either: &pathlib-value
+                        - pattern: pathlib.Path(...)
+                        - pattern: pathlib.PurePath(...)
+                        - pattern: pathlib.Path(...) / $NAME
+                        - pattern: (pathlib.Path(...) / $NAME).resolve(...)
+                        - pattern: pathlib.Path(...).joinpath(...)
+                        - pattern: $BASE / $NAME
+                        - pattern: ($BASE / $NAME).resolve(...)
+                        - pattern: $BASE.joinpath(...)
+              - patterns:
+                  - pattern: $PATH.$USE(...)
+                  - metavariable-regex:
+                      metavariable: $USE
+                      regex: ^(exists|is_file|is_dir|stat|open|read_text|read_bytes|write_text|write_bytes|unlink|rmdir|mkdir|touch|rename|replace|iterdir|glob|rglob|chmod)$
+                  - pattern-inside: |
+                      $PATH = $INIT
+                      ...
+                  - metavariable-pattern:
+                      metavariable: $INIT
+                      pattern-either: *pathlib-value
               - pattern: shutil.$OP($PATH, ...)
               - pattern: flask.send_file($PATH, ...)
               - pattern: send_file($PATH, ...)
@@ -340,7 +429,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
       - pattern: html.escape(...)
       - pattern: markupsafe.escape(...)
       - pattern: flask.escape(...)
@@ -349,6 +438,13 @@ rules:
       - pattern: flask.jsonify(...)
       - pattern: jsonify(...)
       - pattern: json.dumps(...)
+      # Jinja templates escape what they're given; redirect() escapes the URL in its body.
+      - pattern: flask.render_template(...)
+      - pattern: render_template(...)
+      - pattern: flask.redirect(...)
+      - pattern: redirect(...)
+      - pattern: url_for(...)
+      - pattern: flask.url_for(...)
       # Project helpers named like escape_html / html_escape are treated as escaping functions.
       - patterns:
           - pattern: $ESCAPE(...)
@@ -365,6 +461,11 @@ rules:
                   - pattern: return $BODY
                   - pattern-not: return ($FIRST, $SECOND, ...)
               - pattern: return ($BODY, $SECOND, ...)
+          # Flask serves a returned dict or list as JSON.
+          - pattern-not: return {...}
+          - pattern-not: return [...]
+          - pattern-not: return ({...}, ...)
+          - pattern-not: return ([...], ...)
           # Returning a response object built earlier: its body was checked where it was built (sinks below).
           - pattern-not-inside: |
               $BODY = make_response(...)
@@ -419,7 +520,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
       # Replacing the quote that delimits the value (' -> &apos;) stops it from closing the XPath string.
       - patterns:
           - pattern: $X.replace($QUOTE, ...)
@@ -456,7 +557,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
       - patterns:
           - pattern: $ESCAPE(...)
           - metavariable-regex: {metavariable: $ESCAPE, regex: '(?i).*escape'}
@@ -468,6 +569,20 @@ rules:
               - pattern: $CONN.search_s($BASE, $SCOPE, $FILTER, ...)
               - pattern: $CONN.search_st($BASE, $SCOPE, $FILTER, ...)
               - pattern: $CONN.search_ext_s($BASE, $SCOPE, $FILTER, ...)
+          # Only where an LDAP library is in use: Post.search(q, page) is an ORM method, not a directory query.
+          - pattern-either:
+              - pattern-inside: |
+                  import ldap3
+                  ...
+              - pattern-inside: |
+                  import ldap
+                  ...
+              - pattern-inside: |
+                  from ldap3 import $NAME
+                  ...
+              - pattern-inside: |
+                  from ldap import $NAME
+                  ...
           - focus-metavariable: $FILTER
 
   - id: codewatch.python.web.open-redirect
@@ -492,7 +607,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -524,7 +639,11 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
+      # What a login or verification call returns is the checked identity, not the raw request value.
+      - patterns:
+          - pattern: $AUTH(...)
+          - metavariable-regex: {metavariable: $AUTH, regex: '(?i)(.*\.)?(login|authenticate|verify_\w{1,30}|check_password)$'}
     pattern-sinks:
       - patterns:
           - pattern-either: &session-store
@@ -557,7 +676,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -599,7 +718,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
-      - *named-sanitizer
+      - *known-safe
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -621,6 +740,7 @@ rules:
       subcategory: [vuln]
       type: vulnerability
       title: Weak hash algorithm
+      security-purpose: required
       cwe: ["CWE-328: Use of Weak Hash"]
       owasp: ["A04:2025 - Cryptographic Failures"]
       references:
@@ -630,9 +750,8 @@ rules:
       - pattern-either:
           - pattern: hashlib.md5(...)
           - pattern: hashlib.sha1(...)
-          - patterns:
-              - pattern: hashlib.new($ALGO, ...)
-              - metavariable-regex: {metavariable: $ALGO, regex: '(?i)^[''"](md4|md5|sha1|sha-1|md5-sha1|ripemd160)[''"]$'}
+          # Matches the value, so hashlib.new(ALGORITHM) with ALGORITHM = "sha1" counts too.
+          - pattern: hashlib.new("=~/(?i)^(md4|md5|sha1|sha-1|md5-sha1|ripemd160)$/", ...)
       - pattern-not: hashlib.$F(..., usedforsecurity=False, ...)
 
   - id: codewatch.python.insecure-cookie
@@ -655,17 +774,22 @@ rules:
       - pattern: $RESP.set_cookie(...)
       - pattern-not: $RESP.set_cookie(..., secure=True, ...)
       - pattern-not: $RESP.delete_cookie(...)
+      # Clearing a cookie (empty value, already expired) sends nothing worth intercepting.
+      - pattern-not: $RESP.set_cookie($NAME, "", ...)
+      - pattern-not: $RESP.set_cookie(..., expires=0, ...)
+      - pattern-not: $RESP.set_cookie(..., max_age=0, ...)
 
   - id: codewatch.python.xml-external-entities
     languages: [python]
     severity: ERROR
     message: >-
-      External entity resolution is switched on for this XML parser, so a crafted document can read local files
-      or make network requests (XXE). Leave it off, or parse untrusted XML with defusedxml.
+      External entity resolution is switched on for this XML parser, so if it ever parses a document someone else
+      wrote, that document can read local files or make network requests (XXE). Leave it off, or parse untrusted
+      XML with defusedxml.
     metadata:
       category: security
-      subcategory: [vuln]
-      type: vulnerability
+      subcategory: [audit]
+      type: security_hotspot
       title: XML external entities enabled
       cwe: ["CWE-611: Improper Restriction of XML External Entity Reference"]
       owasp: ["A02:2025 - Security Misconfiguration"]
@@ -677,3 +801,89 @@ rules:
       - pattern: $P.setFeature(xml.sax.handler.feature_external_pes, True)
       - pattern: lxml.etree.XMLParser(..., resolve_entities=True, ...)
       - pattern: lxml.etree.XMLParser(..., no_network=False, ...)
+
+  - id: codewatch.python.web.xxe
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Request data is parsed as XML by a parser with external entity resolution switched on, so a crafted
+      document can read local files or make network requests (XXE). Leave entity resolution off, or parse with
+      defusedxml.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data parsed with XML external entities enabled
+      cwe: ["CWE-611: Improper Restriction of XML External Entity Reference"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+        - https://docs.python.org/3/library/xml.html#xml-vulnerabilities
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - *validated-guard
+      - *known-safe
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $P.setFeature(xml.sax.handler.feature_external_ges, True)
+                  ...
+              - pattern-inside: |
+                  $P.setFeature(xml.sax.handler.feature_external_pes, True)
+                  ...
+              - pattern-inside: |
+                  $P = lxml.etree.XMLParser(..., resolve_entities=True, ...)
+                  ...
+              - pattern-inside: |
+                  $P = lxml.etree.XMLParser(..., no_network=False, ...)
+                  ...
+          - pattern-either:
+              - pattern: xml.dom.minidom.parseString($DATA, $P, ...)
+              - pattern: xml.dom.minidom.parse($DATA, $P, ...)
+              - pattern: xml.dom.pulldom.parseString($DATA, $P, ...)
+              - pattern: xml.sax.parseString($DATA, ...)
+              - pattern: $P.parse($DATA, ...)
+              - pattern: $P.feed($DATA)
+              - pattern: lxml.etree.fromstring($DATA, $P, ...)
+              - pattern: lxml.etree.fromstring($DATA, parser=$P, ...)
+              - pattern: lxml.etree.XML($DATA, $P, ...)
+              - pattern: lxml.etree.XML($DATA, parser=$P, ...)
+              - pattern: lxml.etree.parse($DATA, $P, ...)
+              - pattern: lxml.etree.parse($DATA, parser=$P, ...)
+          - focus-metavariable: $DATA
+
+  - id: codewatch.python.template-autoescape-disabled
+    languages: [python]
+    severity: ERROR
+    message: >-
+      HTML escaping is switched off for every template this environment renders, so any request data a template
+      prints becomes markup and script (XSS). Use autoescape=True or jinja2.select_autoescape(), and mark the few
+      trusted fragments safe one by one.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Template auto-escaping disabled
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://jinja.palletsprojects.com/en/stable/api/#autoescaping
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+    # Only an explicit autoescape=False for HTML: a bare jinja2.Environment() is also used for SQL, config and code
+    # generation, where escaping would be wrong (bandit B701 still lists those for review).
+    pattern-either:
+      - pattern: aiohttp_jinja2.setup(..., autoescape=False, ...)
+      - pattern: $APP.jinja_env.autoescape = False
+      - pattern: '$APP.jinja_options = {..., "autoescape": False, ...}'
+      - patterns:
+          - pattern: jinja2.Environment(..., autoescape=False, ...)
+          - pattern-either:
+              - pattern: jinja2.Environment(..., loader=$LOADER, ...)
+          - metavariable-pattern:
+              metavariable: $LOADER
+              pattern-either:
+                - pattern: jinja2.PackageLoader(...)
+                - pattern: jinja2.FileSystemLoader(...)

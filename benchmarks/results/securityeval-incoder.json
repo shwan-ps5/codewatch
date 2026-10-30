@@ -65,8 +65,8 @@
     "tn": 1
    },
    "CWE-22": {
-    "tp": 1,
-    "fn": 3,
+    "tp": 2,
+    "fn": 2,
     "fp": 0,
     "tn": 0
    },
@@ -389,8 +389,8 @@
     "tn": 1
    },
    "CWE-80": {
-    "tp": 1,
-    "fn": 0,
+    "tp": 0,
+    "fn": 1,
     "fp": 0,
     "tn": 0
    },
@@ -500,10 +500,7 @@
     "cwe": 20,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-022/author_1.py",
@@ -520,13 +517,11 @@
     "by": []
    },
    {
-    "path": "Testcases_InCoder/CWE-022/codeql_2.py",
-    "cwe": 22,
+    "path": "Testcases_InCoder/CWE-080/author_1.py",
+    "cwe": 80,
     "real": true,
     "flagged": false,
-    "by": [
-     "semgrep:trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-089/author_1.py",
@@ -732,9 +727,7 @@
     "cwe": 400,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-414/author_1.py",
@@ -756,8 +749,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -817,9 +809,9 @@
     "real": true,
     "flagged": false,
     "by": [
+     "codewatch:codewatch.python.sql-value-formatting",
      "codewatch:codewatch.python.weak-hash",
      "codewatch:codewatch.python.web.sql-injection",
-     "semgrep:python.django.security.injection.sql.sql-injection-using-db-cursor-execute.sql-injection-db-cursor-execute",
      "semgrep:python.flask.security.injection.tainted-sql-string.tainted-sql-string"
     ]
    },
@@ -912,9 +904,7 @@
     "cwe": 730,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-759/mitre_1.py",
@@ -928,9 +918,7 @@
     "cwe": 776,
     "real": true,
     "flagged": false,
-    "by": [
-     "semgrep:python.lang.security.use-defused-xml-parse.use-defused-xml-parse"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-798/author_1.py",
@@ -1450,10 +1438,7 @@
     "cwe": 20,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-022/author_1.py",
@@ -1651,9 +1636,7 @@
     "cwe": 400,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-414/author_1.py",
@@ -1675,8 +1658,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -1720,6 +1702,7 @@
     "by": [
      "bandit:B106:hardcoded_password_funcarg",
      "bandit:B324:hashlib",
+     "codewatch:codewatch.python.sql-value-formatting",
      "codewatch:codewatch.python.weak-hash",
      "codewatch:codewatch.python.web.sql-injection",
      "semgrep:python.django.security.injection.sql.sql-injection-using-db-cursor-execute.sql-injection-db-cursor-execute",
@@ -1821,9 +1804,7 @@
     "cwe": 730,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-759/mitre_1.py",
@@ -1868,7 +1849,7 @@
  },
  "suite": "securityeval-incoder",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T02:06:30+00:00",
+ "scanned_at": "2026-10-30T10:45:39+00:00",
  "overall": {
   "verdict": {
    "tp": 23,

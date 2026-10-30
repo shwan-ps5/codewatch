@@ -2,13 +2,13 @@
 
 SecurityEval's Copilot-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T02:04:59+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T10:45:07+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**Detection 27% (26 of 96 vulnerable files), false alarms 0% (0 of 34 safe files)**
+**Detection 28% (27 of 96 vulnerable files), false alarms 0% (0 of 34 safe files)**
 
 | CWE | Detected | Missed | False alarms | Correctly quiet |
 |---|---|---|---|---|
@@ -21,7 +21,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-200 | 0 | 0 | 0 | 1 |
 | CWE-209 | 0 | 1 | 0 | 0 |
 | CWE-215 | 0 | 1 | 0 | 1 |
-| CWE-22 | 2 | 1 | 0 | 1 |
+| CWE-22 | 3 | 0 | 0 | 1 |
 | CWE-250 | 0 | 0 | 0 | 1 |
 | CWE-252 | 0 | 1 | 0 | 0 |
 | CWE-259 | 0 | 2 | 0 | 0 |

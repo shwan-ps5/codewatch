@@ -1,9 +1,9 @@
 {
  "verdict": {
   "overall": {
-   "found": 13,
+   "found": 15,
    "total": 35,
-   "recall": 0.371
+   "recall": 0.429
   },
   "categories": {
    "Broken Access Control": {
@@ -31,7 +31,7 @@
     "total": 2
    },
    "Observability Failures": {
-    "found": 0,
+    "found": 1,
     "total": 2
    },
    "Security through Obscurity": {
@@ -39,7 +39,7 @@
     "total": 1
    },
    "Sensitive Data Exposure": {
-    "found": 1,
+    "found": 2,
     "total": 4
    },
    "Unvalidated Redirects": {
@@ -69,8 +69,10 @@
       304
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.directory-listing"
+    ]
    },
    {
     "challenge": "adminSectionChallenge",
@@ -151,8 +153,10 @@
       291
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.directory-listing"
+    ]
    },
    {
     "challenge": "exposedMetricsChallenge",
@@ -227,7 +231,8 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.sql-injection"
+     "codewatch:codewatch.js.sql-injection",
+     "codewatch:codewatch.js.sql-value-formatting"
     ]
    },
    {
@@ -241,7 +246,8 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.sql-injection"
+     "codewatch:codewatch.js.sql-injection",
+     "codewatch:codewatch.js.sql-value-formatting"
     ]
    },
    {
@@ -255,7 +261,8 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.sql-injection"
+     "codewatch:codewatch.js.sql-injection",
+     "codewatch:codewatch.js.sql-value-formatting"
     ]
    },
    {
@@ -612,7 +619,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.express.security.audit.express-check-directory-listing.express-check-directory-listing"
+     "codewatch:codewatch.js.directory-listing"
     ]
    },
    {
@@ -696,7 +703,7 @@
     ],
     "found": true,
     "by": [
-     "semgrep:javascript.express.security.audit.express-check-directory-listing.express-check-directory-listing"
+     "codewatch:codewatch.js.directory-listing"
     ]
    },
    {
@@ -774,7 +781,8 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.sql-injection"
+     "codewatch:codewatch.js.sql-injection",
+     "codewatch:codewatch.js.sql-value-formatting"
     ]
    },
    {
@@ -788,7 +796,8 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.sql-injection"
+     "codewatch:codewatch.js.sql-injection",
+     "codewatch:codewatch.js.sql-value-formatting"
     ]
    },
    {
@@ -802,7 +811,8 @@
     ],
     "found": true,
     "by": [
-     "codewatch:codewatch.js.sql-injection"
+     "codewatch:codewatch.js.sql-injection",
+     "codewatch:codewatch.js.sql-value-formatting"
     ]
    },
    {
@@ -1089,12 +1099,12 @@
  },
  "suite": "juice-shop",
  "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
- "scanned_at": "2026-10-30T01:38:46+00:00",
+ "scanned_at": "2026-10-30T10:33:52+00:00",
  "overall": {
   "verdict": {
-   "found": 13,
+   "found": 15,
    "total": 35,
-   "recall": 0.371
+   "recall": 0.429
   },
   "review": {
    "found": 16,

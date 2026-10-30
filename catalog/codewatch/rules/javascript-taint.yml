@@ -37,6 +37,15 @@ rules:
         pattern: new URLSearchParams(...).get(...)
       - &src-url-search-params
         pattern: $URL.searchParams.get(...)
+      # Handlers that destructure the request: ({ params, body }: Request, res) => ...
+      - &src-destructured-request
+        patterns:
+          - pattern-either:
+              - pattern-inside: '({..., $FIELD, ...}: Request, ...) => { ... }'
+              - pattern-inside: 'function $F({..., $FIELD, ...}: Request, ...) { ... }'
+              - pattern-inside: '$APP.$METHOD($PATH, ..., ({..., $FIELD, ...}, $RES, ...) => { ... })'
+          - pattern: $FIELD
+          - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|signedCookies|headers|files|file)$'}
     pattern-sanitizers: &js-sanitizers
       - &san-numeric
         pattern-either:
@@ -57,6 +66,95 @@ rules:
       # [allowed].includes(x) ? x : fallback only ever yields an allowed value.
       - &san-allowlist-ternary
         pattern: '$ALLOWED.includes($X) ? $X : $FALLBACK'
+      # A check on the value that bails out: if (!next.startsWith("/") || next.startsWith("//")) return ...
+      - &san-guard
+        patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if (<... $X.startsWith(...) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.startsWith(...) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.startsWith(...) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.startsWith(...) ...>) throw $E;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.endsWith(...) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.endsWith(...) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.endsWith(...) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.endsWith(...) ...>) throw $E;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.includes(...) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.includes(...) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.includes(...) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.includes(...) ...>) throw $E;
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.includes($X) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.includes($X) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.includes($X) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.includes($X) ...>) throw $E;
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.has($X) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.has($X) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.has($X) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $ALLOWED.has($X) ...>) throw $E;
+                  ...
+              - pattern-inside: |
+                  if (<... $RE.test($X) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $RE.test($X) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $RE.test($X) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $RE.test($X) ...>) throw $E;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.match(...) ...>) { ... return ...; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.match(...) ...>) return ...;
+                  ...
+              - pattern-inside: |
+                  if (<... $X.match(...) ...>) { ... throw $E; }
+                  ...
+              - pattern-inside: |
+                  if (<... $X.match(...) ...>) throw $E;
+                  ...
+          - pattern: $X
       # What a file contains is the server's data, whatever path was used to read it (path-traversal checks the path).
       - &san-file-content
         pattern-either:
@@ -107,6 +205,15 @@ rules:
               - pattern: 'child_process.spawnSync($CMD, ..., {..., shell: true, ...})'
               - pattern: execa.command($CMD, ...)
               - pattern: shelljs.exec($CMD, ...)
+              # A shell started by hand: spawn("sh", ["-c", cmd])
+              - pattern: 'child_process.$SPAWN("=~/^(\/bin\/|\/usr\/bin\/)?(sh|bash|zsh|dash|cmd|cmd\.exe|powershell)$/", [..., $CMD, ...], ...)'
+              # const exec = require('child_process').exec
+              - patterns:
+                  - pattern: $EXEC($CMD, ...)
+                  - pattern-inside: |
+                      $EXEC = require('child_process').$METHOD
+                      ...
+                  - metavariable-regex: {metavariable: $METHOD, regex: ^(exec|execSync)$}
           - focus-metavariable: $CMD
 
   - id: codewatch.js.path-traversal
@@ -131,6 +238,7 @@ rules:
       - *san-numeric
       - *san-named
       - *san-allowlist-ternary
+      - *san-guard
       - pattern: path.basename(...)
       # if (!resolved.startsWith(base)) return/throw ...
       - patterns:
@@ -202,6 +310,7 @@ rules:
       - *san-numeric
       - *san-named
       - *san-allowlist-ternary
+      - *san-guard
       - *san-file-content
       - pattern-either:
           - pattern: escapeHtml(...)
@@ -268,11 +377,13 @@ rules:
       - *src-request-getter
       - *src-search-params
       - *src-url-search-params
+      - *src-destructured-request
       - *dom-sources
     pattern-sanitizers:
       - *san-numeric
       - *san-named
       - *san-allowlist-ternary
+      - *san-guard
       - *san-file-content
       - patterns:
           - pattern-inside: |
@@ -323,6 +434,7 @@ rules:
       - *src-request-getter
       - *src-search-params
       - *src-url-search-params
+      - *src-destructured-request
       - *dom-sources
     pattern-sanitizers: *js-sanitizers
     pattern-sinks:
@@ -402,4 +514,9 @@ rules:
               - pattern: require('node-serialize').unserialize($DATA)
               - pattern: serialize.unserialize($DATA)
               - pattern: funcster.deepDeserialize($DATA)
+              - patterns:
+                  - pattern: $LIB.unserialize($DATA)
+                  - pattern-inside: |
+                      $LIB = require('node-serialize')
+                      ...
           - focus-metavariable: $DATA

@@ -2,7 +2,7 @@
 
 SecurityEval's InCoder-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T02:06:30+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T10:45:39+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
@@ -21,7 +21,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-200 | 0 | 0 | 0 | 1 |
 | CWE-209 | 0 | 1 | 0 | 0 |
 | CWE-215 | 0 | 1 | 0 | 1 |
-| CWE-22 | 1 | 3 | 0 | 0 |
+| CWE-22 | 2 | 2 | 0 | 0 |
 | CWE-250 | 0 | 1 | 0 | 0 |
 | CWE-252 | 0 | 1 | 0 | 0 |
 | CWE-259 | 0 | 2 | 0 | 0 |
@@ -75,7 +75,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-78 | 1 | 0 | 0 | 1 |
 | CWE-79 | 3 | 0 | 0 | 0 |
 | CWE-798 | 0 | 1 | 0 | 1 |
-| CWE-80 | 1 | 0 | 0 | 0 |
+| CWE-80 | 0 | 1 | 0 | 0 |
 | CWE-827 | 0 | 1 | 0 | 0 |
 | CWE-835 | 0 | 0 | 0 | 1 |
 | CWE-841 | 0 | 1 | 0 | 0 |
