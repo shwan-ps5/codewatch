@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 
 from .catalog import custom_semgrep_rules
-from .collect import DEFAULT_EXCLUSIONS, parse_period
+from .collect import DEFAULT_EXCLUSIONS, period_days
 
 SEVERITIES = ["blocker", "critical", "major", "minor", "info"]
 ISSUE_TYPES = ["bug", "vulnerability", "security_hotspot", "code_smell", "accessibility"]
@@ -81,8 +81,8 @@ class Project(models.Model):
         the newest few older than the cutoff, and the first ever (the fallback for a younger project)."""
         done = self.analyses.filter(branch=self.main_branch, status=Analysis.SUCCESS).order_by("-started_at")
         main = list(done[:50])
-        kind, days = parse_period(self.new_code_period)
-        if kind == "days":
+        days = period_days(self.new_code_period)
+        if days is not None:
             older = [*done.filter(started_at__lte=timezone.now() - timedelta(days=days))[:10], *done.reverse()[:1]]
             main += [a for a in dict.fromkeys(older) if a not in main]
         return main

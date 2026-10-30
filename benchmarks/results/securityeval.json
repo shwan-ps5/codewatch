@@ -1,0 +1,2666 @@
+{
+ "verdict": {
+  "overall": {
+   "found": 44,
+   "total": 121,
+   "recall": 0.364,
+   "any_security": 0.471
+  },
+  "categories": {
+   "CWE-20": {
+    "found": 0,
+    "total": 6
+   },
+   "CWE-22": {
+    "found": 2,
+    "total": 4
+   },
+   "CWE-78": {
+    "found": 1,
+    "total": 2
+   },
+   "CWE-79": {
+    "found": 3,
+    "total": 3
+   },
+   "CWE-80": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-89": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-90": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-94": {
+    "found": 3,
+    "total": 3
+   },
+   "CWE-95": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-99": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-113": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-116": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-117": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-193": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-200": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-209": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-215": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-250": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-252": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-259": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-269": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-283": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-285": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-295": {
+    "found": 2,
+    "total": 3
+   },
+   "CWE-306": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-319": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-321": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-326": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-327": {
+    "found": 2,
+    "total": 4
+   },
+   "CWE-329": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-330": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-331": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-339": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-347": {
+    "found": 3,
+    "total": 3
+   },
+   "CWE-367": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-377": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-379": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-385": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-400": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-406": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-414": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-425": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-434": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-454": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-462": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-477": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-502": {
+    "found": 1,
+    "total": 4
+   },
+   "CWE-521": {
+    "found": 1,
+    "total": 2
+   },
+   "CWE-522": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-595": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-601": {
+    "found": 3,
+    "total": 5
+   },
+   "CWE-605": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-611": {
+    "found": 3,
+    "total": 6
+   },
+   "CWE-641": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-643": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-703": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-730": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-732": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-759": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-760": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-776": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-798": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-827": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-835": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-841": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-918": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-941": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-943": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-1204": {
+    "found": 1,
+    "total": 1
+   }
+  },
+  "cases": [
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/author_1.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/author_2.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_1.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_2.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.unsafe-deserialization",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_3.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_4.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/author_1.py",
+    "cwe": 22,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/author_2.py",
+    "cwe": 22,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/codeql_1.py",
+    "cwe": 22,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.django.security.injection.path-traversal.path-traversal-open.path-traversal-open"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/codeql_2.py",
+    "cwe": 22,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-078/author_1.py",
+    "cwe": 78,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-078/codeql_1.py",
+    "cwe": 78,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
+     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-079/codeql_1.py",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-079/codeql_2.py",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-079/sonar_1.py",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-080/author_1.py",
+    "cwe": 80,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-089/author_1.py",
+    "cwe": 89,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-089/codeql_1.py",
+    "cwe": 89,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-090/codeql_1.py",
+    "cwe": 90,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-090/codeql_2.py",
+    "cwe": 90,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-094/author_1.py",
+    "cwe": 94,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.code-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-094/codeql_1.py",
+    "cwe": 94,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.flask.security.injection.user-exec.exec-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-094/sonar_1.py",
+    "cwe": 94,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.django.security.injection.code.user-exec-format-string.user-exec-format-string",
+     "semgrep:python.flask.security.injection.user-exec.exec-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-095/author_1.py",
+    "cwe": 95,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-099/sonar_1.py",
+    "cwe": 99,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-113/sonar_1.py",
+    "cwe": 113,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-113/sonar_2.py",
+    "cwe": 113,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-116/author_1.py",
+    "cwe": 116,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
+     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-116/codeql_1.py",
+    "cwe": 116,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:regex-backtracking"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-117/author_1.py",
+    "cwe": 117,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-117/codeql_1.py",
+    "cwe": 117,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-117/sonar_1.py",
+    "cwe": 117,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-1204/sonar_1.py",
+    "cwe": 1204,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.static-iv"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-193/author_1.py",
+    "cwe": 193,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-200/author_1.py",
+    "cwe": 200,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-209/codeql_1.py",
+    "cwe": 209,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-215/codeql_1.py",
+    "cwe": 215,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-250/mitre_1.py",
+    "cwe": 250,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-252/author_1.py",
+    "cwe": 252,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-259/author_1.py",
+    "cwe": 259,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-259/author_2.py",
+    "cwe": 259,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-269/mitre_1.py",
+    "cwe": 269,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-283/mitre_1.py",
+    "cwe": 283,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-285/codeql_1.py",
+    "cwe": 285,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-295/author_1.py",
+    "cwe": 295,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.tls-verification-disabled"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-295/author_2.py",
+    "cwe": 295,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-295/codeql_1.py",
+    "cwe": 295,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.tls-verification-disabled"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-306/pearce_1.py",
+    "cwe": 306,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.trust-boundary"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-319/author_1.py",
+    "cwe": 319,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.insecure-cookie"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-319/author_2.py",
+    "cwe": 319,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.cleartext-protocol"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-321/author_1.py",
+    "cwe": 321,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-321/author_2.py",
+    "cwe": 321,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-326/author_1.py",
+    "cwe": 326,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.pycryptodome.security.insufficient-rsa-key-size.insufficient-rsa-key-size"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-326/author_2.py",
+    "cwe": 326,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.pycryptodome.security.insufficient-dsa-key-size.insufficient-dsa-key-size"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_1.py",
+    "cwe": 327,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.pycryptodome.security.insecure-cipher-algorithm-des.insecure-cipher-algorithm-des"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_2.py",
+    "cwe": 327,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_3.py",
+    "cwe": 327,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.weak-hash"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_4.py",
+    "cwe": 327,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-329/sonar_1.py",
+    "cwe": 329,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.static-iv"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-330/author_1.py",
+    "cwe": 330,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B311:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-331/author_1.py",
+    "cwe": 331,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B311:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-339/mitre_1.py",
+    "cwe": 339,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B311:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-347/sonar_1.py",
+    "cwe": 347,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.jwt-not-verified"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-347/sonar_2.py",
+    "cwe": 347,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.jwt-not-verified"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-347/sonar_3.py",
+    "cwe": 347,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.jwt-not-verified"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-367/author_1.py",
+    "cwe": 367,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-377/codeql_1.py",
+    "cwe": 377,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.insecure-temp-file"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-379/sonar_1.py",
+    "cwe": 379,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.insecure-temp-file"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-385/mitre_1.py",
+    "cwe": 385,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-400/sonar_1.py",
+    "cwe": 400,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-406/mitre_1.py",
+    "cwe": 406,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-414/author_1.py",
+    "cwe": 414,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-425/author_1.py",
+    "cwe": 425,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-434/pearce_1.py",
+    "cwe": 434,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-434/pearce_2.py",
+    "cwe": 434,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-454/author_1.py",
+    "cwe": 454,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-462/mitre_1.py",
+    "cwe": 462,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-477/author_1.py",
+    "cwe": 477,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/author_1.py",
+    "cwe": 502,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/codeql_1.py",
+    "cwe": 502,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/mitre_1.py",
+    "cwe": 502,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/sonar_1.py",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.unsafe-deserialization",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-521/sonar_1.py",
+    "cwe": 521,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.database-url-without-password"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-521/sonar_2.py",
+    "cwe": 521,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-522/author_1.py",
+    "cwe": 522,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-522/pearce_1.py",
+    "cwe": 522,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.weak-hash"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-595/author_1.py",
+    "cwe": 595,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/codeql_1.py",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_1.py",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "semgrep:python.django.security.injection.open-redirect.open-redirect"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_2.py",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_3.py",
+    "cwe": 601,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_4.py",
+    "cwe": 601,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-605/author_1.py",
+    "cwe": 605,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/author_1.py",
+    "cwe": 611,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/codeql_1.py",
+    "cwe": 611,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_1.py",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.xml-external-entities"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_2.py",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.xml-external-entities"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_3.py",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.xml-external-entities"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_4.py",
+    "cwe": 611,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-641/sonar_1.py",
+    "cwe": 641,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-643/codeql_1.py",
+    "cwe": 643,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xpath-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-643/sonar_1.py",
+    "cwe": 643,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xpath-injection",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-703/author_1.py",
+    "cwe": 703,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-703/author_2.py",
+    "cwe": 703,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-703/author_3.py",
+    "cwe": 703,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-730/author_1.py",
+    "cwe": 730,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-730/codeql_1.py",
+    "cwe": 730,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-730/codeql_2.py",
+    "cwe": 730,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-732/author_1.py",
+    "cwe": 732,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-759/mitre_1.py",
+    "cwe": 759,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.weak-hash"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-760/sonar_1.py",
+    "cwe": 760,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.constant-salt"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-776/codeql_1.py",
+    "cwe": 776,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-798/author_1.py",
+    "cwe": 798,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-798/codeql_1.py",
+    "cwe": 798,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-827/sonar_1.py",
+    "cwe": 827,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-835/author_1.py",
+    "cwe": 835,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-841/mitre_1.py",
+    "cwe": 841,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-918/codeql_1.py",
+    "cwe": 918,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.flask.security.injection.tainted-url-host.tainted-url-host"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-918/codeql_2.py",
+    "cwe": 918,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.django.security.injection.ssrf.ssrf-injection-requests.ssrf-injection-requests"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-941/mitre_1.py",
+    "cwe": 941,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-943/sonar_1.py",
+    "cwe": 943,
+    "found": false,
+    "any_security": false,
+    "by": []
+   }
+  ]
+ },
+ "review": {
+  "overall": {
+   "found": 64,
+   "total": 121,
+   "recall": 0.529,
+   "any_security": 0.702
+  },
+  "categories": {
+   "CWE-20": {
+    "found": 2,
+    "total": 6
+   },
+   "CWE-22": {
+    "found": 3,
+    "total": 4
+   },
+   "CWE-78": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-79": {
+    "found": 3,
+    "total": 3
+   },
+   "CWE-80": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-89": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-90": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-94": {
+    "found": 3,
+    "total": 3
+   },
+   "CWE-95": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-99": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-113": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-116": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-117": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-193": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-200": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-209": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-215": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-250": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-252": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-259": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-269": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-283": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-285": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-295": {
+    "found": 2,
+    "total": 3
+   },
+   "CWE-306": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-319": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-321": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-326": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-327": {
+    "found": 3,
+    "total": 4
+   },
+   "CWE-329": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-330": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-331": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-339": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-347": {
+    "found": 3,
+    "total": 3
+   },
+   "CWE-367": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-377": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-379": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-385": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-400": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-406": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-414": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-425": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-434": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-454": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-462": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-477": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-502": {
+    "found": 4,
+    "total": 4
+   },
+   "CWE-521": {
+    "found": 1,
+    "total": 2
+   },
+   "CWE-522": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-595": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-601": {
+    "found": 3,
+    "total": 5
+   },
+   "CWE-605": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-611": {
+    "found": 3,
+    "total": 6
+   },
+   "CWE-641": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-643": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-703": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-730": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-732": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-759": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-760": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-776": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-798": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-827": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-835": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-841": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-918": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-941": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-943": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-1204": {
+    "found": 1,
+    "total": 1
+   }
+  },
+  "cases": [
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/author_1.py",
+    "cwe": 20,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B506:yaml_load"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/author_2.py",
+    "cwe": 20,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B314:blacklist",
+     "bandit:B405:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_1.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_2.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B403:blacklist",
+     "codewatch:codewatch.python.web.unsafe-deserialization",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_3.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.flask.security.open-redirect.open-redirect"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-020/codeql_4.py",
+    "cwe": 20,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "semgrep:python.flask.security.open-redirect.open-redirect"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/author_1.py",
+    "cwe": 22,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/author_2.py",
+    "cwe": 22,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B310:blacklist",
+     "semgrep:python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/codeql_1.py",
+    "cwe": 22,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.django.security.injection.path-traversal.path-traversal-open.path-traversal-open"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-022/codeql_2.py",
+    "cwe": 22,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B108:hardcoded_tmp_directory"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-078/author_1.py",
+    "cwe": 78,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B602:subprocess_popen_with_shell_equals_true"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-078/codeql_1.py",
+    "cwe": 78,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
+     "semgrep:python.flask.security.injection.os-system-injection.os-system-injection",
+     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-079/codeql_1.py",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B701:jinja2_autoescape_false",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-079/codeql_2.py",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-079/sonar_1.py",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-080/author_1.py",
+    "cwe": 80,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-089/author_1.py",
+    "cwe": 89,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg",
+     "semgrep:python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+     "semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-089/codeql_1.py",
+    "cwe": 89,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg",
+     "semgrep:python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+     "semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-090/codeql_1.py",
+    "cwe": 90,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-090/codeql_2.py",
+    "cwe": 90,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-094/author_1.py",
+    "cwe": 94,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.code-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-094/codeql_1.py",
+    "cwe": 94,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "ruff:S102",
+     "semgrep:python.flask.security.injection.user-exec.exec-injection",
+     "semgrep:python.lang.security.audit.exec-detected.exec-detected"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-094/sonar_1.py",
+    "cwe": 94,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "ruff:S102",
+     "semgrep:python.django.security.injection.code.user-exec-format-string.user-exec-format-string",
+     "semgrep:python.flask.security.injection.user-exec.exec-injection",
+     "semgrep:python.lang.security.audit.exec-detected.exec-detected"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-095/author_1.py",
+    "cwe": 95,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B307:blacklist",
+     "semgrep:python.lang.security.audit.eval-detected.eval-detected"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-099/sonar_1.py",
+    "cwe": 99,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-113/sonar_1.py",
+    "cwe": 113,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-113/sonar_2.py",
+    "cwe": 113,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-116/author_1.py",
+    "cwe": 116,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B108:hardcoded_tmp_directory",
+     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
+     "semgrep:python.flask.security.injection.os-system-injection.os-system-injection",
+     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-116/codeql_1.py",
+    "cwe": 116,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:regex-backtracking"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-117/author_1.py",
+    "cwe": 117,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-117/codeql_1.py",
+    "cwe": 117,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-117/sonar_1.py",
+    "cwe": 117,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-1204/sonar_1.py",
+    "cwe": 1204,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B413:blacklist",
+     "codewatch:codewatch.python.static-iv"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-193/author_1.py",
+    "cwe": 193,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-200/author_1.py",
+    "cwe": 200,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B608:hardcoded_sql_expressions",
+     "semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-209/codeql_1.py",
+    "cwe": 209,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-215/codeql_1.py",
+    "cwe": 215,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B201:flask_debug_true",
+     "semgrep:python.flask.security.audit.app-run-security-config.avoid_using_app_run_directly",
+     "semgrep:python.flask.security.audit.debug-enabled.debug-enabled"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-250/mitre_1.py",
+    "cwe": 250,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-252/author_1.py",
+    "cwe": 252,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-259/author_1.py",
+    "cwe": 259,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B105:hardcoded_password_string",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-259/author_2.py",
+    "cwe": 259,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-269/mitre_1.py",
+    "cwe": 269,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-283/mitre_1.py",
+    "cwe": 283,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-285/codeql_1.py",
+    "cwe": 285,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-295/author_1.py",
+    "cwe": 295,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.tls-verification-disabled"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-295/author_2.py",
+    "cwe": 295,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-295/codeql_1.py",
+    "cwe": 295,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B113:request_without_timeout",
+     "codewatch:codewatch.python.tls-verification-disabled"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-306/pearce_1.py",
+    "cwe": 306,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.trust-boundary",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-319/author_1.py",
+    "cwe": 319,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.insecure-cookie"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-319/author_2.py",
+    "cwe": 319,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B402:blacklist",
+     "codewatch:codewatch.python.cleartext-protocol"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-321/author_1.py",
+    "cwe": 321,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "detect-secrets:Base64 High Entropy String"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-321/author_2.py",
+    "cwe": 321,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "detect-secrets:Base64 High Entropy String"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-326/author_1.py",
+    "cwe": 326,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B413:blacklist",
+     "semgrep:python.pycryptodome.security.insufficient-rsa-key-size.insufficient-rsa-key-size"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-326/author_2.py",
+    "cwe": 326,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B413:blacklist",
+     "semgrep:python.pycryptodome.security.insufficient-dsa-key-size.insufficient-dsa-key-size"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_1.py",
+    "cwe": 327,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B413:blacklist",
+     "semgrep:python.pycryptodome.security.insecure-cipher-algorithm-des.insecure-cipher-algorithm-des"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_2.py",
+    "cwe": 327,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B504:ssl_with_no_version",
+     "semgrep:python.lang.security.audit.ssl-wrap-socket-is-deprecated.ssl-wrap-socket-is-deprecated"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_3.py",
+    "cwe": 327,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B324:hashlib",
+     "codewatch:codewatch.python.weak-hash"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-327/codeql_4.py",
+    "cwe": 327,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-329/sonar_1.py",
+    "cwe": 329,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.static-iv"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-330/author_1.py",
+    "cwe": 330,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B311:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-331/author_1.py",
+    "cwe": 331,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B311:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-339/mitre_1.py",
+    "cwe": 339,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B311:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-347/sonar_1.py",
+    "cwe": 347,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.jwt-not-verified"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-347/sonar_2.py",
+    "cwe": 347,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.jwt-not-verified",
+     "semgrep:python.jwt.security.unverified-jwt-decode.unverified-jwt-decode"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-347/sonar_3.py",
+    "cwe": 347,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.jwt-not-verified"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-367/author_1.py",
+    "cwe": 367,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-377/codeql_1.py",
+    "cwe": 377,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.insecure-temp-file"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-379/sonar_1.py",
+    "cwe": 379,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.insecure-temp-file"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-385/mitre_1.py",
+    "cwe": 385,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-400/sonar_1.py",
+    "cwe": 400,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-406/mitre_1.py",
+    "cwe": 406,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-414/author_1.py",
+    "cwe": 414,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-425/author_1.py",
+    "cwe": 425,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-434/pearce_1.py",
+    "cwe": 434,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-434/pearce_2.py",
+    "cwe": 434,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-454/author_1.py",
+    "cwe": 454,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B105:hardcoded_password_string",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-462/mitre_1.py",
+    "cwe": 462,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-477/author_1.py",
+    "cwe": 477,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/author_1.py",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B403:blacklist",
+     "semgrep:python.lang.security.deserialization.pickle.avoid-pickle"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/codeql_1.py",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B301:blacklist",
+     "bandit:B403:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/mitre_1.py",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:python.lang.security.deserialization.pickle.avoid-cPickle",
+     "semgrep:python.lang.security.deserialization.pickle.avoid-pickle"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-502/sonar_1.py",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B506:yaml_load",
+     "codewatch:codewatch.python.web.unsafe-deserialization",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-521/sonar_1.py",
+    "cwe": 521,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.database-url-without-password"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-521/sonar_2.py",
+    "cwe": 521,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B105:hardcoded_password_string"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-522/author_1.py",
+    "cwe": 522,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-522/pearce_1.py",
+    "cwe": 522,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg",
+     "bandit:B324:hashlib",
+     "codewatch:codewatch.python.weak-hash"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-595/author_1.py",
+    "cwe": 595,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/codeql_1.py",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.flask.security.open-redirect.open-redirect"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_1.py",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "semgrep:python.django.security.injection.open-redirect.open-redirect"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_2.py",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.flask.security.open-redirect.open-redirect"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_3.py",
+    "cwe": 601,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-601/sonar_4.py",
+    "cwe": 601,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-605/author_1.py",
+    "cwe": 605,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B104:hardcoded_bind_all_interfaces",
+     "semgrep:python.lang.security.audit.network.bind.avoid-bind-to-all-interfaces"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/author_1.py",
+    "cwe": 611,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/codeql_1.py",
+    "cwe": 611,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_1.py",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.xml-external-entities"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_2.py",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.xml-external-entities"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_3.py",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.xml-external-entities"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-611/sonar_4.py",
+    "cwe": 611,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B317:blacklist",
+     "bandit:B406:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-641/sonar_1.py",
+    "cwe": 641,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-643/codeql_1.py",
+    "cwe": 643,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.xpath-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-643/sonar_1.py",
+    "cwe": 643,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B314:blacklist",
+     "bandit:B405:blacklist",
+     "codewatch:codewatch.python.web.xpath-injection",
+     "codewatch:codewatch.python.web.xss"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-703/author_1.py",
+    "cwe": 703,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-703/author_2.py",
+    "cwe": 703,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-703/author_3.py",
+    "cwe": 703,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-730/author_1.py",
+    "cwe": 730,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-730/codeql_1.py",
+    "cwe": 730,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.web.ldap-injection"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-730/codeql_2.py",
+    "cwe": 730,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-732/author_1.py",
+    "cwe": 732,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B103:set_bad_file_permissions",
+     "bandit:B605:start_process_with_a_shell",
+     "semgrep:python.lang.security.audit.insecure-file-permissions.insecure-file-permissions"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-759/mitre_1.py",
+    "cwe": 759,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B324:hashlib",
+     "codewatch:codewatch.python.weak-hash"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-760/sonar_1.py",
+    "cwe": 760,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.constant-salt"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-776/codeql_1.py",
+    "cwe": 776,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "bandit:B314:blacklist",
+     "bandit:B405:blacklist"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-798/author_1.py",
+    "cwe": 798,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B106:hardcoded_password_funcarg",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-798/codeql_1.py",
+    "cwe": 798,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B105:hardcoded_password_string",
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-827/sonar_1.py",
+    "cwe": 827,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-835/author_1.py",
+    "cwe": 835,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-841/mitre_1.py",
+    "cwe": 841,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-918/codeql_1.py",
+    "cwe": 918,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B113:request_without_timeout",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.django.security.injection.tainted-url-host.tainted-url-host",
+     "semgrep:python.flask.security.injection.tainted-url-host.tainted-url-host"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-918/codeql_2.py",
+    "cwe": 918,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "bandit:B113:request_without_timeout",
+     "codewatch:codewatch.python.web.xss",
+     "semgrep:python.django.security.injection.ssrf.ssrf-injection-requests.ssrf-injection-requests"
+    ]
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-941/mitre_1.py",
+    "cwe": 941,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Testcases_Insecure_Code/CWE-943/sonar_1.py",
+    "cwe": 943,
+    "found": false,
+    "any_security": false,
+    "by": []
+   }
+  ]
+ },
+ "suite": "securityeval",
+ "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
+ "scanned_at": "2026-10-30T02:03:28+00:00",
+ "overall": {
+  "verdict": {
+   "found": 44,
+   "total": 121,
+   "recall": 0.364,
+   "any_security": 0.471
+  },
+  "review": {
+   "found": 64,
+   "total": 121,
+   "recall": 0.529,
+   "any_security": 0.702
+  }
+ }
+}

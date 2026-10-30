@@ -6,7 +6,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .base import Analyzer, Finding, Result
+from .base import Analyzer, Finding, Result, ToolError
 
 OSV_URL = "https://api.osv.dev/v1/vulns/{}"
 OSV_SEVERITY = {"CRITICAL": "blocker", "HIGH": "critical", "MODERATE": "major", "MEDIUM": "major", "LOW": "minor"}
@@ -56,15 +56,27 @@ class PipAudit(Analyzer):
         return bool(manifests(ctx.files, ctx.root))
 
     def audit(self, ctx, manifest):
+        """Dependencies with advisories, resolved from the manifest. If pip can't resolve it (a package missing
+        for this Python, a private index), the packages installed in the project's own venv are audited instead;
+        None if neither works."""
         args = [str(Path(manifest).parent)] if manifest.endswith(".toml") else ["-r", manifest]
-        out = self.exec([*args, "--format", "json", "--progress-spinner", "off"], ctx, ok_codes=(0, 1))
-        return json.loads(out)["dependencies"]
+        for attempt in ([*args], *(["--path", str(p)] for p in project_site_packages(ctx.root))):
+            try:
+                out = self.exec([*attempt, "--format", "json", "--progress-spinner", "off"], ctx, ok_codes=(0, 1))
+                return json.loads(out)["dependencies"]
+            except (ToolError, ValueError, KeyError):
+                continue
+        return None
 
     def run(self, ctx):
-        pending, seen = [], set()
+        pending, seen, unresolved = [], set(), 0
         for manifest in manifests(ctx.files, ctx.root):
-            text = (ctx.root / manifest).read_text()
-            for dep in self.audit(ctx, manifest):
+            text = read_manifest(ctx.root / manifest)
+            deps = self.audit(ctx, manifest)
+            if deps is None:
+                unresolved += 1
+                continue
+            for dep in deps:
                 for vuln in dep.get("vulns", []):
                     if (manifest, dep["name"], vuln["id"]) not in seen:
                         seen.add((manifest, dep["name"], vuln["id"]))
@@ -77,7 +89,21 @@ class PipAudit(Analyzer):
         result.metrics["dependency_critical_vulnerabilities"] = sum(
             f.severity in ("blocker", "critical") for f in result.findings
         )
+        result.metrics["dependency_manifests_unresolved"] = unresolved
         return result
+
+
+def project_site_packages(root):
+    return sorted(Path(root).glob("*venv/lib/python3*/site-packages"))
+
+
+def read_manifest(path):
+    """Requirements files are sometimes saved as UTF-16 (PowerShell's default); pip reads those by their BOM."""
+    raw = path.read_bytes()
+    for bom, encoding in ((b"\xff\xfe", "utf-16"), (b"\xfe\xff", "utf-16"), (b"\xef\xbb\xbf", "utf-8-sig")):
+        if raw.startswith(bom):
+            return raw.decode(encoding, errors="replace")
+    return raw.decode("utf-8", errors="replace")
 
 
 def advisory_summary(vuln):

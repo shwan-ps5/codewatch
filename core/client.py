@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .analyzers.base import node_tool
+from .catalog import custom_semgrep_rules
 from .collect import GitError, LocalRepo, ScanConfig, ScanInput, choose_reference, collect
 
 CONFIG_FILE = "codewatch-project.json"
@@ -122,15 +123,20 @@ def server_config(target):
     url, token, key, repo = target.url, target.token, target.key, target.repo
     main = target.args.main_branch or target.conf.get("mainBranch")
     if not url:
-        return ScanConfig(main_branch=main or detect_main_branch(repo)), True
+        return default_config(main or detect_main_branch(repo)), True
     status, body = request(f"{url}/api/projects/{key}/config/", token)
     if status == 200:
         return ScanConfig.from_dict(body), False
     if status == 404:
         main = main or detect_main_branch(repo)
         log(f"Project {key} doesn't exist yet; it will be created (main branch: {main})")
-        return ScanConfig(main_branch=main), True
+        return default_config(main), True
     raise ClientError(f"Config request failed ({status}): {body.get('error')}")
+
+
+def default_config(main_branch):
+    """A new project's settings: the server would send the same built-in rules once the project exists."""
+    return ScanConfig(main_branch=main_branch, custom_rules=custom_semgrep_rules())
 
 
 def find_coverage(args, root, conf):

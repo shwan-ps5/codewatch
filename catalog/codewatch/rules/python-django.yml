@@ -4,21 +4,21 @@ rules:
     languages: [python]
     severity: INFO
     message: >-
-      This view accepts every HTTP method. Declare what it handles: @require_safe for read-only pages,
-      @require_POST (or @require_http_methods) for views that change state, so a GET link or an unexpected
-      method can't trigger it.
+      This view changes state (saves, deletes or reads POST data) but accepts every HTTP method, so a plain
+      GET link can trigger it without Django's CSRF check. Add @require_POST (or @require_http_methods), or
+      branch on request.method. Read-only views are not flagged.
     metadata:
       category: security
       subcategory: [audit]
       type: security_hotspot
-      title: Django view without an HTTP method restriction
+      title: State-changing Django view without an HTTP method restriction
       cwe: ["CWE-650: Trusting HTTP Permission Methods on the Server Side"]
       owasp: ["A01:2025 - Broken Access Control"]
       references:
         - https://docs.djangoproject.com/en/stable/topics/http/decorators/#allowed-http-methods
         - https://docs.djangoproject.com/en/stable/ref/csrf/
     paths:
-      include: ["**/views.py", "**/views/*.py"]
+      include: ["**/*views.py", "**/views/*.py"]
     patterns:
       - pattern: |
           def $VIEW(request, ...):
@@ -27,6 +27,36 @@ rules:
       - metavariable-regex:
           metavariable: $RESPONDER
           regex: '(.*\.)?(render|redirect|HttpResponse\w{0,20}|JsonResponse|TemplateResponse|FileResponse|StreamingHttpResponse)$'
+      # Only views that change something: a read-only page that also answers POST does no harm.
+      - pattern-either:
+          - patterns:
+              - pattern: |
+                  def $VIEW(request, ...):
+                    ...
+                    <... $OBJ.$MUTATE(...) ...>
+                    ...
+              - metavariable-regex:
+                  metavariable: $MUTATE
+                  regex: '^(save|delete|create|update|bulk_create|bulk_update|get_or_create|update_or_create|send_mail|set_password)$'
+          - patterns:
+              - pattern: |
+                  def $VIEW(request, ...):
+                    ...
+                    <... $AUTH(request, ...) ...>
+                    ...
+              - metavariable-regex:
+                  metavariable: $AUTH
+                  regex: '^(login|logout)$'
+          - pattern: |
+              def $VIEW(request, ...):
+                ...
+                <... request.POST ...>
+                ...
+          - pattern: |
+              def $VIEW(request, ...):
+                ...
+                <... request.FILES ...>
+                ...
       - pattern-not-inside: |
           class $CLASS(...):
             ...

@@ -1,0 +1,519 @@
+{
+ "verdict": {
+  "overall": {
+   "found": 9,
+   "total": 22,
+   "recall": 0.409,
+   "any_security": 0.409
+  },
+  "categories": {
+   "CWE-22": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-78": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-79": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-89": {
+    "found": 2,
+    "total": 3
+   },
+   "CWE-200": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-345": {
+    "found": 0,
+    "total": 3
+   },
+   "CWE-400": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-502": {
+    "found": 1,
+    "total": 2
+   },
+   "CWE-601": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-611": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-918": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-943": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-1321": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-1333": {
+    "found": 1,
+    "total": 1
+   }
+  },
+  "cases": [
+   {
+    "path": "Command Injection/exec.js",
+    "cwe": 78,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.command-injection"
+    ]
+   },
+   {
+    "path": "Denial Of Service/dos.js",
+    "cwe": 400,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "NoSQL Injection/mongodb.js",
+    "cwe": 943,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Open Redirect/koa.js",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.open-redirect"
+    ]
+   },
+   {
+    "path": "Open Redirect/redirect.js",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.open-redirect"
+    ]
+   },
+   {
+    "path": "Path Traversal/expresstest.js",
+    "cwe": 22,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Path Traversal/gq.js",
+    "cwe": 22,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "PostMessage Security/challenge1.js",
+    "cwe": 345,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "PostMessage Security/challenge3.js",
+    "cwe": 345,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "PostMessage Security/challenge_2.js",
+    "cwe": 345,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Prototype Pollution/lodash.js",
+    "cwe": 1321,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "ReDoS/redos.js",
+    "cwe": 1333,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.xss",
+     "codewatch:regex-backtracking"
+    ]
+   },
+   {
+    "path": "SQL Injection/example2.js",
+    "cwe": 89,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "SQL Injection/mysql.js",
+    "cwe": 89,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
+   },
+   {
+    "path": "SQL Injection/sql.js",
+    "cwe": 89,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
+   },
+   {
+    "path": "SSRF/express.js",
+    "cwe": 918,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Sensitive Data Exposure/graphql.ts",
+    "cwe": 200,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Sensitive Data Exposure/hardcoded.ts",
+    "cwe": 200,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Unsafe Deserialization/de.js",
+    "cwe": 502,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Unsafe Deserialization/unsafe.js",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.unsafe-deserialization"
+    ]
+   },
+   {
+    "path": "XSS/express.js",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.xss"
+    ]
+   },
+   {
+    "path": "XXE/xxe.js",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.xml-external-entities"
+    ]
+   }
+  ]
+ },
+ "review": {
+  "overall": {
+   "found": 11,
+   "total": 22,
+   "recall": 0.5,
+   "any_security": 0.636
+  },
+  "categories": {
+   "CWE-22": {
+    "found": 1,
+    "total": 2
+   },
+   "CWE-78": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-79": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-89": {
+    "found": 2,
+    "total": 3
+   },
+   "CWE-200": {
+    "found": 0,
+    "total": 2
+   },
+   "CWE-345": {
+    "found": 1,
+    "total": 3
+   },
+   "CWE-400": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-502": {
+    "found": 1,
+    "total": 2
+   },
+   "CWE-601": {
+    "found": 2,
+    "total": 2
+   },
+   "CWE-611": {
+    "found": 1,
+    "total": 1
+   },
+   "CWE-918": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-943": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-1321": {
+    "found": 0,
+    "total": 1
+   },
+   "CWE-1333": {
+    "found": 1,
+    "total": 1
+   }
+  },
+  "cases": [
+   {
+    "path": "Command Injection/exec.js",
+    "cwe": 78,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.command-injection",
+     "eslint:security/detect-child-process",
+     "semgrep:javascript.lang.security.detect-child-process.detect-child-process"
+    ]
+   },
+   {
+    "path": "Denial Of Service/dos.js",
+    "cwe": 400,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "NoSQL Injection/mongodb.js",
+    "cwe": 943,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Open Redirect/koa.js",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.open-redirect"
+    ]
+   },
+   {
+    "path": "Open Redirect/redirect.js",
+    "cwe": 601,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.open-redirect"
+    ]
+   },
+   {
+    "path": "Path Traversal/expresstest.js",
+    "cwe": 22,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "semgrep:javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage",
+     "semgrep:javascript.express.security.audit.xss.direct-response-write.direct-response-write"
+    ]
+   },
+   {
+    "path": "Path Traversal/gq.js",
+    "cwe": 22,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "eslint:security/detect-non-literal-fs-filename",
+     "semgrep:javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage"
+    ]
+   },
+   {
+    "path": "PostMessage Security/challenge1.js",
+    "cwe": 345,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "semgrep:javascript.browser.security.wildcard-postmessage-configuration.wildcard-postmessage-configuration"
+    ]
+   },
+   {
+    "path": "PostMessage Security/challenge3.js",
+    "cwe": 345,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "PostMessage Security/challenge_2.js",
+    "cwe": 345,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Prototype Pollution/lodash.js",
+    "cwe": 1321,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "ReDoS/redos.js",
+    "cwe": 1333,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.xss",
+     "codewatch:regex-backtracking"
+    ]
+   },
+   {
+    "path": "SQL Injection/example2.js",
+    "cwe": 89,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "detect-secrets:Secret Keyword",
+     "semgrep:problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server"
+    ]
+   },
+   {
+    "path": "SQL Injection/mysql.js",
+    "cwe": 89,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection"
+    ]
+   },
+   {
+    "path": "SQL Injection/sql.js",
+    "cwe": 89,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.sql-injection",
+     "semgrep:javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage"
+    ]
+   },
+   {
+    "path": "SSRF/express.js",
+    "cwe": 918,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Sensitive Data Exposure/graphql.ts",
+    "cwe": 200,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Sensitive Data Exposure/hardcoded.ts",
+    "cwe": 200,
+    "found": false,
+    "any_security": true,
+    "by": [
+     "detect-secrets:Secret Keyword"
+    ]
+   },
+   {
+    "path": "Unsafe Deserialization/de.js",
+    "cwe": 502,
+    "found": false,
+    "any_security": false,
+    "by": []
+   },
+   {
+    "path": "Unsafe Deserialization/unsafe.js",
+    "cwe": 502,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.unsafe-deserialization",
+     "eslint:security/detect-new-buffer",
+     "semgrep:javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage"
+    ]
+   },
+   {
+    "path": "XSS/express.js",
+    "cwe": 79,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.xss"
+    ]
+   },
+   {
+    "path": "XXE/xxe.js",
+    "cwe": 611,
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.xml-external-entities"
+    ]
+   }
+  ]
+ },
+ "suite": "vulnerable-snippets-js",
+ "commit": "07669239ed45467b3c169b9747b3ccdc229632ca",
+ "scanned_at": "2026-10-30T01:44:27+00:00",
+ "overall": {
+  "verdict": {
+   "found": 9,
+   "total": 22,
+   "recall": 0.409,
+   "any_security": 0.409
+  },
+  "review": {
+   "found": 11,
+   "total": 22,
+   "recall": 0.5,
+   "any_security": 0.636
+  }
+ }
+}

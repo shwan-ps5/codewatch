@@ -1,0 +1,405 @@
+# codewatch built-in taint rules for JavaScript/TypeScript: data from the HTTP request (Express, Koa, Next.js
+# route handlers) or, in the browser, from the URL and messages, reaching an injection sink unchecked.
+rules:
+  - id: codewatch.js.sql-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request is built into a SQL query. Pass it as a bound parameter instead
+      (sequelize.query(sql, { replacements }), pool.query(sql, [value]), knex.raw(sql, [value])).
+    metadata: &js-meta-sql
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data built into a SQL query
+      cwe: ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+        - https://sequelize.org/docs/v6/core-concepts/raw-queries/#replacements
+    pattern-sources: &js-sources
+      - &src-request-field
+        patterns:
+          - pattern-either:
+              - pattern: $REQ.$FIELD
+              - pattern: $REQ.$FIELD.$ANY
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
+          - metavariable-regex:
+              metavariable: $FIELD
+              regex: '^(body|query|params|cookies|signedCookies|headers|path|url|originalUrl|baseUrl|hostname|files|file)$'
+      - &src-request-getter
+        patterns:
+          - pattern: $REQ.$GETTER(...)
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request)$'}
+          - metavariable-regex: {metavariable: $GETTER, regex: '^(get|header|param|cookies|json|text|formData)$'}
+      - &src-search-params
+        pattern: new URLSearchParams(...).get(...)
+      - &src-url-search-params
+        pattern: $URL.searchParams.get(...)
+    pattern-sanitizers: &js-sanitizers
+      - &san-numeric
+        pattern-either:
+          - pattern: parseInt(...)
+          - pattern: parseFloat(...)
+          - pattern: Number(...)
+          - pattern: Number.parseInt(...)
+          - pattern: Number.parseFloat(...)
+          - pattern: Boolean(...)
+          - pattern: Math.$F(...)
+          - pattern: $X.length
+          - pattern: typeof $X
+      # Functions named as validators (isValid, validateId, sanitizeName, escapeHtml) return checked data.
+      - &san-named
+        patterns:
+          - pattern: $CHECK(...)
+          - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?(is_?valid|validat|sanitiz|escape|clean|safe|whitelist|allowlist)\w{0,40}$'}
+      # [allowed].includes(x) ? x : fallback only ever yields an allowed value.
+      - &san-allowlist-ternary
+        pattern: '$ALLOWED.includes($X) ? $X : $FALLBACK'
+      # What a file contains is the server's data, whatever path was used to read it (path-traversal checks the path).
+      - &san-file-content
+        pattern-either:
+          - pattern: fs.readFile(...)
+          - pattern: fs.readFileSync(...)
+          - pattern: fs.promises.readFile(...)
+          - pattern: readFile(...)
+          - pattern: readFileSync(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.query($SQL, ...)
+              - pattern: $DB.raw($SQL, ...)
+              - pattern: $DB.$queryRawUnsafe($SQL, ...)
+              - pattern: $DB.$executeRawUnsafe($SQL, ...)
+              - pattern: $DB.execute($SQL, ...)
+          - metavariable-regex:
+              metavariable: $DB
+              regex: '(?i)^(.*\.)?(sequelize|db|database|conn|connection|pool|client|knex|pg|mysql|sql|sqlite|prisma|tx|trx|transaction)$'
+          - focus-metavariable: $SQL
+
+  - id: codewatch.js.command-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request reaches a shell command. Call execFile()/spawn() with an argument array and no
+      shell, so the value can't add commands.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data in a shell command
+      cwe: ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://nodejs.org/api/child_process.html#child_processexecfilefile-args-options-callback
+    pattern-sources: *js-sources
+    pattern-sanitizers: *js-sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: child_process.exec($CMD, ...)
+              - pattern: child_process.execSync($CMD, ...)
+              - pattern: require('child_process').exec($CMD, ...)
+              - pattern: require('child_process').execSync($CMD, ...)
+              - pattern: 'child_process.spawn($CMD, ..., {..., shell: true, ...})'
+              - pattern: 'child_process.spawnSync($CMD, ..., {..., shell: true, ...})'
+              - pattern: execa.command($CMD, ...)
+              - pattern: shelljs.exec($CMD, ...)
+          - focus-metavariable: $CMD
+
+  - id: codewatch.js.path-traversal
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request is used as a file path, so "../" can reach files outside the intended folder. Take
+      path.basename() of it, or resolve it and check the result still starts with the base folder.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used as a file path
+      cwe: ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html
+        - https://expressjs.com/en/api.html#res.sendFile
+    pattern-sources: *js-sources
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - pattern: path.basename(...)
+      # if (!resolved.startsWith(base)) return/throw ...
+      - patterns:
+          - pattern-inside: |
+              if (<... !$X.startsWith(...) ...>) { ... }
+              ...
+          - pattern: $X
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: fs.$FN($PATH, ...)
+                      - pattern: fs.promises.$FN($PATH, ...)
+                      - pattern: fsPromises.$FN($PATH, ...)
+                  - metavariable-regex:
+                      metavariable: $FN
+                      regex: '^(readFile|readFileSync|createReadStream|writeFile|writeFileSync|createWriteStream|appendFile|appendFileSync|unlink|unlinkSync|rm|rmSync|readdir|readdirSync|open|openSync|copyFile|copyFileSync|rename|renameSync)$'
+              - patterns:
+                  - pattern: $RES.sendFile($PATH)
+                  - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
+              - patterns:
+                  - pattern: $RES.download($PATH, ...)
+                  - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
+          - focus-metavariable: $PATH
+
+  - id: codewatch.js.xss
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request or the URL is written into HTML without escaping, so it can carry script. Escape it
+      (escape-html, he.encode, DOMPurify.sanitize for markup), use textContent, or render through a template engine
+      that escapes by default.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request or URL data written into HTML
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+    pattern-sources:
+      - *src-request-field
+      - *src-request-getter
+      - *src-search-params
+      - *src-url-search-params
+      - &dom-sources
+        pattern-either:
+          - pattern: location.hash
+          - pattern: location.search
+          - pattern: location.href
+          - pattern: window.location.hash
+          - pattern: window.location.search
+          - pattern: window.location.href
+          - pattern: document.location.hash
+          - pattern: document.location.search
+          - pattern: document.location.href
+          - pattern: document.URL
+          - pattern: document.documentURI
+          - pattern: document.referrer
+          - pattern: window.name
+          - patterns:
+              - pattern-inside: |
+                  $W.addEventListener("message", ($E) => { ... })
+              - pattern: $E.data
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-file-content
+      - pattern-either:
+          - pattern: escapeHtml(...)
+          - pattern: escape(...)
+          - pattern: he.encode(...)
+          - pattern: he.escape(...)
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: sanitizeHtml(...)
+          - pattern: xss(...)
+          - pattern: validator.escape(...)
+          - pattern: encodeURIComponent(...)
+          - pattern: encodeURI(...)
+          - pattern: $X.textContent
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.send($HTML)
+              - pattern: $RES.write($HTML)
+              - pattern: $RES.end($HTML)
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response)$'}
+          # Objects and arrays go out as JSON, not HTML.
+          - pattern-not: $RES.$SEND({...})
+          - pattern-not: $RES.$SEND([...])
+          # So does anything after the response was given a non-HTML type (JSON, plain text, an event stream).
+          - pattern-not-inside: |
+              $RES.setHeader("=~/(?i)^content-type$/", "=~/(?i)(json|event-stream|text\/plain|octet-stream)/");
+              ...
+          - pattern-not-inside: |
+              $RES.set("=~/(?i)^content-type$/", "=~/(?i)(json|event-stream|text\/plain|octet-stream)/");
+              ...
+          - pattern-not-inside: |
+              $RES.type("=~/(?i)(json|text|plain|event-stream)/");
+              ...
+          - focus-metavariable: $HTML
+      - patterns:
+          - pattern-either:
+              - pattern: $EL.innerHTML = $HTML
+              - pattern: $EL.outerHTML = $HTML
+              - pattern: $EL.insertAdjacentHTML($POS, $HTML)
+              - pattern: document.write($HTML)
+              - pattern: document.writeln($HTML)
+              - pattern: $($SEL).html($HTML)
+              - pattern: $($SEL).append($HTML)
+          - focus-metavariable: $HTML
+
+  - id: codewatch.js.open-redirect
+    mode: taint
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      Data from the request or the URL decides where the user is redirected, so a link to this page can send them
+      to any site. Redirect only to relative paths or to hosts on an exact allowlist (compare new URL(x).origin).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Redirect target taken from the request
+      cwe: ["CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+    pattern-sources:
+      - *src-request-field
+      - *src-request-getter
+      - *src-search-params
+      - *src-url-search-params
+      - *dom-sources
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-file-content
+      - patterns:
+          - pattern-inside: |
+              if (<... $ALLOWED.includes($X) ...>) { ... }
+          - pattern: $X
+      - patterns:
+          - pattern-inside: |
+              if (<... $ALLOWED.has($X) ...>) { ... }
+          - pattern: $X
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.redirect($URL)
+              - pattern: $RES.redirect($STATUS, $URL)
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response|ctx|reply)$'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern: location.href = $URL
+              - pattern: window.location.href = $URL
+              - pattern: window.location = $URL
+              - pattern: location.assign($URL)
+              - pattern: location.replace($URL)
+              - pattern: window.location.assign($URL)
+              - pattern: window.location.replace($URL)
+              - pattern: window.open($URL, ...)
+          - focus-metavariable: $URL
+
+  - id: codewatch.js.code-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request or the URL is run as code. Parse it as data instead (JSON.parse, a lookup table of
+      allowed operations); never evaluate it.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request or URL data evaluated as code
+      cwe: ["CWE-94: Improper Control of Generation of Code ('Code Injection')", "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://nodejs.org/api/vm.html#vm-executing-javascript
+        - https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html
+    pattern-sources:
+      - *src-request-field
+      - *src-request-getter
+      - *src-search-params
+      - *src-url-search-params
+      - *dom-sources
+    pattern-sanitizers: *js-sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: eval($CODE)
+              - pattern: new Function(..., $CODE)
+              - pattern: Function(..., $CODE)
+              - pattern: vm.runInThisContext($CODE, ...)
+              - pattern: vm.runInNewContext($CODE, ...)
+              - pattern: vm.runInContext($CODE, ...)
+              - pattern: new vm.Script($CODE, ...)
+              - pattern: setTimeout($CODE, ...)
+              - pattern: setInterval($CODE, ...)
+          - pattern-not: setTimeout((...) => {...}, ...)
+          - pattern-not: setTimeout(function (...) {...}, ...)
+          - pattern-not: setInterval((...) => {...}, ...)
+          - pattern-not: setInterval(function (...) {...}, ...)
+          - focus-metavariable: $CODE
+
+  - id: codewatch.js.ssrf
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request decides which URL the server fetches, so it can be pointed at internal services or
+      cloud metadata endpoints. Fetch only from hosts on an exact allowlist, and resolve and block private addresses.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Server-side request to a URL from the request
+      cwe: ["CWE-918: Server-Side Request Forgery (SSRF)"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+    pattern-sources: *js-sources
+    pattern-sanitizers: *js-sanitizers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fetch($URL, ...)
+              - pattern: axios($URL, ...)
+              - pattern: axios.$METHOD($URL, ...)
+              - pattern: got($URL, ...)
+              - pattern: got.$METHOD($URL, ...)
+              - pattern: request($URL, ...)
+              - pattern: request.$METHOD($URL, ...)
+              - pattern: needle.get($URL, ...)
+              - pattern: superagent.$METHOD($URL, ...)
+              - pattern: http.get($URL, ...)
+              - pattern: http.request($URL, ...)
+              - pattern: https.get($URL, ...)
+              - pattern: https.request($URL, ...)
+          - focus-metavariable: $URL
+
+  - id: codewatch.js.unsafe-deserialization
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request is deserialized with a library that can run code embedded in it (node-serialize,
+      funcster). Use JSON.parse, which only builds plain data.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data deserialized unsafely
+      cwe: ["CWE-502: Deserialization of Untrusted Data"]
+      owasp: ["A08:2025 - Software or Data Integrity Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+    pattern-sources: *js-sources
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: require('node-serialize').unserialize($DATA)
+              - pattern: serialize.unserialize($DATA)
+              - pattern: funcster.deepDeserialize($DATA)
+          - focus-metavariable: $DATA

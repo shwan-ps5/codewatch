@@ -1,5 +1,7 @@
+import ast
 import json
 import re
+from pathlib import Path
 
 from .base import (
     BLOCKER,
@@ -11,6 +13,7 @@ from .base import (
     MAJOR,
     MINOR,
     PY,
+    VULNERABILITY,
     Analyzer,
     Finding,
     Result,
@@ -101,15 +104,107 @@ class Ruff(Analyzer):
         return result
 
 
+# B101 (assert) fires on every pytest assertion. B404/B603/B607 flag importing subprocess and calling it with an
+# argument list, which is the safe way to call it; B602/B605 still catch shell=True and os.system.
+BANDIT_SKIPPED = ("B101", "B404", "B603", "B607")
+# random is only a weakness when it makes something an attacker must not guess. The function around the call
+# (its name, docstring and what it stores the value in) says what the number is for.
+SECRET_USE_RE = re.compile(
+    r"(?i)\b(?:\w*session[ _]?id\w*|\w*token|token_\w+|\w*secret\w*|\w*passw\w*|pwd|\w*nonce|\w*salt|otp|\w*csrf\w*"
+    r"|\w*api_?key\w*|auth|auth_\w+|authenticat\w*|authoriz\w*|cred|credentials?|cipher\w*|\w*crypt\w*"
+    r"|unpredictable|\w*cookie\w*|\w*remember\w*|\w+_key|iv)\b"
+    r"|session\s{0,5}\[|\bkey\s{0,5}=[^=\n]{0,80}rand",
+)
+CONTEXT_LINES = 5
+
+
+def is_random_call(call):
+    func = call.func
+    return (isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == "random") or (
+        isinstance(func, ast.Name) and func.id in RANDOM_FUNCTIONS)
+
+
+def random_function_name(call):
+    return call.func.attr if isinstance(call.func, ast.Attribute) else call.func.id
+
+
+RANDOM_FUNCTIONS = {"random", "randint", "randrange", "choice", "choices", "sample", "shuffle", "uniform",
+                    "getrandbits", "randbytes", "normalvariate", "gauss", "triangular"}
+
+
+class LineCache:
+    def __init__(self, root):
+        self.root, self.files, self.trees = Path(root), {}, {}
+
+    def lines(self, path):
+        if path not in self.files:
+            try:
+                self.files[path] = (self.root / path).read_text(errors="replace").splitlines()
+            except OSError:
+                self.files[path] = []
+        return self.files[path]
+
+    def get(self, path, line):
+        rows = self.lines(path)
+        return rows[line - 1] if 0 < line <= len(rows) else ""
+
+    def purpose_text(self, path, line):
+        """What a random value on this line is for: the keyword it is passed as (rtt_ms=random.uniform(...) is about
+        rtt_ms, whatever else the function does), else the surrounding function."""
+        tree = self.tree(path)
+        parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)} if tree else {}
+        for call in parents:
+            if not (isinstance(call, ast.Call) and call.lineno == line and is_random_call(call)):
+                continue
+            node = call
+            while node in parents and not isinstance(node, ast.stmt):
+                if isinstance(parents[node], ast.keyword) and parents[node].arg:
+                    return parents[node].arg
+                node = parents[node]
+        return self.function_text(path, line)
+
+    def only_shuffles(self, path, line):
+        """random.shuffle() reorders data and makes no value an attacker could guess."""
+        calls = [n for n in ast.walk(self.tree(path) or ast.Module(body=[], type_ignores=[]))
+                 if isinstance(n, ast.Call) and n.lineno == line and is_random_call(n)]
+        return bool(calls) and all(random_function_name(c) == "shuffle" for c in calls)
+
+    def tree(self, path):
+        if path not in self.trees:
+            try:
+                self.trees[path] = ast.parse("\n".join(self.lines(path)))
+            except (SyntaxError, ValueError):
+                self.trees[path] = None
+        return self.trees[path]
+
+    def function_text(self, path, line):
+        """Source of the innermost function around a line, or a few lines either side at module level."""
+        around = [n for n in ast.walk(self.tree(path) or ast.Module(body=[], type_ignores=[]))
+                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  and n.lineno <= line <= (n.end_lineno or n.lineno)]
+        if around:
+            inner = max(around, key=lambda n: n.lineno)
+            start, end = inner.lineno, inner.end_lineno or line
+        else:
+            start, end = max(1, line - CONTEXT_LINES), line + CONTEXT_LINES
+        return "\n".join(self.lines(path)[start - 1:end])
+
+
 class Bandit(Analyzer):
     name = executable = "bandit"
     extensions = PY
 
     def run(self, ctx):
-        # B101 (assert) fires on every pytest assertion.
-        out = self.exec(["-f", "json", "-q", "--exit-zero", "-s", "B101", *ctx.files_with(PY)], ctx)
+        out = self.exec(["-f", "json", "-q", "--exit-zero", "-s", ",".join(BANDIT_SKIPPED), *ctx.files_with(PY)], ctx)
         result = Result()
+        source = LineCache(ctx.root)
         for item in json.loads(out)["results"]:
+            # random() making a token, key or session id is a definite weakness; elsewhere it's not one at all.
+            if item["test_id"] == "B311" and (
+                    source.only_shuffles(item["filename"], item["line_number"])
+                    or not SECRET_USE_RE.search(source.purpose_text(item["filename"], item["line_number"]))):
+                continue
+            type_ = VULNERABILITY if item["test_id"] == "B311" else HOTSPOT
             severity = BANDIT_SEVERITY.get(item["issue_severity"], MINOR)
             if item["issue_confidence"] == "LOW":
                 severity = DOWNGRADE[severity]
@@ -120,7 +215,7 @@ class Bandit(Analyzer):
                     "bandit",
                     f"{item['test_id']}:{item['test_name']}",
                     severity,
-                    HOTSPOT,
+                    type_,
                     item["issue_text"],
                     ctx.rel(item["filename"]),
                     item["line_number"],

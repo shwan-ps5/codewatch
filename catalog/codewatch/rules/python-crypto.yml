@@ -1,0 +1,203 @@
+# codewatch built-in rules for misused cryptography, TLS and credentials in Python: API calls that are wrong
+# whatever data reaches them, so they are reported as vulnerabilities rather than hotspots.
+rules:
+  - id: codewatch.python.tls-verification-disabled
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Certificate or hostname verification is switched off, so anyone on the network path can impersonate the
+      server. Keep verification on; for a private CA, pass its bundle (verify="/path/ca.pem", cafile=...).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: TLS certificate verification disabled
+      cwe: ["CWE-295: Improper Certificate Validation"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://docs.python.org/3/library/ssl.html#ssl.SSLContext.verify_mode
+        - https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification
+    pattern-either:
+      - pattern: $CTX.check_hostname = False
+      - pattern: $CTX.verify_mode = ssl.CERT_NONE
+      - pattern: ssl._create_unverified_context(...)
+      - pattern: ssl.wrap_socket(..., cert_reqs=ssl.CERT_NONE, ...)
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: requests.Session(...).$METHOD(..., verify=False, ...)
+      - pattern: httpx.$METHOD(..., verify=False, ...)
+      - pattern: $SESSION.verify = False
+
+  - id: codewatch.python.weak-cipher
+    languages: [python]
+    severity: ERROR
+    message: >-
+      This cipher or mode doesn't protect the data: DES, 3DES, RC4 and Blowfish are broken, and ECB mode leaks
+      patterns in the plaintext. Use AES-GCM or ChaCha20-Poly1305 (cryptography's AESGCM, ChaCha20Poly1305).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Weak cipher or ECB mode
+      cwe: ["CWE-327: Use of a Broken or Risky Cryptographic Algorithm"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+    pattern-either:
+      - pattern: Crypto.Cipher.AES.new($KEY, Crypto.Cipher.AES.MODE_ECB, ...)
+      - pattern: Cryptodome.Cipher.AES.new($KEY, Cryptodome.Cipher.AES.MODE_ECB, ...)
+      - pattern: cryptography.hazmat.primitives.ciphers.modes.ECB(...)
+      - patterns:
+          - pattern-either:
+              - pattern: Crypto.Cipher.$WEAK.new(...)
+              - pattern: Cryptodome.Cipher.$WEAK.new(...)
+              - pattern: cryptography.hazmat.primitives.ciphers.algorithms.$WEAK(...)
+          - metavariable-regex: {metavariable: $WEAK, regex: '^(DES|DES3|ARC2|ARC4|Blowfish|CAST|TripleDES|IDEA|SEED)$'}
+
+  - id: codewatch.python.static-iv
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The IV (or nonce) is a constant, so the same plaintext always encrypts the same way and, for CTR/GCM, the
+      key stream repeats. Generate a fresh one per message with os.urandom() and store it with the ciphertext.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Constant IV or nonce
+      cwe: ["CWE-329: Generation of Predictable IV with CBC Mode", "CWE-1204: Generation of Weak Initialization Vector (IV)"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/#modes
+    # The IV is a literal, or a variable assigned one (b"x" * 16, bytes(16)) earlier in the function.
+    pattern-either:
+      - patterns:
+          - pattern-either: &iv-calls
+              - pattern: Crypto.Cipher.AES.new($KEY, $MODE, $IV, ...)
+              - pattern: Crypto.Cipher.AES.new($KEY, $MODE, ..., iv=$IV, ...)
+              - pattern: Crypto.Cipher.AES.new($KEY, $MODE, ..., nonce=$IV, ...)
+              - pattern: Cryptodome.Cipher.AES.new($KEY, $MODE, $IV, ...)
+              - pattern: Cryptodome.Cipher.AES.new($KEY, $MODE, ..., iv=$IV, ...)
+              - pattern: cryptography.hazmat.primitives.ciphers.modes.$CHAIN($IV, ...)
+          - metavariable-pattern:
+              metavariable: $IV
+              pattern-either: &constant-bytes
+                - pattern: '"..."'
+                - pattern: '"..." * $N'
+                - pattern: bytes($N)
+                - pattern: bytearray($N)
+      - patterns:
+          - pattern-either: *iv-calls
+          - pattern-inside: |
+              $IV = $INIT
+              ...
+          - metavariable-pattern:
+              metavariable: $INIT
+              pattern-either: *constant-bytes
+
+  - id: codewatch.python.constant-salt
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The password hash uses a constant salt, so equal passwords hash equally and one precomputed table cracks
+      them all. Use a random salt per password (os.urandom(16)) stored next to the hash, or a password hasher.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Constant salt in a password hash
+      cwe: ["CWE-760: Use of a One-Way Hash with a Predictable Salt"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://docs.python.org/3/library/hashlib.html#key-derivation
+        - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+    pattern-either:
+      - pattern: hashlib.pbkdf2_hmac($HASH, $PASSWORD, "...", ...)
+      - pattern: hashlib.pbkdf2_hmac(..., salt="...", ...)
+      - pattern: hashlib.scrypt($PASSWORD, salt="...", ...)
+      - pattern: cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC(..., salt="...", ...)
+      - pattern: bcrypt.hashpw($PASSWORD, "...")
+
+  - id: codewatch.python.jwt-not-verified
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The token is decoded without checking its signature (or with the "none" algorithm), so anyone can forge
+      one. Pass the key and an explicit algorithms=[...] list, and leave signature verification on.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: JWT accepted without signature verification
+      cwe: ["CWE-347: Improper Verification of Cryptographic Signature"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      references:
+        - https://pyjwt.readthedocs.io/en/stable/api.html#jwt.decode
+    pattern-either:
+      - pattern: jwt.decode(..., verify=False, ...)
+      - pattern: 'jwt.decode(..., options={..., "verify_signature": False, ...}, ...)'
+      - pattern: jwt.decode(..., algorithms=[..., "none", ...], ...)
+      - patterns:
+          - pattern: python_jwt.process_jwt(...)
+          - pattern-not-inside: |
+              $X = python_jwt.process_jwt(...)
+              ...
+              python_jwt.verify_jwt(...)
+
+  - id: codewatch.python.insecure-temp-file
+    languages: [python]
+    severity: WARNING
+    message: >-
+      mktemp() only returns a name: another process can create that file first and have you write into it.
+      Use tempfile.NamedTemporaryFile() or mkstemp(), which create the file atomically.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Insecure temporary file name
+      cwe: ["CWE-377: Insecure Temporary File"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://docs.python.org/3/library/tempfile.html#tempfile.mktemp
+    pattern-either:
+      - pattern: tempfile.mktemp(...)
+      - pattern: os.tempnam(...)
+      - pattern: os.tmpnam(...)
+
+  - id: codewatch.python.cleartext-protocol
+    languages: [python]
+    severity: WARNING
+    message: >-
+      FTP and Telnet send credentials and data unencrypted. Use SFTP/FTPS (ftplib.FTP_TLS) or SSH instead.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Cleartext protocol
+      cwe: ["CWE-319: Cleartext Transmission of Sensitive Information"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://docs.python.org/3/library/ftplib.html#ftplib.FTP_TLS
+    pattern-either:
+      - pattern: ftplib.FTP(...)
+      - pattern: telnetlib.Telnet(...)
+
+  - id: codewatch.python.database-url-without-password
+    languages: [python]
+    severity: WARNING
+    message: >-
+      This database URL logs in without a password. Require one and load the URL from configuration.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Database login without a password
+      cwe: ["CWE-521: Weak Password Requirements"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      references:
+        - https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls
+    patterns:
+      - pattern: '"$URL"'
+      - metavariable-regex:
+          metavariable: $URL
+          regex: '^(postgres(ql)?|mysql|mariadb|mssql|oracle|mongodb)(\+\w{1,20})?://[^:/@\s]{1,100}:@'

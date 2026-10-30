@@ -25,7 +25,9 @@ from .base import (
     isolated_tool,
     node_tool,
 )
+from .constant_branches import blank_dead_branches
 from .python_tools import complexity_severity
+from .slices import index_slices
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
 SEMGREP_TYPE = {"security": VULNERABILITY, "correctness": BUG}
@@ -39,6 +41,10 @@ CPPCHECK_SEVERITY = {
 }
 CPPCHECK_NOISE = {"missingInclude", "missingIncludeSystem", "checkersReport", "unmatchedSuppression",
                   "toomanyconfigs", "normalCheckLevelMaxBranches", "unknownMacro", "syntaxError"}
+# Structs declared in headers often mirror an external layout (SDK, hardware, file format): every field exists
+# to match it, so cppcheck's "never read" is expected there. Structs local to a .c/.cpp file are still checked.
+HEADER_ONLY_NOISE = {"unusedStructMember"}
+HEADERS = {".h", ".hh", ".hpp", ".hxx", ".inl"}
 
 JSCPD_FORMATS = "python,javascript,typescript,jsx,tsx,c,cpp,java,go,rust,csharp"
 
@@ -79,7 +85,7 @@ class Semgrep(Analyzer):
         return isolated_tool("semgrep") or super().binary()
 
     def run(self, ctx):
-        with tempfile.NamedTemporaryFile("w", suffix=".yml") as custom:
+        with tempfile.NamedTemporaryFile("w", suffix=".yml") as custom, tempfile.TemporaryDirectory() as copies:
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             custom_ids = []
             if ctx.custom_rules:
@@ -89,11 +95,12 @@ class Semgrep(Analyzer):
                 custom_ids = [r["id"] for r in yaml.safe_load(ctx.custom_rules).get("rules", [])]
             if not configs:
                 return Result()
-            args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check",
-                    *ctx.files_with(self.extensions)]
+            targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(copies))
+            args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
             data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
         result = Result()
         for item in data["results"]:
+            item["path"] = originals.get(item["path"], item["path"])
             extra = item["extra"]
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
             custom_id = next((cid for cid in custom_ids if item["check_id"].endswith(cid)), None)
@@ -103,6 +110,36 @@ class Semgrep(Analyzer):
                         ctx.rel(item["path"]), item["start"]["line"], item["end"]["line"])
             )
         return result
+
+
+def analysis_copy(source):
+    """Python source as Semgrep should see it: dead constant branches blanked and slices made indexes.
+    None when nothing changes."""
+    folded = blank_dead_branches(source)
+    indexed = index_slices(folded or source)
+    return indexed or folded
+
+
+def analysis_copies(ctx, files, copies):
+    """Targets for Semgrep: Python files that need it are scanned as rewritten copies (see analysis_copy).
+    Returns the target list and {copy path: original relative path}."""
+    targets, originals = [], {}
+    for rel in files:
+        rewritten = None
+        if rel.endswith(".py"):
+            try:
+                rewritten = analysis_copy((ctx.root / rel).read_text())
+            except (OSError, UnicodeDecodeError):
+                rewritten = None
+        if rewritten is None:
+            targets.append(rel)
+            continue
+        copy = copies / rel
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        copy.write_text(rewritten)
+        targets.append(str(copy))
+        originals[str(copy)] = rel
+    return targets, originals
 
 
 def semgrep_type(check_id, metadata):
@@ -135,6 +172,8 @@ class Cppcheck(Analyzer):
             if len(parts) != 5 or parts[3] in CPPCHECK_NOISE or parts[2] not in CPPCHECK_SEVERITY:
                 continue
             path, lineno, sev, rule, message = parts
+            if rule in HEADER_ONLY_NOISE and Path(path).suffix.lower() in HEADERS:
+                continue
             severity, type_ = CPPCHECK_SEVERITY[sev]
             result.findings.append(
                 Finding("cppcheck", rule, severity, type_, message, ctx.rel(path), int(lineno) or None)
