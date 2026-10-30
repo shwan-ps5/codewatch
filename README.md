@@ -81,6 +81,8 @@ Administrators see every project.
 
 codewatch's own checks (Python and JS/TS): **string literals repeated more than N times** in a file (default 3), and **regexes vulnerable to catastrophic backtracking (ReDoS)**, analysed with recheck. Cognitive complexity is flagged above 15 by default; thresholds are per project.
 
+codewatch also ships its own Semgrep rules (`catalog/codewatch/rules/`). Taint rules follow request data (Flask, Django, FastAPI, Starlette, Express, Koa, browser URL APIs) into SQL, NoSQL, OS commands, file paths, templates and HTML, redirects and `Location` headers, outgoing URLs (SSRF), regular expressions, XML parsers, deserializers, LDAP/XPath queries and the session, and stop at validation such as an allowlist check, `int()`, `re.escape()` or a `startswith` guard that returns. Pattern rules catch flaws visible without a request source: quoted values formatted into SQL, tar extraction without a filter, template auto-escaping switched off, recursive merges open to prototype pollution, weak hashes used for passwords or signatures, weak ciphers and static IVs, disabled TLS verification and hard-coded JWT secrets.
+
 Issue types: bug, vulnerability, **security hotspot** (security-sensitive code to review), code smell, accessibility. When several tools report the same problem on the same line, it becomes one issue that lists the others ("also reported by").
 
 **New code**: on a branch, everything changed since its merge-base with the main branch (plus uncommitted/untracked files for local scans); on main, everything since the previous analysis by default. Because that window restarts with every scan, a run of small commits can each fall under the 20-line minimum for coverage and duplication checks. Set **New code on the main branch** in project settings to `30d` (since the newest analysis at least 30 days old) or to a tag, branch or commit such as `v1.4` to keep the window open across scans; a ref that doesn't resolve or isn't in main's history falls back to the previous analysis. Issues are fingerprinted by rule + file + source text, so they keep their identity, and any won't-fix / false-positive resolution, when code moves.
@@ -128,16 +130,18 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 | Suite | Verdict | Review |
 |---|---|---|
 | [OWASP Benchmark for Python](https://github.com/OWASP-Benchmark/BenchmarkPython): 1,230 labelled cases, 14 CWEs | finds 100%, false alarms 0% | finds 100%, false alarms 35% |
-| [SecurityEval](https://github.com/s2e-lab/SecurityEval): 121 insecure Python samples filed by CWE | 44 of 121 flagged | 65 of 121 flagged |
-| SecurityEval Copilot answers, manually labelled (held out) | finds 28%, false alarms 0% | finds 40%, false alarms 6% |
-| SecurityEval InCoder answers, manually labelled (held out) | finds 26%, false alarms 0% | finds 39%, false alarms 0% |
+| [SecurityEval](https://github.com/s2e-lab/SecurityEval): 121 insecure Python samples filed by CWE | 50 of 121 flagged | 74 of 121 flagged |
+| SecurityEval Copilot answers, manually labelled (held out) | finds 34%, false alarms 0% | finds 49%, false alarms 6% |
+| SecurityEval InCoder answers, manually labelled (held out) | finds 31%, false alarms 0% | finds 44%, false alarms 0% |
 | [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 15 of 35 flagged | 16 of 35 flagged |
 | [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
-| [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 92%, false alarms 50% |
+| [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |
 
-The score on OWASP is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. "Held out" suites were never used to write or tune rules, so they are the fairer measure; the others were. `benchmarks/compare.py` runs the same suites, and any local repositories, through SonarQube for comparison.
+The score on OWASP is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. "Held out" suites were never used to write or tune rules, so they are the fairer measure; the others were. The Copilot and InCoder answers respond to the same prompts as SecurityEval's own samples, which were used for rules, so their numbers are not fully independent. `benchmarks/compare.py` runs the same suites, and any local repositories, through SonarQube for comparison.
 
-Semgrep's open-source engine follows data within one function and loses it at slices, `match` statements, dict keys and constant-folded branches. codewatch scans a line-for-line rewritten copy of Python files (dead constant branches blanked, slices made indexes, constant container keys made attributes, `match` made `if`), and runs its taint rules twice: once to find which function parameters reach a sink, then with calls to those functions as extra sinks, so flows through one helper (in the same file or an imported module) are found. Known limits: Juice Shop measures detection only, since its unmarked code isn't labelled safe, and many of its challenges are business-logic flaws (missing ownership checks, weak security questions) that no static analyzer can recognise.
+Semgrep's open-source engine follows data within one function and loses it at slices, `match` statements, dict keys and constant-folded branches. codewatch scans a line-for-line rewritten copy of Python files (dead constant branches blanked, slices made indexes, constant container keys made attributes, `match` made `if`), and summarises functions before the main scan: the taint rules run with function parameters as sources to find which parameters reach a sink, then again with calls to those functions as extra sinks, up to three calls deep. A call only counts where the function is visible (same file, or an import that resolves to the defining file), so same-named functions elsewhere don't connect. A parameter that reaches a sink in a function nothing in the project calls (a library entry point, a handler registered elsewhere) is reported as a hotspot, since the danger depends on what its callers pass.
+
+Most SecurityEval samples are plain functions with no request source, which caps verdict-mode detection there; much of the rest is design flaws (off-by-one, missing authentication, race conditions) outside what pattern and taint rules can see. Log injection is reported as a hotspot rather than a vulnerability, because whether a forged log line matters depends on the log format. Other known limits: Juice Shop measures detection only, since its unmarked code isn't labelled safe, and many of its challenges are business-logic flaws (missing ownership checks, weak security questions) that no static analyzer can recognise.
 
 ## Claude / MCP
 
@@ -180,3 +184,7 @@ venv/bin/python manage.py scan my-app --all-branches --fail-on-gate
 make test    # pytest; accessibility tests are skipped if tools/ isn't installed
 make lint
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE). Analyzers and imported rule metadata keep their own licenses.

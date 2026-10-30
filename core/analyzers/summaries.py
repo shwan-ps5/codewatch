@@ -7,6 +7,9 @@ happens inside load_css. Two passes close that gap:
    reaches the rule's sink inside the function (sanitizers still apply): a summary (function, parameter).
 2. The rules run again with each summarised call as an extra sink for that argument: `load_css(<arg>)`.
 
+Pass 1 repeats with the summarised calls as sinks too, so a wrapper that hands its parameter to load_css is
+summarised as well, up to MAX_DEPTH calls deep.
+
 A call only counts where the function is visible: in the file that defines it, or in a file that imports it or
 its module, so same-named functions elsewhere don't connect.
 """
@@ -18,6 +21,7 @@ from pathlib import Path
 SUMMARY_SUFFIX = ".params"
 VIA_SUFFIX = ".via"
 VIA_RE = re.compile(r"\[via (\w+)\(\)\]$")
+MAX_DEPTH = 3
 JS_LANGUAGES = {"javascript", "typescript"}
 RECEIVERS = {"self", "cls"}
 
@@ -44,15 +48,26 @@ def taint_rules(rules):
     return [r for r in rules if r.get("mode") == "taint"]
 
 
-def summary_rules(rules):
-    """Pass 1: every taint rule with function parameters as sources, reporting "function|parameter"."""
+def is_js(rule):
+    return bool(JS_LANGUAGES & set(rule.get("languages", [])))
+
+
+def summary_rules(rules, summaries=None):
+    """Pass 1: every taint rule with function parameters as sources, reporting "function|parameter|callee".
+
+    With summaries, only the summarised rules, and calls to the summarised functions are sinks as well (the callee
+    names which one was reached, so parse_summaries can check it is visible)."""
     out = []
     for rule in taint_rules(rules):
+        found = (summaries or {}).get(rule["id"])
+        if summaries is not None and not found:
+            continue
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + SUMMARY_SUFFIX
-        variant["message"] = "$FUNC|$PARAM"
-        js = bool(JS_LANGUAGES & set(rule.get("languages", [])))
-        variant["pattern-sources"] = copy.deepcopy(JS_PARAM_SOURCES if js else PYTHON_PARAM_SOURCES)
+        variant["message"] = "$FUNC|$PARAM|$VIA_FUNC"
+        variant["pattern-sources"] = copy.deepcopy(JS_PARAM_SOURCES if is_js(rule) else PYTHON_PARAM_SOURCES)
+        if found:
+            variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(found, is_js(rule))
         out.append(variant)
     return out
 
@@ -103,13 +118,21 @@ def js_signature(text, func, line):
     return None
 
 
-def parse_summaries(results, read_text):
-    """{rule id: {(function, positional index or None, parameter, is_method, defining path)}} from pass 1."""
+def parse_summaries(results, read_text, known=None, hits=None):
+    """{rule id: {(function, positional index or None, parameter, is_method, defining path)}} from pass 1.
+
+    known: the summaries the pass used as sinks; a hit on one counts only where that callee is visible.
+    hits: collects (rule id, path, line, function, parameter) for each accepted result."""
     summaries = {}
-    for rule_id, path, line, message in results:
-        func, _, param = message.partition("|")
+    for check_id, path, line, message in results:
+        func, param, callee = [*message.split("|"), "", ""][:3]
         if not func or not param:
             continue
+        rule_id = check_id.removesuffix(SUMMARY_SUFFIX)
+        if callee and not callee.startswith("$"):
+            defining = {s[4] for s in (known or {}).get(rule_id, ()) if s[0] == callee}
+            if callee == func or not defining or not visible(path, defining, read_text):
+                continue
         text = read_text(path)
         if text is None:
             continue
@@ -120,8 +143,40 @@ def parse_summaries(results, read_text):
         if param not in positional and param not in keyword_only:
             continue
         index = positional.index(param) if param in positional else None
-        summaries.setdefault(rule_id.removesuffix(SUMMARY_SUFFIX), set()).add((func, index, param, method, path))
+        summaries.setdefault(rule_id, set()).add((func, index, param, method, path))
+        if hits is not None:
+            hits.append((rule_id, path, line, func, param))
     return summaries
+
+
+NAME_RE = re.compile(r"[A-Za-z_$][\w$]*")
+DEFINITION_RE = re.compile(r"(\bdef|\bfunction\s*\*?|\bclass)\s+$")
+NOT_A_USE_RE = re.compile(r"^\s*(#|//|\*|/\*)|module\.exports|\bexports\.|^\s*export\s*\{|__all__")
+
+
+def referenced_names(files):
+    """Names used somewhere other than their own definition, an export list or a comment: a function whose name
+    is never used has no caller in the project, so whatever reaches its parameters comes from outside."""
+    used = set()
+    for path, text in files:
+        js = not path.endswith(".py")
+        for line in text.splitlines():
+            if NOT_A_USE_RE.search(line):
+                continue
+            for match in NAME_RE.finditer(line):
+                before, after = line[:match.start()], line[match.end():]
+                if DEFINITION_RE.search(before) or (js and js_definition(before, after)):
+                    continue
+                used.add(match.group())
+    return used
+
+
+def js_definition(before, after):
+    """`name = (...) =>`, `name: function`, or a class method header `name(...) {` at the start of the line."""
+    if re.match(r"\s*[:=]\s*(async\s+)?(function\b|\([^)]*\)\s*=>|\w+\s*=>)", after):
+        return True
+    return bool(re.fullmatch(r"\s*((public|private|protected|static|async)\s+)*", before)
+                and re.match(r"\s*\([^)]*\)[^;]*\{\s*$", after))
 
 
 def call_patterns(index, param, method, js):
@@ -138,6 +193,23 @@ def call_patterns(index, param, method, js):
     return patterns
 
 
+def via_sinks(found, js):
+    sinks = []
+    for func, index, param, method, _path in sorted(found, key=repr):
+        name = {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": f"^{re.escape(func)}$"}}
+        sinks += [{"patterns": [{"pattern": pattern}, name, {"focus-metavariable": "$ARG"}]}
+                  for pattern in call_patterns(index, param, method, js)]
+    return sinks
+
+
+def merge(summaries, more):
+    """summaries plus more; None when more adds nothing."""
+    merged = {rule: set(found) for rule, found in summaries.items()}
+    for rule, found in more.items():
+        merged.setdefault(rule, set()).update(found)
+    return None if merged == summaries else merged
+
+
 def via_rules(rules, summaries):
     """Pass 2 rules: each summarised taint rule with calls to its functions as extra sinks."""
     out = []
@@ -145,15 +217,9 @@ def via_rules(rules, summaries):
         found = summaries.get(rule["id"])
         if not found:
             continue
-        js = bool(JS_LANGUAGES & set(rule.get("languages", [])))
-        sinks = []
-        for func, index, param, method, _path in sorted(found, key=repr):
-            name = {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": f"^{re.escape(func)}$"}}
-            sinks += [{"patterns": [{"pattern": pattern}, name, {"focus-metavariable": "$ARG"}]}
-                      for pattern in call_patterns(index, param, method, js)]
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + VIA_SUFFIX
-        variant["pattern-sinks"] = sinks
+        variant["pattern-sinks"] = via_sinks(found, is_js(rule))
         variant["message"] = rule["message"].strip() + " [via $VIA_FUNC()]"
         out.append(variant)
     return out

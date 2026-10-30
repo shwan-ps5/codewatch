@@ -101,13 +101,13 @@
  },
  "review": {
   "overall": {
-   "tp": 11,
-   "fn": 1,
+   "tp": 12,
+   "fn": 0,
    "fp": 1,
    "tn": 1,
-   "tpr": 0.917,
+   "tpr": 1.0,
    "fpr": 0.5,
-   "score": 0.417
+   "score": 0.5
   },
   "categories": {
    "CWE-1321": {
@@ -171,8 +171,8 @@
     "tn": 0
    },
    "CWE-943": {
-    "tp": 0,
-    "fn": 1,
+    "tp": 1,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -191,13 +191,6 @@
   },
   "mistakes": [
    {
-    "path": "sast/seeds/nosql-operator.js",
-    "cwe": 943,
-    "real": true,
-    "flagged": false,
-    "by": []
-   },
-   {
     "path": "sast/seeds/clean-escaped.js",
     "cwe": null,
     "real": false,
@@ -212,7 +205,7 @@
  },
  "suite": "vulnerable-node-seeds",
  "commit": "d68f2a3c9277ece2c2feb9976052033bdecd7fbe",
- "scanned_at": "2026-10-30T10:46:13+00:00",
+ "scanned_at": "2026-10-30T13:34:04+00:00",
  "overall": {
   "verdict": {
    "tp": 11,
@@ -224,13 +217,13 @@
    "score": 0.917
   },
   "review": {
-   "tp": 11,
-   "fn": 1,
+   "tp": 12,
+   "fn": 0,
    "fp": 1,
    "tn": 1,
-   "tpr": 0.917,
+   "tpr": 1.0,
    "fpr": 0.5,
-   "score": 0.417
+   "score": 0.5
   }
  }
 }

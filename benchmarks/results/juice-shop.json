@@ -1099,7 +1099,7 @@
  },
  "suite": "juice-shop",
  "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
- "scanned_at": "2026-10-30T10:33:52+00:00",
+ "scanned_at": "2026-10-30T13:31:29+00:00",
  "overall": {
   "verdict": {
    "found": 15,

@@ -24,6 +24,7 @@ from .base import (
     C,
     Finding,
     Result,
+    is_test_file,
     isolated_tool,
     node_tool,
 )
@@ -94,7 +95,7 @@ class Semgrep(Analyzer):
             return Result()
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
-            summaries = self.summarise(ctx, custom_rules, targets, originals, Path(work))
+            summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
             rules = custom_rules + summaries_module.via_rules(custom_rules, summaries)
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             if rules:
@@ -134,25 +135,57 @@ class Semgrep(Analyzer):
         direct = {(f.rule, f.path, f.line) for f in result.findings if not summaries_module.VIA_RE.search(f.message)}
         result.findings = [f for f in result.findings if not (summaries_module.VIA_RE.search(f.message)
                                                               and (f.rule, f.path, f.line) in direct)]
+        result.findings += self.uncalled_entry_points(ctx, custom_rules, hits, result.findings)
         return result
+
+    def uncalled_entry_points(self, ctx, custom_rules, hits, findings):
+        """A parameter that reaches a sink in a function nothing in the project calls: the data comes from
+        whoever does (a library user, a framework, a handler registered by name elsewhere), so it is left for
+        review rather than claimed as a vulnerability."""
+        if not hits:
+            return []
+        files = [(f, read_source(ctx.root / f) or "") for f in ctx.files_with(self.extensions & CODE)]
+        used = summaries_module.referenced_names(files)
+        rules = {r["id"]: r for r in custom_rules}
+        seen = {(f.rule, f.path, f.line) for f in findings}
+        out = []
+        for rule_id, path, line, func, param in sorted(hits):
+            if func in used or func.startswith("_") or is_test_file(path) or (rule_id, path, line) in seen:
+                continue
+            seen.add((rule_id, path, line))
+            rule = rules[rule_id]
+            message = (f"{rule['message'].strip()} [parameter {param} of {func}(), which nothing in the project "
+                       f"calls: check what its callers pass]")
+            out.append(Finding("codewatch", rule_id, SEMGREP_SEVERITY.get(rule.get("severity"), MINOR), HOTSPOT,
+                               message, path, line, line))
+        return out
 
     def scan(self, ctx, configs, targets):
         args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
         return json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
 
     def summarise(self, ctx, custom_rules, targets, originals, work):
-        """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks."""
-        rules = summaries_module.summary_rules(custom_rules)
-        if not rules or not targets:
-            return {}
-        config = work / "summaries.yml"
-        config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-        data = self.scan(ctx, ["--config", str(config)], targets)
-        ids = [r["id"] for r in rules]
-        found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
-                  ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"], item["extra"]["message"])
-                 for item in data["results"]]
-        return summaries_module.parse_summaries(found, lambda rel: read_source(ctx.root / rel))
+        """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
+        functions already summarised."""
+        summaries, known, hits = {}, None, []
+        for _ in range(summaries_module.MAX_DEPTH):
+            rules = summaries_module.summary_rules(custom_rules, known)
+            if not rules or not targets:
+                break
+            config = work / "summaries.yml"
+            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+            data = self.scan(ctx, ["--config", str(config)], targets)
+            ids = [r["id"] for r in rules]
+            found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
+                      ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
+                      item["extra"]["message"])
+                     for item in data["results"]]
+            more = summaries_module.parse_summaries(found, lambda rel: read_source(ctx.root / rel), known, hits)
+            merged = summaries_module.merge(summaries, more)
+            if merged is None:
+                break
+            summaries = known = merged
+        return summaries, hits
 
     @staticmethod
     def via_visible(ctx, path, message, summaries):

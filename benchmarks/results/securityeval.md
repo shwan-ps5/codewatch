@@ -2,13 +2,13 @@
 
 SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses against SonarQube were used to add codewatch's crypto/TLS rules.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T10:44:35+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T13:32:04+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**44 of 121 vulnerable files flagged for their CWE (36%); 46% have some security finding**
+**50 of 121 vulnerable files flagged for their CWE (41%); 51% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|
@@ -50,7 +50,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-377 | 1 | 1 |
 | CWE-379 | 1 | 1 |
 | CWE-385 | 0 | 1 |
-| CWE-400 | 0 | 1 |
+| CWE-400 | 1 | 1 |
 | CWE-406 | 0 | 1 |
 | CWE-414 | 0 | 1 |
 | CWE-425 | 0 | 1 |
@@ -62,13 +62,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-521 | 1 | 2 |
 | CWE-522 | 0 | 2 |
 | CWE-595 | 0 | 1 |
-| CWE-601 | 3 | 5 |
+| CWE-601 | 5 | 5 |
 | CWE-605 | 0 | 1 |
-| CWE-611 | 0 | 6 |
+| CWE-611 | 2 | 6 |
 | CWE-641 | 0 | 1 |
 | CWE-643 | 2 | 2 |
 | CWE-703 | 0 | 3 |
-| CWE-730 | 0 | 3 |
+| CWE-730 | 2 | 3 |
 | CWE-732 | 0 | 1 |
 | CWE-759 | 1 | 1 |
 | CWE-760 | 1 | 1 |
@@ -77,14 +77,14 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-827 | 0 | 1 |
 | CWE-835 | 0 | 1 |
 | CWE-841 | 0 | 1 |
-| CWE-918 | 2 | 2 |
+| CWE-918 | 1 | 2 |
 | CWE-941 | 0 | 1 |
 | CWE-943 | 0 | 1 |
 | CWE-1204 | 1 | 1 |
 
 ## Review mode
 
-**65 of 121 vulnerable files flagged for their CWE (54%); 69% have some security finding**
+**74 of 121 vulnerable files flagged for their CWE (61%); 76% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|
@@ -100,7 +100,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-99 | 0 | 1 |
 | CWE-113 | 0 | 2 |
 | CWE-116 | 0 | 2 |
-| CWE-117 | 0 | 3 |
+| CWE-117 | 2 | 3 |
 | CWE-193 | 0 | 1 |
 | CWE-200 | 0 | 1 |
 | CWE-209 | 0 | 1 |
@@ -126,7 +126,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-377 | 1 | 1 |
 | CWE-379 | 1 | 1 |
 | CWE-385 | 0 | 1 |
-| CWE-400 | 0 | 1 |
+| CWE-400 | 1 | 1 |
 | CWE-406 | 0 | 1 |
 | CWE-414 | 0 | 1 |
 | CWE-425 | 0 | 1 |
@@ -138,13 +138,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-521 | 1 | 2 |
 | CWE-522 | 0 | 2 |
 | CWE-595 | 0 | 1 |
-| CWE-601 | 3 | 5 |
+| CWE-601 | 5 | 5 |
 | CWE-605 | 1 | 1 |
-| CWE-611 | 3 | 6 |
+| CWE-611 | 5 | 6 |
 | CWE-641 | 0 | 1 |
 | CWE-643 | 2 | 2 |
 | CWE-703 | 0 | 3 |
-| CWE-730 | 0 | 3 |
+| CWE-730 | 2 | 3 |
 | CWE-732 | 1 | 1 |
 | CWE-759 | 1 | 1 |
 | CWE-760 | 1 | 1 |

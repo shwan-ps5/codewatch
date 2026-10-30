@@ -402,6 +402,19 @@ rules:
           - focus-metavariable: $URL
       - patterns:
           - pattern-either:
+              - pattern: $RES.setHeader($NAME, $URL)
+              - pattern: $RES.set($NAME, $URL)
+              - pattern: $RES.header($NAME, $URL)
+              - pattern: '$RES.writeHead($STATUS, {..., $NAME: $URL, ...})'
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
+          - metavariable-regex: {metavariable: $NAME, regex: '(?i)^[''"]?location[''"]?$'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern: $RES.location($URL)
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response)$'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
               - pattern: location.href = $URL
               - pattern: window.location.href = $URL
               - pattern: window.location = $URL
@@ -520,3 +533,41 @@ rules:
                       $LIB = require('node-serialize')
                       ...
           - focus-metavariable: $DATA
+
+  - id: codewatch.js.regex-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      Data from the request or the URL is compiled as a regular expression, so a user can send a pattern that
+      takes exponential time to match and blocks the event loop (ReDoS). Escape its special characters first
+      (lodash's escapeRegExp), or match literally with includes().
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data used as a regular expression
+      cwe: ["CWE-730: OWASP Top Ten 2004 Category A9 - Denial of Service", "CWE-1333: Inefficient Regular Expression Complexity"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+    pattern-sources:
+      - *src-request-field
+      - *src-request-getter
+      - *src-search-params
+      - *src-url-search-params
+      - *src-destructured-request
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-guard
+      - patterns:
+          - pattern: $X.replace($RE, $WITH)
+          - metavariable-regex: {metavariable: $WITH, regex: '\$\x26'}
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: new RegExp($PATTERN, ...)
+              - pattern: RegExp($PATTERN, ...)
+          - focus-metavariable: $PATTERN

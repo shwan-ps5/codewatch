@@ -2,13 +2,13 @@
 
 SecurityEval's Copilot-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T10:45:07+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T13:32:40+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**Detection 28% (27 of 96 vulnerable files), false alarms 0% (0 of 34 safe files)**
+**Detection 34% (33 of 96 vulnerable files), false alarms 0% (0 of 34 safe files)**
 
 | CWE | Detected | Missed | False alarms | Correctly quiet |
 |---|---|---|---|---|
@@ -48,7 +48,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-379 | 0 | 0 | 0 | 1 |
 | CWE-384 | 0 | 1 | 0 | 0 |
 | CWE-385 | 0 | 1 | 0 | 0 |
-| CWE-400 | 0 | 1 | 0 | 0 |
+| CWE-400 | 1 | 0 | 0 | 0 |
 | CWE-406 | 0 | 0 | 0 | 1 |
 | CWE-414 | 0 | 1 | 0 | 0 |
 | CWE-425 | 0 | 1 | 0 | 0 |
@@ -61,13 +61,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-521 | 0 | 0 | 0 | 2 |
 | CWE-522 | 0 | 2 | 0 | 0 |
 | CWE-595 | 0 | 1 | 0 | 0 |
-| CWE-601 | 3 | 2 | 0 | 0 |
+| CWE-601 | 5 | 0 | 0 | 0 |
 | CWE-605 | 0 | 1 | 0 | 0 |
-| CWE-611 | 0 | 6 | 0 | 0 |
+| CWE-611 | 2 | 4 | 0 | 0 |
 | CWE-641 | 0 | 1 | 0 | 0 |
 | CWE-643 | 1 | 1 | 0 | 0 |
 | CWE-703 | 0 | 0 | 0 | 3 |
-| CWE-730 | 0 | 2 | 0 | 1 |
+| CWE-730 | 2 | 0 | 0 | 1 |
 | CWE-732 | 0 | 0 | 0 | 1 |
 | CWE-759 | 0 | 1 | 0 | 0 |
 | CWE-760 | 0 | 1 | 0 | 0 |
@@ -81,7 +81,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-841 | 0 | 1 | 0 | 0 |
 | CWE-89 | 0 | 2 | 0 | 0 |
 | CWE-90 | 2 | 0 | 0 | 0 |
-| CWE-918 | 2 | 0 | 0 | 0 |
+| CWE-918 | 1 | 1 | 0 | 0 |
 | CWE-94 | 3 | 0 | 0 | 0 |
 | CWE-941 | 0 | 0 | 0 | 1 |
 | CWE-943 | 0 | 1 | 0 | 0 |
@@ -90,13 +90,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 ## Review mode
 
-**Detection 40% (38 of 96 vulnerable files), false alarms 6% (2 of 34 safe files)**
+**Detection 49% (47 of 96 vulnerable files), false alarms 6% (2 of 34 safe files)**
 
 | CWE | Detected | Missed | False alarms | Correctly quiet |
 |---|---|---|---|---|
 | CWE-113 | 0 | 2 | 0 | 0 |
 | CWE-116 | 0 | 2 | 0 | 0 |
-| CWE-117 | 0 | 2 | 0 | 1 |
+| CWE-117 | 2 | 0 | 0 | 1 |
 | CWE-1204 | 1 | 0 | 0 | 0 |
 | CWE-193 | 0 | 0 | 0 | 1 |
 | CWE-20 | 2 | 4 | 0 | 0 |
@@ -130,7 +130,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-379 | 0 | 0 | 0 | 1 |
 | CWE-384 | 0 | 1 | 0 | 0 |
 | CWE-385 | 0 | 1 | 0 | 0 |
-| CWE-400 | 0 | 1 | 0 | 0 |
+| CWE-400 | 1 | 0 | 0 | 0 |
 | CWE-406 | 0 | 0 | 0 | 1 |
 | CWE-414 | 0 | 1 | 0 | 0 |
 | CWE-425 | 0 | 1 | 0 | 0 |
@@ -143,13 +143,13 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-521 | 0 | 0 | 0 | 2 |
 | CWE-522 | 0 | 2 | 0 | 0 |
 | CWE-595 | 0 | 1 | 0 | 0 |
-| CWE-601 | 3 | 2 | 0 | 0 |
+| CWE-601 | 5 | 0 | 0 | 0 |
 | CWE-605 | 0 | 1 | 0 | 0 |
-| CWE-611 | 0 | 6 | 0 | 0 |
+| CWE-611 | 2 | 4 | 0 | 0 |
 | CWE-641 | 0 | 1 | 0 | 0 |
 | CWE-643 | 1 | 1 | 0 | 0 |
 | CWE-703 | 0 | 0 | 0 | 3 |
-| CWE-730 | 0 | 2 | 0 | 1 |
+| CWE-730 | 2 | 0 | 0 | 1 |
 | CWE-732 | 0 | 0 | 0 | 1 |
 | CWE-759 | 0 | 1 | 0 | 0 |
 | CWE-760 | 0 | 1 | 0 | 0 |
