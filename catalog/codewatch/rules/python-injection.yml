@@ -1,0 +1,88 @@
+# codewatch built-in rules for Python injection flaws visible in the code itself, wherever the data comes from:
+# a value spliced into a query or archive path that should have been bound or checked.
+rules:
+  - id: codewatch.python.sql-value-formatting
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A value is formatted into the SQL text where the query compares or stores it, so a quote in it changes the
+      query (SQL injection). Pass it as a parameter instead: cursor.execute("... WHERE name = %s", (name,)).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Value formatted into SQL instead of bound
+      cwe: ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://peps.python.org/pep-0249/#paramstyle
+        - https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html
+    # Only values inside SQL quotes, which are always data that should have been bound: table and column names
+    # can't be bound, and an unquoted value is often a number (the taint rules cover request data there).
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: $CUR.$EXEC("$SQL" % $ARGS, ...)
+              - pattern: $CUR.$EXEC("$SQL".format(...), ...)
+              - patterns:
+                  - pattern: $CUR.$EXEC($QUERY, ...)
+                  - pattern-either:
+                      - pattern-inside: |
+                          $QUERY = "$SQL" % $ARGS
+                          ...
+                      - pattern-inside: |
+                          $QUERY = "$SQL".format(...)
+                          ...
+          - metavariable-regex: {metavariable: $EXEC, regex: ^(execute|executemany|executescript|raw)$}
+          - metavariable-regex:
+              metavariable: $SQL
+              regex: (?is).*['"](%s|\{[^}]{0,40}\})['"].*
+      - patterns:
+          - pattern-either:
+              - pattern: $CUR.$EXEC($QUERY, ...)
+              - patterns:
+                  - pattern: $CUR.$EXEC($VAR, ...)
+                  - pattern-inside: |
+                      $VAR = $QUERY
+                      ...
+          - metavariable-regex: {metavariable: $EXEC, regex: ^(execute|executemany|executescript|raw)$}
+          - metavariable-pattern:
+              metavariable: $QUERY
+              patterns:
+                - pattern: f"..."
+                - pattern-regex: (?is)['"]\{[^}]{1,80}\}['"]
+
+  - id: codewatch.python.tar-extraction-without-filter
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Tar members are extracted without a filter, so an archive with "../" paths, absolute paths or links can
+      write outside the target directory (tar slip). Pass filter="data" to extract()/extractall().
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Archive extracted without a path filter
+      cwe: ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://docs.python.org/3/library/tarfile.html#tarfile-extraction-filter
+    patterns:
+      - pattern-either:
+          - pattern: $TAR.extractall(...)
+          - pattern: $TAR.extract(...)
+      - pattern-either:
+          - pattern-inside: |
+              with tarfile.open(...) as $TAR:
+                ...
+          - pattern-inside: |
+              $TAR = tarfile.open(...)
+              ...
+          - pattern-inside: |
+              with tarfile.TarFile(...) as $TAR:
+                ...
+          - pattern-inside: |
+              $TAR = tarfile.TarFile(...)
+              ...
+      - pattern-not: $TAR.extractall(..., filter=$F, ...)
+      - pattern-not: $TAR.extract(..., filter=$F, ...)

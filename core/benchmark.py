@@ -87,7 +87,10 @@ def owasp_cases(root, suite):
 
 
 def flagged(case, findings, parents):
-    """The case counts as flagged if a security finding in its file maps to the expected CWE family."""
+    """The case counts as flagged if a security finding in its file maps to the expected CWE family; a clean
+    control (no CWE) is flagged by any security finding."""
+    if case["cwe"] is None:
+        return bool(findings)
     return any(any(related(c, case["cwe"], parents) for c in issue_cwes(i)) for i in findings)
 
 
@@ -222,11 +225,27 @@ def score_labelled_mode(cases, by_file, parents):
         hit = flagged(case, by_file.get(case["path"], []), parents)
         key = ("tp" if hit else "fn") if case["real"] else ("fp" if hit else "tn")
         totals[key] += 1
-        per_cwe[f"CWE-{case['cwe']}"][key] += 1
+        per_cwe[f"CWE-{case['cwe']}" if case["cwe"] else "clean controls"][key] += 1
         if case["real"] != hit:
             mistakes.append({**case, "flagged": hit,
                              "by": sorted({f"{i['tool']}:{i['rule']}" for i in by_file.get(case["path"], [])})})
     return {"overall": rates(totals), "categories": dict(sorted(per_cwe.items())), "mistakes": mistakes}
+
+
+def seed_cases(root, suite):
+    """Seed files from a ground-truth YAML ({seeds: [{file, cwe}]}) plus clean controls that must stay quiet."""
+    truth = yaml.safe_load((root / suite["ground_truth"]).read_text())
+    cases = [{"path": f"{suite['test_dir']}/{seed['file']}", "cwe": int(CWE_DIR_RE.fullmatch(seed["cwe"])[1]),
+              "real": True} for seed in truth["seeds"]]
+    cases += [{"path": f"{suite['test_dir']}/{p.name}", "cwe": None, "real": False}
+              for p in sorted((root / suite["test_dir"]).glob(suite["clean_glob"]))]
+    return cases
+
+
+def score_seeds(root, suite, issues):
+    parents = catalog.load()[1].get("cwe_parents", {})
+    cases = seed_cases(root, suite)
+    return {mode: score_labelled_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
 
 
 def score_labelled(root, suite, issues):
@@ -236,7 +255,7 @@ def score_labelled(root, suite, issues):
 
 
 SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets, "cwe-folders": score_cwe_folders,
-           "labelled-files": score_labelled}
+           "labelled-files": score_labelled, "seed-files": score_seeds}
 
 
 def run(names=None, log=print):
@@ -306,7 +325,7 @@ def render_labelled(mode, r):
 
 
 RENDERERS = {"owasp-benchmark": render_owasp, "vuln-snippets": render_snippets, "cwe-folders": render_cwe,
-             "labelled-files": render_labelled}
+             "labelled-files": render_labelled, "seed-files": render_labelled}
 
 
 def render(suite, result):

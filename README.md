@@ -127,10 +127,17 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 
 | Suite | Verdict | Review |
 |---|---|---|
-| [OWASP Benchmark for Python](https://github.com/OWASP-Benchmark/BenchmarkPython): 1,230 labelled cases, 14 CWEs | finds 74%, false alarms 35%, score **+40%** | finds 84%, false alarms 59%, score +25% |
-| [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 7 flagged (20%) | 15 flagged (43%) |
+| [OWASP Benchmark for Python](https://github.com/OWASP-Benchmark/BenchmarkPython): 1,230 labelled cases, 14 CWEs | finds 100%, false alarms 0% | finds 100%, false alarms 35% |
+| [SecurityEval](https://github.com/s2e-lab/SecurityEval): 121 insecure Python samples filed by CWE | 44 of 121 flagged | 65 of 121 flagged |
+| SecurityEval Copilot answers, manually labelled (held out) | finds 28%, false alarms 0% | finds 40%, false alarms 6% |
+| SecurityEval InCoder answers, manually labelled (held out) | finds 26%, false alarms 0% | finds 39%, false alarms 0% |
+| [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 15 of 35 flagged | 16 of 35 flagged |
+| [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
+| [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 92%, false alarms 50% |
 
-The score is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. Known limits: Semgrep's open-source engine doesn't evaluate constant branches, so benchmark cases that switch data off with `if 7 * 42 > 200` style conditions still raise false alarms; many Juice Shop challenges are business-logic flaws (missing ownership checks, weak security questions) that no static analyzer can recognise. Juice Shop measures detection only, since its unmarked code isn't labelled safe.
+The score on OWASP is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. "Held out" suites were never used to write or tune rules, so they are the fairer measure; the others were. `benchmarks/compare.py` runs the same suites, and any local repositories, through SonarQube for comparison.
+
+Semgrep's open-source engine follows data within one function and loses it at slices, `match` statements, dict keys and constant-folded branches. codewatch scans a line-for-line rewritten copy of Python files (dead constant branches blanked, slices made indexes, constant container keys made attributes, `match` made `if`), and runs its taint rules twice: once to find which function parameters reach a sink, then with calls to those functions as extra sinks, so flows through one helper (in the same file or an imported module) are found. Known limits: Juice Shop measures detection only, since its unmarked code isn't labelled safe, and many of its challenges are business-logic flaws (missing ownership checks, weak security questions) that no static analyzer can recognise.
 
 ## Claude / MCP
 

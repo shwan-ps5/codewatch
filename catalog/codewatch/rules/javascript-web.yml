@@ -74,6 +74,13 @@ rules:
       - pattern: parseInt(...)
       - pattern: $X.toString()
     pattern-sinks:
+      # $where runs as JavaScript on the database server, so request data in it is code, whatever its type.
+      - patterns:
+          - pattern-either:
+              - pattern: '{..., $where: $QUERY, ...}'
+              - pattern: '{..., "$where": $QUERY, ...}'
+              - pattern: $MODEL.$where($QUERY)
+          - focus-metavariable: $QUERY
       - patterns:
           - pattern: $COLL.$METHOD($QUERY, ...)
           - metavariable-regex: {metavariable: $COLL, regex: '(?i).*(collection|mongo)'}
@@ -112,11 +119,52 @@ rules:
       subcategory: [vuln]
       type: vulnerability
       title: Weak hash algorithm
+      security-purpose: required
       cwe: ["CWE-328: Use of Weak Hash"]
       owasp: ["A04:2025 - Cryptographic Failures"]
       references:
         - https://nodejs.org/api/crypto.html#cryptocreatehashalgorithm-options
         - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
-    patterns:
-      - pattern: $CRYPTO.createHash($ALGO, ...)
-      - metavariable-regex: {metavariable: $ALGO, regex: '(?i)^[''"`](md4|md5|sha1|sha-1|ripemd160)[''"`]$'}
+    pattern: $CRYPTO.createHash("=~/(?i)^(md4|md5|sha1|sha-1|ripemd160)$/", ...)
+
+  - id: codewatch.js.directory-listing
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      Directory listing is switched on for this path, so anyone can browse every file in the folder, including
+      ones nobody linked to (backups, logs, keys). Serve the files that are meant to be public by name instead.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Directory listing enabled
+      cwe: ["CWE-548: Exposure of Information Through Directory Listing"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://github.com/expressjs/serve-index#readme
+    pattern-either:
+      - pattern: $APP.use(..., serveIndex(...), ...)
+      - pattern: $APP.use(..., $MOD.serveIndex(...), ...)
+
+  - id: codewatch.js.template-autoescape-disabled
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      HTML escaping is switched off for every template this engine renders, so any request data a template prints
+      becomes markup and script (XSS). Leave autoescape on and mark the few trusted fragments safe one by one.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Template auto-escaping disabled
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://mozilla.github.io/nunjucks/api.html#configure
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+    pattern-either:
+      - pattern: '$SWIG.setDefaults({..., autoescape: false, ...})'
+      - pattern: '$NUNJUCKS.configure(..., {..., autoescape: false, ...})'
+      - pattern: '$NUNJUCKS.configure({..., autoescape: false, ...})'
+      - pattern: 'new $ENV(..., {..., autoescape: false, ...})'
+      - pattern: '$HANDLEBARS.compile($TEMPLATE, {..., noEscape: true, ...})'

@@ -116,6 +116,18 @@ SECRET_USE_RE = re.compile(
     r"|session\s{0,5}\[|\bkey\s{0,5}=[^=\n]{0,80}rand",
 )
 CONTEXT_LINES = 5
+# A digest protects something when it stands for a secret or vouches for data (signatures, certificates).
+SECURITY_PURPOSE_RE = re.compile(
+    rf"{SECRET_USE_RE.pattern}|\b(\w+_)?(cert\w*|sign(ed|er|ing|atures?)?|hmac\w*|integrity|verif\w*)\b", re.IGNORECASE)
+
+
+def security_purpose(cache, path, line):
+    """The code around a finding is about secrets or verification: the innermost Python function, else a window."""
+    if path.endswith(".py"):
+        text = cache.function_text(path, line)
+    else:
+        text = "\n".join(cache.lines(path)[max(0, line - 1 - 2 * CONTEXT_LINES):line + 2 * CONTEXT_LINES])
+    return bool(SECURITY_PURPOSE_RE.search(text))
 
 
 def is_random_call(call):

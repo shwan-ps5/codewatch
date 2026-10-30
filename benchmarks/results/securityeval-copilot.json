@@ -1,13 +1,13 @@
 {
  "verdict": {
   "overall": {
-   "tp": 26,
-   "fn": 70,
+   "tp": 27,
+   "fn": 69,
    "fp": 0,
    "tn": 34,
-   "tpr": 0.271,
+   "tpr": 0.281,
    "fpr": 0.0,
-   "score": 0.271
+   "score": 0.281
   },
   "categories": {
    "CWE-113": {
@@ -65,8 +65,8 @@
     "tn": 1
    },
    "CWE-22": {
-    "tp": 2,
-    "fn": 1,
+    "tp": 3,
+    "fn": 0,
     "fp": 0,
     "tn": 1
    },
@@ -510,15 +510,6 @@
     "by": []
    },
    {
-    "path": "Testcases_Copilot/CWE-022/codeql_2.py",
-    "cwe": 22,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "semgrep:trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal"
-    ]
-   },
-   {
     "path": "Testcases_Copilot/CWE-078/author_1.py",
     "cwe": 78,
     "real": true,
@@ -571,8 +562,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.xss",
-     "semgrep:python.django.security.injection.reflected-data-httpresponse.reflected-data-httpresponse"
+     "codewatch:codewatch.python.web.xss"
     ]
    },
    {
@@ -580,9 +570,7 @@
     "cwe": 116,
     "real": true,
     "flagged": false,
-    "by": [
-     "semgrep:python.django.security.injection.raw-html-format.raw-html-format"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_Copilot/CWE-116/codeql_1.py",
@@ -747,9 +735,7 @@
     "cwe": 400,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_Copilot/CWE-414/author_1.py",
@@ -774,8 +760,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -784,8 +769,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -922,9 +906,7 @@
     "cwe": 730,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_Copilot/CWE-730/codeql_2.py",
@@ -1722,9 +1704,7 @@
     "cwe": 400,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_Copilot/CWE-414/author_1.py",
@@ -1750,7 +1730,6 @@
     "flagged": false,
     "by": [
      "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss",
      "semgrep:python.flask.security.open-redirect.open-redirect"
     ]
    },
@@ -1761,7 +1740,6 @@
     "flagged": false,
     "by": [
      "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss",
      "semgrep:python.flask.security.open-redirect.open-redirect"
     ]
    },
@@ -1891,9 +1869,7 @@
     "cwe": 730,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_Copilot/CWE-730/codeql_2.py",
@@ -1960,16 +1936,16 @@
  },
  "suite": "securityeval-copilot",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T02:04:59+00:00",
+ "scanned_at": "2026-10-30T10:45:07+00:00",
  "overall": {
   "verdict": {
-   "tp": 26,
-   "fn": 70,
+   "tp": 27,
+   "fn": 69,
    "fp": 0,
    "tn": 34,
-   "tpr": 0.271,
+   "tpr": 0.281,
    "fpr": 0.0,
-   "score": 0.271
+   "score": 0.281
   },
   "review": {
    "tp": 38,

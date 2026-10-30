@@ -4,7 +4,7 @@
    "found": 44,
    "total": 121,
    "recall": 0.364,
-   "any_security": 0.471
+   "any_security": 0.455
   },
   "categories": {
    "CWE-20": {
@@ -12,7 +12,7 @@
     "total": 6
    },
    "CWE-22": {
-    "found": 2,
+    "found": 3,
     "total": 4
    },
    "CWE-78": {
@@ -28,7 +28,7 @@
     "total": 1
    },
    "CWE-89": {
-    "found": 0,
+    "found": 2,
     "total": 2
    },
    "CWE-90": {
@@ -216,7 +216,7 @@
     "total": 1
    },
    "CWE-611": {
-    "found": 3,
+    "found": 0,
     "total": 6
    },
    "CWE-641": {
@@ -324,8 +324,7 @@
     "found": false,
     "any_security": true,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -358,16 +357,17 @@
     "any_security": true,
     "by": [
      "codewatch:codewatch.python.web.path-traversal",
-     "codewatch:codewatch.python.web.xss",
-     "semgrep:python.django.security.injection.path-traversal.path-traversal-open.path-traversal-open"
+     "codewatch:codewatch.python.web.xss"
     ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-022/codeql_2.py",
     "cwe": 22,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.tar-extraction-without-filter"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-078/author_1.py",
@@ -382,8 +382,7 @@
     "found": true,
     "any_security": true,
     "by": [
-     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
-     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+     "codewatch:codewatch.python.web.command-injection"
     ]
    },
    {
@@ -425,16 +424,20 @@
    {
     "path": "Testcases_Insecure_Code/CWE-089/author_1.py",
     "cwe": 89,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.sql-value-formatting"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-089/codeql_1.py",
     "cwe": 89,
-    "found": false,
-    "any_security": false,
-    "by": []
+    "found": true,
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.python.sql-value-formatting"
+    ]
    },
    {
     "path": "Testcases_Insecure_Code/CWE-090/codeql_1.py",
@@ -471,7 +474,7 @@
     "found": true,
     "any_security": true,
     "by": [
-     "semgrep:python.flask.security.injection.user-exec.exec-injection"
+     "codewatch:codewatch.python.web.code-injection"
     ]
    },
    {
@@ -480,8 +483,7 @@
     "found": true,
     "any_security": true,
     "by": [
-     "semgrep:python.django.security.injection.code.user-exec-format-string.user-exec-format-string",
-     "semgrep:python.flask.security.injection.user-exec.exec-injection"
+     "codewatch:codewatch.python.web.code-injection"
     ]
    },
    {
@@ -521,8 +523,7 @@
     "found": false,
     "any_security": true,
     "by": [
-     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
-     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+     "codewatch:codewatch.python.web.command-injection"
     ]
    },
    {
@@ -856,10 +857,8 @@
     "path": "Testcases_Insecure_Code/CWE-400/sonar_1.py",
     "cwe": 400,
     "found": false,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-406/mitre_1.py",
@@ -998,8 +997,7 @@
     "found": true,
     "any_security": true,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -1008,8 +1006,7 @@
     "found": true,
     "any_security": true,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "semgrep:python.django.security.injection.open-redirect.open-redirect"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -1018,8 +1015,7 @@
     "found": true,
     "any_security": true,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.open-redirect"
     ]
    },
    {
@@ -1060,29 +1056,23 @@
    {
     "path": "Testcases_Insecure_Code/CWE-611/sonar_1.py",
     "cwe": 611,
-    "found": true,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.xml-external-entities"
-    ]
+    "found": false,
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-611/sonar_2.py",
     "cwe": 611,
-    "found": true,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.xml-external-entities"
-    ]
+    "found": false,
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-611/sonar_3.py",
     "cwe": 611,
-    "found": true,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.xml-external-entities"
-    ]
+    "found": false,
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-611/sonar_4.py",
@@ -1152,10 +1142,8 @@
     "path": "Testcases_Insecure_Code/CWE-730/codeql_1.py",
     "cwe": 730,
     "found": false,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-730/codeql_2.py",
@@ -1269,10 +1257,10 @@
  },
  "review": {
   "overall": {
-   "found": 64,
+   "found": 65,
    "total": 121,
-   "recall": 0.529,
-   "any_security": 0.702
+   "recall": 0.537,
+   "any_security": 0.686
   },
   "categories": {
    "CWE-20": {
@@ -1280,7 +1268,7 @@
     "total": 6
    },
    "CWE-22": {
-    "found": 3,
+    "found": 4,
     "total": 4
    },
    "CWE-78": {
@@ -1599,7 +1587,6 @@
     "any_security": true,
     "by": [
      "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss",
      "semgrep:python.flask.security.open-redirect.open-redirect"
     ]
    },
@@ -1645,10 +1632,11 @@
    {
     "path": "Testcases_Insecure_Code/CWE-022/codeql_2.py",
     "cwe": 22,
-    "found": false,
+    "found": true,
     "any_security": true,
     "by": [
-     "bandit:B108:hardcoded_tmp_directory"
+     "bandit:B108:hardcoded_tmp_directory",
+     "codewatch:codewatch.python.tar-extraction-without-filter"
     ]
    },
    {
@@ -1666,9 +1654,8 @@
     "found": true,
     "any_security": true,
     "by": [
-     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
-     "semgrep:python.flask.security.injection.os-system-injection.os-system-injection",
-     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+     "codewatch:codewatch.python.web.command-injection",
+     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system"
     ]
    },
    {
@@ -1716,8 +1703,7 @@
     "any_security": true,
     "by": [
      "bandit:B106:hardcoded_password_funcarg",
-     "semgrep:python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-     "semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query"
+     "codewatch:codewatch.python.sql-value-formatting"
     ]
    },
    {
@@ -1727,8 +1713,7 @@
     "any_security": true,
     "by": [
      "bandit:B106:hardcoded_password_funcarg",
-     "semgrep:python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-     "semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query"
+     "codewatch:codewatch.python.sql-value-formatting"
     ]
    },
    {
@@ -1766,9 +1751,8 @@
     "found": true,
     "any_security": true,
     "by": [
-     "ruff:S102",
-     "semgrep:python.flask.security.injection.user-exec.exec-injection",
-     "semgrep:python.lang.security.audit.exec-detected.exec-detected"
+     "codewatch:codewatch.python.web.code-injection",
+     "ruff:S102"
     ]
    },
    {
@@ -1777,10 +1761,9 @@
     "found": true,
     "any_security": true,
     "by": [
+     "codewatch:codewatch.python.web.code-injection",
      "ruff:S102",
-     "semgrep:python.django.security.injection.code.user-exec-format-string.user-exec-format-string",
-     "semgrep:python.flask.security.injection.user-exec.exec-injection",
-     "semgrep:python.lang.security.audit.exec-detected.exec-detected"
+     "semgrep:python.django.security.injection.code.user-exec-format-string.user-exec-format-string"
     ]
    },
    {
@@ -1824,9 +1807,8 @@
     "any_security": true,
     "by": [
      "bandit:B108:hardcoded_tmp_directory",
-     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system",
-     "semgrep:python.flask.security.injection.os-system-injection.os-system-injection",
-     "semgrep:python.lang.security.dangerous-system-call.dangerous-system-call"
+     "codewatch:codewatch.python.web.command-injection",
+     "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system"
     ]
    },
    {
@@ -2189,10 +2171,8 @@
     "path": "Testcases_Insecure_Code/CWE-400/sonar_1.py",
     "cwe": 400,
     "found": false,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-406/mitre_1.py",
@@ -2351,7 +2331,6 @@
     "any_security": true,
     "by": [
      "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss",
      "semgrep:python.flask.security.open-redirect.open-redirect"
     ]
    },
@@ -2372,7 +2351,6 @@
     "any_security": true,
     "by": [
      "codewatch:codewatch.python.web.open-redirect",
-     "codewatch:codewatch.python.web.xss",
      "semgrep:python.flask.security.open-redirect.open-redirect"
     ]
    },
@@ -2514,10 +2492,8 @@
     "path": "Testcases_Insecure_Code/CWE-730/codeql_1.py",
     "cwe": 730,
     "found": false,
-    "any_security": true,
-    "by": [
-     "codewatch:codewatch.python.web.ldap-injection"
-    ]
+    "any_security": false,
+    "by": []
    },
    {
     "path": "Testcases_Insecure_Code/CWE-730/codeql_2.py",
@@ -2648,19 +2624,19 @@
  },
  "suite": "securityeval",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T02:03:28+00:00",
+ "scanned_at": "2026-10-30T10:44:35+00:00",
  "overall": {
   "verdict": {
    "found": 44,
    "total": 121,
    "recall": 0.364,
-   "any_security": 0.471
+   "any_security": 0.455
   },
   "review": {
-   "found": 64,
+   "found": 65,
    "total": 121,
-   "recall": 0.529,
-   "any_security": 0.702
+   "recall": 0.537,
+   "any_security": 0.686
   }
  }
 }

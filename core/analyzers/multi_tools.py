@@ -2,11 +2,13 @@ import csv
 import io
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
 import yaml
 
+from . import summaries as summaries_module
 from .base import (
     BUG,
     CODE,
@@ -26,7 +28,9 @@ from .base import (
     node_tool,
 )
 from .constant_branches import blank_dead_branches
-from .python_tools import complexity_severity
+from .containers import track_slots
+from .match_statements import match_as_if
+from .python_tools import LineCache, complexity_severity, security_purpose
 from .slices import index_slices
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
@@ -85,39 +89,116 @@ class Semgrep(Analyzer):
         return isolated_tool("semgrep") or super().binary()
 
     def run(self, ctx):
-        with tempfile.NamedTemporaryFile("w", suffix=".yml") as custom, tempfile.TemporaryDirectory() as copies:
+        custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
+        if not ctx.semgrep_config and not custom_rules:
+            return Result()
+        with tempfile.TemporaryDirectory() as work:
+            targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
+            summaries = self.summarise(ctx, custom_rules, targets, originals, Path(work))
+            rules = custom_rules + summaries_module.via_rules(custom_rules, summaries)
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
-            custom_ids = []
-            if ctx.custom_rules:
-                custom.write(ctx.custom_rules)
-                custom.flush()
-                configs += ["--config", custom.name]
-                custom_ids = [r["id"] for r in yaml.safe_load(ctx.custom_rules).get("rules", [])]
-            if not configs:
-                return Result()
-            targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(copies))
-            args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
-            data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
+            if rules:
+                (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+                configs += ["--config", str(Path(work) / "custom.yml")]
+            data = self.scan(ctx, configs, targets)
         result = Result()
+        traced = taint_checked(custom_rules)
+        source = LineCache(ctx.root)
+        custom_ids = [r["id"] for r in custom_rules]
         for item in data["results"]:
-            item["path"] = originals.get(item["path"], item["path"])
+            path = ctx.rel(originals.get(item["path"], item["path"]))
             extra = item["extra"]
+            metadata = extra.get("metadata", {})
+            check_id = item["check_id"].removesuffix(summaries_module.VIA_SUFFIX)
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
-            custom_id = next((cid for cid in custom_ids if item["check_id"].endswith(cid)), None)
+            custom_id = next((cid for cid in custom_ids if check_id.endswith(cid)), None)
+            if check_id != item["check_id"] and not self.via_visible(ctx, path, extra["message"],
+                                                                      summaries.get(custom_id, ())):
+                continue
+            kind = semgrep_type(check_id, metadata)
+            # codewatch's own taint rule for this weakness already followed the data here; a registry rule that
+            # matches the same weakness without seeing guards or sanitizers is left for review, not a verdict.
+            if (not custom_id and kind == VULNERABILITY
+                    and cwe_numbers(metadata.get("cwe")) & traced.get(Path(path).suffix, set())):
+                kind = HOTSPOT
+            # Rules for primitives that are only weak when they protect something (MD5 for a Gravatar URL is
+            # fine): a vulnerability where the code is about secrets or verification, otherwise for review.
+            if (kind == VULNERABILITY and metadata.get("security-purpose") == "required"
+                    and not security_purpose(source, path, item["start"]["line"])):
+                kind = HOTSPOT
             result.findings.append(
-                Finding("codewatch" if custom_id else "semgrep", custom_id or item["check_id"], SEMGREP_SEVERITY.get(extra.get("severity"), MINOR),
-                        semgrep_type(item["check_id"], extra.get("metadata", {})), extra["message"].strip(),
-                        ctx.rel(item["path"]), item["start"]["line"], item["end"]["line"])
+                Finding("codewatch" if custom_id else "semgrep", custom_id or check_id,
+                        SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, extra["message"].strip(),
+                        path, item["start"]["line"], item["end"]["line"])
             )
+        direct = {(f.rule, f.path, f.line) for f in result.findings if not summaries_module.VIA_RE.search(f.message)}
+        result.findings = [f for f in result.findings if not (summaries_module.VIA_RE.search(f.message)
+                                                              and (f.rule, f.path, f.line) in direct)]
         return result
+
+    def scan(self, ctx, configs, targets):
+        args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
+        return json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
+
+    def summarise(self, ctx, custom_rules, targets, originals, work):
+        """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks."""
+        rules = summaries_module.summary_rules(custom_rules)
+        if not rules or not targets:
+            return {}
+        config = work / "summaries.yml"
+        config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+        data = self.scan(ctx, ["--config", str(config)], targets)
+        ids = [r["id"] for r in rules]
+        found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
+                  ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"], item["extra"]["message"])
+                 for item in data["results"]]
+        return summaries_module.parse_summaries(found, lambda rel: read_source(ctx.root / rel))
+
+    @staticmethod
+    def via_visible(ctx, path, message, summaries):
+        match = summaries_module.VIA_RE.search(message.strip())
+        if not match:
+            return False
+        defining = {s[4] for s in summaries if s[0] == match.group(1)}
+        return bool(defining) and summaries_module.visible(path, defining, lambda rel: read_source(ctx.root / rel))
+
+
+LANGUAGE_SUFFIXES = {"python": [".py"], "javascript": [".js", ".jsx", ".mjs", ".cjs"], "typescript": [".ts", ".tsx"]}
+CWE_RE = re.compile(r"CWE-(\d+)")
+
+
+def cwe_numbers(cwes):
+    if isinstance(cwes, str):
+        cwes = [cwes]
+    return {int(m.group(1)) for c in cwes or [] if (m := CWE_RE.search(str(c)))}
+
+
+def taint_checked(rules):
+    """{file suffix: CWEs that codewatch's taint rules check in that language}."""
+    checked = {}
+    for rule in rules:
+        if rule.get("mode") != "taint":
+            continue
+        for language in rule.get("languages", []):
+            for suffix in LANGUAGE_SUFFIXES.get(language, []):
+                checked.setdefault(suffix, set()).update(cwe_numbers(rule.get("metadata", {}).get("cwe")))
+    return checked
+
+
+def read_source(path):
+    try:
+        return Path(path).read_text()
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
 def analysis_copy(source):
-    """Python source as Semgrep should see it: dead constant branches blanked and slices made indexes.
-    None when nothing changes."""
-    folded = blank_dead_branches(source)
-    indexed = index_slices(folded or source)
-    return indexed or folded
+    """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, container
+    slots tracked one by one and match statements made ifs. None when nothing changes."""
+    current = None
+    for rewrite in (blank_dead_branches, index_slices, track_slots, match_as_if):
+        current = rewrite(current or source) or current
+    return current
 
 
 def analysis_copies(ctx, files, copies):
@@ -125,6 +206,9 @@ def analysis_copies(ctx, files, copies):
     Returns the target list and {copy path: original relative path}."""
     targets, originals = [], {}
     for rel in files:
+        # Semgrep refuses a symlink given as a target and fails the whole scan; the file it points to is scanned.
+        if (ctx.root / rel).is_symlink():
+            continue
         rewritten = None
         if rel.endswith(".py"):
             try:

@@ -25,11 +25,14 @@ def is_subscript(prev):
 
 
 def slice_edits(source):
-    """(row, col, old, new) edits turning each top-level ":" of a subscript into ", ", with None for empty bounds."""
+    """[row, col, old, new] edits turning each top-level ":" of a subscript into ", ", with None for empty bounds."""
     edits, stack, prev = [], [], None
     for tok in tokenize.generate_tokens(io.StringIO(source).readline):
         if tok.type in (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT, tokenize.DEDENT):
             continue
+        if stack and (pending := stack[-1].pop("pending", None)) and tok.type == tokenize.OP and tok.string == ",":
+            # x[:, i] and x[a:, i]: the next comma already separates, so the colon adds no ", " of its own.
+            pending[3] = pending[3][:-2]
         if tok.type == tokenize.OP and tok.string in OPENERS:
             stack.append({"subscript": tok.string == "[" and is_subscript(prev), "colons": [], "lambda": False,
                           "last": tok})
@@ -43,7 +46,9 @@ def slice_edits(source):
                 frame["lambda"] = True
             elif frame["subscript"] and tok.type == tokenize.OP and tok.string == ":":
                 empty_before = frame["last"].type == tokenize.OP and frame["last"].string in ("[", ",", ":")
-                frame["colons"].append((*tok.start, ":", "None, " if empty_before else ", "))
+                colon = [*tok.start, ":", "None, " if empty_before else ", "]
+                frame["colons"].append(colon)
+                frame["pending"] = colon
         if stack:
             stack[-1]["last"] = tok
         prev = tok
@@ -67,3 +72,4 @@ def index_slices(source):
             return None
         lines[row - 1] = line[:col] + new + line[col + len(old):]
     return "".join(lines)
+

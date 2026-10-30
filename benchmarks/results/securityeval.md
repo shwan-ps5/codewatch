@@ -2,22 +2,22 @@
 
 SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses against SonarQube were used to add codewatch's crypto/TLS rules.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T02:03:28+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T10:44:35+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**44 of 121 vulnerable files flagged for their CWE (36%); 47% have some security finding**
+**44 of 121 vulnerable files flagged for their CWE (36%); 46% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|
 | CWE-20 | 0 | 6 |
-| CWE-22 | 2 | 4 |
+| CWE-22 | 3 | 4 |
 | CWE-78 | 1 | 2 |
 | CWE-79 | 3 | 3 |
 | CWE-80 | 1 | 1 |
-| CWE-89 | 0 | 2 |
+| CWE-89 | 2 | 2 |
 | CWE-90 | 2 | 2 |
 | CWE-94 | 3 | 3 |
 | CWE-95 | 0 | 1 |
@@ -64,7 +64,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-595 | 0 | 1 |
 | CWE-601 | 3 | 5 |
 | CWE-605 | 0 | 1 |
-| CWE-611 | 3 | 6 |
+| CWE-611 | 0 | 6 |
 | CWE-641 | 0 | 1 |
 | CWE-643 | 2 | 2 |
 | CWE-703 | 0 | 3 |
@@ -84,12 +84,12 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 ## Review mode
 
-**64 of 121 vulnerable files flagged for their CWE (53%); 70% have some security finding**
+**65 of 121 vulnerable files flagged for their CWE (54%); 69% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|
 | CWE-20 | 2 | 6 |
-| CWE-22 | 3 | 4 |
+| CWE-22 | 4 | 4 |
 | CWE-78 | 2 | 2 |
 | CWE-79 | 3 | 3 |
 | CWE-80 | 1 | 1 |

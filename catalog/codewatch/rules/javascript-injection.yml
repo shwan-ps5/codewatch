@@ -1,0 +1,116 @@
+# codewatch built-in rules for JavaScript/TypeScript injection flaws visible in the code itself, wherever the data
+# comes from: a value spliced into a query, or a recursive merge that lets "__proto__" through.
+rules:
+  - id: codewatch.js.sql-value-formatting
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      A value is concatenated into the SQL text where the query compares or stores it, so a quote in it changes
+      the query (SQL injection). Pass it as a bound parameter: db.query("... WHERE name = $1", [name]).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Value concatenated into SQL instead of bound
+      cwe: ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://node-postgres.com/features/queries#parameterized-query
+        - https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html
+    # Only values inside SQL quotes, which are always data that should have been bound: table and column names
+    # can't be bound, and an unquoted value is often a number (the taint rules cover request data there).
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.$EXEC("$SQL" + $VALUE, ...)
+              - pattern: $DB.$EXEC("$SQL" + $VALUE + $REST, ...)
+              - patterns:
+                  - pattern: $DB.$EXEC($QUERY, ...)
+                  - pattern-either:
+                      - pattern-inside: |
+                          $QUERY = "$SQL" + $VALUE
+                          ...
+                      - pattern-inside: |
+                          $QUERY = "$SQL" + $VALUE + $REST
+                          ...
+          - metavariable-regex: {metavariable: $EXEC, regex: ^(query|execute|raw|run|all|get|exec|prepare|\$queryRawUnsafe|\$executeRawUnsafe)$}
+          - metavariable-regex:
+              metavariable: $SQL
+              regex: (?is)^\s*(select|insert|update|delete|with|replace|merge)\b.*['"]$
+          - pattern-not: $DB.$EXEC("$SQL" + "..." + $REST, ...)
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.$EXEC($QUERY, ...)
+              - patterns:
+                  - pattern: $DB.$EXEC($VAR, ...)
+                  - pattern-inside: |
+                      $VAR = $QUERY
+                      ...
+          - metavariable-regex: {metavariable: $EXEC, regex: ^(query|execute|raw|run|all|get|exec|prepare|\$queryRawUnsafe|\$executeRawUnsafe)$}
+          - metavariable-pattern:
+              metavariable: $QUERY
+              patterns:
+                - pattern: '`...`'
+                - pattern-regex: (?is)^`\s*(select|insert|update|delete|with|replace|merge)\b.*['"]\$\{[^}]{1,80}\}['"]
+
+  - id: codewatch.js.prototype-pollution-merge
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      This recursive merge copies every key of the source, including "__proto__" and "constructor", so merging
+      JSON from a request can change Object.prototype for the whole process. Skip those keys, or merge into
+      Object.create(null).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Recursive merge without a prototype-key check
+      cwe: ["CWE-1321: Improperly Controlled Modification of Object Prototype Attributes ('Prototype Pollution')"]
+      owasp: ["A08:2025 - Software or Data Integrity Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Prototype_Pollution_Prevention_Cheat_Sheet.html
+    patterns:
+      - pattern: $TARGET[$KEY] = $SOURCE[$KEY]
+      - pattern-either:
+          - pattern-inside: |
+              function $MERGE($TARGET, $SOURCE, ...) {
+                ...
+                $MERGE($TARGET[$KEY], $SOURCE[$KEY], ...);
+                ...
+              }
+          - pattern-inside: |
+              function $MERGE($TARGET, $SOURCE, ...) {
+                ...
+                for (...) {
+                  ...
+                  $MERGE($TARGET[$KEY], $SOURCE[$KEY], ...);
+                  ...
+                }
+                ...
+              }
+      - pattern-not-inside: |
+          function $MERGE(...) {
+            ...
+            if (<... "__proto__" ...>) $STMT;
+            ...
+          }
+      - pattern-not-inside: |
+          function $MERGE(...) {
+            ...
+            for (...) {
+              ...
+              if (<... "__proto__" ...>) $STMT;
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          function $MERGE(...) {
+            ...
+            for (...) {
+              ...
+              if (<... "__proto__" ...>) { ... }
+              ...
+            }
+            ...
+          }

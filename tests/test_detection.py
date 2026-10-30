@@ -155,6 +155,20 @@ def test_cwe_folder_suite_scoring(tmp_path):
     assert result["verdict"]["categories"]["CWE-89"] == {"found": 1, "total": 2}
 
 
+def test_seed_suite_scores_clean_controls_as_false_alarms(tmp_path):
+    seeds = tmp_path / "seeds"
+    seeds.mkdir()
+    for name in ("sqli.js", "xss.js", "clean-a.js", "clean-b.js"):
+        (seeds / name).write_text("x = 1\n")
+    (tmp_path / "truth.yaml").write_text("seeds:\n  - {file: sqli.js, cwe: CWE-89}\n  - {file: xss.js, cwe: CWE-79}\n")
+    suite = {"test_dir": "seeds", "ground_truth": "truth.yaml", "clean_glob": "clean-*.js"}
+    sqli = {"tool": "codewatch", "rule": "codewatch.js.sql-injection", "type": "vulnerability",
+            "path": "seeds/sqli.js", "line": 1}
+    result = benchmark.score_seeds(tmp_path, suite, [sqli, {**sqli, "path": "seeds/clean-a.js"}])
+    assert {k: result["verdict"]["overall"][k] for k in ("tp", "fn", "fp", "tn")} == {"tp": 1, "fn": 1, "fp": 1, "tn": 1}
+    assert result["verdict"]["categories"]["clean controls"] == {"tp": 0, "fn": 0, "fp": 1, "tn": 1}
+
+
 @pytest.mark.skipif(shutil.which("cppcheck") is None, reason="cppcheck not installed")
 def test_unused_struct_members_are_only_reported_outside_headers(tmp_path):
     from core.analyzers.multi_tools import Cppcheck
@@ -313,7 +327,7 @@ def test_javascript_taint_rules(tmp_path):
     ctx = Context(root=tmp_path, files=["app.js"], semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
     found = {(f.line, f.rule.rsplit(".", 1)[1]) for f in Semgrep().run(ctx).findings
              if f.rule.startswith("codewatch.js.")}
-    assert found == {(7, "sql-injection"), (8, "command-injection"), (9, "path-traversal"), (10, "xss"),
+    assert found == {(7, "sql-injection"), (7, "sql-value-formatting"), (8, "command-injection"), (9, "path-traversal"), (10, "xss"),
                      (11, "open-redirect"), (12, "code-injection"), (13, "ssrf")}
 
 
@@ -362,3 +376,294 @@ def test_random_passed_as_a_named_argument_is_judged_by_that_name(tmp_path):
     assert source.purpose_text("bots.py", 5) == "rtt_ms"
     assert not SECRET_USE_RE.search(source.purpose_text("bots.py", 5))
     assert SECRET_USE_RE.search(source.purpose_text("bots.py", 9)), "a generic name falls back to the function"
+
+
+def test_container_slots_are_tracked_one_by_one():
+    from core.analyzers.containers import track_slots
+
+    source = (
+        "def f(param):\n"
+        "    m = {}\n"
+        "    m['a-1'] = 'x'\n"
+        "    m['b'] = param\n"
+        "    bar = m['a-1'] + m.get('b')\n"
+        "    conf = configparser.ConfigParser()\n"
+        "    conf.set('s', 'k', param)\n"
+        "    bar = conf.get('s', 'k')\n"
+        "    lst = []\n"
+        "    lst.append('safe')\n"
+        "    lst.append(param)\n"
+        "    lst.append('moresafe')\n"
+        "    lst.pop(0)\n"
+        "    bar = lst[1]\n"
+        "    other = lst[0]\n"
+        "    request.form['x']\n"
+    )
+    assert track_slots(source).splitlines() == [
+        "def f(param):",
+        "    m = {}",
+        "    m.k_a_1 = 'x'",
+        "    m.k_b = param",
+        "    bar = m.k_a_1 + m.k_b",
+        "    conf = configparser.ConfigParser()",
+        "    conf.k_s_k = param",
+        "    bar = conf.k_s_k",
+        "    lst = []",
+        "    lst.append('safe')",
+        "    lst.append(param)",
+        "    lst.append('moresafe')",
+        "    lst.pop(0)",
+        "    bar = 'moresafe'",
+        "    other = lst[0]",
+        "    request.form['x']",
+    ]
+    # A dict that is rebound, or a list passed elsewhere before the read, keeps its subscripts.
+    assert track_slots("def f(p, g):\n    m = {}\n    m = g()\n    return m['a']\n") is None
+    assert track_slots("def f(p, g):\n    l = []\n    l.append('a')\n    g(l)\n    return l[0]\n") is None
+
+
+def test_match_statements_become_ifs_on_the_same_lines():
+    import ast
+
+    from core.analyzers.match_statements import match_as_if
+
+    source = ("def f(x, p):\n"
+              "    match x:\n"
+              "        case 'A' | 'B':\n"
+              "            y = p\n"
+              "        case [a, *rest] if a:\n"
+              "            y = a\n"
+              "        case _:  # default\n"
+              "            y = 1\n"
+              "    return hashlib.md5(y)\n")
+    lines = match_as_if(source).splitlines()
+    assert [lines[i] for i in (1, 2, 4, 6)] == [
+        "    if True:", "        if (x) == ('A' | 'B'):", "        if (x) == ([a, *rest]) and (a):",
+        "        if (x) == (_):  # default"]
+    ast.parse(match_as_if(source))
+    assert match_as_if("match x:\n    case str() as s:\n        pass\n") is None
+
+
+def test_dead_ternary_nested_in_functions_is_replaced_once():
+    from core.analyzers.constant_branches import blank_dead_branches
+
+    source = "def init(app):\n\tdef v(param):\n\t\tnum = 106\n\t\tbar = 'x' if (7*42) - num > 200 else param\n"
+    assert blank_dead_branches(source).splitlines()[3] == "\t\tbar = None if (7*42) - num > 200 else param"
+
+
+def test_registry_rules_defer_to_codewatch_taint_rules():
+    from core.analyzers.multi_tools import cwe_numbers, taint_checked
+
+    rules = [{"id": "a", "mode": "taint", "languages": ["python"], "metadata": {"cwe": ["CWE-22: Path"]}},
+             {"id": "b", "languages": ["javascript"], "metadata": {"cwe": "CWE-79: XSS"}}]
+    assert taint_checked(rules) == {".py": {22}}
+    assert cwe_numbers("CWE-611: XXE") == {611}
+
+
+def semgrep_vulnerabilities(tmp_path, files):
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    return {(f.path, f.line, f.rule.rsplit(".", 1)[1]) for f in Semgrep().run(ctx).findings
+            if f.type == "vulnerability"}
+
+
+def test_taint_follows_one_call_into_a_helper(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app.py": (
+            "from pathlib import Path\nfrom flask import Flask, request\n\napp = Flask(__name__)\nBASE = Path('.')\n\n\n"
+            "def load(name, mode='r'):\n"
+            "    return (BASE / name).read_text()\n\n\n"
+            "def load_safe(name):\n"
+            "    return (BASE / Path(name).name).read_text()\n\n\n"
+            "@app.post('/a')\n"
+            "def a():\n"
+            "    load(request.form['f'])\n"
+            "    load_safe(request.form['f'])\n"
+            "    load('fixed.css')\n"
+            "    return 'ok'\n"),
+        "other.py": "from flask import request\n\n\ndef load(name):\n    return name\n\n\ndef b():\n    load(request.args['x'])\n",
+    })
+    assert found == {("app.py", 18, "path-traversal")}
+
+
+def test_injection_rules_without_a_request_source(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"db.py": (
+        "import tarfile\n\n\n"
+        "def f(cur, name, table, uid, n):\n"
+        "    cur.execute(\"DELETE FROM users WHERE username = '%s'\" % name)\n"
+        "    cur.execute(f\"INSERT INTO t VALUES ('{name}', {n})\")\n"
+        "    q = \"SELECT * FROM t WHERE a = '%s'\" % name\n"
+        "    cur.execute(q)\n"
+        "    cur.execute(f\"SELECT COUNT(*) FROM {table}\")\n"
+        "    cur.execute(\"SELECT * FROM users WHERE id = %s\", (uid,))\n"
+        "    with tarfile.open(name) as tar:\n"
+        "        tar.extractall('/tmp')\n"
+        "        tar.extractall('/tmp', filter='data')\n")})
+    assert found == {("db.py", 5, "sql-value-formatting"), ("db.py", 6, "sql-value-formatting"),
+                     ("db.py", 8, "sql-value-formatting"), ("db.py", 12, "tar-extraction-without-filter")}
+
+
+def test_xxe_is_a_vulnerability_only_when_request_data_reaches_the_parser(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    source = ("import xml.sax\nimport xml.dom.minidom\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+              "@app.post('/x')\n"
+              "def x():\n"
+              "    parser = xml.sax.make_parser()\n"
+              "    parser.setFeature(xml.sax.handler.feature_external_ges, True)\n"
+              "    xml.dom.minidom.parseString(request.get_data(), parser)\n"
+              "    xml.dom.minidom.parseString('<a/>', parser)\n"
+              "    return 'ok'\n")
+    assert semgrep_vulnerabilities(tmp_path, {"x.py": source}) == {("x.py", 12, "xxe")}
+
+
+def test_pathlib_sinks_need_a_path_and_queryset_exists_is_not_one(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"views.py": (
+        "import pathlib\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.post('/p')\n"
+        "def p():\n"
+        "    name = request.form['n']\n"
+        "    base = pathlib.Path('/srv')\n"
+        "    p = (base / name).resolve()\n"
+        "    if p.exists():\n"
+        "        pass\n"
+        "    q = (base / name).resolve()\n"
+        "    if not str(q).startswith(str(base)):\n"
+        "        return 'no'\n"
+        "    q.read_text()\n"
+        "    if Player.objects.filter(nickname=name).exists():\n"
+        "        pass\n"
+        "    when = datetime.now().replace(day=int(name))\n"
+        "    return 'ok'\n")})
+    assert found == {("views.py", 12, "path-traversal")}
+
+
+def test_destructured_express_request_is_a_source(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"files.ts": (
+        "import fs from 'fs'\n"
+        "export function serve () {\n"
+        "  return ({ params }: Request, res: Response) => {\n"
+        "    fs.readFileSync('/srv/' + params.file)\n"
+        "  }\n"
+        "}\n"
+        "app.use('/ftp', serveIndex('ftp', { icons: true }))\n")})
+    assert found == {("files.ts", 4, "path-traversal"), ("files.ts", 7, "directory-listing")}
+
+
+def test_javascript_injection_rules_and_guards(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "db.js": (
+            "function q(pool, name, table, id) {\n"
+            "  pool.query(\"SELECT * FROM users WHERE name = '\" + name + \"'\")\n"
+            "  pool.query(`SELECT * FROM orders WHERE id = ${id} AND name = '${name}'`)\n"
+            "  pool.query('SELECT * FROM ' + table)\n"
+            "  pool.query('SELECT * FROM t WHERE id = $1', [id])\n"
+            "}\n"
+            "function merge(target, source) {\n"
+            "  for (const key of Object.keys(source)) {\n"
+            "    if (typeof source[key] === 'object') { merge(target[key], source[key]) } else {\n"
+            "      target[key] = source[key]\n"
+            "    }\n"
+            "  }\n"
+            "}\n"
+            "function safeMerge(target, source) {\n"
+            "  for (const key of Object.keys(source)) {\n"
+            "    if (key === '__proto__') continue\n"
+            "    if (typeof source[key] === 'object') { safeMerge(target[key], source[key]) } else {\n"
+            "      target[key] = source[key]\n"
+            "    }\n"
+            "  }\n"
+            "}\n"),
+        "app.js": (
+            "const exec = require('child_process').exec\n"
+            "const swig = require('swig')\n"
+            "swig.setDefaults({ autoescape: false })\n"
+            "app.get('/a', (req, res) => {\n"
+            "  exec('ping -c 2 ' + req.body.address)\n"
+            "  db.collection('t').find({ $where: `this.a > '${req.query.t}'` })\n"
+            "  const next = req.query.next\n"
+            "  if (!next.startsWith('/') || next.startsWith('//')) {\n"
+            "    return res.redirect('/')\n"
+            "  }\n"
+            "  res.redirect(next)\n"
+            "})\n"),
+    })
+    assert found == {("db.js", 2, "sql-value-formatting"), ("db.js", 3, "sql-value-formatting"),
+                     ("db.js", 10, "prototype-pollution-merge"), ("app.js", 3, "template-autoescape-disabled"),
+                     ("app.js", 5, "command-injection"), ("app.js", 6, "nosql-injection")}
+
+
+def test_javascript_summaries_follow_dao_methods_across_files(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "data/dao.js": ("function Dao(db) {\n"
+                        "  this.byThreshold = (userId, threshold) => {\n"
+                        "    return db.collection('a').find({ $where: `this.stocks > '${threshold}'` })\n"
+                        "  }\n"
+                        "}\nmodule.exports = Dao\n"),
+        "routes/a.js": ("const Dao = require('../data/dao')\n"
+                        "const dao = new Dao(db)\n"
+                        "app.get('/a', (req, res) => {\n"
+                        "  const { threshold } = req.query\n"
+                        "  dao.byThreshold(1, threshold)\n"
+                        "})\n"),
+        "routes/b.js": ("app.get('/b', (req, res) => {\n"
+                        "  other.byThreshold(1, req.query.t)\n"
+                        "})\n"),
+    })
+    assert found == {("routes/a.js", 5, "nosql-injection")}
+
+
+def test_import_resolution_for_summaries():
+    from core.analyzers.summaries import visible
+
+    texts = {"good/mod_user.py": "import libuser\n", "routes/a.ts": "import * as security from '../lib/insecurity'\n",
+             "pkg/views.py": "from .helpers import load\nfrom pkg.sub import x\n"}
+    assert not visible("good/mod_user.py", {"bad/libuser.py"}, texts.get)
+    assert visible("good/mod_user.py", {"good/libuser.py"}, texts.get)
+    assert visible("routes/a.ts", {"lib/insecurity.ts"}, texts.get)
+    assert visible("pkg/views.py", {"pkg/helpers.py"}, texts.get)
+    assert visible("pkg/views.py", {"pkg/sub.py"}, texts.get)
+    assert not visible("pkg/views.py", {"other/helpers.py"}, texts.get)
+
+
+def test_weak_hash_is_a_vulnerability_only_where_it_protects_something(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "models.py": ("import hashlib\n\n\n"
+                      "def avatar(email):\n"
+                      "    return hashlib.md5(email.encode()).hexdigest()\n\n\n"
+                      "def store_password(password):\n"
+                      "    return hashlib.md5(password.encode()).hexdigest()\n\n\n"
+                      "def certificate_matches(cert, known):\n"
+                      "    return hashlib.sha1(cert).hexdigest() == known\n"),
+    })
+    assert found == {("models.py", 9, "weak-hash"), ("models.py", 13, "weak-hash")}
+
+
+def test_python_autoescape_off_and_hash_chosen_by_constant(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import hashlib\nimport jinja2\nfrom aiohttp_jinja2 import setup as setup_jinja\n\nALGORITHM = 'sha1'\n\n\n"
+        "def init(app):\n"
+        "    setup_jinja(app, loader=jinja2.PackageLoader('x', 'templates'), autoescape=False)\n"
+        "    sql = jinja2.Environment(autoescape=False)\n"
+        "    return sql\n\n\n"
+        "def otp(key):\n"
+        "    return hashlib.new(ALGORITHM, key).hexdigest()\n")})
+    assert found == {("app.py", 9, "template-autoescape-disabled"), ("app.py", 15, "weak-hash")}

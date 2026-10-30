@@ -163,7 +163,9 @@ def blank_dead_branches(source):
         indent = first[:len(first) - len(first.lstrip())]
         for row in range(block[0].lineno, max(s.end_lineno or s.lineno for s in block) + 1):
             blank[row] = indent
-    for expr in sorted(exprs, key=lambda e: (e.lineno, e.col_offset), reverse=True):
+    # An expression inside nested scopes is reached once per enclosing scope; replace it once.
+    unique = {(e.lineno, e.col_offset, e.end_col_offset): e for e in exprs}.values()
+    for expr in sorted(unique, key=lambda e: (e.lineno, e.col_offset), reverse=True):
         if expr.lineno != expr.end_lineno or expr.lineno in blank:
             continue
         line = lines[expr.lineno - 1]

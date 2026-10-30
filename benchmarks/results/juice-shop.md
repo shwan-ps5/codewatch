@@ -2,13 +2,13 @@
 
 OWASP Juice Shop (Node/Express/Angular): lines marked 'vuln-code-snippet vuln-line' are the known vulnerable lines of its coding challenges. Measures detection only; unmarked code is not labelled safe.
 
-Commit `717f5efa88` (MIT), scanned 2026-10-30T01:38:46+00:00.
+Commit `717f5efa88` (MIT), scanned 2026-10-30T10:33:52+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**13 of 35 vulnerable challenges flagged (37%)**
+**15 of 35 vulnerable challenges flagged (43%)**
 
 | Category | Flagged | Challenges |
 |---|---|---|
@@ -18,29 +18,29 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | Improper Input Validation | 0 | 2 |
 | Injection | 6 | 8 |
 | Miscellaneous | 0 | 2 |
-| Observability Failures | 0 | 2 |
+| Observability Failures | 1 | 2 |
 | Security through Obscurity | 0 | 1 |
-| Sensitive Data Exposure | 1 | 4 |
+| Sensitive Data Exposure | 2 | 4 |
 | Unvalidated Redirects | 1 | 2 |
 | Vulnerable Components | 0 | 1 |
 | XSS | 3 | 3 |
 
 | Challenge | Category | Flagged by |
 |---|---|---|
-| accessLogDisclosureChallenge | Observability Failures | missed |
+| accessLogDisclosureChallenge | Observability Failures | codewatch:codewatch.js.directory-listing |
 | adminSectionChallenge | Broken Access Control | missed |
 | changeProductChallenge | Broken Access Control | missed |
 | chatbotGreedyInjectionChallenge | Injection | missed |
 | chatbotPromptInjectionChallenge | Injection | missed |
 | dbSchemaChallenge | Injection | codewatch:codewatch.js.sql-injection |
-| directoryListingChallenge | Sensitive Data Exposure | missed |
+| directoryListingChallenge | Sensitive Data Exposure | codewatch:codewatch.js.directory-listing |
 | exposedMetricsChallenge | Observability Failures | missed |
 | forgedReviewChallenge | Broken Access Control | codewatch:codewatch.js.nosql-injection |
 | iacLeakedKeyChallenge | Sensitive Data Exposure | detect-secrets:Private Key |
 | localXssChallenge | XSS | codewatch:codewatch.js.angular-bypass-sanitizer |
-| loginAdminChallenge | Injection | codewatch:codewatch.js.sql-injection |
-| loginBenderChallenge | Injection | codewatch:codewatch.js.sql-injection |
-| loginJimChallenge | Injection | codewatch:codewatch.js.sql-injection |
+| loginAdminChallenge | Injection | codewatch:codewatch.js.sql-injection, codewatch:codewatch.js.sql-value-formatting |
+| loginBenderChallenge | Injection | codewatch:codewatch.js.sql-injection, codewatch:codewatch.js.sql-value-formatting |
+| loginJimChallenge | Injection | codewatch:codewatch.js.sql-injection, codewatch:codewatch.js.sql-value-formatting |
 | nftMintChallenge | Improper Input Validation | missed |
 | nftUnlockChallenge | Sensitive Data Exposure | missed |
 | noSqlReviewsChallenge | Injection | codewatch:codewatch.js.nosql-injection |
@@ -84,20 +84,20 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 | Challenge | Category | Flagged by |
 |---|---|---|
-| accessLogDisclosureChallenge | Observability Failures | semgrep:javascript.express.security.audit.express-check-directory-listing.express-check-directory-listing |
+| accessLogDisclosureChallenge | Observability Failures | codewatch:codewatch.js.directory-listing |
 | adminSectionChallenge | Broken Access Control | missed |
 | changeProductChallenge | Broken Access Control | missed |
 | chatbotGreedyInjectionChallenge | Injection | missed |
 | chatbotPromptInjectionChallenge | Injection | missed |
 | dbSchemaChallenge | Injection | codewatch:codewatch.js.sql-injection |
-| directoryListingChallenge | Sensitive Data Exposure | semgrep:javascript.express.security.audit.express-check-directory-listing.express-check-directory-listing |
+| directoryListingChallenge | Sensitive Data Exposure | codewatch:codewatch.js.directory-listing |
 | exposedMetricsChallenge | Observability Failures | codewatch:codewatch.js.unauthenticated-metrics |
 | forgedReviewChallenge | Broken Access Control | codewatch:codewatch.js.nosql-injection |
 | iacLeakedKeyChallenge | Sensitive Data Exposure | detect-secrets:Private Key |
 | localXssChallenge | XSS | codewatch:codewatch.js.angular-bypass-sanitizer |
-| loginAdminChallenge | Injection | codewatch:codewatch.js.sql-injection |
-| loginBenderChallenge | Injection | codewatch:codewatch.js.sql-injection |
-| loginJimChallenge | Injection | codewatch:codewatch.js.sql-injection |
+| loginAdminChallenge | Injection | codewatch:codewatch.js.sql-injection, codewatch:codewatch.js.sql-value-formatting |
+| loginBenderChallenge | Injection | codewatch:codewatch.js.sql-injection, codewatch:codewatch.js.sql-value-formatting |
+| loginJimChallenge | Injection | codewatch:codewatch.js.sql-injection, codewatch:codewatch.js.sql-value-formatting |
 | nftMintChallenge | Improper Input Validation | missed |
 | nftUnlockChallenge | Sensitive Data Exposure | missed |
 | noSqlReviewsChallenge | Injection | codewatch:codewatch.js.nosql-injection |
