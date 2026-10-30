@@ -2,7 +2,7 @@
 
 OWASP Juice Shop (Node/Express/Angular): lines marked 'vuln-code-snippet vuln-line' are the known vulnerable lines of its coding challenges. Measures detection only; unmarked code is not labelled safe.
 
-Commit `717f5efa88` (MIT), scanned 2026-10-30T13:31:29+00:00.
+Commit `717f5efa88` (MIT), scanned 2026-10-30T22:18:47+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 

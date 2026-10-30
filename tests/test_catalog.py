@@ -1,6 +1,7 @@
 """Rule catalogue: imported vs custom layers, duplicates, codewatch's own checks, ratings, public pages."""
 import ast
 import json
+import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -175,11 +176,11 @@ def test_builtin_rules_load_and_a_broken_custom_file_is_skipped(tmp_path, monkey
     (tmp_path / "rules").mkdir()
     (tmp_path / "rules" / "broken.yml").write_text("rules: [ {id: x, pattern: a: b ")
     monkeypatch.setattr(catalog, "CUSTOM_DIR", tmp_path)
-    rules = yaml.safe_load(catalog.custom_semgrep_rules())["rules"]
-    ids = {r["id"] for r in rules}
+    text = catalog.custom_semgrep_rules()
+    ids = {r["id"] for r in yaml.safe_load(text)["rules"]}
     assert "codewatch.python.web.sql-injection" in ids and "codewatch.js.nosql-injection" in ids
     assert "skipping rule file" in capsys.readouterr().err
-    assert not any("&" in str(r) for r in rules), "anchors are expanded before semgrep sees them"
+    assert not re.search(r"(^|[\s:-])[&*]id\d+\b", text), "anchors are expanded before semgrep sees them"
 
 
 def test_method_restriction_rule_covers_any_views_module(tmp_path):

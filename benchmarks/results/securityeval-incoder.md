@@ -2,7 +2,7 @@
 
 SecurityEval's InCoder-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T13:33:16+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T22:12:38+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
@@ -90,7 +90,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 ## Review mode
 
-**Detection 44% (39 of 88 vulnerable files), false alarms 0% (0 of 42 safe files)**
+**Detection 47% (41 of 88 vulnerable files), false alarms 0% (0 of 42 safe files)**
 
 | CWE | Detected | Missed | False alarms | Correctly quiet |
 |---|---|---|---|---|
@@ -134,7 +134,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-406 | 0 | 0 | 0 | 1 |
 | CWE-414 | 0 | 1 | 0 | 0 |
 | CWE-425 | 0 | 1 | 0 | 0 |
-| CWE-434 | 0 | 2 | 0 | 0 |
+| CWE-434 | 2 | 0 | 0 | 0 |
 | CWE-454 | 0 | 1 | 0 | 0 |
 | CWE-462 | 0 | 1 | 0 | 0 |
 | CWE-477 | 0 | 0 | 0 | 1 |

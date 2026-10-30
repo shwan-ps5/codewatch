@@ -741,7 +741,9 @@
     "cwe": 425,
     "real": true,
     "flagged": false,
-    "by": []
+    "by": [
+     "codewatch:codewatch.python.web.path-traversal"
+    ]
    },
    {
     "path": "Testcases_InCoder/CWE-434/pearce_1.py",
@@ -922,13 +924,13 @@
  },
  "review": {
   "overall": {
-   "tp": 39,
-   "fn": 49,
+   "tp": 41,
+   "fn": 47,
    "fp": 0,
    "tn": 42,
-   "tpr": 0.443,
+   "tpr": 0.466,
    "fpr": 0.0,
-   "score": 0.443
+   "score": 0.466
   },
   "categories": {
    "CWE-113": {
@@ -1172,8 +1174,8 @@
     "tn": 0
    },
    "CWE-434": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -1620,24 +1622,9 @@
     "cwe": 425,
     "real": true,
     "flagged": false,
-    "by": []
-   },
-   {
-    "path": "Testcases_InCoder/CWE-434/pearce_1.py",
-    "cwe": 434,
-    "real": true,
-    "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect"
-    ]
-   },
-   {
-    "path": "Testcases_InCoder/CWE-434/pearce_2.py",
-    "cwe": 434,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.path-traversal"
+     "codewatch:codewatch.python.web.path-traversal",
+     "codewatch:codewatch.python.web.unrestricted-upload"
     ]
    },
    {
@@ -1780,7 +1767,7 @@
  },
  "suite": "securityeval-incoder",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T13:33:16+00:00",
+ "scanned_at": "2026-10-30T22:12:38+00:00",
  "overall": {
   "verdict": {
    "tp": 27,
@@ -1792,13 +1779,13 @@
    "score": 0.307
   },
   "review": {
-   "tp": 39,
-   "fn": 49,
+   "tp": 41,
+   "fn": 47,
    "fp": 0,
    "tn": 42,
-   "tpr": 0.443,
+   "tpr": 0.466,
    "fpr": 0.0,
-   "score": 0.443
+   "score": 0.466
   }
  }
 }

@@ -758,3 +758,193 @@ def test_local_named_request_referrer_redirect_and_log_lines(tmp_path):
     ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
     found = {(f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings}
     assert found == {(17, "log-injection", "security_hotspot")}
+
+
+def test_ordinary_app_patterns_stay_quiet(tmp_path):
+    """From djangoproject.com, bakerydemo and node-express-boilerplate: a path-derived redirect is for review,
+    and query strings after a fixed URL, ORM lookups, Django-rendered templates and whole records sent with
+    res.send are not vulnerabilities; the unsafe variants next to them still are."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    files = {
+        "views.py": (
+            "from django.http import HttpResponse\n"
+            "from django.shortcuts import redirect, render\n"
+            "from wagtail.contrib.routable_page.models import route\n\n"
+            "from .models import Document\n\n\n"
+            "def redirect_index(request):\n"
+            "    return redirect(request.path[:-6])\n\n\n"
+            "def search(request):\n"
+            "    url = '/search/'\n"
+            "    q = request.GET.get('q')\n"
+            "    if q:\n"
+            "        url += '?q=%s' % q\n"
+            "    exact = Document.objects.filter(title=q).first()\n"
+            "    if exact is not None:\n"
+            "        return redirect(exact)\n"
+            "    return redirect(url)\n\n\n"
+            "def go(request):\n"
+            "    return redirect(request.GET['next'] + '?a=1')\n\n\n"
+            "class Blog:\n"
+            "    @route(r'^tags/$')\n"
+            "    def tags(self, request, tag=None):\n"
+            "        return render(request, 'tags.html', {'tag': request.GET.get('tag')})\n\n\n"
+            "def echo(request):\n"
+            "    return HttpResponse(request.GET['q'])\n"),
+        "user.controller.js": (
+            "const getUser = async (req, res) => {\n"
+            "  const user = await userService.getUserById(req.params.userId);\n"
+            "  res.send(user);\n"
+            "};\n"
+            "const greet = async (req, res) => {\n"
+            "  const html = await renderer.render(req.query.tpl);\n"
+            "  res.send(html);\n"
+            "  res.send(req.query.name);\n"
+            "};\n"
+            "module.exports = { getUser, greet };\n"),
+        "tests/helpers.py": ("import subprocess\n\nfrom flask import request\n\n\n"
+                             "def run():\n    subprocess.run(request.args['cmd'], shell=True)\n"),
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    found = {(f.path, f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings}
+    assert found == {
+        ("views.py", 9, "open-redirect-path", "security_hotspot"),
+        ("views.py", 24, "open-redirect", "vulnerability"),
+        ("views.py", 34, "xss", "vulnerability"),
+        ("user.controller.js", 7, "xss", "vulnerability"),
+        ("user.controller.js", 8, "xss", "vulnerability"),
+        ("tests/helpers.py", 7, "command-injection", "security_hotspot"),
+    }
+
+
+def semgrep_findings(tmp_path, files):
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    return {(f.path, f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings
+            if "nothing in the project calls" not in f.message}
+
+
+def test_uploads_stored_under_the_client_name(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "app.py": (
+            "import os\n\nfrom fastapi import FastAPI, File, UploadFile\nfrom flask import Flask, request\n"
+            "from werkzeug.utils import secure_filename\n\n"
+            "app = Flask(__name__)\napi = FastAPI()\nALLOWED = {'png', 'jpg'}\n\n\n"
+            "def allowed_file(name):\n    return name.rsplit('.', 1)[1].lower() in ALLOWED\n\n\n"
+            "@app.route('/a', methods=['POST'])\n"
+            "def a():\n"
+            "    f = request.files['file']\n"
+            "    f.save(os.path.join('uploads', f.filename))\n"
+            "    f.save(os.path.join('uploads', secure_filename(f.filename)))\n"
+            "    if allowed_file(f.filename):\n"
+            "        f.save(os.path.join('uploads', secure_filename(f.filename)))\n"
+            "    stem = os.path.splitext(f.filename)[0]\n"
+            "    f.save(os.path.join('uploads', secure_filename(stem) + '.png'))\n"
+            "    return 'ok'\n\n\n"
+            "@api.post('/b')\n"
+            "async def b(file: UploadFile = File(...)):\n"
+            "    with open(f'uploads/{file.filename}', 'wb') as out:\n"
+            "        out.write(await file.read())\n"),
+        "upload.js": (
+            "const storage = multer.diskStorage({\n"
+            "  destination: 'uploads/',\n"
+            "  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),\n"
+            "})\n"
+            "const named = multer.diskStorage({\n"
+            "  filename: (req, file, cb) => cb(null, path.parse(file.originalname).name + '.png'),\n"
+            "})\n"
+            "app.post('/u', (req, res) => {\n"
+            "  const file = req.files.doc\n"
+            "  file.mv('/srv/uploads/' + file.name)\n"
+            "  req.files.doc.mv('/srv/uploads/' + req.query.name)\n"
+            "})\n"),
+    })
+    assert found == {
+        ("app.py", 19, "path-traversal", "vulnerability"),
+        ("app.py", 19, "unrestricted-upload", "security_hotspot"),
+        ("app.py", 20, "unrestricted-upload", "security_hotspot"),
+        ("app.py", 30, "unrestricted-upload", "security_hotspot"),
+        ("upload.js", 3, "unrestricted-upload", "security_hotspot"),
+        ("upload.js", 10, "unrestricted-upload", "security_hotspot"),
+        ("upload.js", 11, "path-traversal", "vulnerability"),
+    }
+
+
+def test_error_details_in_responses(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "app.py": (
+            "import traceback\n\nfrom flask import Flask, jsonify\n\napp = Flask(__name__)\n\n\n"
+            "@app.route('/a')\n"
+            "def a():\n"
+            "    try:\n"
+            "        run()\n"
+            "    except ValueError as e:\n"
+            "        return jsonify(error=str(e)), 400\n"
+            "    except Exception as e:\n"
+            "        if app.debug:\n"
+            "            return jsonify(error=traceback.format_exc()), 500\n"
+            "        return jsonify(error=str(e), kind=type(e).__name__), 500\n"
+            "    return 'ok'\n\n\n"
+            "@app.route('/b')\n"
+            "def b():\n"
+            "    try:\n"
+            "        run()\n"
+            "    except Exception:\n"
+            "        return traceback.format_exc(), 500\n"
+            "    return 'ok'\n"),
+        "errors.js": (
+            "app.use((err, req, res, next) => {\n"
+            "  res.status(500).json({ message: err.message, stack: err.stack })\n"
+            "})\n"
+            "app.use((err, req, res, next) => {\n"
+            "  res.status(500).json({ stack: process.env.NODE_ENV === 'development' ? err.stack : undefined })\n"
+            "  res.status(500).send({ ...(config.env === 'development' \x26\x26 { stack: err.stack }) })\n"
+            "})\n"),
+    })
+    assert found == {
+        ("app.py", 17, "exception-message-in-response", "security_hotspot"),
+        ("app.py", 26, "stack-trace-exposure", "vulnerability"),
+        ("errors.js", 2, "stack-trace-exposure", "vulnerability"),
+    }
+
+
+def test_whole_request_body_written_to_a_model(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "views.py": (
+            "from flask import request\n\nfrom .models import User, db\n\n\n"
+            "def create():\n"
+            "    user = User(**request.json)\n"
+            "    data = request.get_json()\n"
+            "    other = User(**data)\n"
+            "    picked = User(name=data['name'], email=data['email'])\n"
+            "    fields = {'name': request.json['name']}\n"
+            "    db.session.add(User(**fields))\n"
+            "    return user, other, picked\n"),
+        "users.js": (
+            "router.post('/users', async (req, res) => {\n"
+            "  const user = await User.create(req.body)\n"
+            "  const body = req.body\n"
+            "  await User.findByIdAndUpdate(req.params.id, body)\n"
+            "  await prisma.user.create({ data: { ...req.body } })\n"
+            "  await User.create({ name: req.body.name })\n"
+            "  res.json(user)\n"
+            "})\n"),
+    })
+    assert found == {
+        ("views.py", 7, "mass-assignment", "security_hotspot"),
+        ("views.py", 9, "mass-assignment", "security_hotspot"),
+        ("users.js", 2, "mass-assignment", "security_hotspot"),
+        ("users.js", 4, "mass-assignment", "security_hotspot"),
+        ("users.js", 5, "mass-assignment", "security_hotspot"),
+    }

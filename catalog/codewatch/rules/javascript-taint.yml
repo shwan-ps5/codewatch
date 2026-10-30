@@ -240,6 +240,26 @@ rules:
       - *san-allowlist-ternary
       - *san-guard
       - pattern: path.basename(...)
+      # multer and express-fileupload take the file name through busboy, which drops any directory part.
+      - pattern-either:
+          - pattern: $REQ.file.originalname
+          - pattern: $REQ.files.$FIELD.name
+          - pattern: $REQ.files[$FIELD].originalname
+          - pattern: $REQ.files[$FIELD].name
+          - patterns:
+              - pattern-either:
+                  - pattern-inside: |
+                      const $F = $REQ.files.$FIELD;
+                      ...
+                  - pattern-inside: |
+                      let $F = $REQ.files.$FIELD;
+                      ...
+                  - pattern-inside: |
+                      const $F = $REQ.files[$FIELD];
+                      ...
+              - pattern-either:
+                  - pattern: $F.name
+                  - pattern: $F.originalname
       # if (!resolved.startsWith(base)) return/throw ...
       - patterns:
           - pattern-inside: |
@@ -263,6 +283,8 @@ rules:
               - patterns:
                   - pattern: $RES.download($PATH, ...)
                   - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
+              # express-fileupload: req.files.upload.mv(path)
+              - pattern: $FILE.mv($PATH, ...)
           - focus-metavariable: $PATH
 
   - id: codewatch.js.xss
@@ -324,6 +346,16 @@ rules:
           - pattern: encodeURIComponent(...)
           - pattern: encodeURI(...)
           - pattern: $X.textContent
+      # A record from the data layer, found or saved using the request's values, is the stored object rather
+      # than the request's text: await userService.getUserById(req.params.id)
+      - patterns:
+          - pattern: await $DATA.$ACCESS(...)
+          - metavariable-regex:
+              metavariable: $DATA
+              regex: '(?i)(^|\.)(\w*(service|repo|repository|model|dao|store)|db|prisma|collection|knex)$'
+          - metavariable-regex:
+              metavariable: $ACCESS
+              regex: '^(?!.*(?i:html|render|template|markup|view|page))(find|get|create|update|save|insert|upsert|delete|remove|query|fetch|load|count)\w*$'
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -571,3 +603,77 @@ rules:
               - pattern: new RegExp($PATTERN, ...)
               - pattern: RegExp($PATTERN, ...)
           - focus-metavariable: $PATTERN
+
+  - id: codewatch.js.stack-trace-exposure
+    mode: taint
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      An error's stack trace is sent back in the response. It shows file paths and code to whoever made the
+      request. Log it on the server and send a generic error message instead.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Stack trace sent in the response
+      interprocedural: false
+      cwe: ["CWE-209: Generation of Error Message Containing Sensitive Information"]
+      owasp: ["A10:2025 - Mishandling of Exceptional Conditions"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html
+        - https://expressjs.com/en/guide/error-handling.html
+    pattern-sources:
+      - patterns:
+          - pattern: $ERR.stack
+          - metavariable-regex: {metavariable: $ERR, regex: '(?i)^(e|ex|exc|exception|\w*err(or)?)$'}
+          # Only in development: if (process.env.NODE_ENV !== "production"), config.env === "development" && ...
+          - pattern-not-inside: 'if (<... $C.NODE_ENV === $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.NODE_ENV === $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.NODE_ENV === $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.NODE_ENV !== $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.NODE_ENV !== $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.NODE_ENV !== $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.NODE_ENV == $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.NODE_ENV == $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.NODE_ENV == $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.NODE_ENV != $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.NODE_ENV != $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.NODE_ENV != $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.env === $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.env === $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.env === $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.env !== $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.env !== $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.env !== $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.env == $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.env == $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.env == $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.env != $V ...>) { ... }'
+          - pattern-not-inside: '<... $C.env != $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.env != $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $APP.get("env") === $V ...>) { ... }'
+          - pattern-not-inside: '<... $APP.get("env") === $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $APP.get("env") === $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $APP.get("env") !== $V ...>) { ... }'
+          - pattern-not-inside: '<... $APP.get("env") !== $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $APP.get("env") !== $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $APP.get("env") == $V ...>) { ... }'
+          - pattern-not-inside: '<... $APP.get("env") == $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $APP.get("env") == $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $APP.get("env") != $V ...>) { ... }'
+          - pattern-not-inside: '<... $APP.get("env") != $V ...> ? $A : $B'
+          - pattern-not-inside: '<... $APP.get("env") != $V ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.debug ...>) { ... }'
+          - pattern-not-inside: '<... $C.debug ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.debug ...> && $Y'
+          - pattern-not-inside: 'if (<... $C.DEBUG ...>) { ... }'
+          - pattern-not-inside: '<... $C.DEBUG ...> ? $A : $B'
+          - pattern-not-inside: '<... $C.DEBUG ...> && $Y'
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.$SEND(...)
+              - pattern: $RES.status(...).$SEND(...)
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
+          - metavariable-regex: {metavariable: $SEND, regex: '^(send|json|jsonp|end|write|render)$'}
+      - pattern: ctx.body = $BODY

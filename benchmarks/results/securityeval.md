@@ -2,13 +2,13 @@
 
 SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses were used to add codewatch's crypto/TLS rules, and later its SSRF, regex and log injection rules.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T13:32:04+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T22:11:17+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**50 of 121 vulnerable files flagged for their CWE (41%); 51% have some security finding**
+**51 of 121 vulnerable files flagged for their CWE (42%); 53% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|
@@ -27,7 +27,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-117 | 0 | 3 |
 | CWE-193 | 0 | 1 |
 | CWE-200 | 0 | 1 |
-| CWE-209 | 0 | 1 |
+| CWE-209 | 1 | 1 |
 | CWE-215 | 0 | 1 |
 | CWE-250 | 0 | 1 |
 | CWE-252 | 0 | 1 |
@@ -84,7 +84,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 ## Review mode
 
-**74 of 121 vulnerable files flagged for their CWE (61%); 76% have some security finding**
+**77 of 121 vulnerable files flagged for their CWE (64%); 78% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|
@@ -103,7 +103,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-117 | 2 | 3 |
 | CWE-193 | 0 | 1 |
 | CWE-200 | 0 | 1 |
-| CWE-209 | 0 | 1 |
+| CWE-209 | 1 | 1 |
 | CWE-215 | 1 | 1 |
 | CWE-250 | 0 | 1 |
 | CWE-252 | 0 | 1 |
@@ -130,7 +130,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 | CWE-406 | 0 | 1 |
 | CWE-414 | 0 | 1 |
 | CWE-425 | 0 | 1 |
-| CWE-434 | 0 | 2 |
+| CWE-434 | 2 | 2 |
 | CWE-454 | 0 | 1 |
 | CWE-462 | 0 | 1 |
 | CWE-477 | 0 | 1 |

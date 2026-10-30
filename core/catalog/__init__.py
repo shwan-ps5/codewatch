@@ -67,10 +67,14 @@ def custom_semgrep_rules():
     """
     import yaml
 
+    class PlainDumper(yaml.SafeDumper):
+        def ignore_aliases(self, _data):
+            return True
+
     rules = []
     for path in [*builtin_rule_files(), *custom_rule_files()]:
         rules += rules_in(path)
-    return yaml.safe_dump({RULES: rules}, sort_keys=False) if rules else ""
+    return yaml.dump({RULES: rules}, Dumper=PlainDumper, sort_keys=False) if rules else ""
 
 
 @lru_cache(maxsize=1)

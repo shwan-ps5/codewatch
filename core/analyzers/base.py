@@ -116,7 +116,9 @@ class Analyzer:
             check=False,
         )
         if proc.returncode not in ok_codes:
-            raise ToolError(f"{self.name} exited {proc.returncode}: {proc.stderr.strip()[-2000:]}")
+            # Some tools (semgrep --json --quiet) report the failure on stdout and leave stderr empty.
+            detail = proc.stderr.strip() or proc.stdout.strip()
+            raise ToolError(f"{self.name} exited {proc.returncode}: {detail[-2000:]}")
         return proc.stdout if stream == "stdout" else proc.stderr
 
 

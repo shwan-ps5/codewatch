@@ -753,7 +753,8 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect"
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.path-traversal"
     ]
    },
    {
@@ -762,7 +763,8 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.open-redirect"
+     "codewatch:codewatch.python.web.open-redirect",
+     "codewatch:codewatch.python.web.path-traversal"
     ]
    },
    {
@@ -942,13 +944,13 @@
  },
  "review": {
   "overall": {
-   "tp": 47,
-   "fn": 49,
+   "tp": 49,
+   "fn": 47,
    "fp": 2,
    "tn": 32,
-   "tpr": 0.49,
+   "tpr": 0.51,
    "fpr": 0.059,
-   "score": 0.431
+   "score": 0.452
   },
   "categories": {
    "CWE-113": {
@@ -1192,8 +1194,8 @@
     "tn": 0
    },
    "CWE-434": {
-    "tp": 0,
-    "fn": 2,
+    "tp": 2,
+    "fn": 0,
     "fp": 0,
     "tn": 0
    },
@@ -1658,26 +1660,6 @@
     ]
    },
    {
-    "path": "Testcases_Copilot/CWE-434/pearce_1.py",
-    "cwe": 434,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "semgrep:python.flask.security.open-redirect.open-redirect"
-    ]
-   },
-   {
-    "path": "Testcases_Copilot/CWE-434/pearce_2.py",
-    "cwe": 434,
-    "real": true,
-    "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.open-redirect",
-     "semgrep:python.flask.security.open-redirect.open-redirect"
-    ]
-   },
-   {
     "path": "Testcases_Copilot/CWE-454/author_1.py",
     "cwe": 454,
     "real": true,
@@ -1826,7 +1808,7 @@
  },
  "suite": "securityeval-copilot",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-30T13:32:40+00:00",
+ "scanned_at": "2026-10-30T22:11:57+00:00",
  "overall": {
   "verdict": {
    "tp": 33,
@@ -1838,13 +1820,13 @@
    "score": 0.344
   },
   "review": {
-   "tp": 47,
-   "fn": 49,
+   "tp": 49,
+   "fn": 47,
    "fp": 2,
    "tn": 32,
-   "tpr": 0.49,
+   "tpr": 0.51,
    "fpr": 0.059,
-   "score": 0.431
+   "score": 0.452
   }
  }
 }

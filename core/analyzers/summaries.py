@@ -15,6 +15,7 @@ its module, so same-named functions elsewhere don't connect.
 """
 import ast
 import copy
+import functools
 import re
 from pathlib import Path
 
@@ -45,7 +46,9 @@ JS_PARAM_SOURCES = [
 
 
 def taint_rules(rules):
-    return [r for r in rules if r.get("mode") == "taint"]
+    """Taint rules that follow data across calls. A rule whose sources aren't request data (a stack trace, a
+    file name) sets metadata `interprocedural: false`: a parameter reaching its sink says nothing about them."""
+    return [r for r in rules if r.get("mode") == "taint" and r.get("metadata", {}).get("interprocedural", True)]
 
 
 def is_js(rule):
@@ -72,19 +75,28 @@ def summary_rules(rules, summaries=None):
     return out
 
 
-def python_signature(text, func, line):
-    """(positional index or None, is_method) of the parameters of the def named func around line."""
+@functools.lru_cache(maxsize=32)
+def python_functions(text):
+    """{name: [(def node, defined directly in a class)]}, parsed once per file: pass 1 can report thousands of
+    hits in one large module."""
     try:
         tree = ast.parse(text)
     except (SyntaxError, ValueError):
-        return None
-    best = None
+        return {}
+    functions = {}
     for parent in ast.walk(tree):
         for node in ast.iter_child_nodes(parent):
-            if (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func
-                    and node.lineno <= line <= (node.end_lineno or node.lineno)
-                    and (best is None or node.lineno > best[0].lineno)):
-                best = (node, isinstance(parent, ast.ClassDef))
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                functions.setdefault(node.name, []).append((node, isinstance(parent, ast.ClassDef)))
+    return functions
+
+
+def python_signature(text, func, line):
+    """(positional index or None, is_method) of the parameters of the def named func around line."""
+    best = None
+    for node, in_class in python_functions(text).get(func, ()):
+        if node.lineno <= line <= (node.end_lineno or node.lineno) and (best is None or node.lineno > best[0].lineno):
+            best = (node, in_class)
     if best is None:
         return None
     node, in_class = best
@@ -151,6 +163,7 @@ def parse_summaries(results, read_text, known=None, hits=None):
 
 NAME_RE = re.compile(r"[A-Za-z_$][\w$]*")
 DEFINITION_RE = re.compile(r"(\bdef|\bfunction\s*\*?|\bclass)\s+$")
+DEFINITION_REACH = 64
 NOT_A_USE_RE = re.compile(r"^\s*(#|//|\*|/\*)|module\.exports|\bexports\.|^\s*export\s*\{|__all__")
 
 
@@ -163,20 +176,28 @@ def referenced_names(files):
         for line in text.splitlines():
             if NOT_A_USE_RE.search(line):
                 continue
+            # Positions rather than slices of the line: minified bundles have lines of 100k characters and
+            # thousands of names each, and copying the line per name is quadratic.
             for match in NAME_RE.finditer(line):
-                before, after = line[:match.start()], line[match.end():]
-                if DEFINITION_RE.search(before) or (js and js_definition(before, after)):
+                start, end = match.span()
+                if (DEFINITION_RE.search(line, max(0, start - DEFINITION_REACH), start)
+                        or (js and js_definition(line, start, end))):
                     continue
                 used.add(match.group())
     return used
 
 
-def js_definition(before, after):
-    """`name = (...) =>`, `name: function`, or a class method header `name(...) {` at the start of the line."""
-    if re.match(r"\s*[:=]\s*(async\s+)?(function\b|\([^)]*\)\s*=>|\w+\s*=>)", after):
+JS_ASSIGNED_FUNCTION_RE = re.compile(r"\s*[:=]\s*(async\s+)?(function\b|\([^)]*\)\s*=>|\w+\s*=>)")
+JS_MODIFIERS_RE = re.compile(r"\s*((public|private|protected|static|async)\s+)*")
+JS_METHOD_HEADER_RE = re.compile(r"\s*\([^)]*\)[^;]*\{\s*$")
+
+
+def js_definition(line, start, end):
+    """line[start:end] is defined here: `name = (...) =>`, `name: function`, or a class method header
+    `name(...) {` at the start of the line."""
+    if JS_ASSIGNED_FUNCTION_RE.match(line, end):
         return True
-    return bool(re.fullmatch(r"\s*((public|private|protected|static|async)\s+)*", before)
-                and re.match(r"\s*\([^)]*\)[^;]*\{\s*$", after))
+    return bool(JS_MODIFIERS_RE.fullmatch(line, 0, start) and JS_METHOD_HEADER_RE.match(line, end))
 
 
 def call_patterns(index, param, method, js):

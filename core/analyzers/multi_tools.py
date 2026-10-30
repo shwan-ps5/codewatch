@@ -127,6 +127,9 @@ class Semgrep(Analyzer):
             if (kind == VULNERABILITY and metadata.get("security-purpose") == "required"
                     and not security_purpose(source, path, item["start"]["line"])):
                 kind = HOTSPOT
+            # Test code isn't served to anyone, so what flows through it is for review, not a verdict.
+            if kind == VULNERABILITY and is_test_file(path):
+                kind = HOTSPOT
             result.findings.append(
                 Finding("codewatch" if custom_id else "semgrep", custom_id or check_id,
                         SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, extra["message"].strip(),
