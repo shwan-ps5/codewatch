@@ -4,7 +4,7 @@
 
 Self-hosted code-quality server: branch analysis, new-code tracking, quality gates, coverage, duplication, dependency CVEs, security hotspots and accessibility checks, built on open-source analyzers. Django + SQLite, no containers or JVM.
 
-Like sonar-scanner, scans normally run **on the developer's machine** against the local working copy (private repos never leave it) and upload the results. The server can also clone and scan a repository URL itself.
+Scans normally run **on the developer's machine** against the local working copy (private repos never leave it) and upload the results. The server can also clone and scan a repository URL itself.
 
 ## Server setup
 
@@ -91,17 +91,17 @@ Issue types: bug, vulnerability, **security hotspot** (security-sensitive code t
 
 Each analysis gets A–E ratings, overall and on new code: **reliability**, **security** and **accessibility** (worst open issue of that type), **maintainability** (SQALE technical-debt ratio) and **security review** (share of hotspots reviewed), combined into a 0–100 **health score**. The `/ratings/` page explains the formulas.
 
-Default gate compared with the "Sonar way" gate as Sonar documents it publicly:
+The default quality gate, on new code:
 
-| Condition on new code | codewatch default | Sonar way |
-|---|---|---|
-| New issues | none that are blocker/critical, no bugs, no vulnerabilities, maintainability A | no new issues (ratings A) |
-| Security hotspots | security review A (≥ 80% reviewed) | all reviewed |
-| Coverage | ≥ 80% | ≥ 80% |
-| Duplication | ≤ 3% | ≤ 3% |
-| Small changes | coverage/duplication skipped under 20 new lines | same |
-| Dependency CVEs | no critical ones (overall) | not in the free edition |
-| Accessibility | no new accessibility issues | not included |
+| Condition | Default |
+|---|---|
+| New issues | none that are blocker/critical, no bugs, no vulnerabilities, maintainability A |
+| Security hotspots | security review A (≥ 80% reviewed) |
+| Coverage | ≥ 80% |
+| Duplication | ≤ 3% |
+| Small changes | coverage/duplication skipped under 20 new lines |
+| Dependency CVEs | no critical ones (overall) |
+| Accessibility | no new accessibility issues |
 
 Every condition can be changed per project under **Settings**.
 
@@ -137,7 +137,7 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 | [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
 | [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |
 
-The score on OWASP is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. "Held out" suites were never used to write or tune rules, so they are the fairer measure; the others were. The Copilot and InCoder answers respond to the same prompts as SecurityEval's own samples, which were used for rules, so their numbers are not fully independent. `benchmarks/compare.py` runs the same suites, and any local repositories, through SonarQube for comparison.
+The score on OWASP is detection minus false alarms (OWASP Benchmark's own measure), averaged over categories. "Held out" suites were never used to write or tune rules, so they are the fairer measure; the others were. The Copilot and InCoder answers respond to the same prompts as SecurityEval's own samples, which were used for rules, so their numbers are not fully independent.
 
 Semgrep's open-source engine follows data within one function and loses it at slices, `match` statements, dict keys and constant-folded branches. codewatch scans a line-for-line rewritten copy of Python files (dead constant branches blanked, slices made indexes, constant container keys made attributes, `match` made `if`), and summarises functions before the main scan: the taint rules run with function parameters as sources to find which parameters reach a sink, then again with calls to those functions as extra sinks, up to three calls deep. A call only counts where the function is visible (same file, or an import that resolves to the defining file), so same-named functions elsewhere don't connect. A parameter that reaches a sink in a function nothing in the project calls (a library entry point, a handler registered elsewhere) is reported as a hotspot, since the danger depends on what its callers pass.
 

@@ -1,4 +1,4 @@
-"""codewatch: scan a local working copy and upload the results, like sonar-scanner.
+"""codewatch: scan a local working copy and upload the results.
 
 The repository never leaves the machine; only issues, metrics and the source of files with issues are sent.
 """

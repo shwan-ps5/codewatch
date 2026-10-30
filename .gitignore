@@ -8,6 +8,3 @@ coverage.xml
 tools/checkov-venv/
 tools/semgrep-venv/
 
-# Local SonarQube runs are kept out of this repository.
-.scannerwork/
-sonarqube-comparison.md

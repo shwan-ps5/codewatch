@@ -5,8 +5,6 @@
     venv/bin/python benchmarks/devtools.py repos [--via|--entry] DIR...
                                                                      # full Semgrep analyzer on git working copies
     venv/bin/python benchmarks/devtools.py owasp [CATEGORY...]      # OWASP Python cases scored wrong (verdict mode)
-    venv/bin/python benchmarks/devtools.py sonar-only [NAME...]     # Sonar vulnerabilities with no codewatch
-                                                                     # security finding within a line (after compare.py)
 
 `rules` scans the same line-preserving rewritten copy of Python files that the analyzer does, but skips summaries;
 `repos` runs everything (summaries, via-findings, entry-point hotspots) and prints vulnerabilities, or only
@@ -107,22 +105,6 @@ def owasp(categories):
         print(m["category"], m["test"], "FP" if m["flagged"] else "FN", related)
 
 
-def sonar_only(names):
-    import compare
-
-    names = names or [r["name"] for r in json.loads((HERE / "compare.json").read_text())["repos"]]
-    for name in names:
-        data = json.loads((CACHE / "compare" / f"{name}.issues.json").read_text())
-        cw, sq = data["codewatch"]["issues"], data["sonar"]["issues"]
-        sonar_vulns = [i for i in compare.distinct(sq) if i["type"] == "vulnerability"]
-        missed = [s for s in sonar_vulns
-                  if not any(i["path"] == s["path"] and abs((i.get("line") or 0) - (s.get("line") or 0)) <= 1
-                             and i["type"] in ("vulnerability", "security_hotspot") for i in cw)]
-        print(f"== {name}: sonar vulnerabilities {len(sonar_vulns)}, without a codewatch finding nearby {len(missed)}")
-        for s in missed:
-            print("    ", s["path"], s.get("line"), s["rule"], (s.get("message") or "")[:90])
-
-
 def main(argv):
     if not argv or argv[0] not in COMMANDS:
         sys.exit(__doc__)
@@ -133,7 +115,7 @@ def main(argv):
         COMMANDS[command](rest)
 
 
-COMMANDS = {"bench": bench, "rules": rules, "repos": repos, "owasp": owasp, "sonar-only": sonar_only}
+COMMANDS = {"bench": bench, "rules": rules, "repos": repos, "owasp": owasp}
 
 if __name__ == "__main__":
     main(sys.argv[1:])

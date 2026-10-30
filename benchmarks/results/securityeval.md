@@ -1,6 +1,6 @@
 # securityeval
 
-SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses against SonarQube were used to add codewatch's crypto/TLS rules.
+SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses were used to add codewatch's crypto/TLS rules, and later its SSRF, regex and log injection rules.
 
 Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T13:32:04+00:00.
 
