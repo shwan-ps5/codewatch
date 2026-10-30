@@ -8,3 +8,7 @@ coverage.xml
 tools/checkov-venv/
 tools/semgrep-venv/
 
+
+# Local scanner output and notes kept out of the repository.
+.scannerwork/
+*-comparison.md
