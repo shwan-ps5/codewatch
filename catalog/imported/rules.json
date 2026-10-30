@@ -37927,6 +37927,37 @@
   "owasp": []
  },
  {
+  "id": "osv/vulnerable-dependency",
+  "tool": "osv",
+  "code": "vulnerable-dependency",
+  "title": "Dependency with a known vulnerability",
+  "languages": [
+   "javascript"
+  ],
+  "type": "vulnerability",
+  "severity": "varies",
+  "summary": "A package version pinned in package-lock.json, yarn.lock or pnpm-lock.yaml has a published advisory (severity taken from the advisory).",
+  "docs": "https://google.github.io/osv.dev/post-v1-querybatch/",
+  "license": "CC-BY-4.0 (OSV data)",
+  "references": [
+   {
+    "label": "OSV vulnerability database",
+    "url": "https://osv.dev"
+   },
+   {
+    "label": "GitHub Advisory Database",
+    "url": "https://github.com/advisories"
+   }
+  ],
+  "cwe": [
+   1395
+  ],
+  "wcag": [],
+  "owasp": [
+   "A03:2025"
+  ]
+ },
+ {
   "id": "pip-audit/vulnerable-dependency",
   "tool": "pip-audit",
   "code": "vulnerable-dependency",
@@ -37949,9 +37980,13 @@
     "url": "https://github.com/pypa/advisory-database"
    }
   ],
-  "cwe": [],
+  "cwe": [
+   1395
+  ],
   "wcag": [],
-  "owasp": []
+  "owasp": [
+   "A03:2025"
+  ]
  },
  {
   "id": "radon/cyclomatic-complexity",
@@ -39529,7 +39564,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -40562,11 +40597,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40597,11 +40632,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40636,11 +40671,11 @@
     "url": "https://docs.python.org/3/library/typing.html#typing.override"
    },
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40671,11 +40706,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40706,11 +40741,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40741,11 +40776,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40776,11 +40811,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40811,11 +40846,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -40869,7 +40904,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -40900,7 +40935,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41028,7 +41063,7 @@
     "url": "https://docs.astral.sh/ruff/formatter"
    },
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41160,7 +41195,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41222,7 +41257,7 @@
     "url": "https://docs.astral.sh/ruff/rules/multi-line-summary-second-line"
    },
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41261,7 +41296,7 @@
     "url": "https://docs.astral.sh/ruff/rules/multi-line-summary-first-line"
    },
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41292,11 +41327,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41327,11 +41362,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41366,7 +41401,7 @@
     "url": "https://docs.astral.sh/ruff/formatter/"
    },
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41401,7 +41436,7 @@
     "url": "https://peps.python.org/pep-0257/#what-is-a-docstring"
    },
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41513,7 +41548,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41567,11 +41602,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41602,11 +41637,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41633,11 +41668,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41664,11 +41699,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41695,11 +41730,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41726,11 +41761,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41761,11 +41796,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41792,11 +41827,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41827,11 +41862,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41858,11 +41893,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41893,7 +41928,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -41924,11 +41959,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41955,11 +41990,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
-    "label": "PEP 287 \u2013 reStructuredText Docstring Format",
+    "label": "PEP 287 – reStructuredText Docstring Format",
     "url": "https://peps.python.org/pep-0287/"
    },
    {
@@ -41990,7 +42025,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -42017,7 +42052,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 257 \u2013 Docstring Conventions",
+    "label": "PEP 257 – Docstring Conventions",
     "url": "https://peps.python.org/pep-0257/"
    },
    {
@@ -44634,7 +44669,7 @@
     "url": "https://github.com/astral-sh/ruff/issues/10885"
    },
    {
-    "label": "PEP 498 \u2013 Literal String Interpolation",
+    "label": "PEP 498 – Literal String Interpolation",
     "url": "https://peps.python.org/pep-0498/"
    }
   ],
@@ -44703,7 +44738,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 3132 \u2013 Extended Iterable Unpacking",
+    "label": "PEP 3132 – Extended Iterable Unpacking",
     "url": "https://peps.python.org/pep-3132/"
    }
   ],
@@ -44726,7 +44761,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 3132 \u2013 Extended Iterable Unpacking",
+    "label": "PEP 3132 – Extended Iterable Unpacking",
     "url": "https://peps.python.org/pep-3132/"
    }
   ],
@@ -44968,7 +45003,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 563 \u2013 Postponed Evaluation of Annotations",
+    "label": "PEP 563 – Postponed Evaluation of Annotations",
     "url": "https://peps.python.org/pep-0563/"
    }
   ],
@@ -45105,7 +45140,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 484 \u2013 Type Hints",
+    "label": "PEP 484 – Type Hints",
     "url": "https://peps.python.org/pep-0484/"
    }
   ],
@@ -45969,7 +46004,7 @@
     "url": "https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat"
    },
    {
-    "label": "What\u2019s New In Python 3.11 \u00a7 ",
+    "label": "What’s New In Python 3.11 § ",
     "url": "https://docs.python.org/3/whatsnew/3.11.html#datetime"
    }
   ],
@@ -48225,11 +48260,11 @@
     "url": "https://docs.python.org/3/library/typing.html"
    },
    {
-    "label": "PEP 483 \u2013 The Theory of Type Hints: Covariance and Contravariance",
+    "label": "PEP 483 – The Theory of Type Hints: Covariance and Contravariance",
     "url": "https://peps.python.org/pep-0483/#covariance-and-contravariance"
    },
    {
-    "label": "PEP 484 \u2013 Type Hints: Covariance and contravariance",
+    "label": "PEP 484 – Type Hints: Covariance and contravariance",
     "url": "https://peps.python.org/pep-0484/#covariance-and-contravariance"
    }
   ],
@@ -48256,11 +48291,11 @@
     "url": "https://docs.python.org/3/library/typing.html"
    },
    {
-    "label": "PEP 483 \u2013 The Theory of Type Hints: Covariance and Contravariance",
+    "label": "PEP 483 – The Theory of Type Hints: Covariance and Contravariance",
     "url": "https://peps.python.org/pep-0483/#covariance-and-contravariance"
    },
    {
-    "label": "PEP 484 \u2013 Type Hints: Covariance and contravariance",
+    "label": "PEP 484 – Type Hints: Covariance and contravariance",
     "url": "https://peps.python.org/pep-0484/#covariance-and-contravariance"
    }
   ],
@@ -48708,7 +48743,7 @@
     "url": "https://docs.python.org/3/reference/simple_stmts.html#nonlocal"
    },
    {
-    "label": "PEP 3104 \u2013 Access to Names in Outer Scopes",
+    "label": "PEP 3104 – Access to Names in Outer Scopes",
     "url": "https://peps.python.org/pep-3104/"
    }
   ],
@@ -49953,7 +49988,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "What\u2019s New In Python 3.2",
+    "label": "What’s New In Python 3.2",
     "url": "https://docs.python.org/3/whatsnew/3.2.html#optimizations"
    }
   ],
@@ -51352,7 +51387,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.abspath"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51395,7 +51430,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.chmod"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51438,7 +51473,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.mkdir"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51481,7 +51516,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.makedirs"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51524,7 +51559,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.rename"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51567,7 +51602,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.replace"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51610,7 +51645,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.rmdir"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51653,7 +51688,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.remove"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51696,7 +51731,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.unlink"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51743,7 +51778,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.getcwdb"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51786,7 +51821,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.exists"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51829,7 +51864,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.expanduser"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51872,7 +51907,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.isdir"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51915,7 +51950,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.isfile"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -51958,7 +51993,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.islink"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52001,7 +52036,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.readlink"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52052,7 +52087,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.stat"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52095,7 +52130,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.isabs"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52138,7 +52173,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.join"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52181,7 +52216,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.basename"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52224,7 +52259,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.dirname"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52267,7 +52302,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.samefile"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52314,7 +52349,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.splitext"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52357,7 +52392,7 @@
     "url": "https://docs.python.org/3/library/functions.html#open"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52450,7 +52485,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.getsize"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52493,7 +52528,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.getatime"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52536,7 +52571,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.getmtime"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52579,7 +52614,7 @@
     "url": "https://docs.python.org/3/library/os.path.html#os.path.getctime"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52614,7 +52649,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52661,7 +52696,7 @@
     "url": "https://docs.python.org/3/library/glob.html#glob.iglob"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52700,7 +52735,7 @@
     "url": "https://docs.python.org/3/library/os.html#os.listdir"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -52757,7 +52792,7 @@
     "url": "https://docs.python.org/3/library/pathlib.html#pathlib.Path.symlink_to"
    },
    {
-    "label": "PEP 428 \u2013 The pathlib module \u2013 object-oriented filesystem paths",
+    "label": "PEP 428 – The pathlib module – object-oriented filesystem paths",
     "url": "https://peps.python.org/pep-0428/"
    },
    {
@@ -54328,11 +54363,11 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 448 \u2013 Additional Unpacking Generalizations",
+    "label": "PEP 448 – Additional Unpacking Generalizations",
     "url": "https://peps.python.org/pep-0448/"
    },
    {
-    "label": "Python documentation: Sequence Types \u2014 ",
+    "label": "Python documentation: Sequence Types — ",
     "url": "https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range"
    }
   ],
@@ -55229,7 +55264,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "Python documentation: Enum HOWTO \u00a7 Dataclass support",
+    "label": "Python documentation: Enum HOWTO § Dataclass support",
     "url": "https://docs.python.org/3/howto/enum.html#dataclass-support"
    }
   ],
@@ -57190,7 +57225,7 @@
     "url": "https://docs.astral.sh/ruff/preview/"
    },
    {
-    "label": "PEP 476 \u2013 Enabling certificate verification by default for stdlib http clients: Opting out",
+    "label": "PEP 476 – Enabling certificate verification by default for stdlib http clients: Opting out",
     "url": "https://peps.python.org/pep-0476/#opting-out"
    },
    {
@@ -59758,7 +59793,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 3115 \u2013 Metaclasses in Python 3000",
+    "label": "PEP 3115 – Metaclasses in Python 3000",
     "url": "https://peps.python.org/pep-3115/"
    }
   ],
@@ -59808,7 +59843,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 3115 \u2013 Metaclasses in Python 3000",
+    "label": "PEP 3115 – Metaclasses in Python 3000",
     "url": "https://peps.python.org/pep-3115/"
    }
   ],
@@ -60417,7 +60452,7 @@
     "url": "https://docs.python.org/3/reference/simple_stmts.html#the-yield-statement"
    },
    {
-    "label": "PEP 380 \u2013 Syntax for Delegating to a Subgenerator",
+    "label": "PEP 380 – Syntax for Delegating to a Subgenerator",
     "url": "https://peps.python.org/pep-0380/"
    }
   ],
@@ -60634,7 +60669,7 @@
     "url": "https://docs.astral.sh/ruff/rules/quoted-type-alias/"
    },
    {
-    "label": "PEP 563 \u2013 Postponed Evaluation of Annotations",
+    "label": "PEP 563 – Postponed Evaluation of Annotations",
     "url": "https://peps.python.org/pep-0563/"
    },
    {
@@ -60803,7 +60838,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 696 \u2013 Type Defaults for Type Parameters",
+    "label": "PEP 696 – Type Defaults for Type Parameters",
     "url": "https://peps.python.org/pep-0696/"
    },
    {
@@ -60990,7 +61025,7 @@
     "url": "https://docs.python.org/3/reference/compound_stmts.html#the-while-statement"
    },
    {
-    "label": "PEP 285 \u2013 Adding a bool type",
+    "label": "PEP 285 – Adding a bool type",
     "url": "https://peps.python.org/pep-0285/"
    }
   ],
@@ -61048,7 +61083,7 @@
   "license": "MIT (ruff)",
   "references": [
    {
-    "label": "PEP 3115 \u2013 Metaclasses in Python 3000",
+    "label": "PEP 3115 – Metaclasses in Python 3000",
     "url": "https://peps.python.org/pep-3115/"
    }
   ],

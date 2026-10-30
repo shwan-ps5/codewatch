@@ -843,7 +843,7 @@ def test_uploads_stored_under_the_client_name(tmp_path):
             "    f = request.files['file']\n"
             "    f.save(os.path.join('uploads', f.filename))\n"
             "    f.save(os.path.join('uploads', secure_filename(f.filename)))\n"
-            "    if allowed_file(f.filename):\n"
+            "    if f and allowed_file(f.filename):\n"
             "        f.save(os.path.join('uploads', secure_filename(f.filename)))\n"
             "    stem = os.path.splitext(f.filename)[0]\n"
             "    f.save(os.path.join('uploads', secure_filename(stem) + '.png'))\n"
@@ -948,3 +948,270 @@ def test_whole_request_body_written_to_a_model(tmp_path):
         ("users.js", 4, "mass-assignment", "security_hotspot"),
         ("users.js", 5, "mass-assignment", "security_hotspot"),
     }
+
+
+def test_template_injection_ldap_and_xpath(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "app.py": (
+            "import jinja2\nfrom flask import Flask, render_template_string, request\n"
+            "from jinja2.sandbox import SandboxedEnvironment\n\napp = Flask(__name__)\n\n\n"
+            "@app.route('/a')\n"
+            "def a():\n"
+            "    jinja2.Template(request.args['t']).render()\n"
+            "    jinja2.Environment().from_string(request.args['t'])\n"
+            "    sandbox = SandboxedEnvironment()\n"
+            "    sandbox.from_string(request.args['t'])\n"
+            "    render_template_string('Hello {{ name }}', name=request.args['name'])\n"
+            "    return 'ok'\n"),
+        "app.js": (
+            "app.get('/t', (req, res) => {\n"
+            "  res.send(pug.render(req.query.tpl))\n"
+            "  res.send(ejs.render('<p><%= name %></p>', { name: req.query.name }))\n"
+            "  res.send(_.template(req.body.t)({}))\n"
+            "})\n"
+            "app.post('/login', (req, res) => {\n"
+            "  client.search('ou=people', { filter: '(uid=' + req.body.user + ')' }, done)\n"
+            "  client.search('ou=people', { filter: '(uid=' + escapeLdap(req.body.user) + ')' }, done)\n"
+            "  xpath.select(\"//user[name='\" + req.body.user + \"']\", doc)\n"
+            "  xpath.select('//user', doc)\n"
+            "})\n"),
+    })
+    assert found == {
+        ("app.py", 10, "template-injection", "vulnerability"),
+        ("app.py", 11, "template-injection", "vulnerability"),
+        ("app.js", 2, "template-injection", "vulnerability"),
+        ("app.js", 2, "xss", "vulnerability"),
+        ("app.js", 4, "template-injection", "vulnerability"),
+        ("app.js", 4, "xss", "vulnerability"),
+        ("app.js", 7, "ldap-injection", "vulnerability"),
+        ("app.js", 9, "xpath-injection", "vulnerability"),
+    }
+
+
+def test_cors_reflecting_any_origin_with_credentials(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "api.py": (
+            "from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\n"
+            "from flask import Flask\nfrom flask_cors import CORS\n\n"
+            "app = Flask(__name__)\nCORS(app, supports_credentials=True)\n"
+            "CORS(app, supports_credentials=True, origins=['https://app.example.com'])\nCORS(app)\n"
+            "api = FastAPI()\n"
+            "api.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True)\n"
+            "api.add_middleware(CORSMiddleware, allow_origins=['*'])\n"
+            "api.add_middleware(CORSMiddleware, allow_origins=['https://app.example.com'], allow_credentials=True)\n"),
+        "settings.py": "CORS_ALLOW_ALL_ORIGINS = True\nCORS_ALLOW_CREDENTIALS = True\n",
+        "other_settings.py": "CORS_ALLOW_ALL_ORIGINS = True\n",
+        "server.js": (
+            "app.use(cors({ origin: true, credentials: true }))\n"
+            "app.use(cors({ origin: ['https://app.example.com'], credentials: true }))\n"
+            "app.use(cors())\n"
+            "app.use((req, res, next) => {\n"
+            "  res.setHeader('Access-Control-Allow-Origin', req.headers.origin)\n"
+            "  res.setHeader('Access-Control-Allow-Credentials', 'true')\n"
+            "  next()\n"
+            "})\n"
+            "app.use((req, res, next) => {\n"
+            "  if (allowed.includes(req.headers.origin)) {\n"
+            "    res.setHeader('Access-Control-Allow-Origin', req.headers.origin)\n"
+            "  }\n"
+            "  res.setHeader('Access-Control-Allow-Credentials', 'true')\n"
+            "  next()\n"
+            "})\n"),
+    })
+    assert found == {
+        ("api.py", 7, "cors-any-origin-with-credentials", "vulnerability"),
+        ("api.py", 11, "cors-any-origin-with-credentials", "vulnerability"),
+        ("settings.py", 1, "cors-any-origin-with-credentials", "vulnerability"),
+        ("server.js", 1, "cors-any-origin-with-credentials", "vulnerability"),
+        ("server.js", 5, "cors-any-origin-with-credentials", "vulnerability"),
+    }
+
+
+def test_signature_timing_cookies_and_secrets_in_logs(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "hooks.py": (
+            "import hashlib\nimport hmac\n\n\n"
+            "def verify(key, body, signature):\n"
+            "    expected = hmac.new(key, body, hashlib.sha256).hexdigest()\n"
+            "    if expected != signature:\n"
+            "        return False\n"
+            "    if len(expected) == len(signature):\n"
+            "        pass\n"
+            "    return hmac.compare_digest(expected, signature)\n\n\n"
+            "def quick(key, body, sig):\n"
+            "    return hmac.new(key, body, hashlib.sha256).hexdigest() == sig\n"),
+        "hooks.js": (
+            "function verify(secret, body, sig) {\n"
+            "  const mac = crypto.createHmac('sha256', secret).update(body).digest('hex')\n"
+            "  if (mac === sig) return true\n"
+            "  return crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(sig))\n"
+            "}\n"
+            "app.post('/login', (req, res) => {\n"
+            "  res.cookie('session', token, { httpOnly: true })\n"
+            "  res.cookie('session', token, { httpOnly: true, secure: true, sameSite: 'lax' })\n"
+            "  res.cookie('theme', 'dark')\n"
+            "  res.cookie('refresh_token', token, { secure: process.env.NODE_ENV === 'production' })\n"
+            "  res.cookie('session', '', { maxAge: 0 })\n"
+            "  console.log('login', req.body.password)\n"
+            "  logger.info(`token is ${accessToken}`)\n"
+            "  console.log('token refreshed')\n"
+            "})\n"
+            "app.use(session({ secret: s, cookie: { httpOnly: false } }))\n"),
+    })
+    assert found == {
+        ("hooks.py", 7, "timing-unsafe-signature-check", "vulnerability"),
+        ("hooks.py", 15, "timing-unsafe-signature-check", "vulnerability"),
+        ("hooks.js", 3, "timing-unsafe-signature-check", "vulnerability"),
+        ("hooks.js", 7, "cookie-without-secure", "vulnerability"),
+        ("hooks.js", 12, "secret-in-log", "security_hotspot"),
+        ("hooks.js", 13, "secret-in-log", "security_hotspot"),
+        ("hooks.js", 16, "session-cookie-flags", "security_hotspot"),
+    }
+
+
+def test_changing_routes_without_the_auth_other_routes_use(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "routes.js": (
+            "router.get('/users', auth, list)\n"
+            "router.post('/users', auth, validate(schema), create)\n"
+            "router.delete('/users/:id', remove)\n"
+            "router.patch('/users/:id', validate(schema), update)\n"
+            "router.post('/login', validate(schema), login)\n"
+            "router.get('/feed', feed)\n"),
+        "open.js": "router.post('/comments', create)\nrouter.delete('/comments/:id', remove)\n",
+        "views.py": (
+            "from flask import Blueprint\nfrom flask_login import login_required\n\nbp = Blueprint('a', __name__)\n\n\n"
+            "@bp.route('/notes', methods=['POST'])\n"
+            "@login_required\n"
+            "def create():\n    return 'ok'\n\n\n"
+            "@bp.route('/notes/<int:id>', methods=['DELETE'])\n"
+            "def delete(id):\n    return 'ok'\n\n\n"
+            "@bp.route('/login', methods=['POST'])\n"
+            "def login():\n    return 'ok'\n\n\n"
+            "@bp.route('/notes')\n"
+            "def index():\n    return 'ok'\n"),
+        "upload.js": "const a = multer({ dest: 'uploads/' })\nconst b = multer({ dest: 'uploads/', limits: { fileSize: 1e6 } })\n",
+        "cookies.py": (
+            "SESSION_COOKIE_HTTPONLY = False\nSESSION_COOKIE_SAMESITE = 'None'\nCSRF_COOKIE_SAMESITE = 'Lax'\n\n\n"
+            "def view(resp):\n"
+            "    resp.set_cookie('sid', 'x', secure=True, httponly=False)\n"
+            "    resp.set_cookie('sid', 'x', secure=True, httponly=True, samesite='Lax')\n"),
+    })
+    assert found == {
+        ("routes.js", 3, "route-without-auth", "security_hotspot"),
+        ("routes.js", 4, "route-without-auth", "security_hotspot"),
+        ("views.py", 14, "route-without-login", "security_hotspot"),
+        ("upload.js", 1, "upload-without-limits", "security_hotspot"),
+        ("cookies.py", 1, "cookie-protection-off", "security_hotspot"),
+        ("cookies.py", 2, "cookie-protection-off", "security_hotspot"),
+        ("cookies.py", 7, "cookie-protection-off", "security_hotspot"),
+    }
+
+
+def test_signup_routes_and_filtered_uploads_stay_quiet(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "routes.js": "router.get('/users/me', auth, me)\nrouter.post('/users', register)\nrouter.post('/api/users', register)\n",
+        "upload.js": (
+            "const upload = multer({\n"
+            "  fileFilter: (req, file, cb) => cb(null, /\\.(png|jpe?g)$/i.test(file.originalname)),\n"
+            "  storage: multer.diskStorage({ filename: (req, file, cb) => cb(null, Date.now() + file.originalname) }),\n"
+            "  limits: { fileSize: 1e6 },\n"
+            "})\n"),
+        "users.py": (
+            "from flask import Blueprint\n\nbp = Blueprint('a', __name__)\n\n\n"
+            "@bp.route('/users/<int:id>', methods=['GET'])\n@token_auth.login_required\ndef get_user(id):\n    return 'ok'\n\n\n"
+            "@bp.route('/users', methods=['POST'])\ndef create_user():\n    return 'ok'\n"),
+    })
+    assert found == set()
+
+
+def test_lockfile_parsers_cover_npm_yarn_and_pnpm_formats():
+    from core.analyzers import dependencies as deps
+
+    npm_v3 = json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"name": "app", "dependencies": {"lodash": "^4"}},
+        "node_modules/lodash": {"version": "4.17.20"},
+        "node_modules/a/node_modules/@scope/b": {"version": "1.0.0", "dev": True},
+        "node_modules/aliased": {"name": "real-name", "version": "2.0.0"},
+        "packages/local": {"version": "0.0.1"},
+        "node_modules/local": {"link": True, "resolved": "packages/local"}}})
+    npm_v1 = json.dumps({"lockfileVersion": 1, "dependencies": {
+        "express": {"version": "4.0.0", "dependencies": {"qs": {"version": "0.6.0"}}},
+        "local": {"version": "file:../local"}}})
+    assert deps.package_lock_packages(npm_v3) == {("lodash", "4.17.20"): False, ("@scope/b", "1.0.0"): True,
+                                                  ("real-name", "2.0.0"): False}
+    assert set(deps.package_lock_packages(npm_v1)) == {("express", "4.0.0"), ("qs", "0.6.0")}
+    yarn_v1 = ('# yarn lockfile v1\n\n"@babel/core@^7.0.0", "@babel/core@^7.1.0":\n  version "7.2.0"\n'
+               '  resolved "https://x"\n\nlodash@^4.17.0:\n  version "4.17.20"\n')
+    berry = ('__metadata:\n  version: 6\n\n"lodash@npm:^4.17.0":\n  version: 4.17.21\n\n'
+             '"app@workspace:.":\n  version: 0.0.0-use.local\n')
+    assert set(deps.yarn_lock_packages(yarn_v1)) == {("@babel/core", "7.2.0"), ("lodash", "4.17.20")}
+    assert set(deps.yarn_lock_packages(berry)) == {("lodash", "4.17.21")}
+    pnpm_v5 = "lockfileVersion: 5.4\npackages:\n  /lodash/4.17.20:\n    resolution: {}\n  /@scope/b/1.0.0_react@18.0.0:\n    resolution: {}\n"
+    pnpm_v9 = "lockfileVersion: '9.0'\npackages:\n  lodash@4.17.21:\n    resolution: {}\n  '@scope/b@1.0.0(react@18.0.0)':\n    resolution: {}\n"
+    pnpm_v5 = pnpm_v5.replace("/lodash/4.17.20:\n    resolution: {}", "/lodash/4.17.20:\n    resolution: {}\n    dev: true")
+    assert deps.pnpm_lock_packages(pnpm_v5) == {("lodash", "4.17.20"): True, ("@scope/b", "1.0.0"): False}
+    assert set(deps.pnpm_lock_packages(pnpm_v9)) == {("lodash", "4.17.21"), ("@scope/b", "1.0.0")}
+
+
+def test_osv_lockfiles_reports_advisories_for_pinned_versions(tmp_path, monkeypatch):
+    from core.analyzers import dependencies as deps
+
+    (tmp_path / "package-lock.json").write_text(json.dumps({"lockfileVersion": 3, "packages": {
+        "": {}, "node_modules/lodash": {"version": "4.17.20"}, "node_modules/ok": {"version": "1.0.0"},
+        "node_modules/build/node_modules/lodash": {"version": "4.17.19", "dev": True}}}, indent=2))
+    (tmp_path / "yarn.lock").write_text("broken: [\n")
+
+    def fake_post(url, body):
+        return {"results": [{"vulns": [{"id": "GHSA-1"}]} if q["package"]["name"] == "lodash" else {}
+                            for q in body["queries"]]}
+
+    monkeypatch.setattr(deps, "osv_post", fake_post)
+    monkeypatch.setattr(deps, "osv_get", lambda vid: {
+        "id": vid, "aliases": ["CVE-2026-9"], "summary": "Prototype pollution", "database_specific": {"severity": "HIGH"},
+        "affected": [{"package": {"name": "lodash", "ecosystem": "npm"},
+                      "ranges": [{"events": [{"introduced": "0"}, {"fixed": "4.17.21"}]}]}]})
+    ctx = Context(root=tmp_path, files=["package-lock.json", "yarn.lock"])
+    analyzer = deps.OsvLockfiles()
+    assert analyzer.applies(ctx)
+    result = analyzer.run(ctx)
+    assert [(f.tool, f.rule, f.severity, f.type, f.path, f.line) for f in result.findings] == [
+        ("osv", "CVE-2026-9", "critical", "security_hotspot", "package-lock.json", 5),
+        ("osv", "CVE-2026-9", "critical", "vulnerability", "package-lock.json", 5)]
+    assert "(development only)" in result.findings[0].message
+    assert "lodash 4.17.20: CVE-2026-9 — fixed in 4.17.21. Prototype pollution" in result.findings[1].message
+    assert result.metrics["vulnerable_dependencies"] == 2
+
+
+def test_dependency_counts_from_both_audits_add_up(monkeypatch, tmp_path):
+    from core import collect
+    from core.analyzers.base import Result
+
+    class Fake:
+        def __init__(self, name, critical):
+            self.name, self.critical = name, critical
+
+        def applies(self, ctx):
+            return True
+
+        def available(self):
+            return True
+
+        def run(self, ctx):
+            result = Result()
+            result.metrics = {"dependency_critical_vulnerabilities": self.critical, "other": self.critical}
+            return result
+
+    monkeypatch.setattr(collect, "ANALYZERS", [Fake("pip-audit", 2), Fake("osv", 3)])
+    combined, _ = collect.run_analyzers(collect.ScanConfig(), Context(root=tmp_path, files=[]), lambda m: None)
+    assert combined.metrics == {"dependency_critical_vulnerabilities": 5, "other": 3}

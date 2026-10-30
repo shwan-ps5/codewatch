@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1] / "benchmarks"
 CACHE = Path(os.environ.get("CODEWATCH_CACHE", Path.home() / ".cache" / "codewatch")) / "benchmarks"
 SECURITY_TYPES = {"vulnerability", "security_hotspot"}
 # Not about the code under test: dependency audits, live pages, coverage import, duplication.
-SKIPPED_ANALYZERS = ["pip-audit", "axe", "coverage", "jscpd"]
+SKIPPED_ANALYZERS = ["pip-audit", "osv", "axe", "coverage", "jscpd"]
 SNIPPET_RE = re.compile(r"vuln-code-snippet vuln-line ([\w ]{1,500})")
 NEARBY_LINES = 3
 

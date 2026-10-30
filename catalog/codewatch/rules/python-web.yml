@@ -1202,7 +1202,7 @@ rules:
                   ...
           - metavariable-regex:
               metavariable: $COND
-              regex: '(?i)(allow|permit|valid|ext|suffix|mime|content_type|image)'
+              regex: '(?i).*(allow|permit|valid|ext|suffix|mime|content_type|image)'
       # Only the stem kept, so the stored file gets an extension the code chose.
       - pattern: os.path.splitext(...)[0]
       - pattern: pathlib.Path(...).stem
@@ -1379,3 +1379,335 @@ rules:
                   <<: *whole-body
                   metavariable: $BODY
       - focus-metavariable: $DATA
+
+  - id: codewatch.python.web.template-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request is compiled as a template, so a user can write template code
+      ({{ ''.__class__.__mro__ }}...) that runs on the server. Pass request data as a template variable,
+      never as the template text; if users must write templates, use jinja2's SandboxedEnvironment.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data compiled as a server-side template
+      cwe: ["CWE-1336: Improper Neutralization of Special Elements Used in a Template Engine"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://portswigger.net/web-security/server-side-template-injection
+        - https://jinja.palletsprojects.com/en/stable/sandbox/
+    pattern-sources: *web-sources
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - *validated-guard
+      - *known-safe
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: jinja2.Template($TEMPLATE, ...)
+              - pattern: jinja2.Environment(...).from_string($TEMPLATE, ...)
+              - pattern: flask.render_template_string($TEMPLATE, ...)
+              - pattern: render_template_string($TEMPLATE, ...)
+              - pattern: mako.template.Template($TEMPLATE, ...)
+              - pattern: django.template.Template($TEMPLATE, ...)
+              - pattern: django.template.Engine(...).from_string($TEMPLATE)
+              - pattern: django.template.engines[$NAME].from_string($TEMPLATE)
+              - pattern: tornado.template.Template($TEMPLATE, ...)
+              - patterns:
+                  - pattern: $ENV.from_string($TEMPLATE, ...)
+                  - pattern-not-inside: |
+                      $ENV = jinja2.sandbox.SandboxedEnvironment(...)
+                      ...
+          - focus-metavariable: $TEMPLATE
+
+  - id: codewatch.python.web.cors-any-origin-with-credentials
+    languages: [python]
+    severity: ERROR
+    message: >-
+      CORS is set up to accept any origin and to allow credentials, so the library echoes back whatever
+      Origin the browser sends: any website can make logged-in requests to this API and read the answers.
+      List the origins that may call it.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Any origin allowed together with credentials
+      cwe: ["CWE-942: Permissive Cross-domain Security Policy with Untrusted Domains"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://portswigger.net/web-security/cors
+        - https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#cross-origin-resource-sharing
+    pattern-either:
+      # flask-cors: origins default to "*", which it reflects when credentials are on.
+      - patterns:
+          - pattern-either:
+              - pattern: flask_cors.CORS(..., supports_credentials=True, ...)
+              - pattern: flask_cors.cross_origin(..., supports_credentials=True, ...)
+          - pattern-not: flask_cors.CORS(..., origins=$ORIGINS, ...)
+          - pattern-not: flask_cors.CORS(..., resources=$RESOURCES, ...)
+          - pattern-not: flask_cors.cross_origin(..., origins=$ORIGINS, ...)
+      - pattern: flask_cors.CORS(..., supports_credentials=True, ..., origins="*", ...)
+      - pattern: flask_cors.CORS(..., origins="*", ..., supports_credentials=True, ...)
+      - pattern: flask_cors.cross_origin(..., supports_credentials=True, ..., origins="*", ...)
+      - pattern: flask_cors.cross_origin(..., origins="*", ..., supports_credentials=True, ...)
+      # Starlette / FastAPI: allow_origins=["*"] with credentials echoes the request's Origin.
+      - patterns:
+          - pattern: $APP.add_middleware($MIDDLEWARE, ..., allow_credentials=True, ...)
+          - pattern-either:
+              - pattern: $APP.add_middleware($MIDDLEWARE, ..., allow_origins=["*"], ...)
+              - pattern: $APP.add_middleware($MIDDLEWARE, ..., allow_origin_regex="=~/^\.[*+]$/", ...)
+      # django-cors-headers settings.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  CORS_ALLOW_CREDENTIALS = True
+                  ...
+              - pattern-inside: |
+                  $ALL = True
+                  ...
+                  CORS_ALLOW_CREDENTIALS = True
+          - pattern-either:
+              - pattern: CORS_ALLOW_ALL_ORIGINS = True
+              - pattern: CORS_ORIGIN_ALLOW_ALL = True
+      # By hand: the request's Origin echoed on a response that also allows credentials.
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  $RESP.headers[$ACAO] = <... $REQ.headers.get($ORIGIN, ...) ...>
+                  ...
+                  $RESP.headers[$ACAC] = $TRUE
+              - pattern: |
+                  $RESP.headers[$ACAC] = $TRUE
+                  ...
+                  $RESP.headers[$ACAO] = <... $REQ.headers.get($ORIGIN, ...) ...>
+              - pattern: |
+                  $RESP[$ACAO] = <... $REQ.headers.get($ORIGIN, ...) ...>
+                  ...
+                  $RESP[$ACAC] = $TRUE
+              - pattern: |
+                  $RESP[$ACAC] = $TRUE
+                  ...
+                  $RESP[$ACAO] = <... $REQ.headers.get($ORIGIN, ...) ...>
+          - metavariable-regex: {metavariable: $ACAO, regex: '(?i)^[''"]access-control-allow-origin[''"]$'}
+          - metavariable-regex: {metavariable: $ACAC, regex: '(?i)^[''"]access-control-allow-credentials[''"]$'}
+          - metavariable-regex: {metavariable: $ORIGIN, regex: '(?i)^[''"](http_)?origin[''"]$'}
+          - metavariable-regex: {metavariable: $TRUE, regex: '(?i)^([''"]true[''"]|True)$'}
+
+  - id: codewatch.python.timing-unsafe-signature-check
+    languages: [python]
+    severity: WARNING
+    message: >-
+      An HMAC or signature is compared with == or !=, which stops at the first differing character: by timing
+      responses an attacker can guess a valid signature byte by byte. Compare with hmac.compare_digest().
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Signature compared in variable time
+      cwe: ["CWE-208: Observable Timing Discrepancy"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://docs.python.org/3/library/hmac.html#hmac.compare_digest
+    patterns:
+      - pattern-either:
+          - pattern: $A == $B
+          - pattern: $A != $B
+      - pattern-either:
+          - pattern: <... hmac.new(...) ...> == $B
+          - pattern: $A == <... hmac.new(...) ...>
+          - pattern: <... hmac.new(...) ...> != $B
+          - pattern: $A != <... hmac.new(...) ...>
+          - patterns:
+              - pattern-inside: |
+                  $MAC = <... hmac.new(...) ...>
+                  ...
+              - pattern-either:
+                  - pattern: $MAC == $B
+                  - pattern: $A == $MAC
+                  - pattern: $MAC != $B
+                  - pattern: $A != $MAC
+      # Comparing lengths or against a constant (an empty value) leaks nothing about the secret.
+      - pattern-not: len(...) == $B
+      - pattern-not: $A == len(...)
+      - pattern-not: $A == "..."
+      - pattern-not: $A == None
+
+  - id: codewatch.python.web.route-without-login
+    languages: [python]
+    severity: WARNING
+    message: >-
+      This view accepts {POST/PUT/PATCH/DELETE} but has no login decorator, while other views in the same module
+      do. Check that anonymous users may really call it; if not, add the same decorator here.
+    # For review: some views are meant to be public; one missing decorator in a protected module often isn't.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Changing view without the login check other views use
+      cwe: ["CWE-306: Missing Authentication for Critical Function"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      references:
+        - https://flask-login.readthedocs.io/en/latest/#flask_login.login_required
+    patterns:
+      - pattern: |
+          @$APP.$ROUTE($PATH, ..., methods=$METHODS, ...)
+          def $F(...):
+            ...
+      - metavariable-regex: {metavariable: $ROUTE, regex: '^route$'}
+      - metavariable-regex: {metavariable: $METHODS, regex: '(?i).*(post|put|patch|delete)'}
+      # Sign-up as POST to the users collection is public by nature.
+      - metavariable-regex: {metavariable: $PATH, regex: '^(?![''"]/(api/)?(v\d+/)?(users?|accounts?|members?)/?[''"]$)'}
+      - metavariable-regex: {metavariable: $PATH, regex: '^(?!(?i:.*(login|logout|register|signup|sign_up|signin|forgot|reset|verify|confirm|activate|token|refresh|oauth|callback|webhook|public|health|status|contact|subscribe)))'}
+      - pattern-not: |
+          @login_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.login_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @jwt_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.jwt_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @fresh_jwt_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @roles_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @roles_accepted(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.roles_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @permission_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.permission_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @admin_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @token_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @requires_auth
+          def $F(...):
+            ...
+      - pattern-not: |
+          @auth_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.auth_required
+          def $F(...):
+            ...
+      - pattern-not: |
+          @auth_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.auth_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @login_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.login_required(...)
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.verify_token
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.verify_password
+          def $F(...):
+            ...
+      - pattern-not: |
+          @$M.require(...)
+          def $F(...):
+            ...
+      # Another view in this module has a login decorator.
+      - pattern-either:
+          - pattern-inside: |
+              @$AUTH
+              def $G(...):
+                ...
+              ...
+          - pattern-inside: |
+              @$AUTH(...)
+              def $G(...):
+                ...
+              ...
+          - pattern-inside: |
+              @$APP.$ROUTE($PATH, ..., methods=$METHODS, ...)
+              def $F(...):
+                ...
+              ...
+              @$AUTH
+              def $G(...):
+                ...
+          - pattern-inside: |
+              @$APP.$ROUTE($PATH, ..., methods=$METHODS, ...)
+              def $F(...):
+                ...
+              ...
+              @$AUTH(...)
+              def $G(...):
+                ...
+      - metavariable-regex: {metavariable: $AUTH, regex: '(?i)(.*\.)?(login_required|jwt_required|fresh_jwt_required|roles_required|roles_accepted|permission_required|admin_required|token_required|requires_auth|auth_required)$'}
+      - focus-metavariable: $F
+
+  - id: codewatch.python.cookie-protection-off
+    languages: [python]
+    severity: INFO
+    message: >-
+      Cookie protection is switched off here: without HttpOnly any injected script can read the cookie, without
+      Secure it travels over plain HTTP, and SameSite=None sends it on cross-site requests. Keep the defaults
+      (HttpOnly, Secure in production, SameSite=Lax) for session and CSRF cookies.
+    # For review: Secure off is common in development settings; SameSite=None is needed for some embeds.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Cookie protection switched off
+      cwe: ["CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag", "CWE-1275: Sensitive Cookie with Improper SameSite Attribute"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://docs.djangoproject.com/en/stable/ref/settings/#session-cookie-httponly
+        - https://flask.palletsprojects.com/en/stable/config/#SESSION_COOKIE_HTTPONLY
+    pattern-either:
+      - pattern: $RESP.set_cookie(..., httponly=False, ...)
+      - pattern: $RESP.set_cookie(..., samesite="None", ...)
+      - pattern: $RESP.set_cookie(..., samesite=None, ...)
+      - patterns:
+          - pattern: $SETTING = False
+          - metavariable-regex: {metavariable: $SETTING, regex: '^SESSION_COOKIE_HTTPONLY$'}
+      - patterns:
+          - pattern: $SETTING = "None"
+          - metavariable-regex: {metavariable: $SETTING, regex: '^(SESSION_COOKIE_SAMESITE|CSRF_COOKIE_SAMESITE)$'}
+      - patterns:
+          - pattern: $CONFIG[$SETTING] = False
+          - metavariable-regex: {metavariable: $SETTING, regex: '^[''"]SESSION_COOKIE_HTTPONLY[''"]$'}
+

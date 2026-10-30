@@ -352,10 +352,21 @@ rules:
           - pattern: await $DATA.$ACCESS(...)
           - metavariable-regex:
               metavariable: $DATA
-              regex: '(?i)(^|\.)(\w*(service|repo|repository|model|dao|store)|db|prisma|collection|knex)$'
+              regex: '(?i)(.*\.)?(\w*(service|repo|repository|model|dao|store)|db|prisma|collection|knex)$'
           - metavariable-regex:
               metavariable: $ACCESS
               regex: '^(?!.*(?i:html|render|template|markup|view|page))(find|get|create|update|save|insert|upsert|delete|remove|query|fetch|load|count)\w*$'
+      # A fixed template rendered with the request's values: these engines escape <%= %>, {{ }} and #{} unless the
+      # template asks for raw output (<%-, {{{, !{, !=, | safe).
+      - patterns:
+          - pattern-either:
+              - pattern: $ENGINE.render($TEMPLATE, ...)
+              - pattern: $ENGINE.renderString($TEMPLATE, ...)
+              - pattern: $ENGINE.compile($TEMPLATE, ...)(...)
+          - metavariable-regex: {metavariable: $ENGINE, regex: '(?i)^(pug|jade|ejs|handlebars|hbs|nunjucks|mustache|eta)$'}
+          - metavariable-regex:
+              metavariable: $TEMPLATE
+              regex: '^[''"`](?![\s\S]*(<%-|\{\{\{|!\{|!=|\|\s*safe|\$\{))[\s\S]*[''"`]$'
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -677,3 +688,103 @@ rules:
           - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
           - metavariable-regex: {metavariable: $SEND, regex: '^(send|json|jsonp|end|write|render)$'}
       - pattern: ctx.body = $BODY
+
+  - id: codewatch.js.template-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request is compiled as a template, so a user can write template code that runs on the
+      server. Pass request data as template variables, never as the template text.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data compiled as a server-side template
+      cwe: ["CWE-1336: Improper Neutralization of Special Elements Used in a Template Engine"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://portswigger.net/web-security/server-side-template-injection
+    pattern-sources: *js-sources
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-guard
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern: $ENGINE.$COMPILE($TEMPLATE, ...)
+                  - metavariable-regex:
+                      metavariable: $ENGINE
+                      regex: '(?i)^(pug|jade|ejs|handlebars|hbs|nunjucks|_|lodash|dot|mustache|hogan|swig|dust|eta|velocity|velocityjs|liquid|liquidjs)$'
+                  - metavariable-regex:
+                      metavariable: $COMPILE
+                      regex: '^(render|compile|renderString|template|compileString|parseAndRender|parseAndRenderSync)$'
+              - pattern: new nunjucks.Environment(...).renderString($TEMPLATE, ...)
+              - pattern: new Liquid(...).parseAndRender($TEMPLATE, ...)
+          - focus-metavariable: $TEMPLATE
+
+  - id: codewatch.js.ldap-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request is built into an LDAP filter, so characters such as * ( ) can change what the
+      search matches (and bypass a login check). Escape values for LDAP filters, or build the filter with
+      ldapjs filter objects (new EqualityFilter({ attribute, value })).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data built into an LDAP filter
+      cwe: ["CWE-90: Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+    pattern-sources: *js-sources
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-guard
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: '$CLIENT.search($BASE, {..., filter: $FILTER, ...}, ...)'
+              - pattern: ldap.parseFilter($FILTER)
+          - focus-metavariable: $FILTER
+
+  - id: codewatch.js.xpath-injection
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Data from the request is built into an XPath expression, so quotes and operators in it can change which
+      nodes are selected (and bypass a check). Pass it as an XPath variable, or allow only expected values.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data built into an XPath expression
+      cwe: ["CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://owasp.org/www-community/attacks/XPATH_Injection
+    pattern-sources: *js-sources
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-guard
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: xpath.select($EXPR, ...)
+              - pattern: xpath.select1($EXPR, ...)
+              - pattern: xpath.evaluate($EXPR, ...)
+              - pattern: xpath.parse($EXPR)
+              - pattern: document.evaluate($EXPR, ...)
+              - pattern: $DOC.evaluate($EXPR, $NODE, ...)
+          - focus-metavariable: $EXPR

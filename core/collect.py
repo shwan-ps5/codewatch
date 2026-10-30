@@ -225,6 +225,11 @@ def is_url(path):
     return path.startswith(("http://", "https://", "file://"))
 
 
+# Counted by more than one analyzer (pip-audit for Python, osv for JavaScript lockfiles): totals, not the last one.
+ADDITIVE_METRICS = {"vulnerable_dependencies", "dependency_vulnerabilities", "dependency_critical_vulnerabilities",
+                    "dependency_manifests_unresolved"}
+
+
 def analyzer_skip_reason(analyzer, cfg, ctx):
     if analyzer.name in cfg.disabled_analyzers:
         return {"status": "disabled"}
@@ -254,7 +259,8 @@ def run_analyzers(cfg, ctx, log):
             continue
         kept = [f for f in result.findings if f.path in tracked or is_url(f.path)]
         combined.findings += kept
-        combined.metrics.update(result.metrics)
+        for key, value in result.metrics.items():
+            combined.metrics[key] = combined.metrics.get(key, 0) + value if key in ADDITIVE_METRICS else value
         combined.covered_lines.update(result.covered_lines)
         combined.coverable_lines.update(result.coverable_lines)
         combined.duplicated_lines.update(result.duplicated_lines)

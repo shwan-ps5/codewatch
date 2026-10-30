@@ -56,8 +56,9 @@ SecurityEval misses are design flaws or plain functions with no request source. 
    Pydantic body model; NestJS `@Body()`/`@Query()`/`@Param()`/`@Headers()`; Next.js API route `req`; Fastify
    `request.body/query/params`. Rules: `catalog/codewatch/rules/python-web.yml`, `javascript-taint.yml`.
 4. **Object fields**: `self.x = request...` in one method reaching a sink in another.
-5. **JS dependency vulnerabilities**: add osv-scanner (lockfiles for npm, yarn, pnpm; also Go, Rust, Java) as an
-   analyzer alongside pip-audit.
+5. **JS dependency vulnerabilities**: done for npm, yarn and pnpm lockfiles by the `osv` analyzer
+   (`core/analyzers/dependencies.py`), which parses them itself and asks OSV's batch API, so no new binary. Go, Rust
+   and Java lockfiles would need the osv-scanner binary in `tools/`; downloading it needs the user's go-ahead.
 6. Re-run everything, then the blind set; update the README table.
 
 ## How things work (non-obvious)

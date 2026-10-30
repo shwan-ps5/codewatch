@@ -2,7 +2,7 @@
 
 vulnerable-node's SAST seeds: one known vulnerability per file plus clean controls that must stay quiet. Not held out: its first scan missed the SQL concatenation, NoSQL operator, prototype pollution and deserialization seeds and raised a false alarm on a clean control, which led to the JS guard sanitizer, SQL value-formatting and prototype-pollution rules. Measures detection and false alarms.
 
-Commit `d68f2a3c92` (BSD-3-Clause), scanned 2026-10-30T22:19:45+00:00.
+Commit `d68f2a3c92` (BSD-3-Clause), scanned 2026-10-30T23:20:10+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 

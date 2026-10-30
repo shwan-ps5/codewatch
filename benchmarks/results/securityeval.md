@@ -2,7 +2,7 @@
 
 SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses were used to add codewatch's crypto/TLS rules, and later its SSRF, regex and log injection rules.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T22:11:17+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T23:09:46+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 

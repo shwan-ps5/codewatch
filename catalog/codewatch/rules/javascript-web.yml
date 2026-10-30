@@ -193,6 +193,17 @@ rules:
           - pattern-inside: multer.diskStorage({...})
           - pattern: '$CB(null, <... $FILE.originalname ...>)'
           - pattern-not: '$CB(null, <... path.parse($FILE.originalname).name ...>)'
+          # The same options check the type: { fileFilter, storage: diskStorage({ filename }) }
+          - pattern-not-inside: '$FN({..., fileFilter: $FILTER, ...})'
+          - pattern-not-inside: '({..., fileFilter: $FILTER, ...})'
+          - pattern-not-inside: '$FN({..., fileFilter: (...) => $BODY, ...})'
+          - pattern-not-inside: '({..., fileFilter: (...) => $BODY, ...})'
+          - pattern-not-inside: '$FN({..., fileFilter: function (...) { ... }, ...})'
+          - pattern-not-inside: '({..., fileFilter: function (...) { ... }, ...})'
+          - pattern-not-inside: '$FN({..., fileFilter, ...})'
+          - pattern-not-inside: '({..., fileFilter, ...})'
+          - pattern-not-inside: '$FN({..., fileFilter(...) { ... }, ...})'
+          - pattern-not-inside: '({..., fileFilter(...) { ... }, ...})'
       # express-fileupload: file.mv(dir + file.name)
       - patterns:
           - pattern: '$FILE.mv(<... $FILE.name ...>, ...)'
@@ -256,3 +267,258 @@ rules:
                   <<: *js-whole-body
                   metavariable: $WHOLE
       - focus-metavariable: $BODY
+
+  - id: codewatch.js.cors-any-origin-with-credentials
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      CORS echoes back whatever Origin the browser sends and also allows credentials, so any website can make
+      logged-in requests to this API and read the answers. List the origins that may call it.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Any origin allowed together with credentials
+      cwe: ["CWE-942: Permissive Cross-domain Security Policy with Untrusted Domains"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://portswigger.net/web-security/cors
+        - https://github.com/expressjs/cors#configuration-options
+    pattern-either:
+      # The cors package: origin: true (or a callback that accepts everything) reflects the request's Origin.
+      - patterns:
+          - pattern-either:
+              - pattern: 'cors({..., origin: true, ...})'
+              - pattern: 'cors({..., origin: ($O, $CB) => $CB(null, true), ...})'
+              - pattern: 'cors({..., origin: function ($O, $CB) { $CB(null, true); }, ...})'
+              - pattern: '$APP.enableCors({..., origin: true, ...})'
+          - pattern-either:
+              - pattern: 'cors({..., credentials: true, ...})'
+              - pattern: '$APP.enableCors({..., credentials: true, ...})'
+      # By hand: the request's Origin echoed on a response that also allows credentials.
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  $RES.$SET($ACAO, <... $REQ.headers.origin ...>);
+                  ...
+                  $RES.$SET2($ACAC, $TRUE);
+              - pattern: |
+                  $RES.$SET2($ACAC, $TRUE);
+                  ...
+                  $RES.$SET($ACAO, <... $REQ.headers.origin ...>);
+              - pattern: |
+                  $RES.$SET($ACAO, <... $REQ.get($ORIGIN) ...>);
+                  ...
+                  $RES.$SET2($ACAC, $TRUE);
+              - pattern: |
+                  $RES.$SET2($ACAC, $TRUE);
+                  ...
+                  $RES.$SET($ACAO, <... $REQ.get($ORIGIN) ...>);
+              - pattern: |
+                  $RES.$SET($ACAO, <... $REQ.header($ORIGIN) ...>);
+                  ...
+                  $RES.$SET2($ACAC, $TRUE);
+              - pattern: |
+                  $RES.$SET2($ACAC, $TRUE);
+                  ...
+                  $RES.$SET($ACAO, <... $REQ.header($ORIGIN) ...>);
+          # An allowlist check around it means only listed origins are echoed.
+          - pattern-not-inside: 'if ($COND) { ... }'
+          - pattern-not-inside: '$COND ? $A : $B'
+          - metavariable-regex: {metavariable: $SET, regex: '^(setHeader|header|set|append)$'}
+          - metavariable-regex: {metavariable: $SET2, regex: '^(setHeader|header|set|append)$'}
+          - metavariable-regex: {metavariable: $ACAO, regex: '(?i)^[''"`]access-control-allow-origin[''"`]$'}
+          - metavariable-regex: {metavariable: $ACAC, regex: '(?i)^[''"`]access-control-allow-credentials[''"`]$'}
+          - metavariable-regex: {metavariable: $TRUE, regex: '^([''"`]true[''"`]|true)$'}
+
+  - id: codewatch.js.timing-unsafe-signature-check
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      An HMAC or signature is compared with === or ==, which stops at the first differing character: by timing
+      responses an attacker can guess a valid signature byte by byte. Compare with crypto.timingSafeEqual().
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Signature compared in variable time
+      cwe: ["CWE-208: Observable Timing Discrepancy"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      references:
+        - https://nodejs.org/api/crypto.html#cryptotimingsafeequala-b
+    pattern-either:
+      - pattern: <... $C.createHmac(...) ...> === $B
+      - pattern: $A === <... $C.createHmac(...) ...>
+      - pattern: <... $C.createHmac(...) ...> !== $B
+      - pattern: $A !== <... $C.createHmac(...) ...>
+      - pattern: <... $C.createHmac(...) ...> == $B
+      - pattern: $A == <... $C.createHmac(...) ...>
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  const $MAC = <... $C.createHmac(...) ...>;
+                  ...
+              - pattern-inside: |
+                  let $MAC = <... $C.createHmac(...) ...>;
+                  ...
+          - pattern-either:
+              - pattern: $MAC === $B
+              - pattern: $A === $MAC
+              - pattern: $MAC !== $B
+              - pattern: $A !== $MAC
+              - pattern: $MAC == $B
+              - pattern: $A == $MAC
+
+  - id: codewatch.js.cookie-without-secure
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      This cookie can be sent over plain HTTP, where it can be intercepted. Set secure: true (and httpOnly:
+      true unless JavaScript needs it).
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Cookie without the Secure flag
+      cwe: ["CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://expressjs.com/en/api.html#res.cookie
+    patterns:
+      - pattern-either:
+          - pattern: $RES.cookie($NAME, $VALUE)
+          - pattern: '$RES.cookie($NAME, $VALUE, {...})'
+          - pattern: '$RES.cookie($NAME, $VALUE, {..., secure: false, ...})'
+      - pattern-not: '$RES.cookie($NAME, $VALUE, {..., secure: $SET, ...})'
+      - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply|ctx\.cookies)$'}
+      # Only cookies that carry a credential: a theme or locale cookie isn't worth intercepting.
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: '(?i).*(sess|sid|token|auth|jwt|remember|login|csrf|xsrf|refresh|access)'
+      # Clearing a cookie sends nothing worth intercepting.
+      - pattern-not: $RES.cookie($NAME, "", ...)
+      - pattern-not: '$RES.cookie($NAME, $VALUE, {..., maxAge: 0, ...})'
+      - pattern-not: '$RES.cookie($NAME, $VALUE, {..., expires: new Date(0), ...})'
+
+  - id: codewatch.js.session-cookie-flags
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      The session cookie's protection is switched off here: without httpOnly any injected script can read the
+      session, without secure it travels over plain HTTP, and sameSite "none" sends it on cross-site requests.
+      Keep httpOnly: true, secure: true (behind a proxy, also set "trust proxy") and sameSite "lax" or "strict".
+    # For review: secure: false is common in development configs.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Session cookie protection switched off
+      cwe: ["CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag", "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute", "CWE-1275: Sensitive Cookie with Improper SameSite Attribute"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      references:
+        - https://github.com/expressjs/session#cookie
+    pattern-either:
+      - pattern: 'session({..., cookie: {..., httpOnly: false, ...}, ...})'
+      - pattern: 'session({..., cookie: {..., secure: false, ...}, ...})'
+      - pattern: 'session({..., cookie: {..., sameSite: "none", ...}, ...})'
+      - pattern: 'cookieSession({..., httpOnly: false, ...})'
+      - pattern: 'cookieSession({..., secure: false, ...})'
+      - pattern: '$RES.cookie($NAME, $VALUE, {..., httpOnly: false, ...})'
+      - pattern: '$RES.cookie($NAME, $VALUE, {..., sameSite: "none", ...})'
+
+  - id: codewatch.js.secret-in-log
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >-
+      A password, token or secret is written to the log, where it is kept and read by more people and systems
+      than the secret itself. Log that it was present, not its value.
+    # For review: the name suggests a secret, but it might be a token's ID or a password-policy setting.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Secret written to the log
+      cwe: ["CWE-532: Insertion of Sensitive Information into Log File"]
+      owasp: ["A09:2025 - Security Logging and Alerting Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude
+    patterns:
+      - pattern-either:
+          - pattern: console.$LEVEL(..., $SECRET, ...)
+          - pattern: 'console.$LEVEL(..., `...${$SECRET}...`, ...)'
+          - patterns:
+              - pattern-either:
+                  - pattern: $LOGGER.$LEVEL(..., $SECRET, ...)
+                  - pattern: '$LOGGER.$LEVEL(..., `...${$SECRET}...`, ...)'
+              - metavariable-regex: {metavariable: $LOGGER, regex: '(?i)^(this\.)?(log|logger|winston|pino|bunyan)$'}
+      - metavariable-regex: {metavariable: $LEVEL, regex: '^(log|info|warn|error|debug|trace|fatal)$'}
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: '(?i)^([\w$]+\.)*[\w$]*(password|passwd|secret|token|api_?key|authorization|credentials?|private_?key)$'
+
+  - id: codewatch.js.route-without-auth
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      This route changes data but has no authentication middleware, while other routes in the same file do.
+      Check that anonymous users may really call it; if not, add the same middleware here.
+    # For review: some routes are meant to be public; one missing middleware in a protected router often isn't.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Changing route without the authentication other routes use
+      cwe: ["CWE-306: Missing Authentication for Critical Function"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html
+    patterns:
+      - pattern-either:
+          - pattern: $APP.$METHOD($PATH, $HANDLER)
+          - patterns:
+              - pattern: $APP.$METHOD($PATH, $MW1, $HANDLER)
+              - metavariable-regex: {metavariable: $MW1, regex: '^(?!(?i:.*(auth|login|logged|protect|guard|session|passport|jwt|token|permission|role|admin|require|verify|ensure|isuser|currentuser))).*$'}
+          - patterns:
+              - pattern: $APP.$METHOD($PATH, $MW1, $MW2, $HANDLER)
+              - metavariable-regex: {metavariable: $MW1, regex: '^(?!(?i:.*(auth|login|logged|protect|guard|session|passport|jwt|token|permission|role|admin|require|verify|ensure|isuser|currentuser))).*$'}
+              - metavariable-regex: {metavariable: $MW2, regex: '^(?!(?i:.*(auth|login|logged|protect|guard|session|passport|jwt|token|permission|role|admin|require|verify|ensure|isuser|currentuser))).*$'}
+      - metavariable-regex: {metavariable: $METHOD, regex: '^(post|put|patch|delete)$'}
+      - metavariable-regex: {metavariable: $APP, regex: '(?i)^(app|router|\w*router|api|server)$'}
+      - metavariable-regex: {metavariable: $PATH, regex: '^[''"`]/'}
+      # Routes that are public by nature, and sign-up as POST to the users collection.
+      - pattern-not: $APP.post("=~/^\/(api\/)?(v\d+\/)?(users?|accounts?|members?)\/?$/", ...)
+      - pattern-not: $APP.$METHOD("=~/(?i).*(login|logout|register|signup|sign-up|sign_up|signin|sign-in|forgot|reset|verify|confirm|activate|token|refresh|oauth|callback|webhook|public|health|status|contact|subscribe|newsletter)/", ...)
+      # Another route in this file names an authentication middleware first.
+      - pattern-either:
+          - pattern-inside: |
+              $APP.$OTHER($OTHERPATH, $AUTH, ...);
+              ...
+          - pattern-inside: |
+              $APP.$METHOD($PATH, ...);
+              ...
+              $APP.$OTHER($OTHERPATH, $AUTH, ...);
+      - metavariable-regex: {metavariable: $AUTH, regex: '(?i).*(auth|login|logged|protect|guard|session|passport|jwt|token|permission|role|admin|require|verify|ensure|isUser|currentUser)'}
+      - metavariable-regex: {metavariable: $OTHER, regex: '^(get|post|put|patch|delete|all)$'}
+
+  - id: codewatch.js.upload-without-limits
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >-
+      multer is set up without limits, so a client can send files of any size and number until the disk or
+      memory runs out. Set limits: { fileSize, files }.
+    # For review: a proxy in front may already cap the request size.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: File uploads without a size limit
+      cwe: ["CWE-770: Allocation of Resources Without Limits or Throttling"]
+      owasp: ["A06:2025 - Insecure Design"]
+      references:
+        - https://github.com/expressjs/multer#limits
+    patterns:
+      - pattern-either:
+          - pattern: multer()
+          - pattern: 'multer({...})'
+      - pattern-not: 'multer({..., limits: $LIMITS, ...})'
+

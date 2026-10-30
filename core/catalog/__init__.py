@@ -26,6 +26,7 @@ ANY = "any"
 # Issues whose rule is not a catalogue code: pip-audit names the advisory, detect-secrets the secret type.
 ISSUE_RULE_ALIASES = {
     "pip-audit": "pip-audit/vulnerable-dependency",
+    "osv": "osv/vulnerable-dependency",
     "detect-secrets": "detect-secrets/hard-coded-secret",  # pragma: allowlist secret
 }
 

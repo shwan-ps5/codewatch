@@ -2,7 +2,7 @@
 
 SecurityEval's Copilot-generated answers to the same prompts, each manually labelled vulnerable or safe. Held out: never used to write or tune codewatch rules. Measures detection and false alarms.
 
-Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T22:11:57+00:00.
+Commit `6f4fb70f78` (none stated (research dataset)), scanned 2026-10-30T23:10:37+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
