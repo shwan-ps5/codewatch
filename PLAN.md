@@ -53,9 +53,19 @@ SecurityEval misses are design flaws or plain functions with no request source. 
   | cve-pairs-javascript | 1/10 / 1/10 | 4/10 / 4/10 |
 
   Its result files (`benchmarks/results/cve-pairs-*`) were left uncommitted.
-- The CVE suites are slow (Python ~4.5 h on the laptop, which overheated); run them on the desktop:
-  `venv/bin/python benchmarks/devtools.py bench cve-pairs-python cve-pairs-javascript`, then commit the results
-  as the CVE baseline for 799955c.
+- The CVE suites are slow (Python ~4.5 h on the laptop, which overheated); run them on the desktop and commit
+  the results as the CVE baseline. Fresh machine setup (needs Python 3, Node 20+, git):
+
+  ```
+  git clone https://github.com/shwan-ps5/codewatch.git && cd codewatch && git checkout detection-gaps
+  python3 -m venv venv && venv/bin/pip install -e '.[dev,mcp]'
+  make tools
+  venv/bin/python manage.py migrate
+  venv/bin/pytest -q                      # should be 135 passed
+  venv/bin/python benchmarks/devtools.py bench cve-pairs-python cve-pairs-javascript
+  ```
+
+  Suites and CVE repos download themselves into `~/.cache/codewatch/` on first run.
 
 What to work on next, from that run (these suites are not held out; note in `suites.json` when a case drives a
 rule):
