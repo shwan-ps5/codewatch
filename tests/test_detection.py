@@ -728,6 +728,10 @@ def test_parameters_of_functions_nothing_calls_are_left_for_review(tmp_path):
                    "def evaluate(expr):\n    return eval(expr)\n\n\n"
                    "def _private(expr):\n    return eval(expr)\n"),
         "main.py": "from lib import evaluate\n\nprint(evaluate('1 + 1'))\n",
+        # From GHSA-h6m6-jj8v-94jj (litellm) at its fix: an int can't carry SQL.
+        "spend.py": ("async def top(limit: int = Query(default=None), name: str = ''):\n"
+                     "    await db.query_raw(f'SELECT * FROM spend LIMIT {limit}')\n"
+                     "    await db.query_raw(f'SELECT * FROM spend WHERE name = {name}')\n"),
         "dao.js": ("async function findUser(body) {\n  return db.collection('users').findOne(body)\n}\n"
                    "module.exports = { findUser }\n"),
     }
@@ -737,6 +741,7 @@ def test_parameters_of_functions_nothing_calls_are_left_for_review(tmp_path):
     found = {(f.path, f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings
              if "nothing in the project calls" in f.message}
     assert found == {("lib.py", 5, "unsafe-deserialization", "security_hotspot"),
+                     ("spend.py", 3, "sql-injection", "security_hotspot"),
                      ("dao.js", 2, "nosql-injection", "security_hotspot")}
 
 
@@ -1354,8 +1359,9 @@ def test_route_parameter_xss_and_file_responses(tmp_path):
 
 def test_path_prefix_checks(tmp_path):
     """From GHSA-8wqc-v2q8-vff2 (mockoon): a resolved path checked with startsWith against a base without a trailing
-    separator lets a sibling directory sharing the prefix through. For review; base + sep, path.relative(),
-    is_relative_to() and commonpath() are fine, and so is a URL prefix check on the request path."""
+    separator lets a sibling directory sharing the prefix through. For review; base + sep and path.relative() are fine,
+    and so is a URL prefix check on the request path. JavaScript only: the OWASP Benchmark for Python labels the same
+    check safe in its path traversal cases."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     found = semgrep_findings(tmp_path, {
@@ -1385,49 +1391,127 @@ def test_path_prefix_checks(tmp_path):
             '  const staticBaseDir = m ? resolve(m[1]) : null;\n'
             "  if (!resolvedPath.startsWith(staticBaseDir)) throw new Error('x');\n"
             '}\n'),
-        "files.py": (
-            'import os\n'
-            'from pathlib import Path\n'
-            '\n'
-            '\n'
-            'def a(name):\n'
-            '    base = os.path.realpath(ROOT)\n'
-            '    target = os.path.realpath(os.path.join(base, name))\n'
-            '    if not target.startswith(base):\n'
-            '        raise ValueError\n'
-            '\n'
-            '\n'
-            'def b(name):\n'
-            '    base = os.path.realpath(ROOT) + os.sep\n'
-            '    target = os.path.abspath(os.path.join(base, name))\n'
-            '    if not target.startswith(base):\n'
-            '        raise ValueError\n'
-            '    if not target.startswith(os.path.join(ROOT, "")):\n'
-            '        raise ValueError\n'
-            '    if os.path.commonpath([base, target]) != base:\n'
-            '        raise ValueError\n'
-            '\n'
-            '\n'
-            'def c(name):\n'
-            '    base = Path(ROOT).resolve()\n'
-            '    target = (base / name).resolve()\n'
-            '    if not str(target).startswith(str(base)):\n'
-            '        raise ValueError\n'
-            '    if not target.is_relative_to(base):\n'
-            '        raise ValueError\n'
-            '\n'
-            '\n'
-            'def d(request):\n'
-            '    if request.path.startswith(settings.STATIC_URL):\n'
-            '        return None\n'
-            '    full = os.path.normpath(os.path.join(MEDIA_ROOT, request.GET["f"]))\n'
-            '    if full.startswith(MEDIA_ROOT):\n'
-            '        return open(full)\n'),
     })
     assert found == {
         ("files.js", 7, "path-prefix-check", "security_hotspot"),
         ("files.js", 24, "path-prefix-check", "security_hotspot"),
-        ("files.py", 8, "path-prefix-check", "security_hotspot"),
-        ("files.py", 26, "path-prefix-check", "security_hotspot"),
-        ("files.py", 36, "path-prefix-check", "security_hotspot"),
+    }
+
+
+def test_filter_links_built_from_the_current_url(tmp_path):
+    """A URL object made from the page's own address keeps its origin when only its query or path changes (a false
+    alarm in one of the maintainer's own projects); a redirect to what its query holds, or after its href or host is
+    replaced, is still flagged."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "nav.js": (
+            'function a(filterValue) {\n'
+            '  const url = new URL(window.location.href);\n'
+            "  url.searchParams.set('difficulty', filterValue);\n"
+            '  window.location.href = url.toString();\n'
+            '}\n'
+            'function b() {\n'
+            '  const url = new URL(window.location.href);\n'
+            "  window.location.href = url.searchParams.get('next');\n"
+            '}\n'
+            'function c() {\n'
+            '  const url = new URL(location.href);\n'
+            "  url.href = url.searchParams.get('next');\n"
+            '  window.location.href = url.toString();\n'
+            '}\n'
+            'function d() {\n'
+            '  const url = new URL(document.URL);\n'
+            "  url.pathname = '/list';\n"
+            '  window.location.href = url.href;\n'
+            '}\n')})
+    assert found == {("nav.js", 8, "open-redirect", "vulnerability"), ("nav.js", 13, "open-redirect", "vulnerability")}
+
+
+def test_session_stores_records_looked_up_by_request_values(tmp_path):
+    """From GHSA-9x43-5qcq-h79q (Grappelli): a row looked up by a request value is the database's record, so storing
+    it in the session doesn't cross a trust boundary; storing the request value itself does."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "views.py": (
+            'from django.shortcuts import get_object_or_404\n'
+            '\n'
+            '\n'
+            'def a(request, object_id):\n'
+            '    user = User.objects.get(pk=request.GET["id"])\n'
+            '    request.session["user"] = {"id": user.id, "name": user.username}\n'
+            '\n'
+            '\n'
+            'def b(request):\n'
+            '    team = get_object_or_404(Team, pk=request.POST["team"])\n'
+            '    request.session["team"] = team.pk\n'
+            '\n'
+            '\n'
+            'def c(request):\n'
+            '    request.session["team"] = request.POST["team"]\n')})
+    assert found == {("views.py", 15, "trust-boundary", "vulnerability")}
+
+
+def test_helpers_that_return_request_data(tmp_path):
+    """A call to a function that returns request data is request data where that function is visible; what a helper
+    looks up with the request (a user by id) isn't, and neither is a view's response."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "helpers.py": (
+            "from flask import request\n\n\n"
+            "def get_param(name):\n"
+            "    return request.args.get(name)\n\n\n"
+            "def get_cmd():\n"
+            "    return get_param('cmd')\n\n\n"
+            "def current_user():\n"
+            "    return User.query.get(request.args['id'])\n"),
+        "views.py": (
+            "import os\n\nfrom helpers import current_user, get_cmd, get_param\n\n\n"
+            "def run():\n"
+            "    os.system(get_param('cmd'))\n"
+            "    os.system(get_cmd())\n"
+            "    os.system('ls ' + current_user().name)\n"),
+        "other.py": (
+            "import os\n\n\n"
+            "def get_param(name):\n"
+            "    return name\n\n\n"
+            "def run():\n"
+            "    os.system(get_param('ls'))\n"),
+        # From the OWASP Benchmark for Python: a GET view that returns the POST view's response.
+        "pages.py": (
+            "from flask import make_response, request\n\n\n"
+            "@app.route('/p', methods=['GET'])\n"
+            "def page_get():\n"
+            "    return page_post()\n\n\n"
+            "@app.route('/p', methods=['POST'])\n"
+            "def page_post():\n"
+            "    name = request.form['name']\n"
+            "    response = make_response(('Saved', {'X-Name': name}))\n"
+            "    return response\n"),
+        # From pygoat: a class-based view's get() isn't what requests.get() calls.
+        "challenge.py": (
+            "import requests\n\n\n"
+            "class Lab(View):\n"
+            "    def get(self, request):\n"
+            "        return request.GET['name']\n\n\n"
+            "def ping():\n"
+            "    requests.get(settings.HEALTH_URL, timeout=5)\n"),
+        "util.js": (
+            "function getName(req) {\n"
+            "  return req.query.name;\n"
+            "}\n"
+            "module.exports = { getName };\n"),
+        "app.js": (
+            "const { exec } = require('child_process');\n"
+            "const { getName } = require('./util');\n"
+            "app.get('/a', (req, res) => {\n"
+            "  exec('ls ' + getName(req));\n"
+            "});\n"),
+    })
+    assert found == {
+        ("views.py", 7, "command-injection", "vulnerability"),
+        ("views.py", 8, "command-injection", "vulnerability"),
+        ("app.js", 4, "command-injection", "vulnerability"),
     }

@@ -53,3 +53,21 @@ def type_route_converters(source):
         raw = lines[row - 1].encode()
         lines[row - 1] = (raw[:col] + text.encode() + raw[col:]).decode()
     return "".join(lines)
+
+
+SCALAR_RE = re.compile(r"^(typing\.)?(Optional\[)?(int|float|bool|(uuid\.)?UUID|(datetime\.)?(date|datetime|time)|"
+                       r"(decimal\.)?Decimal|uuid_str)\]?$|^(int|float|bool) \| None$")
+
+
+def scalar_parameters(source):
+    """{(function, parameter)} for parameters annotated with a type that can't carry text: int, bool, UUID, a date,
+    or (after type_route_converters) a Flask converter other than string and path."""
+    source = type_route_converters(source) or source
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        return set()
+    return {(node.name, arg.arg)
+            for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs
+            if arg.annotation is not None and SCALAR_RE.match(ast.unparse(arg.annotation))}

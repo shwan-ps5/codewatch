@@ -2,13 +2,13 @@
 
 Vulnerable-Code-Snippets: small vulnerable JS/TS examples filed by weakness. Held out: never used to write or tune codewatch rules. Measures detection only; every snippet is vulnerable.
 
-Commit `07669239ed` (none stated), scanned 2026-10-31T11:52:00+00:00.
+Commit `07669239ed` (none stated), scanned 2026-10-31T14:40:58+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
 ## Verdict mode
 
-**11 of 22 vulnerable files flagged for their CWE (50%); 50% have some security finding**
+**11 of 22 vulnerable files flagged for their CWE (50%); 55% have some security finding**
 
 | CWE | Flagged | Files |
 |---|---|---|

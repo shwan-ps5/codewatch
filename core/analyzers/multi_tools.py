@@ -32,10 +32,12 @@ from .constant_branches import blank_dead_branches
 from .containers import track_slots
 from .match_statements import match_as_if
 from .python_tools import LineCache, complexity_severity, security_purpose
-from .route_converters import type_route_converters
+from .route_converters import scalar_parameters, type_route_converters
 from .slices import index_slices
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
+JS_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"}
+RETURNER_MAX_JS_BYTES = 200_000
 SEMGREP_TYPE = {"security": VULNERABILITY, "correctness": BUG}
 
 CPPCHECK_SEVERITY = {
@@ -97,7 +99,9 @@ class Semgrep(Analyzer):
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
-            rules = custom_rules + summaries_module.via_rules(custom_rules, summaries)
+            returners = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
+            rules = (custom_rules + summaries_module.via_rules(custom_rules, summaries)
+                     + summaries_module.from_rules(custom_rules, returners, summaries))
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             if rules:
                 (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
@@ -117,10 +121,14 @@ class Semgrep(Analyzer):
             extra = item["extra"]
             metadata = extra.get("metadata", {})
             check_id = item["check_id"].removesuffix(summaries_module.VIA_SUFFIX)
+            via = check_id != item["check_id"]
+            check_id = check_id.removesuffix(summaries_module.FROM_SUFFIX)
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
             custom_id = next((cid for cid in custom_ids if check_id.endswith(cid)), None)
-            if check_id != item["check_id"] and not self.via_visible(ctx, path, extra["message"],
-                                                                      summaries.get(custom_id, ())):
+            if via and not self.via_visible(ctx, path, extra["message"], summaries.get(custom_id, ())):
+                continue
+            if (check_id != item["check_id"] and not via
+                    and not self.from_visible(ctx, path, extra["message"], returners.get(custom_id, ()))):
                 continue
             kind = semgrep_type(check_id, metadata)
             # codewatch's own taint rule for this weakness already followed the data here; a registry rule that
@@ -141,9 +149,11 @@ class Semgrep(Analyzer):
                         SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, extra["message"].strip(),
                         path, item["start"]["line"], item["end"]["line"])
             )
-        direct = {(f.rule, f.path, f.line) for f in result.findings if not summaries_module.VIA_RE.search(f.message)}
-        result.findings = [f for f in result.findings if not (summaries_module.VIA_RE.search(f.message)
-                                                              and (f.rule, f.path, f.line) in direct)]
+        def derived(f):
+            return summaries_module.VIA_RE.search(f.message) or summaries_module.FROM_RE.search(f.message)
+
+        direct = {(f.rule, f.path, f.line) for f in result.findings if not derived(f)}
+        result.findings = [f for f in result.findings if not (derived(f) and (f.rule, f.path, f.line) in direct)]
         result.findings += self.uncalled_entry_points(ctx, custom_rules, hits, result.findings)
         return result
 
@@ -156,10 +166,13 @@ class Semgrep(Analyzer):
         files = [(f, read_source(ctx.root / f) or "") for f in ctx.files_with(self.extensions & CODE)]
         used = summaries_module.referenced_names(files)
         rules = {r["id"]: r for r in custom_rules}
+        scalars = {f: scalar_parameters(text) for f, text in files if f.endswith(".py")}
         seen = {(f.rule, f.path, f.line) for f in findings}
         out = []
         for rule_id, path, line, func, param in sorted(hits):
             if func in used or func.startswith("_") or is_test_file(path) or (rule_id, path, line) in seen:
+                continue
+            if (func, param) in scalars.get(path, ()):
                 continue
             if ctx.focus is not None and path not in ctx.focus:
                 continue
@@ -197,6 +210,40 @@ class Semgrep(Analyzer):
                 break
             summaries = known = merged
         return summaries, hits
+
+    def find_returners(self, ctx, custom_rules, targets, originals, work):
+        """Pass 3 of summaries.py: which functions return request data, directly or from returners found before."""
+        returners = {}
+        # An unminified library bundled with the app (materialize.js, 366 KB) multiplies this pass's time by ten,
+        # and big single-file apps are Python's habit, not JavaScript's.
+        targets = [t for t in targets
+                   if Path(t).suffix not in JS_SUFFIXES or (ctx.root / t).stat().st_size <= RETURNER_MAX_JS_BYTES]
+        for _ in range(summaries_module.MAX_DEPTH):
+            rules = summaries_module.returner_rules(custom_rules, returners)
+            if not rules or not targets:
+                break
+            config = work / "returners.yml"
+            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+            data = self.scan(ctx, ["--config", str(config)], targets)
+            ids = [r["id"] for r in rules]
+            found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
+                      ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
+                      item["extra"]["message"].strip())
+                     for item in data["results"]]
+            more = summaries_module.parse_returners(found, lambda rel: read_source(ctx.root / rel))
+            merged = summaries_module.merge(returners, more)
+            if merged is None:
+                break
+            returners = merged
+        return returners
+
+    @staticmethod
+    def from_visible(ctx, path, message, returners):
+        match = summaries_module.FROM_RE.search(message.strip())
+        if not match:
+            return False
+        defining = {p for func, p in returners if func == match.group(1)}
+        return bool(defining) and summaries_module.visible(path, defining, lambda rel: read_source(ctx.root / rel))
 
     @staticmethod
     def via_visible(ctx, path, message, summaries):

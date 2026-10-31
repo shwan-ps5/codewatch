@@ -68,6 +68,21 @@ SecurityEval misses are design flaws or plain functions with no request source. 
   ```
 
   Suites and CVE repos download themselves into `~/.cache/codewatch/` on first run.
+- Re-run after items 1-3 below (commit dfb21c4 plus the Python path-prefix hotspot, since removed), on the
+  desktop in about 1 h 20 min for all suites:
+
+  | Suite | Verdict found / still flagged | Review found / still flagged |
+  |---|---|---|
+  | cve-pairs-python | 5/14 / 1/14 | 6/14 / 2/14 |
+  | cve-pairs-javascript | 0/10 / 0/10 | 3/10 / 3/10 |
+
+  Python: Parsl, litellm and changedetection.io are new. Parsl's "still flagged" is a correct finding the fix
+  didn't touch: it parameterised the two views named in the advisory, but `queries/pandas.py` still `%`-formats
+  `workflow_id` into SQL, reached from `views.py:169,175` (behind a lookup by the same id that injected text would
+  fail, which a scanner can't see). litellm's review-only hit at its fix was the uncalled-entry-point hotspot on
+  `limit: int = fastapi.Query(...)`; parameters typed int/float/bool/UUID/date are now skipped there. JS: the
+  oils-js hit is gone (it was a false alarm) and mockoon is found by `path-prefix-check`; the review drop from 4 to
+  3 is oils-js. Quick suites unchanged except OWASP Python review path traversal, below.
 
 What to work on next, from that run (these suites are not held out; note in `suites.json` when a case drives a
 rule):
@@ -77,12 +92,29 @@ rule):
    advisory's bug: it was an HTTPS-upgrade redirect to `req.headers.host` + `req.url`, now quiet, so JS verdict
    detection should drop to 0/10 and still-flagged to 0/10. What's left on oils-js is `custom-response.js:17`, a
    real trailing-slash redirect of `req.url` (`//evil.com/`) that the fix doesn't cover. Grappelli's fix commit
-   still gets a trust-boundary hit at `switch.py:73`, which stores a database user's id in the session: likely
-   noise, look at it later.
-2. JS path traversal: 0 of 5 CWE-22 cases found. Look at what source/sink shapes the misses use (Fastify, Koa,
-   static-file helpers, `path.join` with `decodeURIComponent`).
-3. Python command injection (GHSA-gjxm, -2689, -xv5p) and SQL injection (GHSA-f2mf, -h6m6; only bandit B608
-   hotspots fire) misses: likely sources the rules don't know (steps 2-4 below).
+   still got a trust-boundary hit at `switch.py:73`, which stores a database user's id in the session: noise,
+   fixed by treating ORM lookups (`Model.objects.get(...)`, `get_object_or_404`, `Model.query.first()`) as
+   sanitizers for that rule.
+2. Done (2026-10-31). None of the five JS CWE-22 misses is a source/sink shape a taint rule lacks: both Backstage
+   cases (GHSA-7mfx, -9ghw) are flawed checks in front of Express's static/proxy middleware, gitlab-mcp (GHSA-cv3r)
+   is missing authentication and its path comes from MCP tool arguments, and fastify-static (GHSA-83w8) is the
+   library itself. Mockoon (GHSA-8wqc) is a prefix-only containment check (`resolved.startsWith(base)`), now the
+   `path-prefix-check` hotspot for JS. It also flags `own-app-5/packages/server/src/main.ts:57` in the user's own
+   repo. A Python version was tried and removed: the OWASP Benchmark for Python labels exactly this check
+   (`str((base / name).resolve()).startswith(str(base))`) safe in 29 path traversal cases, review false alarms
+   went from 2% to 30%, and no Python case needed it.
+3. Done (2026-10-31). Python taint sources were only `request`: Flask route parameters and FastAPI parameters
+   are now sources (text-typed only; Flask converters other than string/path are written on the scanned copy as
+   annotations by `core/analyzers/route_converters.py`), with pandas `read_sql*`, Prisma `query_raw`/`execute_raw`
+   and `exec_driver_sql` as SQL sinks. Checked file by file: Parsl (GHSA-f2mf), litellm (GHSA-h6m6) and
+   changedetection.io (GHSA-8whx, XSS) flagged before the fix (confirmed by the re-run above); ordinary apps, the
+   user's repos and the Python quick suites unchanged. FastAPI Pydantic body models are not sources yet (a model parameter such as
+   `item_in: ItemCreate` looks like `session: SessionDep`; would need the class to be a BaseModel).
+   Not chased, no rule can see them: dtale (GHSA-gjxm, a settings flag), Whoogle (GHSA-2689, pickle of a cookie,
+   filed as CWE-78), Fugue (GHSA-xv5p, the fix only logs a warning), and the open-redirect misses that are
+   bypassable validators (pyload `is_safe_url`, Airflow `get_safe_url`), a stored URL (Superset) or a Referer
+   redirect, which codewatch deliberately treats as safe (cg). open-webui GHSA-frvj is an encoding bypass of a
+   guard; GHSA-8gh5 is an uploaded HTML file served inline.
 4. Then continue the steps below, re-running the CVE suites after each.
 
 Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
@@ -97,9 +129,22 @@ knowledge.
    - Ordinary apps: a few popular, well-maintained Django, FastAPI, Express and NestJS projects, to measure false
      alarms on real code. Record them under "Repos" below.
    - Keep a separate blind set (a few of each) that is scanned only at the end of this plan.
-2. **Source-returning helpers**: summaries follow data into helpers, not out. Add a pass with request sources
-   and `return` as the sink to find functions that return request data, then treat calls to them as sources
-   (`core/analyzers/summaries.py`, same visibility rules).
+2. **Source-returning helpers**: done (2026-10-31). Pass 3 in `core/analyzers/summaries.py` runs each taint rule
+   with `return` as the sink (per rule, so a helper returning `int(...)` isn't a SQL returner), up to MAX_DEPTH
+   deep, and the final rules get a `.from` variant whose sources are calls to those functions, checked for
+   visibility like `.via`. Not returners: values looked up with the request data (ORM queries, `find*`/`load*`/
+   `decode*`/`get_current_user*`), route handlers (a GET view returning the POST view's response gave 5 OWASP
+   XSS verdict false alarms), and handler-named methods (`get`, `post`, `dispatch`...: a Django class-based
+   view's `get` made pygoat's `requests.get(settings URL)` an SSRF). Effect: ordinary apps still 0; on the user's
+   repos one new finding, `own-app-5/packages/client/src/game.ts:338` (XSS), a real flow from `?server=` through
+   `defaultServer()`/`loadOnline()` into innerHTML, but inside a double-quoted attribute with `"` stripped, so not
+   exploitable; a rule can't see attribute context, left as is. On the held-out vulnerable-snippets-js, "any
+   security" went from 50% to 55% only because `PostMessage Security/challenge1.js` gets an open-redirect for
+   `get_domain()` (the page's own origin) in a query string: noise on a sample vulnerable for another reason,
+   not a detection, and not tuned on. Cost: the first version made own-app-5 14 s -> 153 s and dvpwa 42 s -> 117 s.
+   The JS sink `class $C { ... $FUNC(...) { ... } ... }` was 42 of 45 s per pass on own-app-5 (now
+   `$FUNC(...) { ... }`, same results, 4 s), and vendored unminified libraries (dvpwa's 366 KB materialize.js)
+   took 23 s per pass (pass 3 now skips JS files over 200 KB). Now own-app-5 27 s, dvpwa 47 s.
 3. **Framework sources**: FastAPI parameters declared with `Query()`/`Path()`/`Body()`/`Form()`/`Header()` or a
    Pydantic body model; NestJS `@Body()`/`@Query()`/`@Param()`/`@Headers()`; Next.js API route `req`; Fastify
    `request.body/query/params`. Rules: `catalog/codewatch/rules/python-web.yml`, `javascript-taint.yml`.

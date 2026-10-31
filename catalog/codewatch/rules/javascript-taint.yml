@@ -451,6 +451,29 @@ rules:
           - pattern: $REQ.$PATH
           - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"`]https?://'}
           - metavariable-regex: {metavariable: $PATH, regex: '^(url|originalUrl|path)$'}
+      # A URL object made from the page's own address keeps its origin when only its path or query is changed
+      # (a filter link). What its query holds is still tainted: only the whole URL is clean.
+      - patterns:
+          - pattern-inside: |
+              $U = new URL($LOC);
+              ...
+          - pattern-not-inside: |
+              $U.href = $V;
+              ...
+          - pattern-not-inside: |
+              $U.host = $V;
+              ...
+          - pattern-not-inside: |
+              $U.hostname = $V;
+              ...
+          - pattern-not-inside: |
+              $U.protocol = $V;
+              ...
+          - pattern-either:
+              - pattern: $U.toString()
+              - pattern: $U.href
+              - pattern: String($U)
+          - metavariable-regex: {metavariable: $LOC, regex: '^((window|document)\.)?(location(\.href)?|URL)$'}
     pattern-sinks:
       - patterns:
           - pattern-either:

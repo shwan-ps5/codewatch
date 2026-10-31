@@ -784,6 +784,14 @@ rules:
       - patterns:
           - pattern: $AUTH(...)
           - metavariable-regex: {metavariable: $AUTH, regex: '(?i)(.*\.)?(login|authenticate|verify_\w{1,30}|check_password)$'}
+      # A row looked up by a request value is the database's record, not the request's (GHSA-9x43-5qcq-h79q,
+      # Grappelli: the switched-from user's id and name).
+      - pattern: get_object_or_404(...)
+      - patterns:
+          - pattern-either:
+              - pattern: $MODEL.objects.$QUERY(...)
+              - pattern: $MODEL.query.$QUERY(...)
+          - metavariable-regex: {metavariable: $QUERY, regex: '^(get|filter|first|get_or_404|first_or_404|one|one_or_none|filter_by)$'}
     pattern-sinks:
       - patterns:
           - pattern-either: &session-store
@@ -1799,50 +1807,3 @@ rules:
       - patterns:
           - pattern: $CONFIG[$SETTING] = False
           - metavariable-regex: {metavariable: $SETTING, regex: '^[''"]SESSION_COOKIE_HTTPONLY[''"]$'}
-
-
-  - id: codewatch.python.web.path-prefix-check
-    languages: [python]
-    severity: INFO
-    message: >-
-      A resolved path is checked against its base directory with startswith, and the base doesn't end in a
-      separator, so "/srv/data-evil/x" passes a check for "/srv/data". Use Path.is_relative_to() or
-      os.path.commonpath([base, target]) == base, or check against os.path.join(base, "").
-    # For review: harmless if nothing outside the base shares its prefix, which the code can't show.
-    metadata:
-      category: security
-      subcategory: [audit]
-      type: security_hotspot
-      title: Path containment checked by string prefix
-      cwe: ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"]
-      owasp: ["A01:2025 - Broken Access Control"]
-      references:
-        - https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.is_relative_to
-        - https://docs.python.org/3/library/os.path.html#os.path.commonpath
-    patterns:
-      - pattern-either:
-          - pattern: $P.startswith($BASE)
-          - pattern: str($P).startswith(str($BASE))
-      - pattern-either:
-          - pattern-inside: |
-              $P = $FN(...)
-              ...
-          - pattern-inside: |
-              $BASE = $FN(...)
-              ...
-          - pattern-inside: |
-              $P = ($X / $Y).$FN(...)
-              ...
-          - pattern-inside: |
-              $BASE = $X.$FN(...)
-              ...
-          - pattern-inside: |
-              $BASE = $FN(...) if $COND else $OTHER
-              ...
-      - metavariable-regex: {metavariable: $FN, regex: '^(os\.path\.)?(realpath|abspath|normpath|join|resolve)$'}
-      - pattern-not: $P.startswith("...")
-      - pattern-not: $P.startswith($X + $SEP)
-      - pattern-not: $P.startswith(os.path.join(..., ""))
-      - pattern-not-inside: |
-          $BASE = $X + $SEP
-          ...

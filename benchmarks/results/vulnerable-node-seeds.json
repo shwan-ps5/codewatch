@@ -205,7 +205,7 @@
  },
  "suite": "vulnerable-node-seeds",
  "commit": "d68f2a3c9277ece2c2feb9976052033bdecd7fbe",
- "scanned_at": "2026-10-31T11:52:10+00:00",
+ "scanned_at": "2026-10-31T14:41:14+00:00",
  "overall": {
   "verdict": {
    "tp": 11,

@@ -543,8 +543,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.path-traversal",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.path-traversal"
     ]
    },
    {
@@ -857,8 +856,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.path-traversal",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.path-traversal"
     ]
    },
    {
@@ -1470,8 +1468,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.path-traversal",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.path-traversal"
     ]
    },
    {
@@ -1738,8 +1735,7 @@
     "real": true,
     "flagged": false,
     "by": [
-     "codewatch:codewatch.python.web.path-traversal",
-     "codewatch:codewatch.python.web.xss"
+     "codewatch:codewatch.python.web.path-traversal"
     ]
    },
    {
@@ -1808,7 +1804,7 @@
  },
  "suite": "securityeval-copilot",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-31T11:51:40+00:00",
+ "scanned_at": "2026-10-31T14:40:29+00:00",
  "overall": {
   "verdict": {
    "tp": 33,

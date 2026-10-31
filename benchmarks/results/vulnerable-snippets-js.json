@@ -4,7 +4,7 @@
    "found": 11,
    "total": 22,
    "recall": 0.5,
-   "any_security": 0.5
+   "any_security": 0.545
   },
   "categories": {
    "CWE-22": {
@@ -126,8 +126,10 @@
     "path": "PostMessage Security/challenge1.js",
     "cwe": 345,
     "found": false,
-    "any_security": false,
-    "by": []
+    "any_security": true,
+    "by": [
+     "codewatch:codewatch.js.open-redirect"
+    ]
    },
    {
     "path": "PostMessage Security/challenge3.js",
@@ -380,6 +382,7 @@
     "found": true,
     "any_security": true,
     "by": [
+     "codewatch:codewatch.js.open-redirect",
      "semgrep:javascript.browser.security.wildcard-postmessage-configuration.wildcard-postmessage-configuration"
     ]
    },
@@ -508,13 +511,13 @@
  },
  "suite": "vulnerable-snippets-js",
  "commit": "07669239ed45467b3c169b9747b3ccdc229632ca",
- "scanned_at": "2026-10-31T11:52:00+00:00",
+ "scanned_at": "2026-10-31T14:40:58+00:00",
  "overall": {
   "verdict": {
    "found": 11,
    "total": 22,
    "recall": 0.5,
-   "any_security": 0.5
+   "any_security": 0.545
   },
   "review": {
    "found": 13,

@@ -10,6 +10,11 @@ happens inside load_css. Two passes close that gap:
 Pass 1 repeats with the summarised calls as sinks too, so a wrapper that hands its parameter to load_css is
 summarised as well, up to MAX_DEPTH calls deep.
 
+Data also comes out of helpers: `def get_param(name): return request.args.get(name)`. A third pass runs each
+rule with `return` as the sink to find functions that return request data (returners), and the final rules get a
+variant whose sources are calls to them. Returners repeat up to MAX_DEPTH like summaries, and a value looked up
+by the request data (a model fetched by id, a decoded token) isn't returned request data.
+
 A call only counts where the function is visible: in the file that defines it, or in a file that imports it or
 its module, so same-named functions elsewhere don't connect.
 """
@@ -22,6 +27,9 @@ from pathlib import Path
 SUMMARY_SUFFIX = ".params"
 VIA_SUFFIX = ".via"
 VIA_RE = re.compile(r"\[via (\w+)\(\)\]$")
+RETURNS_SUFFIX = ".returns"
+FROM_SUFFIX = ".from"
+FROM_RE = re.compile(r"\[from (\w+)\(\)\]$")
 MAX_DEPTH = 3
 JS_LANGUAGES = {"javascript", "typescript"}
 RECEIVERS = {"self", "cls"}
@@ -43,6 +51,37 @@ JS_PARAM_SOURCES = [
         {"pattern-inside": "$OBJ.$FUNC = function (..., $PARAM, ...) { ... }"},
     ]}, {"pattern": "$PARAM"}]},
 ]
+
+# A view returns a response, not data, even when another view returns its result.
+ROUTE_DECORATORS = ("route", "get", "post", "put", "patch", "delete", "api_route", "websocket")
+# Class-based handlers (Django's View.get, a Nest controller's get) also return responses, and their names are
+# everyone's: requests.get(...) isn't a call to one.
+HANDLER_NAMES = {*ROUTE_DECORATORS, "head", "options", "dispatch", "handle", "handler", "render", "__call__"}
+PYTHON_RETURN_SINKS = [
+    {"patterns": [{"pattern-either": [{"pattern-inside": "def $FUNC(...):\n  ...\n"},
+                                      {"pattern-inside": "async def $FUNC(...):\n  ...\n"}]},
+                  *({"pattern-not-inside": f"@$APP.{d}(...)\n{a}def $FUNC(...):\n  ...\n"}
+                    for d in ROUTE_DECORATORS for a in ("", "async ")),
+                  {"pattern": "return $VALUE"}, {"focus-metavariable": "$VALUE"}]},
+]
+JS_RETURN_SINKS = [
+    {"patterns": [{"pattern-either": [
+        {"pattern-inside": "function $FUNC(...) { ... }"},
+        {"pattern-inside": "const $FUNC = (...) => { ... }"},
+        {"pattern-inside": "const $FUNC = function (...) { ... }"},
+        {"pattern-inside": "$FUNC(...) { ... }"},
+        {"pattern-inside": "$OBJ.$FUNC = (...) => { ... }"},
+        {"pattern-inside": "$OBJ.$FUNC = function (...) { ... }"},
+    ]}, {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
+]
+# What a helper looks up with the request data (a user by token, a row by id) is stored data, not the request's.
+LOOKUP_SANITIZER = {"patterns": [
+    {"pattern-either": [{"pattern": "$F(...)"}, {"pattern": "await $F(...)"}]},
+    {"metavariable-regex": {"metavariable": "$F", "regex": (
+        "(?i)(.*\\.(objects|query|session|db|repo|repository|manager|collection|model)\\.\\w+"
+        "|(.*\\.)?(get_object_or_404|get_list_or_404|first_or_404|get_or_404|find\\w*|load\\w*|fetch\\w*"
+        "|lookup\\w*|decode\\w*|verify\\w*|authenticate\\w*|get_user\\w*|get_current_user\\w*))$")}},
+]}
 
 
 def taint_rules(rules):
@@ -302,3 +341,73 @@ def visible(path, defining_paths, read_text):
     imports = python_imports(path, text) if path.endswith(".py") else js_imports(path, text)
     normalised = {Path(p).as_posix().removeprefix("./") for p in imports}
     return bool(normalised & set(defining_paths))
+
+
+def returner_rules(rules, returners=None):
+    """Pass 3: every taint rule with `return` as its sink, reporting the function that returns request data.
+
+    With returners, calls to them are sources too, so a helper that returns another helper's result is found."""
+    out = []
+    for rule in taint_rules(rules):
+        variant = copy.deepcopy(rule)
+        variant["id"] = rule["id"] + RETURNS_SUFFIX
+        variant["message"] = "$FUNC"
+        variant["pattern-sources"] = rule["pattern-sources"] + from_sources((returners or {}).get(rule["id"], ()),
+                                                                            is_js(rule))
+        variant["pattern-sanitizers"] = [*rule.get("pattern-sanitizers", []), copy.deepcopy(LOOKUP_SANITIZER)]
+        variant["pattern-sinks"] = copy.deepcopy(JS_RETURN_SINKS if is_js(rule) else PYTHON_RETURN_SINKS)
+        out.append(variant)
+    return out
+
+
+def innermost_python_function(text, line):
+    """Name of the innermost def around line."""
+    best = None
+    for name, nodes in python_functions(text).items():
+        for node, _ in nodes:
+            if node.lineno <= line <= (node.end_lineno or node.lineno) and (best is None or node.lineno > best[1]):
+                best = (name, node.lineno)
+    return best and best[0]
+
+
+def parse_returners(results, read_text):
+    """{rule id: {(function, defining path)}} from pass 3. A return inside a nested function also binds the outer
+    one, so only the innermost Python function counts."""
+    returners = {}
+    for check_id, path, line, func in results:
+        if not func or func.startswith("$") or func in HANDLER_NAMES:
+            continue
+        if path.endswith(".py"):
+            text = read_text(path)
+            if text is None or innermost_python_function(text, line) != func:
+                continue
+        returners.setdefault(check_id.removesuffix(RETURNS_SUFFIX), set()).add((func, path))
+    return returners
+
+
+def from_sources(found, js):
+    """Sources for calls to the returners in found; $RET_FUNC binds the name."""
+    names = sorted({func for func, _path in found})
+    if not names:
+        return []
+    receivers = ["this"] if js else sorted(RECEIVERS)
+    calls = ["$RET_FUNC(...)", "$MODULE.$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers)]
+    name = {"metavariable-regex": {"metavariable": "$RET_FUNC", "regex": f"^({'|'.join(map(re.escape, names))})$"}}
+    return [{"patterns": [{"pattern-either": [{"pattern": c} for c in calls]}, name]}]
+
+
+def from_rules(rules, returners, summaries):
+    """Final-pass variants of each rule whose sources are calls to its returners, with the summarised calls as
+    sinks too: "[from get_param()]" names the returner so the finding can be checked for visibility."""
+    out = []
+    for rule in taint_rules(rules):
+        found = returners.get(rule["id"])
+        if not found:
+            continue
+        variant = copy.deepcopy(rule)
+        variant["id"] = rule["id"] + FROM_SUFFIX
+        variant["pattern-sources"] = from_sources(found, is_js(rule))
+        variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
+        variant["message"] = rule["message"].strip() + " [from $RET_FUNC()]"
+        out.append(variant)
+    return out
