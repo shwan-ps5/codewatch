@@ -101,9 +101,10 @@ class Semgrep(Analyzer):
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
-            returners = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
+            returners, fields = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
             rules = (custom_rules + summaries_module.via_rules(custom_rules, summaries)
-                     + summaries_module.from_rules(custom_rules, returners, summaries))
+                     + summaries_module.from_rules(custom_rules, returners, summaries)
+                     + summaries_module.field_variants(custom_rules, fields, summaries))
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             if rules:
                 (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
@@ -124,12 +125,16 @@ class Semgrep(Analyzer):
             metadata = extra.get("metadata", {})
             check_id = item["check_id"].removesuffix(summaries_module.VIA_SUFFIX)
             via = check_id != item["check_id"]
-            check_id = check_id.removesuffix(summaries_module.FROM_SUFFIX)
+            field = check_id.endswith(summaries_module.FIELD_SUFFIX)
+            check_id = check_id.removesuffix(summaries_module.FIELD_SUFFIX).removesuffix(summaries_module.FROM_SUFFIX)
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
             custom_id = next((cid for cid in custom_ids if check_id.endswith(cid)), None)
             if via and not self.via_visible(ctx, path, extra["message"], summaries.get(custom_id, ())):
                 continue
-            if (check_id != item["check_id"] and not via
+            if field:
+                if not self.field_stored(path, extra["message"], fields.get(custom_id, ())):
+                    continue
+            elif (check_id != item["check_id"] and not via
                     and not self.from_visible(ctx, path, extra["message"], returners.get(custom_id, ()))):
                 continue
             kind = semgrep_type(check_id, metadata)
@@ -152,7 +157,8 @@ class Semgrep(Analyzer):
                         path, item["start"]["line"], item["end"]["line"])
             )
         def derived(f):
-            return summaries_module.VIA_RE.search(f.message) or summaries_module.FROM_RE.search(f.message)
+            return any(r.search(f.message) for r in (summaries_module.VIA_RE, summaries_module.FROM_RE,
+                                                     summaries_module.FIELD_RE))
 
         direct = {(f.rule, f.path, f.line) for f in result.findings if not derived(f)}
         result.findings = [f for f in result.findings if not (derived(f) and (f.rule, f.path, f.line) in direct)]
@@ -214,14 +220,17 @@ class Semgrep(Analyzer):
         return summaries, hits
 
     def find_returners(self, ctx, custom_rules, targets, originals, work):
-        """Pass 3 of summaries.py: which functions return request data, directly or from returners found before."""
-        returners = {}
+        """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
+        and (in the first scan) which fields of self/this request data is stored in."""
+        returners, fields = {}, {}
         # An unminified library bundled with the app (materialize.js, 366 KB) multiplies this pass's time by ten,
         # and big single-file apps are Python's habit, not JavaScript's.
         targets = [t for t in targets
                    if Path(t).suffix not in JS_SUFFIXES or (ctx.root / t).stat().st_size <= RETURNER_MAX_JS_BYTES]
-        for _ in range(summaries_module.MAX_DEPTH):
+        for depth in range(summaries_module.MAX_DEPTH):
             rules = summaries_module.returner_rules(custom_rules, returners)
+            if depth == 0:
+                rules += summaries_module.field_rules(custom_rules)
             if not rules or not targets:
                 break
             config = work / "returners.yml"
@@ -232,12 +241,20 @@ class Semgrep(Analyzer):
                       ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
                       item["extra"]["message"].strip())
                      for item in data["results"]]
-            more = summaries_module.parse_returners(found, lambda rel: read_source(ctx.root / rel))
+            stored = [f for f in found if f[0].endswith(summaries_module.FIELDS_SUFFIX)]
+            fields = summaries_module.merge(fields, summaries_module.parse_fields(stored)) or fields
+            more = summaries_module.parse_returners([f for f in found if f not in stored],
+                                                    lambda rel: read_source(ctx.root / rel))
             merged = summaries_module.merge(returners, more)
             if merged is None:
                 break
             returners = merged
-        return returners
+        return returners, fields
+
+    @staticmethod
+    def field_stored(path, message, fields):
+        match = summaries_module.FIELD_RE.search(message.strip())
+        return bool(match) and (match.group(1), path) in fields
 
     @staticmethod
     def from_visible(ctx, path, message, returners):

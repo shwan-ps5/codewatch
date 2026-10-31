@@ -1603,6 +1603,47 @@ def test_false_alarms_from_the_maintainers_projects(tmp_path):
     }
 
 
+def test_request_data_kept_in_fields_and_class_based_views(tmp_path):
+    """Plan step 4: request data stored in a field of self/this in one method reaches a sink in another, kept to the
+    file that stores it; a field holding a converted value doesn't. Django class-based views read the request from
+    self.request and URL captures from self.kwargs."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "views.py": (
+            "import os\n"
+            "from django.views import View\n\n\n"
+            "class Search(View):\n"
+            "    def get(self, request):\n"
+            "        os.system('grep ' + self.request.GET['q'])\n"
+            "        os.system('grep ' + self.kwargs['slug'])\n"
+            "        self.term = request.GET['term']\n"
+            "        self.count = int(request.GET['n'])\n"
+            "        return self.run()\n\n"
+            "    def run(self):\n"
+            "        os.system('grep ' + self.term)\n"
+            "        os.system('head -n %d' % self.count)\n"),
+        "other.py": (
+            "import os\n\n\n"
+            "class Job:\n"
+            "    def run(self):\n"
+            "        os.system('grep ' + self.term)\n"),
+        "search.js": (
+            "const { exec } = require('child_process');\n"
+            "class Search {\n"
+            "  constructor(req) {\n"
+            "    this.name = req.query.name;\n"
+            "  }\n"
+            "  run() {\n"
+            "    exec('grep ' + this.name);\n"
+            "  }\n"
+            "}\n"),
+    })
+    assert {(path, line) for path, line, rule, kind in found if rule == "command-injection"} == {
+        ("views.py", 7), ("views.py", 8), ("views.py", 14), ("search.js", 7),
+    }
+
+
 def test_helpers_that_return_request_data(tmp_path):
     """A call to a function that returns request data is request data where that function is visible; what a helper
     looks up with the request (a user by id) isn't, and neither is a view's response."""

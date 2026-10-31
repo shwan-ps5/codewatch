@@ -28,6 +28,21 @@ rules:
               request = $MAKE(...)
               ...
       - pattern: starlette.requests.Request
+      # Class-based views (Django, DRF, Tornado) keep the request on self, and Django's the URL captures in
+      # self.kwargs/self.args.
+      - patterns:
+          - pattern: self.request
+          - pattern-not-inside: |
+              self.request = $MAKE(...)
+              ...
+      - patterns:
+          - pattern-inside: |
+              class $VIEW(..., $BASE, ...):
+                ...
+          - metavariable-regex: {metavariable: $BASE, regex: '(View|ViewSet)$'}
+          - pattern-either:
+              - pattern: self.kwargs
+              - pattern: self.args
       # A route function's parameters come from the URL path or, in FastAPI, the query string, form or headers:
       # @app.route("/user/<name>") def user(name). Typed ones count only as text (str, Optional[str], list[str]);
       # numbers, UUIDs, models and Depends() don't. Flask converters (<int:id>) are written on the scanned copy

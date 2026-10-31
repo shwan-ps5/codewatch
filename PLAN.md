@@ -155,7 +155,13 @@ knowledge.
    `dataSource`/`queryRunner`/`manager`/`*Repository` joined the SQL receivers. nestjs-boilerplate and
    nestjs-realworld stay at 0. No Nest case in any suite, so this is untested against real advisories. Next.js
    API route `req` and Fastify `request.body/query/params` were already sources by name.
-4. **Object fields**: `self.x = request...` in one method reaching a sink in another.
+4. **Object fields**: done (2026-10-31). The returner pass's first scan also runs each rule with
+   `self.x = ...`/`this.x = ...` stores as the sink; the final rules get a `.field` variant whose sources are reads
+   of those fields, kept to the file that stores them (by name, not class: the JS class pattern is what made the
+   returner pass slow). Found while checking: Django class-based views' `self.request.GET[...]` and
+   `self.kwargs[...]` weren't sources at all; now they are (`self.kwargs`/`self.args` only in classes based on
+   a `*View`/`*ViewSet`). Two CVE repos store request data in fields (Whoogle `search.py:61`, Grappelli
+   `related.py:131`); neither advisory is about those flows.
 5. **JS dependency vulnerabilities**: done for npm, yarn and pnpm lockfiles by the `osv` analyzer
    (`core/analyzers/dependencies.py`), which parses them itself and asks OSV's batch API, so no new binary. Go, Rust
    and Java lockfiles would need the osv-scanner binary in `tools/`; downloading it needs the user's go-ahead.

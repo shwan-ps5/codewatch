@@ -15,6 +15,10 @@ rule with `return` as the sink to find functions that return request data (retur
 variant whose sources are calls to them. Returners repeat up to MAX_DEPTH like summaries, and a value looked up
 by the request data (a model fetched by id, a decoded token) isn't returned request data.
 
+Data also waits in object fields: `self.term = request.GET["q"]` in one method, `os.system("grep " + self.term)`
+in another. The returner pass's first scan also runs each rule with stores to `self.x`/`this.x` as the sink, and
+the final rules get a variant whose sources are reads of those fields, kept only in the file that stores them.
+
 A call only counts where the function is visible: in the file that defines it, or in a file that imports it or
 its module, so same-named functions elsewhere don't connect.
 """
@@ -30,6 +34,9 @@ VIA_RE = re.compile(r"\[via (\w+)\(\)\]$")
 RETURNS_SUFFIX = ".returns"
 FROM_SUFFIX = ".from"
 FROM_RE = re.compile(r"\[from (\w+)\(\)\]$")
+FIELDS_SUFFIX = ".fields"
+FIELD_SUFFIX = ".field"
+FIELD_RE = re.compile(r"\[field (\w+)\]$")
 MAX_DEPTH = 3
 JS_LANGUAGES = {"javascript", "typescript"}
 RECEIVERS = {"self", "cls"}
@@ -419,3 +426,52 @@ def without_lookup_result(rule):
     """The rule's sanitizers minus lookup-result (python-web.yml), which would also clean get_cmd() when get_cmd
     is a returner: what the returner pass found overrides the name."""
     return [s for s in rule.get("pattern-sanitizers", []) if LOOKUP_RESULT_MARK not in repr(s)]
+
+
+# Not $FIELD: the JS request sources bind that name (req.$FIELD).
+FIELD_SINKS = {
+    False: [{"patterns": [{"pattern": "self.$STORED_FIELD = $VALUE"}, {"focus-metavariable": "$VALUE"}]}],
+    True: [{"patterns": [{"pattern": "this.$STORED_FIELD = $VALUE;"}, {"focus-metavariable": "$VALUE"}]}],
+}
+
+
+def field_rules(rules):
+    """Every taint rule with stores to a field of self/this as the sink, reporting the field."""
+    out = []
+    for rule in taint_rules(rules):
+        variant = copy.deepcopy(rule)
+        variant["id"] = rule["id"] + FIELDS_SUFFIX
+        variant["message"] = "$STORED_FIELD"
+        variant["pattern-sinks"] = copy.deepcopy(FIELD_SINKS[is_js(rule)])
+        out.append(variant)
+    return out
+
+
+def parse_fields(results):
+    """{rule id: {(field, path)}} from field_rules results."""
+    fields = {}
+    for check_id, path, _line, field in results:
+        if field and not field.startswith("$"):
+            fields.setdefault(check_id.removesuffix(FIELDS_SUFFIX), set()).add((field, path))
+    return fields
+
+
+def field_variants(rules, fields, summaries):
+    """Final-pass variants of each rule whose sources are reads of the fields request data was stored in:
+    "[field term]" names the field so the finding can be kept to the file that stores it."""
+    out = []
+    for rule in taint_rules(rules):
+        found = fields.get(rule["id"])
+        if not found:
+            continue
+        names = sorted({field for field, _path in found})
+        variant = copy.deepcopy(rule)
+        variant["id"] = rule["id"] + FIELD_SUFFIX
+        variant["pattern-sources"] = [{"patterns": [
+            {"pattern": "this.$STORED_FIELD" if is_js(rule) else "self.$STORED_FIELD"},
+            {"metavariable-regex": {"metavariable": "$STORED_FIELD", "regex": f"^({'|'.join(map(re.escape, names))})$"}},
+        ]}]
+        variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
+        variant["message"] = rule["message"].strip() + " [field $STORED_FIELD]"
+        out.append(variant)
+    return out
