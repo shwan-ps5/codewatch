@@ -101,7 +101,12 @@ class Semgrep(Analyzer):
             if rules:
                 (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
                 configs += ["--config", str(Path(work) / "custom.yml")]
-            data = self.scan(ctx, configs, targets)
+            # Every rule in this pass reads one file at a time, so narrowing it to the focus changes nothing
+            # in those files; the summaries above still saw every file.
+            focus = None if ctx.focus is None else set(ctx.focus)
+            main_targets = targets if focus is None else [t for t in targets if ctx.rel(originals.get(t, t)) in focus]
+            # Semgrep given no targets scans the working directory.
+            data = self.scan(ctx, configs, main_targets) if main_targets else {"results": []}
         result = Result()
         traced = taint_checked(custom_rules)
         source = LineCache(ctx.root)
@@ -154,6 +159,8 @@ class Semgrep(Analyzer):
         out = []
         for rule_id, path, line, func, param in sorted(hits):
             if func in used or func.startswith("_") or is_test_file(path) or (rule_id, path, line) in seen:
+                continue
+            if ctx.focus is not None and path not in ctx.focus:
                 continue
             seen.add((rule_id, path, line))
             rule = rules[rule_id]
