@@ -2,7 +2,7 @@
 
 OWASP Juice Shop (Node/Express/Angular): lines marked 'vuln-code-snippet vuln-line' are the known vulnerable lines of its coding challenges. Measures detection only; unmarked code is not labelled safe.
 
-Commit `717f5efa88` (MIT), scanned 2026-10-30T23:18:56+00:00.
+Commit `717f5efa88` (MIT), scanned 2026-10-31T11:51:17+00:00.
 
 Verdict mode counts only findings that claim a vulnerability; review mode adds security hotspots.
 
@@ -65,11 +65,11 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 
 ## Review mode
 
-**16 of 35 vulnerable challenges flagged (46%)**
+**17 of 35 vulnerable challenges flagged (49%)**
 
 | Category | Flagged | Challenges |
 |---|---|---|
-| Broken Access Control | 1 | 4 |
+| Broken Access Control | 2 | 4 |
 | Broken Anti Automation | 1 | 1 |
 | Broken Authentication | 0 | 5 |
 | Improper Input Validation | 0 | 2 |
@@ -86,7 +86,7 @@ Verdict mode counts only findings that claim a vulnerability; review mode adds s
 |---|---|---|
 | accessLogDisclosureChallenge | Observability Failures | codewatch:codewatch.js.directory-listing |
 | adminSectionChallenge | Broken Access Control | missed |
-| changeProductChallenge | Broken Access Control | missed |
+| changeProductChallenge | Broken Access Control | codewatch:codewatch.js.route-without-auth |
 | chatbotGreedyInjectionChallenge | Injection | missed |
 | chatbotPromptInjectionChallenge | Injection | missed |
 | dbSchemaChallenge | Injection | codewatch:codewatch.js.sql-injection |

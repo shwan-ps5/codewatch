@@ -549,13 +549,13 @@
  },
  "review": {
   "overall": {
-   "found": 16,
+   "found": 17,
    "total": 35,
-   "recall": 0.457
+   "recall": 0.486
   },
   "categories": {
    "Broken Access Control": {
-    "found": 1,
+    "found": 2,
     "total": 4
    },
    "Broken Anti Automation": {
@@ -643,8 +643,10 @@
       398
      ]
     ],
-    "found": false,
-    "by": []
+    "found": true,
+    "by": [
+     "codewatch:codewatch.js.route-without-auth"
+    ]
    },
    {
     "challenge": "chatbotGreedyInjectionChallenge",
@@ -1099,7 +1101,7 @@
  },
  "suite": "juice-shop",
  "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
- "scanned_at": "2026-10-30T23:18:56+00:00",
+ "scanned_at": "2026-10-31T11:51:17+00:00",
  "overall": {
   "verdict": {
    "found": 15,
@@ -1107,9 +1109,9 @@
    "recall": 0.429
   },
   "review": {
-   "found": 16,
+   "found": 17,
    "total": 35,
-   "recall": 0.457
+   "recall": 0.486
   }
  }
 }
