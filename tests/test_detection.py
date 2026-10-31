@@ -1239,3 +1239,40 @@ def test_focus_narrows_only_the_per_file_pass(tmp_path):
     assert ("views.py", 10, "command-injection", "vulnerability") in everything
     assert found(["views.py"]) == {f for f in everything if f[0] == "views.py"}
     assert found([]) == set()
+
+
+def test_redirect_checks_from_cve_fix_pairs(tmp_path):
+    """From GHSA-9x43-5qcq-h79q (Grappelli): url_has_allowed_host_and_scheme called with url= is a check too.
+    From GHSA-v279-v2xm-whq9 (oils-js): an HTTPS upgrade to the request's own Host and path isn't an open redirect,
+    but the path alone, or after a host from the query, still is."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "views.py": (
+            "from django.http import Http404\n"
+            "from django.shortcuts import redirect\n"
+            "from django.utils.http import url_has_allowed_host_and_scheme\n\n\n"
+            "def switch_user(request):\n"
+            "    redirect_url = request.GET.get('redirect', None)\n"
+            "    if redirect_url is None or not url_has_allowed_host_and_scheme(\n"
+            "            url=redirect_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):\n"
+            "        raise Http404()\n"
+            "    return redirect(redirect_url)\n\n\n"
+            "def old(request):\n"
+            "    redirect_url = request.GET.get('redirect', None)\n"
+            "    return redirect(redirect_url)\n"),
+        "web.js": (
+            "function toHttps(req, res) {\n"
+            "  res.writeHead(302, {'Location': 'https://' + req.headers.host.split(':')[0] + ':8443' + req.url});\n"
+            "  res.end();\n"
+            "}\n"
+            "function back(req, res) {\n"
+            "  res.redirect(req.url);\n"
+            "  res.redirect('https://' + req.query.host + req.url);\n"
+            "}\n"),
+    })
+    assert found == {
+        ("views.py", 16, "open-redirect", "vulnerability"),
+        ("web.js", 6, "open-redirect", "vulnerability"),
+        ("web.js", 7, "open-redirect", "vulnerability"),
+    }

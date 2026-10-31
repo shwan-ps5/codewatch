@@ -52,7 +52,9 @@ SecurityEval misses are design flaws or plain functions with no request source. 
   | cve-pairs-python | 2/14 / 1/14 | 5/14 / 1/14 |
   | cve-pairs-javascript | 1/10 / 1/10 | 4/10 / 4/10 |
 
-  Its result files (`benchmarks/results/cve-pairs-*`) were left uncommitted.
+  Re-run at commit 112de4c (e7c27d4's rules plus the scan narrowing) gave exactly the same table; those result
+  files are the CVE baseline. `pytest -q` there: 134 passed, 1 skipped (cppcheck not installed, a system package
+  `make tools` doesn't install).
 - The CVE suites are slow (Python ~4.5 h on the laptop, which overheated); run them on the desktop and commit
   the results as the CVE baseline. Fresh machine setup (needs Python 3, Node 20+, git):
 
@@ -70,8 +72,13 @@ SecurityEval misses are design flaws or plain functions with no request source. 
 What to work on next, from that run (these suites are not held out; note in `suites.json` when a case drives a
 rule):
 
-1. Still flagged after the fix: GHSA-9x43-5qcq-h79q (Python open-redirect, same 5 spots) and GHSA-v279-v2xm-whq9
-   (JS open-redirect). Find which check the fix added and whether it should count as a sanitizer.
+1. Done (2026-10-31), checked on both repos, CVE suites not re-run yet. Grappelli's fix calls
+   `url_has_allowed_host_and_scheme(url=...)` with a keyword, now a guard too. The oils-js hit was never the
+   advisory's bug: it was an HTTPS-upgrade redirect to `req.headers.host` + `req.url`, now quiet, so JS verdict
+   detection should drop to 0/10 and still-flagged to 0/10. What's left on oils-js is `custom-response.js:17`, a
+   real trailing-slash redirect of `req.url` (`//evil.com/`) that the fix doesn't cover. Grappelli's fix commit
+   still gets a trust-boundary hit at `switch.py:73`, which stores a database user's id in the session: likely
+   noise, look at it later.
 2. JS path traversal: 0 of 5 CWE-22 cases found. Look at what source/sink shapes the misses use (Fastify, Koa,
    static-file helpers, `path.join` with `decodeURIComponent`).
 3. Python command injection (GHSA-gjxm, -2689, -xv5p) and SQL injection (GHSA-f2mf, -h6m6; only bandit B608

@@ -436,6 +436,21 @@ rules:
           - pattern-inside: |
               if (<... $ALLOWED.has($X) ...>) { ... }
           - pattern: $X
+      # The Host header is the site the browser is already on; a link can't change it (HTTPS-upgrade redirects).
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.headers.host
+              - pattern: $REQ.hostname
+              - pattern: $REQ.host
+              - pattern: $REQ.get("host")
+              - pattern: $REQ.header("host")
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request)$'}
+      # The request's own path after a literal "https://host" prefix stays on that host.
+      - patterns:
+          - pattern-inside: $PREFIX + $REQ.$PATH
+          - pattern: $REQ.$PATH
+          - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"`]https?://'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^(url|originalUrl|path)$'}
     pattern-sinks:
       - patterns:
           - pattern-either:
