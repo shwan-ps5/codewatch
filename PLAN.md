@@ -83,6 +83,9 @@ SecurityEval misses are design flaws or plain functions with no request source. 
 - `metavariable-pattern` matches anywhere inside the value; use `metavariable-regex` on the text when the whole
   value must be the thing (mass-assignment rules).
 - Don't run two scans at once: one benchmark scan failed with Semgrep exit 2 while another scan ran.
+- CVE-pair scans set `Context.focus` to the changed files: summaries, the caller index and other analyzers still
+  see the whole scope, only Semgrep's per-file final pass is narrowed. Checked identical on Parsl and mockoon
+  (both sides); saves ~50% on JS, only 10-17% on Python, where the summary passes dominate.
 
 ## Tools
 

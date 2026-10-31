@@ -1215,3 +1215,27 @@ def test_dependency_counts_from_both_audits_add_up(monkeypatch, tmp_path):
     monkeypatch.setattr(collect, "ANALYZERS", [Fake("pip-audit", 2), Fake("osv", 3)])
     combined, _ = collect.run_analyzers(collect.ScanConfig(), Context(root=tmp_path, files=[]), lambda m: None)
     assert combined.metrics == {"dependency_critical_vulnerabilities": 5, "other": 3}
+
+
+def test_focus_narrows_only_the_per_file_pass(tmp_path):
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    files = {
+        "helpers.py": "import subprocess\n\n\ndef run(cmd):\n    subprocess.run(cmd, shell=True)\n",
+        "views.py": ("from flask import Flask, request\n\nfrom helpers import run\n\napp = Flask(__name__)\n\n\n"
+                     "@app.route('/a')\ndef a():\n    run(request.args['cmd'])\n    return 'ok'\n"),
+        "other.py": ("import subprocess\n\nfrom flask import request\n\n\n"
+                     "def b():\n    subprocess.run(request.args['cmd'], shell=True)\n"),
+    }
+    for name, text in files.items():
+        (tmp_path / name).write_text(text)
+
+    def found(focus):
+        ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules(),
+                      focus=focus)
+        return {(f.path, f.line, f.rule.rsplit(".", 1)[1], f.type) for f in Semgrep().run(ctx).findings}
+
+    everything = found(None)
+    assert ("views.py", 10, "command-injection", "vulnerability") in everything
+    assert found(["views.py"]) == {f for f in everything if f[0] == "views.py"}
+    assert found([]) == set()

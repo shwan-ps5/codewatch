@@ -330,6 +330,7 @@ class ScanInput:
     changed: dict | None = None
     coverage_report: Path | None = None
     coverage_base: Path | None = None
+    focus: list[str] | None = None
 
 
 def make_context(cfg, scan, files):
@@ -345,6 +346,7 @@ def make_context(cfg, scan, files):
         custom_rules=cfg.custom_rules,
         coverage_report=Path(scan.coverage_report) if scan.coverage_report else None,
         coverage_base=Path(scan.coverage_base) if scan.coverage_base else None,
+        focus=scan.focus,
     )
 
 

@@ -40,10 +40,10 @@ def fetch(suite):
     return target
 
 
-def scan(root, log, paths=()):
+def scan(root, log, paths=(), focus=None):
     files = [f for f in git("ls-files", "-z", "--", *paths, cwd=root).split("\0") if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
-    out = collect(cfg, ScanInput(root, files, "benchmark"), log)
+    out = collect(cfg, ScanInput(root, files, "benchmark", focus=focus), log)
     # A suite scored without Semgrep would look like a run of misses and quiet fixed code.
     if (semgrep := out["tools"].get("semgrep", {})).get("status") == "error":
         raise RuntimeError(f"semgrep failed on {root}: {semgrep['detail']}")
@@ -319,7 +319,9 @@ def scan_pair(suite, case, log):
     sides = {}
     for side, commit in (("before", parent), ("after", case["fix"])):
         git("checkout", "-q", "--force", commit, cwd=root)
-        found = [i for i in scan(root, log, case.get("scope", [])) if i["type"] in SECURITY_TYPES]
+        # Only findings in the changed files are scored, so Semgrep's per-file pass looks only at them.
+        found = [i for i in scan(root, log, case.get("scope", []), focus=sorted(spots[side]))
+                 if i["type"] in SECURITY_TYPES]
         sides[side] = with_code(root, [i for i in found if i["path"] in spots[side]])
     return spots, sides
 
