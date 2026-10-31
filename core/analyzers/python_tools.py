@@ -112,7 +112,9 @@ BANDIT_SKIPPED = ("B101", "B404", "B603", "B607")
 SECRET_USE_RE = re.compile(
     r"(?i)\b(?:\w*session[ _]?id\w*|\w*token|token_\w+|\w*secret\w*|\w*passw\w*|pwd|\w*nonce|\w*salt|otp|\w*csrf\w*"
     r"|\w*api_?key\w*|auth|auth_\w+|authenticat\w*|authoriz\w*|cred|credentials?|cipher\w*|\w*crypt\w*"
-    r"|unpredictable|\w*cookie\w*|\w*remember\w*|\w+_key|iv)\b"
+    # Keys that name a slot rather than a secret (cache_key, sort_key) aren't.
+    r"|unpredictable|\w*cookie\w*|\w*remember\w*|(?!\w*(?:cache|sort|dict|map|lookup|group|partition|primary|foreign"
+    r"|row|field|column|item|query|storage|bucket|translation|idempotency)_key\b)\w+_key|iv)\b"
     r"|session\s{0,5}\[|\bkey\s{0,5}=[^=\n]{0,80}rand",
 )
 CONTEXT_LINES = 5

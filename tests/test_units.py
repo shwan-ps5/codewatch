@@ -42,6 +42,13 @@ def test_excluded_matches_root_and_nested():
     assert not excluded("src/app.js", pats)
 
 
+def test_default_exclusions_skip_installed_packages():
+    from core.collect import DEFAULT_EXCLUSIONS
+
+    assert excluded("venv/lib/python3.12/site-packages/django/db/models/query.py", DEFAULT_EXCLUSIONS)
+    assert not excluded("game_sessions/views.py", DEFAULT_EXCLUSIONS)
+
+
 def test_is_new_on_changed_line_or_unseen_in_changed_file():
     i = {"path": "a.py", "line": 5, "fingerprint": "fp"}
     assert is_new(i, {"a.py": {5}}, None)
@@ -292,3 +299,24 @@ def test_unusable_ref_period_falls_back_to_previous_analysis():
     assert choose_reference("main", "c9", cfg, LinearRepo(10), NOW) == ("c8", "c8")
     ahead = LinearRepo(10, {"v9": "c9"})
     assert choose_reference("main", "c6", main_cfg("v9", [("c1", 1), ("c5", 20)]), ahead, NOW) == ("c5", "c5")
+
+
+def test_a_tool_timeout_kills_its_children(tmp_path):
+    import subprocess
+    import sys
+    import time
+
+    import pytest
+
+    from core.analyzers.base import run_killing_group
+
+    if not sys.platform.startswith("linux"):
+        pytest.skip("checks /proc")
+
+    pid_file = tmp_path / "child.pid"
+    script = f"sleep 60 & echo $! > {pid_file}; wait"
+    with pytest.raises(subprocess.TimeoutExpired):
+        run_killing_group(["sh", "-c", script], cwd=tmp_path, timeout=1)
+    child = int(pid_file.read_text())
+    time.sleep(0.2)
+    assert not Path(f"/proc/{child}").exists() or "Z" in Path(f"/proc/{child}/stat").read_text().split()[2]

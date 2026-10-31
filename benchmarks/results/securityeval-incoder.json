@@ -558,9 +558,7 @@
     "cwe": 113,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-113/sonar_2.py",
@@ -1445,9 +1443,7 @@
     "cwe": 113,
     "real": true,
     "flagged": false,
-    "by": [
-     "codewatch:codewatch.python.web.xss"
-    ]
+    "by": []
    },
    {
     "path": "Testcases_InCoder/CWE-113/sonar_2.py",
@@ -1763,7 +1759,7 @@
  },
  "suite": "securityeval-incoder",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-31T14:40:46+00:00",
+ "scanned_at": "2026-10-31T17:21:42+00:00",
  "overall": {
   "verdict": {
    "tp": 27,

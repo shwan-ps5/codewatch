@@ -145,14 +145,43 @@ knowledge.
    The JS sink `class $C { ... $FUNC(...) { ... } ... }` was 42 of 45 s per pass on own-app-5 (now
    `$FUNC(...) { ... }`, same results, 4 s), and vendored unminified libraries (dvpwa's 366 KB materialize.js)
    took 23 s per pass (pass 3 now skips JS files over 200 KB). Now own-app-5 27 s, dvpwa 47 s.
-3. **Framework sources**: FastAPI parameters declared with `Query()`/`Path()`/`Body()`/`Form()`/`Header()` or a
-   Pydantic body model; NestJS `@Body()`/`@Query()`/`@Param()`/`@Headers()`; Next.js API route `req`; Fastify
-   `request.body/query/params`. Rules: `catalog/codewatch/rules/python-web.yml`, `javascript-taint.yml`.
+3. **Framework sources**: FastAPI text parameters (including `Query()`/`Path()`/`Header()` defaults) done with
+   item 3 above. Pydantic/SQLModel body models done (2026-10-31, `core/analyzers/body_models.py`): the project's
+   own model classes are read with ast, and a route parameter typed with one has its text fields as sources
+   (`item.title`, inherited fields too; `item.limit: int` isn't, nor is a field name that is non-text in any
+   model). NestJS done (2026-10-31): `@Body()`/`@Query()`/`@Param()`/
+   `@Headers()` parameters are sources (`src-nest-param` in `javascript-taint.yml`), except with a Parse*Pipe or
+   a number/boolean/Date/bigint type; `@Req()` isn't, its `req.body` etc. are already covered by name. TypeORM
+   `dataSource`/`queryRunner`/`manager`/`*Repository` joined the SQL receivers. nestjs-boilerplate and
+   nestjs-realworld stay at 0. No Nest case in any suite, so this is untested against real advisories. Next.js
+   API route `req` and Fastify `request.body/query/params` were already sources by name.
 4. **Object fields**: `self.x = request...` in one method reaching a sink in another.
 5. **JS dependency vulnerabilities**: done for npm, yarn and pnpm lockfiles by the `osv` analyzer
    (`core/analyzers/dependencies.py`), which parses them itself and asks OSV's batch API, so no new binary. Go, Rust
    and Java lockfiles would need the osv-scanner binary in `tools/`; downloading it needs the user's go-ahead.
 6. Re-run everything, then the blind set; update the README table.
+
+Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
+findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
+`test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
+response; `lookup-result` sanitizer for the variable assigned from a bare call to a `get_X`/`fetch_X`/`load_X`/
+`find_X` helper, also inside `try:` (not `get_json`/`get_param`-style names; the returner pass's variants drop it
+so a real `get_cmd()` returner still counts). It cleans the variable, not the call: a first version cleaned the
+call and hid own-app-1's path traversal inside `load_css(...)`, a via-sink among its arguments; `Response(..., mimetype="video/...")` and other media/JSON types aren't XSS, nor is
+`return Response(...)` built inline; command injection: `secure_filename()` output and a literal
+`https://host/...` argv element are clean; weak-random-token's `$SESSION[...] =` sink needs a session-named
+target (any dict matched; pygoat's OTP stored in a plain dict is still flagged by bandit's B311 as a
+secret-purpose random); and `cache_key`/`sort_key`-style names no longer make a function security-related for
+weak-hash. Real findings (measurement only; fixing those apps is not part of this plan): own-app-10 `/proxy/media?url=` (app.py:815, open proxy: SSRF), own-app-1
+app.py:32/39 (path traversal), own-app-11 accounts/views.py:38 (open redirect). Known false alarms left:
+own-app-10 app.py:793 (gif_id reaches a helper's Response through Semgrep's call-result propagation) and
+own-app-5 game.ts:338 (attribute value with `"` stripped).
+
+Also 2026-10-31: `**/site-packages/**` joined the default exclusions (a committed virtualenv made the user's
+own-app-12 9,910 files and timed out the final scan; existing projects keep their saved list).
+`devtools.py repos` also scans directories that aren't git working copies, and prints as it goes. A tool
+timeout used to kill only semgrep's Python wrapper: semgrep-core kept running (1.6 GB, 30 min) and the next
+scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec` now kills the process group.
 
 ## How things work (non-obvious)
 

@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -92,6 +93,23 @@ def node_tool(name):
     return str(path) if path.exists() else None
 
 
+def run_killing_group(args, cwd, timeout):
+    """subprocess.run with captured text output, except that a timeout kills the tool's children too: semgrep's
+    Python wrapper runs semgrep-core, which otherwise keeps running (and holding gigabytes) after the wrapper dies."""
+    with subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                          start_new_session=hasattr(os, "killpg")) as proc:
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            if hasattr(os, "killpg"):
+                os.killpg(proc.pid, signal.SIGKILL)
+            else:
+                proc.kill()
+            proc.communicate()
+            raise
+    return subprocess.CompletedProcess(args, proc.returncode, stdout, stderr)
+
+
 class Analyzer:
     name = ""
     executable = ""
@@ -110,14 +128,7 @@ class Analyzer:
         raise NotImplementedError
 
     def exec(self, args, ctx, ok_codes=(0,), stream="stdout", cwd=None):
-        proc = subprocess.run(
-            [self.binary(), *args],
-            cwd=cwd or ctx.root,
-            capture_output=True,
-            text=True,
-            timeout=TOOL_TIMEOUT,
-            check=False,
-        )
+        proc = run_killing_group([self.binary(), *args], cwd=cwd or ctx.root, timeout=TOOL_TIMEOUT)
         if proc.returncode not in ok_codes:
             # Some tools (semgrep --json --quiet) report the failure on stdout and leave stderr empty.
             detail = proc.stderr.strip() or proc.stdout.strip()

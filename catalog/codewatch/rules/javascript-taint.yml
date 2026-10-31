@@ -46,6 +46,46 @@ rules:
               - pattern-inside: '$APP.$METHOD($PATH, ..., ({..., $FIELD, ...}, $RES, ...) => { ... })'
           - pattern: $FIELD
           - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|signedCookies|headers|files|file)$'}
+      # NestJS controller parameters: @Body() dto, @Query('q') q, @Param('id') id, @Headers() headers. Not those a
+      # pipe or a number/boolean/Date type converts (ParseIntPipe, `id: number` under ValidationPipe's transform).
+      - &src-nest-param
+        patterns:
+          - pattern-inside: |
+              $M(..., @$DEC(...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., ParseIntPipe, ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., new ParseIntPipe(...), ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., ParseFloatPipe, ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., new ParseFloatPipe(...), ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., ParseBoolPipe, ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., new ParseBoolPipe(...), ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., ParseUUIDPipe, ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., new ParseUUIDPipe(...), ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., ParseEnumPipe, ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(..., new ParseEnumPipe(...), ...) $PARAM, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(...) $PARAM: number, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(...) $PARAM: boolean, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(...) $PARAM: Date, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(...) $PARAM: bigint, ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(...) $PARAM: number[], ...) { ... }
+          - pattern-not-inside: |
+              $M(..., @$DEC(...) $PARAM: boolean[], ...) { ... }
+          - pattern: $PARAM
+          - metavariable-regex: {metavariable: $DEC, regex: '^(Body|Query|Param|Headers)$'}
     pattern-sanitizers: &js-sanitizers
       - &san-numeric
         pattern-either:
@@ -173,7 +213,7 @@ rules:
               - pattern: $DB.execute($SQL, ...)
           - metavariable-regex:
               metavariable: $DB
-              regex: '(?i)^(.*\.)?(sequelize|db|database|conn|connection|pool|client|knex|pg|mysql|sql|sqlite|prisma|tx|trx|transaction)$'
+              regex: '(?i)^(.*\.)?(sequelize|db|database|conn|connection|pool|client|knex|pg|mysql|sql|sqlite|prisma|tx|trx|transaction|datasource|queryrunner|manager|entitymanager|\w*repository|\w*repo)$'
           - focus-metavariable: $SQL
 
   - id: codewatch.js.command-injection
@@ -309,6 +349,7 @@ rules:
       - *src-request-getter
       - *src-search-params
       - *src-url-search-params
+      - *src-nest-param
       - &dom-sources
         pattern-either:
           - pattern: location.hash
@@ -420,6 +461,7 @@ rules:
       - *src-request-getter
       - *src-search-params
       - *src-url-search-params
+      - *src-nest-param
       - *src-destructured-request
       - *dom-sources
     pattern-sanitizers:
@@ -528,6 +570,7 @@ rules:
       - *src-request-getter
       - *src-search-params
       - *src-url-search-params
+      - *src-nest-param
       - *src-destructured-request
       - *dom-sources
     pattern-sanitizers: *js-sanitizers
@@ -637,6 +680,7 @@ rules:
       - *src-request-getter
       - *src-search-params
       - *src-url-search-params
+      - *src-nest-param
       - *src-destructured-request
     pattern-sanitizers:
       - *san-numeric

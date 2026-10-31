@@ -1453,6 +1453,156 @@ def test_session_stores_records_looked_up_by_request_values(tmp_path):
     assert found == {("views.py", 15, "trust-boundary", "vulnerability")}
 
 
+def test_nestjs_controller_parameters(tmp_path):
+    """NestJS @Param/@Query/@Body/@Headers parameters are request data, unless a pipe or a number/boolean/Date type
+    converts them; TypeORM's dataSource.query() is a SQL sink. sendFile with a root option stays quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "users.controller.ts": (
+            "import { Body, Controller, Get, Param, ParseIntPipe, Query, Res } from '@nestjs/common';\n"
+            "import { exec } from 'child_process';\n"
+            '\n'
+            "@Controller('users')\n"
+            'export class UsersController {\n'
+            '  constructor(private readonly dataSource: DataSource) {}\n'
+            '\n'
+            "  @Get(':slug')\n"
+            "  async findOne(@Param('slug') slug, @Query('sort') sort: string) {\n"
+            "    return this.dataSource.query(`SELECT * FROM users WHERE slug = '${slug}' ORDER BY ${sort}`);\n"
+            '  }\n'
+            '\n'
+            "  @Get('id/:id')\n"
+            "  async byId(@Param('id', ParseIntPipe) id: number, @Query('n') n: number) {\n"
+            '    return this.dataSource.query(`SELECT * FROM users WHERE id = ${id} LIMIT ${n}`);\n'
+            '  }\n'
+            '\n'
+            '  @Post()\n'
+            '  create(@Body() dto: CreateUserDto) {\n'
+            "    exec('useradd ' + dto.name);\n"
+            "    return this.dataSource.query('SELECT * FROM users WHERE name = $1', [dto.name]);\n"
+            '  }\n'
+            '\n'
+            "  @Get('download/:path')\n"
+            "  download(@Param('path') path: string, @Res() res) {\n"
+            "    return res.sendFile(path, { root: './files' });\n"
+            '  }\n'
+            '\n'
+            '  helper(name: string) {\n'
+            "    exec('ls ' + name);\n"
+            '  }\n'
+            '}\n')})
+    assert {(path, line, rule) for path, line, rule, kind in found if kind == "vulnerability"} == {
+        ("users.controller.ts", 10, "sql-injection"),
+        ("users.controller.ts", 10, "sql-value-formatting"),
+        ("users.controller.ts", 20, "command-injection"),
+    }
+
+
+def test_request_body_models(tmp_path):
+    """A FastAPI route parameter typed with a Pydantic or SQLModel class is the request body: its text fields are
+    request data, inherited ones too; its int fields, and the same model outside a route, aren't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "models.py": (
+            "from pydantic import BaseModel\n\n\n"
+            "class ItemBase(BaseModel):\n"
+            "    title: str\n"
+            "    limit: int = 10\n\n\n"
+            "class ItemCreate(ItemBase):\n"
+            "    owner: str | None = None\n"),
+        "api.py": (
+            "from fastapi import APIRouter\n\nfrom models import ItemCreate\n\nrouter = APIRouter()\n\n\n"
+            "@router.post('/items/')\n"
+            "async def create(item: ItemCreate):\n"
+            "    await db.execute(f\"SELECT * FROM items WHERE title = '{item.title}'\")\n"
+            "    await db.execute(f\"SELECT * FROM items LIMIT {item.limit}\")\n"
+            "    await db.execute(f\"SELECT * FROM items WHERE owner = '{item.owner}'\")\n\n\n"
+            "def save(item: ItemCreate):\n"
+            "    db.execute(f\"INSERT INTO items VALUES ('{item.title}')\")\n"),
+    })
+    assert {(path, line, rule) for path, line, rule, kind in found if rule == "sql-injection"} == {
+        ("api.py", 10, "sql-injection"),
+        ("api.py", 12, "sql-injection"),
+    }
+
+
+def test_false_alarms_from_the_maintainers_projects(tmp_path):
+    """Shapes from the maintainer's own projects that were flagged once route parameters became sources: a function
+    nested in a view, a record fetched by the id (get_gif), a video Response, a URL argv element for mpv, a
+    secure_filename() path for ffmpeg, md5 for a seed beside a cache_key, and random values put in a dict that isn't
+    the session. The real ones beside them stay flagged."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "app.py": (
+            'import hashlib\n'
+            'import os\n'
+            'import random\n'
+            'import subprocess\n'
+            '\n'
+            'import requests\n'
+            'from flask import Flask, Response, jsonify, request, session\n'
+            'from werkzeug.utils import secure_filename\n'
+            '\n'
+            'app = Flask(__name__)\n'
+            '\n'
+            '\n'
+            '@app.route("/creator/<username>")\n'
+            'def creator(username):\n'
+            '    def fetch_all():\n'
+            '        return username\n'
+            '    return jsonify(fetch_all())\n'
+            '\n'
+            '\n'
+            '@app.route("/thumb/<gif_id>")\n'
+            'def thumb(gif_id):\n'
+            '    gif = get_gif(gif_id)\n'
+            '    requests.get(gif.urls.poster, timeout=10)\n'
+            '    requests.get(request.args["url"], timeout=10)\n'
+            '    return Response(stream(gif_id), mimetype="video/mp4")\n'
+            '\n'
+            '\n'
+            '@app.route("/page/<name>")\n'
+            'def page(name):\n'
+            '    return Response(name, mimetype="text/html")\n'
+            '\n'
+            '\n'
+            '@app.route("/play/<video_id>")\n'
+            'def play(video_id):\n'
+            '    subprocess.Popen(["mpv", f"https://www.youtube.com/watch?v={video_id}"])\n'
+            '    os.system(f"curl https://example.com/{video_id}")\n'
+            '    upload = secure_filename(request.files["f"].filename)\n'
+            '    subprocess.run(["ffmpeg", "-i", os.path.join(UPLOADS, upload)])\n'
+            '    return "ok"\n'
+            '\n'
+            '\n'
+            'def round_seed(game):\n'
+            '    cache_key = f"round_{game.code}"\n'
+            '    game["questions"] = random.choice(QUESTIONS)\n'
+            '    return hashlib.md5(cache_key.encode()).hexdigest()\n'
+            '\n'
+            '\n'
+            'def login():\n'
+            '    session["token"] = random.random()\n'
+            '\n'
+            '\n'
+            '@app.route("/video/<gif_id>")\n'
+            'def video(gif_id):\n'
+            '    try:\n'
+            '        gif = get_gif(gif_id)\n'
+            '    except KeyError:\n'
+            '        return "missing"\n'
+            '    requests.get(gif.urls.hd, timeout=10)\n'
+            '    page = fetch_page(requests.get(request.args["next"], timeout=10).text)\n'
+            '    return "ok"\n')})
+    # A sink among a lookup's arguments still counts (line 59).
+    assert {(line, rule) for path, line, rule, kind in found if kind == "vulnerability"} == {
+        (24, "ssrf"), (30, "xss"), (36, "command-injection"), (49, "weak-random-token"), (59, "ssrf"),
+    }
+
+
 def test_helpers_that_return_request_data(tmp_path):
     """A call to a function that returns request data is request data where that function is visible; what a helper
     looks up with the request (a user by id) isn't, and neither is a view's response."""

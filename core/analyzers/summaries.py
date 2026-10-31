@@ -74,6 +74,7 @@ JS_RETURN_SINKS = [
         {"pattern-inside": "$OBJ.$FUNC = function (...) { ... }"},
     ]}, {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
 ]
+LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)_(?!"
 # What a helper looks up with the request data (a user by token, a row by id) is stored data, not the request's.
 LOOKUP_SANITIZER = {"patterns": [
     {"pattern-either": [{"pattern": "$F(...)"}, {"pattern": "await $F(...)"}]},
@@ -354,7 +355,7 @@ def returner_rules(rules, returners=None):
         variant["message"] = "$FUNC"
         variant["pattern-sources"] = rule["pattern-sources"] + from_sources((returners or {}).get(rule["id"], ()),
                                                                             is_js(rule))
-        variant["pattern-sanitizers"] = [*rule.get("pattern-sanitizers", []), copy.deepcopy(LOOKUP_SANITIZER)]
+        variant["pattern-sanitizers"] = [*without_lookup_result(rule), copy.deepcopy(LOOKUP_SANITIZER)]
         variant["pattern-sinks"] = copy.deepcopy(JS_RETURN_SINKS if is_js(rule) else PYTHON_RETURN_SINKS)
         out.append(variant)
     return out
@@ -407,7 +408,14 @@ def from_rules(rules, returners, summaries):
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + FROM_SUFFIX
         variant["pattern-sources"] = from_sources(found, is_js(rule))
+        variant["pattern-sanitizers"] = without_lookup_result(rule)
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
         variant["message"] = rule["message"].strip() + " [from $RET_FUNC()]"
         out.append(variant)
     return out
+
+
+def without_lookup_result(rule):
+    """The rule's sanitizers minus lookup-result (python-web.yml), which would also clean get_cmd() when get_cmd
+    is a returner: what the returner pass found overrides the name."""
+    return [s for s in rule.get("pattern-sanitizers", []) if LOOKUP_RESULT_MARK not in repr(s)]

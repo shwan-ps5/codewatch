@@ -26,6 +26,8 @@ REF_RE = re.compile(r"^\w[\w./~^@{}-]{0,199}$")
 
 DEFAULT_EXCLUSIONS = [
     "**/node_modules/**",
+    # A virtualenv committed with the project (one of the maintainer's has 9,773 files of it).
+    "**/site-packages/**",
     "**/migrations/**",
     "**/vendor/**",
     "**/third_party/**",

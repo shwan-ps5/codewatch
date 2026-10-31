@@ -329,7 +329,49 @@ rules:
                   def $VIEW(...):
                     ...
               - metavariable-regex: {metavariable: $ROUTE, regex: '^[^<]*$'}
+      # A helper that looks something up by the request value returns that thing, not the value: get_gif(gif_id),
+      # fetch_order(order_no). Only bare calls (project helpers, not request.get_json()), and not names that say
+      # they return request data (get_param, get_json). A helper that does return it is found by the returner pass.
+      - &lookup-result
+        patterns:
+          # The variable it's assigned to, not the call: a sink among the call's arguments still counts.
+          - pattern-either:
+              - pattern-inside: |
+                  $RESULT = $LOOKUP(...)
+                  ...
+              - pattern-inside: |
+                  try:
+                    ...
+                    $RESULT = $LOOKUP(...)
+                    ...
+                  except $ERR:
+                    ...
+                  ...
+              - pattern-inside: |
+                  try:
+                    ...
+                    $RESULT = $LOOKUP(...)
+                    ...
+                  except $ERR as $E:
+                    ...
+                  ...
+          - pattern: $RESULT
+          - metavariable-regex:
+              metavariable: $LOOKUP
+              regex: '^_?(cached_)?(get|fetch|load|find|lookup)_(?!(json|data|params?|args?|query|queries|headers?|cookies?|body|form|fields?|values?|inputs?|text|str|string|url|uri|path|file|filename|name|key|id|var|env|config|setting|content|request|req|payload)(_|$))\w+$'
       - pattern: shlex.quote(...)
+      # secure_filename() leaves only letters, digits, "_", "." and "-": nothing a shell treats specially.
+      - pattern: secure_filename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+      # A URL with a literal scheme and host, as one argv element (mpv "https://youtube.com/watch?v={id}"): it can't
+      # become the program or an option, and a shell command line doesn't start with "https://".
+      - patterns:
+          - pattern: $URL
+          - pattern: f"..."
+          - metavariable-regex: {metavariable: $URL, regex: '^[fF][rR]?["'']https?://[\w.-]+/'}
+      - patterns:
+          - pattern: '"$PREFIX" + $X'
+          - metavariable-regex: {metavariable: $PREFIX, regex: '^https?://[\w.-]+/'}
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -363,6 +405,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -394,6 +437,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -440,6 +484,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       - pattern: os.path.basename(...)
       - pattern: pathlib.Path(...).name
       - pattern: pathlib.Path(...).stem
@@ -524,6 +569,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       - pattern: html.escape(...)
       - pattern: markupsafe.escape(...)
       - pattern: flask.escape(...)
@@ -558,6 +604,12 @@ rules:
               @$APP.route(...)
               def $VIEW(...):
                 ...
+          # A function defined inside the view returns to its caller, not to the client.
+          - pattern-not-inside: |
+              def $VIEW(...):
+                ...
+                def $INNER(...):
+                  ...
           - pattern-either:
               - patterns:
                   - pattern: return $BODY
@@ -578,6 +630,9 @@ rules:
           - pattern-not-inside: |
               $BODY = flask.Response(...)
               ...
+          - pattern-not: return flask.Response(...)
+          - pattern-not: return flask.make_response(...)
+          - pattern-not: return make_response(...)
           - focus-metavariable: $BODY
       - patterns:
           - pattern-either:
@@ -592,7 +647,11 @@ rules:
                       - pattern: make_response($BODY, ...)
                   - pattern-not: flask.make_response(($FIRST, $SECOND, ...), ...)
                   - pattern-not: make_response(($FIRST, $SECOND, ...), ...)
-              - pattern: flask.Response($BODY, ...)
+              - patterns:
+                  - pattern: flask.Response($BODY, ...)
+                  # Media, JSON and downloads aren't rendered as HTML.
+                  - pattern-not: flask.Response($B, ..., mimetype="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip)/", ...)
+                  - pattern-not: flask.Response($B, ..., content_type="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip)/", ...)
               - pattern: flask.render_template_string($BODY, ...)
               - pattern: render_template_string($BODY, ...)
               - pattern: markupsafe.Markup($BODY)
@@ -623,6 +682,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       # Replacing the quote that delimits the value (' -> &apos;) stops it from closing the XPath string.
       - patterns:
           - pattern: $X.replace($QUOTE, ...)
@@ -660,6 +720,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       - patterns:
           - pattern: $ESCAPE(...)
           - metavariable-regex: {metavariable: $ESCAPE, regex: '(?i).*escape'}
@@ -710,6 +771,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       # Back to the page the user came from: only the site that linked here chose it, so it can't send anyone
       # anywhere they weren't already.
       - pattern-either:
@@ -780,6 +842,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       # What a login or verification call returns is the checked identity, not the raw request value.
       - patterns:
           - pattern: $AUTH(...)
@@ -825,6 +888,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -867,13 +931,17 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
               - pattern: $RESP.set_cookie($NAME, $VALUE, ...)
               - pattern: flask.session[$KEY] = $VALUE
               - pattern: session[$KEY] = $VALUE
-              - pattern: $SESSION[$KEY] = $VALUE
+              # request.session, self.session; not any dict (game['questions'] = ...).
+              - patterns:
+                  - pattern: $SESSION[$KEY] = $VALUE
+                  - metavariable-regex: {metavariable: $SESSION, regex: '(?i)^(.*\.)?\w*session$'}
           - focus-metavariable: $VALUE
 
   - id: codewatch.python.weak-hash
@@ -973,6 +1041,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -1065,6 +1134,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       # Only the path or query is user data when the scheme and host are fixed in front of it.
       - patterns:
           - pattern-either:
@@ -1117,6 +1187,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       - pattern: re.escape(...)
     pattern-sinks:
       - patterns:
@@ -1148,6 +1219,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       - pattern: repr(...)
       - pattern: json.dumps(...)
       - patterns:
@@ -1198,6 +1270,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
       - patterns:
           - pattern: re.sub($PATTERN, "/", ...)
           - metavariable-regex: {metavariable: $PATTERN, regex: '^r?[''"]/(\{2,\}|/\+|\+)[''"]$'}
@@ -1276,6 +1349,7 @@ rules:
           - pattern: $F.filename
     pattern-sanitizers:
       - *known-safe
+      - *lookup-result
       # Inside, or after, a check that looks at the name's extension or type: if allowed_file(f.filename): ...
       - patterns:
           - pattern-either:
@@ -1500,6 +1574,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *known-safe
+      - *lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:

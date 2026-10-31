@@ -3,7 +3,7 @@
     venv/bin/python benchmarks/devtools.py bench [SUITE...]          # score suites (all by default), one line each
     venv/bin/python benchmarks/devtools.py rules SUBSTR FILE...      # one Semgrep pass of matching built-in rules
     venv/bin/python benchmarks/devtools.py repos [--via|--entry] DIR...
-                                                                     # full Semgrep analyzer on git working copies
+                                                                     # full Semgrep analyzer on projects (git or not)
     venv/bin/python benchmarks/devtools.py owasp [CATEGORY...]      # OWASP Python cases scored wrong (verdict mode)
 
 `rules` scans the same line-preserving rewritten copy of Python files that the analyzer does, but skips summaries;
@@ -21,6 +21,8 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# One line per suite or project as it finishes, also when the output goes to a file.
+sys.stdout.reconfigure(line_buffering=True)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "codewatch.settings")
 
 import django
@@ -70,12 +72,27 @@ def rules(rule_filter, files):
         print(f, hits.get(f, []))
 
 
+SKIPPED_DIRS = {".git", "node_modules", "venv", ".venv", "env", "__pycache__", "dist", "build", "vendor", ".next"}
+
+
+def project_files(root):
+    """Tracked files of a git working copy, or every file under a plain directory (minus dependencies and
+    build output), relative to root."""
+    listed = subprocess.run(["git", "ls-files", "-z"], cwd=root, check=False, capture_output=True, text=True)
+    if listed.returncode == 0 and (root / ".git").exists():
+        return [f for f in listed.stdout.split("\0") if f]
+    files = []
+    for top, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIPPED_DIRS and not d.startswith(".")]
+        files += [str((Path(top) / n).relative_to(root)) for n in names]
+    return files
+
+
 def repos(args):
     mode = args[0] if args and args[0] in ("--via", "--entry") else None
     for arg in args[1:] if mode else args:
         root = Path(arg).expanduser()
-        listed = subprocess.run(["git", "ls-files", "-z"], cwd=root, check=False, capture_output=True, text=True).stdout
-        files = [f for f in listed.split("\0") if f and not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]
+        files = [f for f in project_files(root) if not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]
         start = time.time()
         ctx = Context(root=root, files=files, semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
         found = Semgrep().run(ctx).findings

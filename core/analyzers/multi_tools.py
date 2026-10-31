@@ -28,6 +28,7 @@ from .base import (
     isolated_tool,
     node_tool,
 )
+from .body_models import with_model_sources
 from .constant_branches import blank_dead_branches
 from .containers import track_slots
 from .match_statements import match_as_if
@@ -96,6 +97,7 @@ class Semgrep(Analyzer):
         custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
         if not ctx.semgrep_config and not custom_rules:
             return Result()
+        custom_rules = with_model_sources(custom_rules, (read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})))
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
