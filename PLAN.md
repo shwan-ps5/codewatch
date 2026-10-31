@@ -165,7 +165,46 @@ knowledge.
 5. **JS dependency vulnerabilities**: done for npm, yarn and pnpm lockfiles by the `osv` analyzer
    (`core/analyzers/dependencies.py`), which parses them itself and asks OSV's batch API, so no new binary. Go, Rust
    and Java lockfiles would need the osv-scanner binary in `tools/`; downloading it needs the user's go-ahead.
-6. Re-run everything, then the blind set; update the README table.
+6. Re-run everything, then the blind set; update the README table. Non-blind re-run at fe33054 (2026-10-31):
+   quick suites unchanged (OWASP verdict 100%/0%, review 100%/35%; Juice Shop 15/17 of 35); cve-pairs-python
+   verdict 6/14 found, 3/14 still flagged (was 5/14, 1/14), review 7/14, 3/14; cve-pairs-javascript unchanged
+   (0/10, review 3/10). Two new "still flagged" come from this round's sources, both false alarms:
+   - GHSA-g3cm (pyload): `get_redirect_url()` returns `urljoin(flask.request.url_root, url_for(...))`, and the
+     returner pass now follows it into `flask.redirect`. `url_root`/`host_url` are the app's own host, like the
+     Host header the JS rule already accepts. The vulnerable-commit hits at the same lines are the same noise,
+     so that "detection" isn't one either.
+   - GHSA-6rmf (django-termsandconditions): `self.request.POST` (new source) goes into
+     `self.get_return_to(...)`, which returns it only inside `if self.is_safe_url(x):`, else "/". Semgrep taints
+     any call result with a tainted argument, and there's no positive-guard sanitizer.
+   Next (after the blind run): a pass-through summary (params as sources, `return` as sink; calls to project
+   functions that don't pass a parameter through become sanitizers), a positive-guard sanitizer
+   (`if is_safe_url(x): ...`), and `request.url_root`/`host_url` as open-redirect sanitizers. The same
+   pass-through gap is behind own-app-10 app.py:793.
+
+   Blind repos at fe33054 (first and only scan, 2026-10-31; not to be used to adjust rules), verdict findings:
+   - Django-Styleguide-Example: 3, all real at code level: `CORS_ALLOW_ALL_ORIGINS` with credentials
+     (cors.py:4) and two `jwt.decode(..., verify_signature=False)` (defensible there: the token comes straight
+     from Google's token endpoint, but it is what the rule says).
+   - FastAPI-boilerplate: 2 false alarms: a constant scrypt salt used on purpose to fingerprint configured
+     targets (readiness.py:149), and Jinja autoescape off in a CLI that generates code, not HTML (render.py:23).
+   - hackathon-starter: 10, all false alarms: four `res.redirect(`/auth/${provider}`)` (fixed relative prefix),
+     three XSS through `sendSSE` (JSON on an event stream), two SSRF to fixed hosts with
+     `encodeURIComponent`ed queries (Giphy, Wikipedia), and a redirect to the Referer, which the Python rule
+     treats as safe by design (JS and Python disagree).
+   - nestjs-prisma-starter: 0.
+   So 2 of 4 ordinary apps have verdict false alarms (12 in all, 10 in one Express app); the non-blind ordinary
+   apps' 0 was partly fitted. The shapes are general (fixed-prefix relative redirects, fixed-host URLs with an
+   encoded query, event-stream writes, Referer in JS, CLI Jinja environments), but per the ground rules they
+   can't be fixed on this evidence: they need a non-blind case first, and the blind set needs replacing before
+   it can measure again.
+
+   Blind CVE pairs at fe33054 (first and only run): cve-pairs-blind-python verdict 2/5 found, 1/5 still flagged;
+   cve-pairs-blind-javascript verdict 1/4, 1/4 (review 1/4, 2/4). Read case by case: Python's two are real
+   (archivy GHSA-28mg open redirect; GHSA-mcmc XXE), and archivy's fix-commit hit is the positive-guard gap
+   above (`if next and is_safe_redirect_url(next): return redirect(next)`), already known from GHSA-6rmf. The JS
+   one (medplum GHSA-m44r) isn't a detection: the same lines are flagged either side of the fix (a redirect to a
+   URI looked up from the client's registered list, and one after `isValidReturnToUrl(...)`), so honestly 0/4.
+   The blind set is now spent; a new one is needed before the next blind measurement.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

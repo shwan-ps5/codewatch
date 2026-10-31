@@ -511,7 +511,7 @@
  },
  "suite": "vulnerable-snippets-js",
  "commit": "07669239ed45467b3c169b9747b3ccdc229632ca",
- "scanned_at": "2026-10-31T17:03:14+00:00",
+ "scanned_at": "2026-10-31T18:02:25+00:00",
  "overall": {
   "verdict": {
    "found": 11,
