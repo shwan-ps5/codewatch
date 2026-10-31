@@ -1350,3 +1350,84 @@ def test_route_parameter_xss_and_file_responses(tmp_path):
             "    return send_from_directory('static', filename, as_attachment=True, download_name=filename)\n"),
     })
     assert found == {("app.py", 8, "xss", "vulnerability")}
+
+
+def test_path_prefix_checks(tmp_path):
+    """From GHSA-8wqc-v2q8-vff2 (mockoon): a resolved path checked with startsWith against a base without a trailing
+    separator lets a sibling directory sharing the prefix through. For review; base + sep, path.relative(),
+    is_relative_to() and commonpath() are fine, and so is a URL prefix check on the request path."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "files.js": (
+            "const path = require('path');\n"
+            "const { resolve, relative } = require('path');\n"
+            '\n'
+            'function a(name) {\n'
+            '  const base = path.resolve(root);\n'
+            '  const target = path.join(base, name);\n'
+            "  if (!target.startsWith(base)) throw new Error('outside');\n"
+            '}\n'
+            'function b(name) {\n'
+            '  const base = path.resolve(root) + path.sep;\n'
+            '  const target = path.resolve(base, name);\n'
+            "  if (!target.startsWith(base)) throw new Error('outside');\n"
+            '}\n'
+            'function c(name) {\n'
+            '  const target = resolve(this.options.dir, name);\n'
+            "  if (!target.startsWith(this.options.dir + '/')) throw new Error('outside');\n"
+            "  if (!target.startsWith(`${this.options.dir}${path.sep}`)) throw new Error('outside');\n"
+            '  const rel = relative(this.options.dir, target);\n'
+            "  if (rel.startsWith('..')) throw new Error('outside');\n"
+            '}\n'
+            'function d(req) {\n'
+            '  if (req.path.startsWith(apiBasePath)) return next();\n'
+            '  const staticBaseDir = m ? resolve(m[1]) : null;\n'
+            "  if (!resolvedPath.startsWith(staticBaseDir)) throw new Error('x');\n"
+            '}\n'),
+        "files.py": (
+            'import os\n'
+            'from pathlib import Path\n'
+            '\n'
+            '\n'
+            'def a(name):\n'
+            '    base = os.path.realpath(ROOT)\n'
+            '    target = os.path.realpath(os.path.join(base, name))\n'
+            '    if not target.startswith(base):\n'
+            '        raise ValueError\n'
+            '\n'
+            '\n'
+            'def b(name):\n'
+            '    base = os.path.realpath(ROOT) + os.sep\n'
+            '    target = os.path.abspath(os.path.join(base, name))\n'
+            '    if not target.startswith(base):\n'
+            '        raise ValueError\n'
+            '    if not target.startswith(os.path.join(ROOT, "")):\n'
+            '        raise ValueError\n'
+            '    if os.path.commonpath([base, target]) != base:\n'
+            '        raise ValueError\n'
+            '\n'
+            '\n'
+            'def c(name):\n'
+            '    base = Path(ROOT).resolve()\n'
+            '    target = (base / name).resolve()\n'
+            '    if not str(target).startswith(str(base)):\n'
+            '        raise ValueError\n'
+            '    if not target.is_relative_to(base):\n'
+            '        raise ValueError\n'
+            '\n'
+            '\n'
+            'def d(request):\n'
+            '    if request.path.startswith(settings.STATIC_URL):\n'
+            '        return None\n'
+            '    full = os.path.normpath(os.path.join(MEDIA_ROOT, request.GET["f"]))\n'
+            '    if full.startswith(MEDIA_ROOT):\n'
+            '        return open(full)\n'),
+    })
+    assert found == {
+        ("files.js", 7, "path-prefix-check", "security_hotspot"),
+        ("files.js", 24, "path-prefix-check", "security_hotspot"),
+        ("files.py", 8, "path-prefix-check", "security_hotspot"),
+        ("files.py", 26, "path-prefix-check", "security_hotspot"),
+        ("files.py", 36, "path-prefix-check", "security_hotspot"),
+    }

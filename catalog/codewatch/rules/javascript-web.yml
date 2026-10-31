@@ -522,3 +522,41 @@ rules:
           - pattern: 'multer({...})'
       - pattern-not: 'multer({..., limits: $LIMITS, ...})'
 
+
+  - id: codewatch.js.path-prefix-check
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >-
+      A resolved path is checked against its base directory with startsWith, and the base doesn't end in a
+      separator, so "/srv/data-evil/x" passes a check for "/srv/data". Compare path.relative(base, target) instead
+      (reject results starting with ".." or absolute), or check against base + path.sep.
+    # For review: harmless if nothing outside the base shares its prefix, which the code can't show.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Path containment checked by string prefix
+      cwe: ["CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+        - https://nodejs.org/api/path.html#pathrelativefrom-to
+    patterns:
+      - pattern: $P.startsWith($BASE)
+      - pattern-either:
+          - pattern-inside: |
+              $P = $FN(...);
+              ...
+          - pattern-inside: |
+              $BASE = $FN(...);
+              ...
+          - pattern-inside: |
+              $BASE = $COND ? $FN(...) : $OTHER;
+              ...
+      - metavariable-regex: {metavariable: $FN, regex: '^((path|posix|win32|fs|fsp)\.)*(resolve|join|normalize|realpath|realpathSync)$'}
+      - pattern-not: $P.startsWith("...")
+      - pattern-not: $P.startsWith(`...`)
+      - pattern-not: $P.startsWith($X + $SEP)
+      - pattern-not-inside: |
+          $BASE = $X + $SEP;
+          ...
