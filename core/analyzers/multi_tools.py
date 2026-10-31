@@ -32,6 +32,7 @@ from .constant_branches import blank_dead_branches
 from .containers import track_slots
 from .match_statements import match_as_if
 from .python_tools import LineCache, complexity_severity, security_purpose
+from .route_converters import type_route_converters
 from .slices import index_slices
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
@@ -237,9 +238,10 @@ def read_source(path):
 
 def analysis_copy(source):
     """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, container
-    slots tracked one by one and match statements made ifs. None when nothing changes."""
+    slots tracked one by one, match statements made ifs and Flask converter types written on view parameters. None
+    when nothing changes."""
     current = None
-    for rewrite in (blank_dead_branches, index_slices, track_slots, match_as_if):
+    for rewrite in (blank_dead_branches, index_slices, track_slots, match_as_if, type_route_converters):
         current = rewrite(current or source) or current
     return current
 

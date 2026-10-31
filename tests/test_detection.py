@@ -1276,3 +1276,77 @@ def test_redirect_checks_from_cve_fix_pairs(tmp_path):
         ("web.js", 6, "open-redirect", "vulnerability"),
         ("web.js", 7, "open-redirect", "vulnerability"),
     }
+
+
+def test_route_converters_become_annotations():
+    from core.analyzers.route_converters import type_route_converters
+    source = ("@bp.route('/u/<path:name>/<int:n>/<uuid:key>')\n@login_required\ndef view(name, n, key: str, x='é'):\n"
+              "    pass\n\n\n@app.get('/a/<int:n>')\nasync def a(n=1):\n    pass\n")
+    assert type_route_converters(source) == source.replace("name, n, key", "name, n: int, key").replace(
+        "a(n=1)", "a(n: int=1)")
+    assert type_route_converters("def f(n):\n    return '<int:n>'\n") is None
+    # GHSA-8whx-v8qq-pq64 (changedetection.io): the fix swaps <string:tag_uuid> for an app's own uuid_str converter.
+    assert type_route_converters("@rss.route('/tag/<uuid_str:tag>/<any(a, b):page>/<string:s>')\n"
+                                 "def feed(tag, page, s):\n    pass\n").splitlines()[1] == (
+        "def feed(tag: uuid_str, page: any, s):")
+
+
+def test_route_parameters_and_raw_sql_sinks(tmp_path):
+    """From GHSA-f2mf-q878-gh58 (Parsl) and GHSA-h6m6-jj8v-94jj (litellm): Flask route parameters and FastAPI text
+    parameters are request data, reaching pandas.read_sql_query or Prisma's query_raw; numeric, UUID and Depends()
+    parameters aren't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "app.py": (
+            "import uuid\nfrom typing import Optional\n\nimport fastapi\nimport pandas as pd\n"
+            "from fastapi import APIRouter, Depends, Query\nfrom flask import Blueprint, Flask\n\n"
+            "app = Flask(__name__)\nbp = Blueprint('main', __name__)\nrouter = APIRouter()\n\n\n"
+            "@app.route('/workflow/<workflow_id>/dag')\n"
+            "def dag(workflow_id):\n"
+            "    return pd.read_sql_query(\"SELECT * FROM task WHERE run_id='%s'\" % workflow_id, db.engine)\n\n\n"
+            "@bp.route('/u/<path:name>/<int:n>')\n"
+            "@login_required\n"
+            "def mixed(name, n):\n"
+            "    cursor.execute('SELECT %s' % n)\n"
+            "    cursor.execute(\"SELECT '%s'\" % name)\n"
+            "    pd.read_sql_query('SELECT * FROM t WHERE n = :n', db.engine, params={'n': name})\n\n\n"
+            "@router.get('/spend')\n"
+            "async def spend(api_key: str = fastapi.Query(default=None), limit: int = Query(10)):\n"
+            "    await prisma_client.db.query_raw(query=\"SELECT * FROM t WHERE k = '\" + api_key + \"'\")\n"
+            "    await prisma_client.db.query_raw('SELECT * FROM t LIMIT %d' % limit)\n"
+            "    await prisma_client.db.query_raw('SELECT * FROM t WHERE k = $1', api_key)\n\n\n"
+            "@router.get('/items/{id}')\n"
+            "def items(id: uuid.UUID, q: Optional[str] = None, session=Depends(get_db)):\n"
+            "    session.execute(\"SELECT * FROM items WHERE id = '%s'\" % id)\n"
+            "    session.execute(\"SELECT * FROM items WHERE q = '%s'\" % q)\n\n\n"
+            "def helper(workflow_id):\n"
+            "    cursor.execute(workflow_id)\n"),
+    })
+    assert {f for f in found if f[2] == "sql-injection"} == {
+        ("app.py", 16, "sql-injection", "vulnerability"),
+        ("app.py", 23, "sql-injection", "vulnerability"),
+        ("app.py", 29, "sql-injection", "vulnerability"),
+        ("app.py", 37, "sql-injection", "vulnerability"),
+    }
+
+
+def test_route_parameter_xss_and_file_responses(tmp_path):
+    """From GHSA-8whx-v8qq-pq64 (changedetection.io): a <string:...> route parameter echoed in a response is XSS, one
+    behind the app's own converter isn't; from pygoat: a file response named after the parameter isn't either."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "app.py": (
+            "from flask import Flask, send_from_directory\n\napp = Flask(__name__)\n\n\n"
+            "@app.route('/tag/<string:tag_uuid>')\n"
+            "def tag(tag_uuid):\n"
+            "    return f'Tag with UUID {tag_uuid} not found', 404\n\n\n"
+            "@app.route('/tag2/<uuid_str:tag_uuid>')\n"
+            "def tag2(tag_uuid):\n"
+            "    return f'Tag with UUID {tag_uuid} not found', 404\n\n\n"
+            "@app.route('/download/<path:filename>')\n"
+            "def serve_file(filename):\n"
+            "    return send_from_directory('static', filename, as_attachment=True, download_name=filename)\n"),
+    })
+    assert found == {("app.py", 8, "xss", "vulnerability")}

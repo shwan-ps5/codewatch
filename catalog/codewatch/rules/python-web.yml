@@ -28,6 +28,64 @@ rules:
               request = $MAKE(...)
               ...
       - pattern: starlette.requests.Request
+      # A route function's parameters come from the URL path or, in FastAPI, the query string, form or headers:
+      # @app.route("/user/<name>") def user(name). Typed ones count only as text (str, Optional[str], list[str]);
+      # numbers, UUIDs, models and Depends() don't. Flask converters (<int:id>) are written on the scanned copy
+      # as annotations (route_converters.py).
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  def $VIEW(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  async def $VIEW(..., $PARAM: $TYPE, ...):
+                    ...
+          - metavariable-regex:
+              metavariable: $TYPE
+              regex: '^((typing\.)?(Optional|List|Annotated)\[str\b.*|(list|set)\[str\]|str( \| None)?|Any)$'
+          - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
+          - pattern: $PARAM
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  def $VIEW(..., $PARAM, ...):
+                    ...
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  async def $VIEW(..., $PARAM, ...):
+                    ...
+          - pattern-not-inside: |
+              def $VIEW(..., $PARAM: $TYPE, ...):
+                ...
+          - pattern-not-inside: |
+              async def $VIEW(..., $PARAM: $TYPE, ...):
+                ...
+          - pattern-not-inside: |
+              def $VIEW(..., $PARAM=Depends(...), ...):
+                ...
+          - pattern-not-inside: |
+              def $VIEW(..., $PARAM=fastapi.Depends(...), ...):
+                ...
+          - pattern-not-inside: |
+              def $VIEW(..., $PARAM=Security(...), ...):
+                ...
+          - pattern-not-inside: |
+              async def $VIEW(..., $PARAM=Depends(...), ...):
+                ...
+          - pattern-not-inside: |
+              async def $VIEW(..., $PARAM=fastapi.Depends(...), ...):
+                ...
+          - pattern-not-inside: |
+              async def $VIEW(..., $PARAM=Security(...), ...):
+                ...
+          - metavariable-regex: {metavariable: $PARAM, regex: '^(?!(self|cls)$)\w+$'}
+          - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
+          - pattern: $PARAM
     pattern-propagators: &propagators
       - {pattern: '$TO.append($FROM)', from: $FROM, to: $TO}
       - {pattern: '$TO.extend($FROM)', from: $FROM, to: $TO}
@@ -345,6 +403,19 @@ rules:
               - pattern: $MODEL.objects.raw($SQL, ...)
               - pattern: $QS.extra(where=$SQL, ...)
               - pattern: sqlalchemy.text($SQL)
+              - pattern: $CONN.exec_driver_sql($SQL, ...)
+              # pandas runs the string as given; params= binds values.
+              - pattern: pandas.read_sql($SQL, ...)
+              - pattern: pandas.read_sql_query($SQL, ...)
+              - pattern: pandas.read_sql(sql=$SQL, ...)
+              - pattern: pandas.read_sql_query(sql=$SQL, ...)
+              # Prisma Client Python: query_raw(sql, *params).
+              - pattern: $DB.query_raw($SQL, ...)
+              - pattern: $DB.query_raw(query=$SQL, ...)
+              - pattern: $DB.query_first($SQL, ...)
+              - pattern: $DB.query_first(query=$SQL, ...)
+              - pattern: $DB.execute_raw($SQL, ...)
+              - pattern: $DB.execute_raw(query=$SQL, ...)
           - focus-metavariable: $SQL
 
   - id: codewatch.python.web.path-traversal
@@ -461,6 +532,11 @@ rules:
       - pattern: flask.jsonify(...)
       - pattern: jsonify(...)
       - pattern: json.dumps(...)
+      # A file response's body is the file; the name only goes into a quoted Content-Disposition header.
+      - pattern: flask.send_file(...)
+      - pattern: send_file(...)
+      - pattern: flask.send_from_directory(...)
+      - pattern: send_from_directory(...)
       # Jinja templates escape what they're given; redirect() escapes the URL in its body.
       - pattern: flask.render_template(...)
       - pattern: render_template(...)
