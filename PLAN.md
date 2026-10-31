@@ -40,9 +40,40 @@ gaps, not from these suites.
 Remaining Juice Shop misses are business logic, data files, Solidity and a Docker image; most remaining
 SecurityEval misses are design flaws or plain functions with no request source. Don't chase those with rules.
 
+## Where things stand (2026-10-31, commit 799955c)
+
+- Step 1 is built: `cve-pairs-python` (14 cases), `cve-pairs-javascript` (10), and blind `cve-pairs-blind-*`
+  (run only when named). Ordinary apps (7) give 0 vulnerability false alarms. Standards-gap rules (CWE-208, 209,
+  306, 434, 532, 614, 915, 942, 1004, 1336, 90, 643) and the OSV lockfile analyzer are in.
+- First CVE-pair run, at commit 6f3739a (before e7c27d4's rules and the scan narrowing in 799955c):
+
+  | Suite | Verdict found / still flagged | Review found / still flagged |
+  |---|---|---|
+  | cve-pairs-python | 2/14 / 1/14 | 5/14 / 1/14 |
+  | cve-pairs-javascript | 1/10 / 1/10 | 4/10 / 4/10 |
+
+  Its result files (`benchmarks/results/cve-pairs-*`) were left uncommitted.
+- The CVE suites are slow (Python ~4.5 h on the laptop, which overheated); run them on the desktop:
+  `venv/bin/python benchmarks/devtools.py bench cve-pairs-python cve-pairs-javascript`, then commit the results
+  as the CVE baseline for 799955c.
+
+What to work on next, from that run (these suites are not held out; note in `suites.json` when a case drives a
+rule):
+
+1. Still flagged after the fix: GHSA-9x43-5qcq-h79q (Python open-redirect, same 5 spots) and GHSA-v279-v2xm-whq9
+   (JS open-redirect). Find which check the fix added and whether it should count as a sanitizer.
+2. JS path traversal: 0 of 5 CWE-22 cases found. Look at what source/sink shapes the misses use (Fastify, Koa,
+   static-file helpers, `path.join` with `decodeURIComponent`).
+3. Python command injection (GHSA-gjxm, -2689, -xv5p) and SQL injection (GHSA-f2mf, -h6m6; only bandit B608
+   hotspots fire) misses: likely sources the rules don't know (steps 2-4 below).
+4. Then continue the steps below, re-running the CVE suites after each.
+
+Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
+knowledge.
+
 ## Next steps, in order
 
-1. **Real-world measurement sets** (do first, before more rules):
+1. **Real-world measurement sets** (done, see above):
    - CVE before/after pairs: Python and JS web projects with a published advisory and a fix commit (GitHub
      Security Advisories / OSV). Scan the vulnerable commit (detection) and the fixed commit (false alarm if
      still flagged at that spot). Add as a suite kind in `core/benchmark.py`, pinned commits in `suites.json`.
