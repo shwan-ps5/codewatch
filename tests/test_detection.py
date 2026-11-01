@@ -1931,3 +1931,34 @@ def test_the_crypto_module_name_is_not_a_security_purpose():
     assert not SECURITY_PURPOSE_RE.search("res.setHeader('ETag', crypto.createHash('md5').update(m).digest('hex'))")
     for text in ("const encrypted = encrypt(data)", "bcrypt.hash(password)", "from cryptography import x"):
         assert SECURITY_PURPOSE_RE.search(text), text
+
+
+def test_what_a_javascript_helper_looks_up_is_stored_data(tmp_path):
+    """outline: ctx.redirect(share.canonicalUrl) after `const result = await loadPublicShare({id: ctx.params...})`
+    redirects to the stored share's URL. A lookup inline in the sink, a request-shaped name and a helper the
+    returner pass finds returning request data still count."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"routes.js": (
+        "const app = require('express')()\n"
+        "function loadCurrent(req) {\n"
+        "  return req.query.next\n"
+        "}\n"
+        "app.get('/s/:id', async (req, res) => {\n"
+        "  const result = await loadPublicShare({ id: req.params.id })\n"
+        "  const share = result.share\n"
+        "  res.redirect(share.canonicalUrl)\n"
+        "})\n"
+        "app.get('/a', async (req, res) => {\n"
+        "  res.redirect(await loadShare(req.query.id))\n"
+        "})\n"
+        "app.get('/b', async (req, res) => {\n"
+        "  const target = await getRedirectTarget(req.query.next)\n"
+        "  res.redirect(target)\n"
+        "})\n"
+        "app.get('/c', (req, res) => {\n"
+        "  const next = loadCurrent(req)\n"
+        "  res.redirect(next)\n"
+        "})\n")})
+    assert found == {("routes.js", 11, "open-redirect"), ("routes.js", 15, "open-redirect"),
+                     ("routes.js", 19, "open-redirect")}

@@ -100,6 +100,7 @@ JS_RETURN_SINKS = [
         {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
 ]
 LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)_(?!"
+JS_LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)(?!("
 # What a helper looks up with the request data (a user by token, a row by id) is stored data, not the request's.
 LOOKUP_SANITIZER = {"patterns": [
     {"pattern-either": [{"pattern": "$F(...)"}, {"pattern": "await $F(...)"}]},
@@ -499,10 +500,11 @@ def from_rules(rules, returners, summaries):
 
 
 def without_lookup_result(rule):
-    """The rule's sanitizers minus lookup-result (python-web.yml) and the pass-through sanitizer, which would also
-    clean get_cmd() when get_cmd is a returner: what the returner pass found overrides the name."""
+    """The rule's sanitizers minus lookup-result (python-web.yml, javascript-taint.yml) and the pass-through
+    sanitizer, which would also clean get_cmd() when get_cmd is a returner: what the returner pass found overrides
+    the name."""
     return [s for s in rule.get("pattern-sanitizers", [])
-            if LOOKUP_RESULT_MARK not in repr(s) and PASS_THROUGH_MARK not in repr(s)]
+            if not any(mark in repr(s) for mark in (LOOKUP_RESULT_MARK, JS_LOOKUP_RESULT_MARK, PASS_THROUGH_MARK))]
 
 
 # Not $FIELD: the JS request sources bind that name (req.$FIELD).

@@ -329,6 +329,14 @@ knowledge.
    false alarms: `plugins/passkeys/server/auth/passkeys.ts:266` (`getPasskeyLoginRedirect` returns a fixed
    string; JS has no pass-through analysis) and `server/routes/app.ts:320` (`share.canonicalUrl` from a lookup
    by request id; JS has no lookup-result sanitizer). Those two are the next JS candidates.
+   Then a JS `lookup-result` sanitizer (`san-lookup-result`, every JS taint rule; outline's
+   `const result = await loadPublicShare({id: ctx.params...})`): the variable assigned from a bare
+   `getX`/`fetchX`/`loadX`/`findX`/`lookupX` call, not the call, and not request- or redirect-shaped names
+   (`getQuery`, `getRedirectUrl`, `findNext`); the summary passes drop it as they do Python's, so a project helper
+   found returning request data still counts. `test_what_a_javascript_helper_looks_up_is_stored_data`. outline
+   7 (6 real). Left: passkeys.ts:266, a call inline in the sink to a helper that returns a fixed string; JS
+   pass-through would not reach it either (Python's cleans only assigned results, because cleaning the call hid
+   own-app-1's real path traversal), so one case doesn't justify it.
    Quick suites unchanged; CVE pairs unchanged (Python verdict 5/14, 1; review 6/14, 1; JavaScript verdict 2/10,
    0; review 4/10, 3); the 30 apps lose only the seven dvna/vulnerable-node redirects above.
 

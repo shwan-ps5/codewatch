@@ -241,6 +241,23 @@ rules:
           - pattern: fs.promises.readFile(...)
           - pattern: readFile(...)
           - pattern: readFileSync(...)
+      # What a helper looks up with the request value (outline's loadPublicShare by share id) is stored data: the
+      # variable assigned from a getX/fetchX/loadX/findX/lookupX call, not the call, so a sink among its arguments
+      # still counts. Request-shaped names (getQuery, getRedirectUrl) aren't lookups; a project helper the
+      # returner pass finds returning request data still counts (summaries.without_lookup_result).
+      - &san-lookup-result
+        patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $RESULT = $LOOKUP(...);
+                  ...
+              - pattern-inside: |
+                  $RESULT = await $LOOKUP(...);
+                  ...
+          - pattern: $RESULT
+          - metavariable-regex:
+              metavariable: $LOOKUP
+              regex: '^_?(get|fetch|load|find|lookup)(?!(Json|Data|Params?|Args?|Query|Queries|Headers?|Cookies?|Body|Form|Fields?|Values?|Inputs?|Text|Str|String|Url|Uri|Path|File|Filename|Name|Key|Id|Var|Env|Config|Setting|Content|Request|Req|Payload|Redirect|Next|Return|Target|Dest|Destination|Location|Callback|Referr?er|Host|Origin)([A-Z]|$))[A-Z]\w*$'
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -326,6 +343,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-lookup-result
       - pattern: path.basename(...)
       # multer and express-fileupload take the file name through busboy, which drops any directory part.
       - pattern-either:
@@ -422,6 +440,7 @@ rules:
       - *san-allowlist-ternary
       - *san-guard
       - *san-file-content
+      - *san-lookup-result
       - pattern-either:
           - pattern: escapeHtml(...)
           - pattern: escape(...)
@@ -517,6 +536,7 @@ rules:
       - *san-allowlist-ternary
       - *san-guard
       - *san-file-content
+      - *san-lookup-result
       - patterns:
           - pattern-inside: |
               if (<... $ALLOWED.includes($X) ...>) { ... }
@@ -635,6 +655,7 @@ rules:
     pattern-sanitizers:
       - *san-named
       - *san-guard
+      - *san-lookup-result
       - *san-fixed-prefix
       # After a literal "https://host" prefix the path stays on that host.
       - patterns:
@@ -731,6 +752,7 @@ rules:
       - *san-allowlist-ternary
       - *san-guard
       - *san-file-content
+      - *san-lookup-result
       # Only the path or query is user data when the scheme and host are fixed in front of it: a literal
       # "https://host/", or a constant base (PAYPAL_API_URL, process.env.X, config.x) then "/" (proshop-v2:
       # `${PAYPAL_API_URL}/v2/checkout/orders/${id}`).
@@ -821,6 +843,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-lookup-result
       - patterns:
           - pattern: $X.replace($RE, $WITH)
           - metavariable-regex: {metavariable: $WITH, regex: '\$\x26'}
@@ -937,6 +960,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -975,6 +999,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -1004,6 +1029,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-lookup-result
     pattern-sinks:
       - patterns:
           - pattern-either:
