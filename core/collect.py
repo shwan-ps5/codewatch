@@ -244,6 +244,47 @@ def minified(path):
     return len(data) / (data.count(b"\n") + 1) > BUNDLE_LINE_LENGTH
 
 
+# A library copied into an app's static folder (jQuery, Bootstrap, Font Awesome) opens with a comment naming it and
+# its version. Name and version, not a copyright or licence line: projects such as Airflow put a licence header on
+# their own files. Checked on all 30 apps and the benchmark checkouts: it matched only third-party libraries.
+LIBRARY_SUFFIXES = BUNDLE_SUFFIXES | {".css"}
+LIBRARY_BANNER = re.compile(rb"\A\s*/\*[!*]?[\s*]*([A-Za-z][\w.\- ]{0,40}?)\s+v?\d+\.\d+(\.\d+)?\b")
+
+
+def vendored(path):
+    """A JavaScript or CSS file that opens with a library banner ("/*! jQuery v3.3.1")."""
+    if path.suffix.lower() not in LIBRARY_SUFFIXES:
+        return False
+    try:
+        with path.open("rb") as handle:
+            head = handle.read(400)
+    except OSError:
+        return False
+    return bool(LIBRARY_BANNER.match(head))
+
+
+# Libraries without a banner (TinyMCE: 235 files, a minute of ReDoS checking a side in Grappelli) still ship their
+# licence file. Inside an asset folder that marks the library's folder: across the 30 apps and benchmark checkouts
+# every licence file under static/, public/ or assets/ belonged to a vendored library (monorepo packages have
+# licence files too, so the asset folder is required).
+ASSET_FOLDERS = {"static", "public", "assets"}
+LICENCE_FILE = re.compile(r"(licen[cs]e|copying)([-.][^/]*)?$", re.IGNORECASE)
+
+
+def library_folders(files):
+    """Folders inside an asset folder that hold a licence file."""
+    folders = set()
+    for f in files:
+        parent, _, name = f.rpartition("/")
+        if LICENCE_FILE.match(name) and ASSET_FOLDERS & set(parent.split("/")[:-1]):
+            folders.add(parent + "/")
+    return folders
+
+
+def in_library_folder(path, folders):
+    return Path(path).suffix.lower() in LIBRARY_SUFFIXES and any(path.startswith(f) for f in folders)
+
+
 def is_url(path):
     return path.startswith(("http://", "https://", "file://"))
 
@@ -385,7 +426,13 @@ def collect(cfg, scan, log=print):
     bundles = [f for f in files if minified(Path(scan.root) / f)]
     if bundles:
         log(f"Skipping {len(bundles)} minified JavaScript file(s), e.g. {bundles[0]}")
-        skipped = set(bundles)
+    folders = library_folders(files)
+    libraries = [f for f in files if f not in bundles
+                 and (in_library_folder(f, folders) or vendored(Path(scan.root) / f))]
+    if libraries:
+        log(f"Skipping {len(libraries)} vendored library file(s), e.g. {libraries[0]}")
+    if bundles or libraries:
+        skipped = set(bundles) | set(libraries)
         files = [f for f in files if f not in skipped]
     changed = scan.changed
     ctx = make_context(cfg, scan, files)

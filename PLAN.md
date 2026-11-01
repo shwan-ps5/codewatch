@@ -266,8 +266,7 @@ knowledge.
    codewatch check 435 s to 0.6 s per side. The whole Python CVE suite: 90 min to 48 min, every number unchanged;
    quick suites and the 30 apps unchanged (`test_minified_bundles_are_recognised_by_content`). Left: Semgrep is now most of every case (open-webui 222 s and
    litellm 229 s per side; dtale 135 s); Grappelli's check still takes 58 s per side on vendored, unminified
-   jQuery, jQuery UI, TinyMCE and select2 (left alone: telling vendored libraries from the app's own code by
-   content isn't safe yet). Every case side now scans within the 5-minute budget (largest open-webui 4.3 min,
+   jQuery, jQuery UI, TinyMCE and select2 (done 2026-11-01, see below). Every case side now scans within the 5-minute budget (largest open-webui 4.3 min,
    litellm 4.0). Measured on open-webui's first returner scan (178 files, 85 s): the pass-through rules are 50 s of
    Semgrep's core time (9,066 results), the returns rules 4 s, the fields rules none beyond the scan's own cost. The
    16 Python pass rules have 11 distinct sanitizer sets (six rules share one). Done: one pass rule per group of
@@ -276,6 +275,14 @@ knowledge.
    take only what the previous depth added as their extra sources or sinks (semi-naive evaluation), so they no
    longer re-report what it found; open-webui's side 237 s to 206 s. Quick suites and 30 apps unchanged; CVE pairs
    Python 48 to 40 min, JavaScript 22 to 11 min, findings unchanged.
+   Done (2026-11-01, at the user's direction: analyse the app's own code file by file, dependencies only through
+   the audit): vendored libraries are skipped by content. A JS/CSS file opening with a library banner (name and
+   version, `/*! jQuery v1.11.3`; a licence header alone matches Airflow's own files), and JS/CSS under a folder
+   inside static/, public/ or assets/ that holds a licence file (TinyMCE has no banner; monorepo packages have
+   licence files, but none inside an asset folder). Across the 30 apps, ~/Dev and the benchmark checkouts both
+   matched only third-party libraries. Grappelli's case 305 s to 41 s (per side: codewatch check 58 s to 0.6 s,
+   Semgrep 85 s to 15 s); CVE pairs
+   Python 40 to 35 min; quick suites, 30 apps and both CVE suites unchanged.
 
 9. **JavaScript CVE misses** (2026-11-01, non-blind cases only; verdict 0/10 before this). Added:
    - GHSA-p849 (NocoBase, SQL injection): `Sequelize.literal()`/`sequelize.literal()` as a SQL sink, NocoBase's

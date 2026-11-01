@@ -23,10 +23,13 @@ from core.collect import (
     ScanConfig,
     choose_reference,
     excluded,
+    in_library_folder,
+    library_folders,
     minified,
     new_code_metrics,
     parse_diff,
     parse_period,
+    vendored,
 )
 from core.fingerprint import assign_fingerprints
 from core.runner import is_new
@@ -391,6 +394,31 @@ def test_minified_bundles_are_recognised_by_content(tmp_path):
     (tmp_path / "small.js").write_text("x" * 5_000)
     (tmp_path / "data.py").write_text("x" * 50_000)
     assert [p.name for p in sorted(tmp_path.iterdir()) if minified(p)] == ["chunk-6a03.js"]
+
+
+
+def test_vendored_libraries_are_recognised_by_their_banner(tmp_path):
+    """Grappelli ships jQuery and jQuery UI in its static folder: codewatch's ReDoS check spent a minute a side on them."""
+    (tmp_path / "jquery.js").write_text("/*!\n * jQuery JavaScript Library v1.11.3\n */\n(function(){})()\n")
+    (tmp_path / "bootstrap.css").write_text("/*!\n * Bootstrap v4.3.1 (https://getbootstrap.com/)\n */\nbody{}\n")
+    (tmp_path / "materialize.js").write_text("/*!\n * Materialize v0.97.5 (http://materializecss.com)\n */\n")
+    (tmp_path / "app.js").write_text("/*\n * Licensed to the Apache Software Foundation (ASF) 2.0\n */\nlet a = 1\n")
+    (tmp_path / "util.js").write_text("// helpers for v1.2 of the API\nexport const x = 1\n")
+    (tmp_path / "setup.py").write_text("/*! Thing v1.0 */")
+    assert sorted(p.name for p in tmp_path.iterdir() if vendored(p)) == ["bootstrap.css", "jquery.js", "materialize.js"]
+
+
+
+def test_licensed_folders_inside_asset_folders_are_libraries():
+    """Grappelli's TinyMCE has no banner but ships license.txt; monorepo packages have licences outside asset folders."""
+    files = ["grappelli/static/grappelli/tinymce/jscripts/tiny_mce/license.txt",
+             "grappelli/static/grappelli/tinymce/jscripts/tiny_mce/plugins/paste/editor_plugin.js",
+             "grappelli/static/grappelli/js/grappelli.js",
+             "packages/utils/LICENSE.md", "packages/utils/index.js",
+             "static/LICENSE", "static/app.js"]
+    folders = library_folders(files)
+    assert folders == {"grappelli/static/grappelli/tinymce/jscripts/tiny_mce/"}
+    assert [f for f in files if in_library_folder(f, folders)] == [files[1]]
 
 
 def test_semgrep_timeouts_are_reported_not_lost(monkeypatch, tmp_path):
