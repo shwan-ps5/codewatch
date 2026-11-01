@@ -1749,3 +1749,31 @@ def test_helpers_that_return_request_data(tmp_path):
         ("views.py", 8, "command-injection", "vulnerability"),
         ("app.js", 4, "command-injection", "vulnerability"),
     }
+
+
+def test_keyword_arguments_to_summarised_functions(tmp_path):
+    """A helper whose `path` parameter reaches open() is a sink when called with path=..., by position, or through
+    a wrapper; passing request data as its harmless `mode`, or as another summarised function's keyword, isn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "files.py": (
+            "def read(path, mode='r'):\n"
+            "    with open(path, 'r') as f:\n"
+            "        return f.read()\n\n\n"
+            "def read_named(name, path='/srv/data'):\n"
+            "    with open('/srv/' + name, 'r') as f:\n"
+            "        return f.read()\n"),
+        "views.py": (
+            "from flask import request\n\nfrom files import read, read_named\n\n\n"
+            "@app.route('/a')\n"
+            "def a():\n"
+            "    read(path=request.args['p'])\n"
+            "    read('/srv/x', mode=request.args['m'])\n"
+            "    read(request.args['q'])\n"
+            "    read_named('x', path=request.args['n'])\n"
+            "    read_named(name=request.args['n'])\n"
+            "    return ''\n"),
+    })
+    assert {line for path, line, rule, kind in found
+            if path == "views.py" and rule == "path-traversal" and kind == "vulnerability"} == {8, 10, 12}

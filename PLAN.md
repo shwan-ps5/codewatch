@@ -248,7 +248,12 @@ knowledge.
    clean. `cg`: 160 s (summaries 10, 41, 41 s; returners 32 s; final 29 s, which also lost its timeouts because
    the sanitizers list fewer names). Semgrep timeouts are now reported in the tool's status detail (and by
    `devtools.py repos`) rather than dropped. Quick suites and 30 apps unchanged.
-   Next: the summary passes (90 s of `cg`'s 160); then re-run the CVE suites to time the whole benchmark.
+   Also done: Python keyword via-sinks are one pattern per kind of callee whose regexes name every summarised
+   function and keyword; the message carries the (function, keyword) pair and a pair no summary names is dropped
+   after the scan (`test_keyword_arguments_to_summarised_functions`). This replaced the unused-keyword filter.
+   Only 160 s to 153 s: what remains in the summary passes is taint itself (every parameter is a source there,
+   so log-injection's and path-traversal's many via-sinks are checked against every call), not pattern count.
+   Next: re-run the CVE suites to time the whole benchmark (was 1 h 45 min for Python).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

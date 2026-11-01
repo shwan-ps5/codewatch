@@ -10,10 +10,10 @@ from core.analyzers.multi_tools import added_names, mentioning
 from core.analyzers.summaries import (
     NAME_BATCH,
     assigned_calls,
-    keyword_arguments,
+    keyword_summarised,
     pass_rules,
+    split_keyword,
     via_sinks,
-    without_unused_keywords,
 )
 from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
 from core.fingerprint import assign_fingerprints
@@ -333,28 +333,30 @@ def test_a_tool_timeout_kills_its_children(tmp_path):
 
 
 def test_summarised_calls_share_one_sink_per_call_shape():
-    # A sink per summarised function made Semgrep match thousands of patterns in a large project and time out.
-    found = {(f"helper_{i}", 0, "value", False, "app.py") for i in range(NAME_BATCH + 1)}
+    # A sink per summarised function, or per parameter name passed by keyword, made Semgrep match thousands of
+    # patterns in a large project and time out.
+    found = {(f"helper_{i}", 0, f"value_{i % 50}", False, "app.py") for i in range(NAME_BATCH + 1)}
     sinks = via_sinks(found, js=False)
-    shapes = {s["patterns"][0]["pattern"] for s in sinks}
-    assert len(sinks) == 2 * len(shapes)  # each shape's names split into two regexes
-    assert shapes == {"$VIA_FUNC($ARG, ...)", "$VIA_FUNC(..., value=$ARG, ...)",
-                      "$MODULE.$VIA_FUNC($ARG, ...)", "$MODULE.$VIA_FUNC(..., value=$ARG, ...)"}
-    regexes = [s["patterns"][1]["metavariable-regex"]["regex"] for s in sinks]
+    positional = [s for s in sinks if "pattern" in s["patterns"][0]]
+    keyword = [s for s in sinks if "pattern-either" in s["patterns"][0]]
+    assert {s["patterns"][0]["pattern"] for s in positional} == {"$VIA_FUNC($ARG, ...)", "$MODULE.$VIA_FUNC($ARG, ...)"}
+    assert len(positional) == 4  # each shape's names split into two regexes
+    assert len(keyword) == 2  # one callee kind, function names in two regexes, all 50 keywords in one
+    regexes = [s["patterns"][1]["metavariable-regex"]["regex"] for s in positional]
     for func, *_ in found:
-        assert sum(bool(re.match(r, func)) for r in regexes) == len(shapes)
+        assert sum(bool(re.match(r, func)) for r in regexes) == 2
     assert not any(re.match(r, "helper_") for r in regexes)
 
 
-def test_keyword_sinks_only_for_keywords_the_project_passes():
-    source = "f(a, name=1)\ng(\n    x,  # why\n    other=2,\n)\nif a == b:\n    h(k==1)\n"
-    assert keyword_arguments([source]) == {"name", "other"}
-    rule = {"id": "r", "pattern-sinks": via_sinks({("f", 0, "name", False, "a.py"), ("g", 0, "gone", False, "a.py")},
-                                                  js=False)}
-    kept = [s["patterns"][0]["pattern"] for s in without_unused_keywords([rule], {"name"})[0]["pattern-sinks"]]
-    assert "$VIA_FUNC(..., name=$ARG, ...)" in kept
-    assert not any("gone=" in k for k in kept)
-    assert "$VIA_FUNC($ARG, ...)" in kept  # positional calls to g still count
+def test_keyword_via_sinks_keep_only_summarised_pairs():
+    found = {("save", 0, "path", False, "a.py")}
+    message = "Path from request {keyword save path} [via save()]"
+    assert split_keyword(message) == ("Path from request [via save()]", "save", "path")
+    assert keyword_summarised("save", "path", found)
+    assert not keyword_summarised("save", "mode", found)
+    assert keyword_summarised("save", "$VIA_KW", found)  # passed by position
+    assert keyword_summarised("$VIA_FUNC", "$VIA_KW", found)  # a sink of the rule itself
+    assert split_keyword("Plain message") == ("Plain message", "", "")
 
 
 def test_deeper_passes_rescan_only_files_naming_new_functions():

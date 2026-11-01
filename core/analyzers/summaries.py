@@ -45,6 +45,10 @@ PASSES_SUFFIX = ".passes"
 FIELDS_SUFFIX = ".fields"
 FIELD_SUFFIX = ".field"
 FIELD_RE = re.compile(r"\[field (\w+)\]$")
+# Keyword via-sinks match any summarised function called with any summarised keyword; the message carries the pair
+# so a call passing one function's keyword to another (f(name=x) when only g's name is summarised) is dropped.
+KEYWORD_MARK = " {keyword $VIA_FUNC $VIA_KW}"
+KEYWORD_RE = re.compile(r" \{keyword (\S+) (\S+)\}")
 MAX_DEPTH = 3
 JS_LANGUAGES = {"javascript", "typescript"}
 RECEIVERS = {"self", "cls"}
@@ -122,7 +126,7 @@ def summary_rules(rules, summaries=None):
             continue
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + SUMMARY_SUFFIX
-        variant["message"] = "$FUNC|$PARAM|$VIA_FUNC"
+        variant["message"] = "$FUNC|$PARAM|$VIA_FUNC|$VIA_KW"
         variant["pattern-sources"] = copy.deepcopy(JS_PARAM_SOURCES if is_js(rule) else PYTHON_PARAM_SOURCES)
         if found:
             variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(found, is_js(rule))
@@ -192,11 +196,13 @@ def parse_summaries(results, read_text, known=None, hits=None):
     hits: collects (rule id, path, line, function, parameter) for each accepted result."""
     summaries = {}
     for check_id, path, line, message in results:
-        func, param, callee = [*message.split("|"), "", ""][:3]
+        func, param, callee, keyword = [*message.split("|"), "", "", ""][:4]
         if not func or not param:
             continue
         rule_id = check_id.removesuffix(SUMMARY_SUFFIX)
         if callee and not callee.startswith("$"):
+            if not keyword_summarised(callee, keyword, (known or {}).get(rule_id, ())):
+                continue
             defining = {s[4] for s in (known or {}).get(rule_id, ()) if s[0] == callee}
             if callee == func or not defining or not visible(path, defining, read_text):
                 continue
@@ -255,18 +261,17 @@ def js_definition(line, start, end):
     return bool(JS_MODIFIERS_RE.fullmatch(line, 0, start) and JS_METHOD_HEADER_RE.match(line, end))
 
 
-def call_patterns(index, param, method, js):
-    """Semgrep patterns for a call passing $ARG as that parameter; $VIA_FUNC binds the name."""
-    before = "".join(f"$A{i}, " for i in range(index)) if index is not None else None
+def callees(method, js):
     receivers = ["this"] if js else sorted(RECEIVERS)
-    callees = [f"{r}.$VIA_FUNC" for r in receivers] if method else ["$VIA_FUNC", "$MODULE.$VIA_FUNC"]
-    patterns = []
-    for callee in callees:
-        if before is not None:
-            patterns.append(f"{callee}({before}$ARG, ...)")
-        if not js:
-            patterns.append(f"{callee}(..., {param}=$ARG, ...)")
-    return patterns
+    return [f"{r}.$VIA_FUNC" for r in receivers] if method else ["$VIA_FUNC", "$MODULE.$VIA_FUNC"]
+
+
+def call_patterns(index, method, js):
+    """Semgrep patterns for a call passing $ARG at that position; $VIA_FUNC binds the name."""
+    if index is None:
+        return []
+    before = "".join(f"$A{i}, " for i in range(index))
+    return [f"{callee}({before}$ARG, ...)" for callee in callees(method, js)]
 
 
 NAME_BATCH = 400
@@ -282,34 +287,44 @@ def name_regexes(names):
 
 def via_sinks(found, js):
     """One sink per call shape, naming every function called that way: a sink per function made Semgrep match
-    thousands of patterns in a large project."""
+    thousands of patterns in a large project. Python keyword arguments get one sink per kind of callee, naming every
+    summarised function and keyword (see KEYWORD_MARK)."""
     callers = {}
-    for func, index, param, method, _path in found:
-        for pattern in call_patterns(index, param, method, js):
+    for func, index, _param, method, _path in found:
+        for pattern in call_patterns(index, method, js):
             callers.setdefault(pattern, set()).add(func)
-    return [{"patterns": [{"pattern": pattern},
-                          {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": regex}},
-                          {"focus-metavariable": "$ARG"}]}
-            for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
+    sinks = [{"patterns": [{"pattern": pattern},
+                           {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": regex}},
+                           {"focus-metavariable": "$ARG"}]}
+             for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
+    if js:
+        return sinks
+    for method in (False, True):
+        funcs = {f for f, _index, _param, m, _path in found if m == method}
+        params = {p for _f, _index, p, m, _path in found if m == method}
+        sinks += [{"patterns": [
+            {"pattern-either": [{"pattern": f"{c}(..., $VIA_KW=$ARG, ...)"} for c in callees(method, False)]},
+            {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": func_regex}},
+            {"metavariable-regex": {"metavariable": "$VIA_KW", "regex": param_regex}},
+            {"focus-metavariable": "$ARG"},
+        ]} for func_regex in name_regexes(funcs) for param_regex in name_regexes(params)]
+    return sinks
 
 
-KEYWORD_ARG_RE = re.compile(r"[(,]\s*(?:#[^\n]*\n\s*)*(\w+)\s*=(?!=)")
-KEYWORD_SINK_RE = re.compile(r"\(\.\.\., (\w+)=\$ARG, \.\.\.\)$")
+def keyword_summarised(callee, keyword, found):
+    """A via-sink's call passes a summarised parameter: always for a positional one or a result from another sink
+    ($VIA_KW or $VIA_FUNC unbound), and for a keyword only when that function's summary names it."""
+    if not keyword or keyword.startswith("$") or not callee or callee.startswith("$"):
+        return True
+    return any(s[0] == callee and s[2] == keyword for s in found)
 
 
-def keyword_arguments(texts):
-    """Every name passed as a keyword argument somewhere in the project's Python."""
-    return {name for text in texts for name in KEYWORD_ARG_RE.findall(text)}
-
-
-def without_unused_keywords(rules, used):
-    """rules minus the via-sinks for a call passing a parameter by a keyword nothing in the project passes: a large
-    project summarises hundreds of parameter names, each a pattern Semgrep matches against every file."""
-    def kept(sink):
-        match = KEYWORD_SINK_RE.search(str(sink.get("patterns", [{}])[0].get("pattern", "")))
-        return match is None or match.group(1) in used
-    return [{**r, "pattern-sinks": [s for s in r["pattern-sinks"] if kept(s)]} if "pattern-sinks" in r else r
-            for r in rules]
+def split_keyword(message):
+    """(message without KEYWORD_MARK, callee, keyword) for a final-pass result."""
+    match = KEYWORD_RE.search(message)
+    if not match:
+        return message, "", ""
+    return message[:match.start()] + message[match.end():], match.group(1), match.group(2)
 
 
 def merge(summaries, more):
@@ -330,7 +345,7 @@ def via_rules(rules, summaries):
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + VIA_SUFFIX
         variant["pattern-sinks"] = via_sinks(found, is_js(rule))
-        variant["message"] = rule["message"].strip() + " [via $VIA_FUNC()]"
+        variant["message"] = rule["message"].strip() + KEYWORD_MARK + " [via $VIA_FUNC()]"
         out.append(variant)
     return out
 
@@ -460,7 +475,7 @@ def from_rules(rules, returners, summaries):
         variant["pattern-sources"] = from_sources(found, is_js(rule))
         variant["pattern-sanitizers"] = without_lookup_result(rule)
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
-        variant["message"] = rule["message"].strip() + " [from $RET_FUNC()]"
+        variant["message"] = rule["message"].strip() + KEYWORD_MARK + " [from $RET_FUNC()]"
         out.append(variant)
     return out
 
@@ -516,7 +531,7 @@ def field_variants(rules, fields, summaries):
             {"metavariable-regex": {"metavariable": "$STORED_FIELD", "regex": regex}},
         ]} for regex in name_regexes(names)]
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
-        variant["message"] = rule["message"].strip() + " [field $STORED_FIELD]"
+        variant["message"] = rule["message"].strip() + KEYWORD_MARK + " [field $STORED_FIELD]"
         out.append(variant)
     return out
 

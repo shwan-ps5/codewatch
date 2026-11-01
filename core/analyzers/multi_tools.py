@@ -104,14 +104,13 @@ class Semgrep(Analyzer):
         self.timeouts = set()
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
-            summaries, hits, keywords = self.summarise(ctx, custom_rules, targets, originals, Path(work))
+            summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
             returners, fields, passes, functions = self.find_returners(ctx, custom_rules, targets, originals,
                                                                        Path(work))
             final = summaries_module.with_pass_through(custom_rules, functions, passes, summaries, returners)
             rules = (final + summaries_module.via_rules(final, summaries)
                      + summaries_module.from_rules(final, returners, summaries)
                      + summaries_module.field_variants(final, fields, summaries))
-            rules = summaries_module.without_unused_keywords(rules, keywords)
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             if rules:
                 (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
@@ -140,13 +139,16 @@ class Semgrep(Analyzer):
             check_id = check_id.removesuffix(summaries_module.FIELD_SUFFIX).removesuffix(summaries_module.FROM_SUFFIX)
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
             custom_id = next((cid for cid in custom_ids if check_id.endswith(cid)), None)
-            if via and not self.via_visible(ctx, path, extra["message"], summaries.get(custom_id, ())):
+            message, callee, keyword = summaries_module.split_keyword(extra["message"].strip())
+            if not summaries_module.keyword_summarised(callee, keyword, summaries.get(custom_id, ())):
+                continue
+            if via and not self.via_visible(ctx, path, message, summaries.get(custom_id, ())):
                 continue
             if field:
-                if not self.field_stored(path, extra["message"], fields.get(custom_id, ())):
+                if not self.field_stored(path, message, fields.get(custom_id, ())):
                     continue
             elif (check_id != item["check_id"] and not via
-                    and not self.from_visible(ctx, path, extra["message"], returners.get(custom_id, ()))):
+                    and not self.from_visible(ctx, path, message, returners.get(custom_id, ()))):
                 continue
             kind = semgrep_type(check_id, metadata)
             # codewatch's own taint rule for this weakness already followed the data here; a registry rule that
@@ -164,7 +166,7 @@ class Semgrep(Analyzer):
                 kind = HOTSPOT
             result.findings.append(
                 Finding("codewatch" if custom_id else "semgrep", custom_id or check_id,
-                        SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, extra["message"].strip(),
+                        SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, message,
                         path, item["start"]["line"], item["end"]["line"])
             )
         def derived(f):
@@ -212,14 +214,11 @@ class Semgrep(Analyzer):
 
     def summarise(self, ctx, custom_rules, targets, originals, work):
         """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
-        functions already summarised. Also returns the keyword argument names the project passes anywhere."""
+        functions already summarised."""
         summaries, known, hits = {}, None, []
-        keywords = summaries_module.keyword_arguments(read_source(ctx.root / t) or "" for t in targets
-                                                      if t.endswith(".py"))
         scanned = targets
         for _ in range(summaries_module.MAX_DEPTH):
-            rules = summaries_module.without_unused_keywords(
-                summaries_module.summary_rules(custom_rules, known), keywords)
+            rules = summaries_module.summary_rules(custom_rules, known)
             if not rules or not scanned:
                 break
             config = work / "summaries.yml"
@@ -236,7 +235,7 @@ class Semgrep(Analyzer):
                 break
             scanned = mentioning(ctx, targets, added_names(summaries, merged))
             summaries = known = merged
-        return summaries, hits, keywords
+        return summaries, hits
 
     def find_returners(self, ctx, custom_rules, targets, originals, work):
         """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
