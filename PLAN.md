@@ -233,8 +233,16 @@ knowledge.
    split into regexes of 400. `cg` now takes 304 s (summaries 49 s and 61 s, final 108 s). It also finds more:
    the old rules hit Semgrep's per-file timeout 97 times in the final scan and 6-7 times per summary pass, each
    one silently skipping that rule for that file; now 12 and 1-2. Quick suites and the 30 apps unchanged; those
-   apps scan in 8-53 s each, so the time is a large-project problem. Next: the final scan (108 s) and the
-   returner pass (65 s); report timeouts instead of losing them silently.
+   apps scan in 8-53 s each, so the time is a large-project problem.
+   Also done: deeper summary and returner passes rescan only the files that name a function the previous pass
+   added (a file that names none gives what it gave before: 755 then 437 of `cg`'s 1,075 files), and via-sinks for
+   a parameter passed by keyword are dropped when nothing in the project passes that keyword (`cg`'s
+   path-traversal via-variant had 309 keyword names, 107 used). `cg`: 259 s (summaries 9, 40, 39 s; returners
+   65 s; final 96 s). Quick suites 619 s to 508 s, results unchanged; 30 apps unchanged. Tried and reverted: one
+   keyword sink per callee kind with a `metavariable-comparison` naming each (keyword, function) pair; it is
+   evaluated on every keyword call and made the final scan slower (129 s). Next: the final scan, where on `cg`
+   log-injection's and path-traversal's via-variants took 800 of 1,260 CPU seconds; the returner pass (65 s);
+   report Semgrep timeouts instead of losing them silently.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

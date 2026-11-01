@@ -293,6 +293,25 @@ def via_sinks(found, js):
             for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
 
 
+KEYWORD_ARG_RE = re.compile(r"[(,]\s*(?:#[^\n]*\n\s*)*(\w+)\s*=(?!=)")
+KEYWORD_SINK_RE = re.compile(r"\(\.\.\., (\w+)=\$ARG, \.\.\.\)$")
+
+
+def keyword_arguments(texts):
+    """Every name passed as a keyword argument somewhere in the project's Python."""
+    return {name for text in texts for name in KEYWORD_ARG_RE.findall(text)}
+
+
+def without_unused_keywords(rules, used):
+    """rules minus the via-sinks for a call passing a parameter by a keyword nothing in the project passes: a large
+    project summarises hundreds of parameter names, each a pattern Semgrep matches against every file."""
+    def kept(sink):
+        match = KEYWORD_SINK_RE.search(str(sink.get("patterns", [{}])[0].get("pattern", "")))
+        return match is None or match.group(1) in used
+    return [{**r, "pattern-sinks": [s for s in r["pattern-sinks"] if kept(s)]} if "pattern-sinks" in r else r
+            for r in rules]
+
+
 def merge(summaries, more):
     """summaries plus more; None when more adds nothing."""
     merged = {rule: set(found) for rule, found in summaries.items()}

@@ -100,7 +100,7 @@ class Semgrep(Analyzer):
         custom_rules = with_model_sources(custom_rules, (read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})))
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
-            summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
+            summaries, hits, keywords = self.summarise(ctx, custom_rules, targets, originals, Path(work))
             returners, fields, passes = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
             functions = summaries_module.python_functions_with_params(
                 read_source(ctx.root / f) or "" for f in ctx.files_with({".py"}))
@@ -108,6 +108,7 @@ class Semgrep(Analyzer):
             rules = (final + summaries_module.via_rules(final, summaries)
                      + summaries_module.from_rules(final, returners, summaries)
                      + summaries_module.field_variants(final, fields, summaries))
+            rules = summaries_module.without_unused_keywords(rules, keywords)
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             if rules:
                 (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
@@ -201,15 +202,19 @@ class Semgrep(Analyzer):
 
     def summarise(self, ctx, custom_rules, targets, originals, work):
         """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
-        functions already summarised."""
+        functions already summarised. Also returns the keyword argument names the project passes anywhere."""
         summaries, known, hits = {}, None, []
+        keywords = summaries_module.keyword_arguments(read_source(ctx.root / t) or "" for t in targets
+                                                      if t.endswith(".py"))
+        scanned = targets
         for _ in range(summaries_module.MAX_DEPTH):
-            rules = summaries_module.summary_rules(custom_rules, known)
-            if not rules or not targets:
+            rules = summaries_module.without_unused_keywords(
+                summaries_module.summary_rules(custom_rules, known), keywords)
+            if not rules or not scanned:
                 break
             config = work / "summaries.yml"
             config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-            data = self.scan(ctx, ["--config", str(config)], targets)
+            data = self.scan(ctx, ["--config", str(config)], scanned)
             ids = [r["id"] for r in rules]
             found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
                       ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
@@ -219,8 +224,9 @@ class Semgrep(Analyzer):
             merged = summaries_module.merge(summaries, more)
             if merged is None:
                 break
+            scanned = mentioning(ctx, targets, added_names(summaries, merged))
             summaries = known = merged
-        return summaries, hits
+        return summaries, hits, keywords
 
     def find_returners(self, ctx, custom_rules, targets, originals, work):
         """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
@@ -231,15 +237,16 @@ class Semgrep(Analyzer):
         # and big single-file apps are Python's habit, not JavaScript's.
         targets = [t for t in targets
                    if Path(t).suffix not in JS_SUFFIXES or (ctx.root / t).stat().st_size <= RETURNER_MAX_JS_BYTES]
+        scanned = targets
         for depth in range(summaries_module.MAX_DEPTH):
             rules = summaries_module.returner_rules(custom_rules, returners)
             if depth == 0:
                 rules += summaries_module.field_rules(custom_rules) + summaries_module.pass_rules(custom_rules)
-            if not rules or not targets:
+            if not rules or not scanned:
                 break
             config = work / "returners.yml"
             config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-            data = self.scan(ctx, ["--config", str(config)], targets)
+            data = self.scan(ctx, ["--config", str(config)], scanned)
             ids = [r["id"] for r in rules]
             found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
                       ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
@@ -254,6 +261,7 @@ class Semgrep(Analyzer):
             merged = summaries_module.merge(returners, more)
             if merged is None:
                 break
+            scanned = mentioning(ctx, targets, added_names(returners, merged))
             returners = merged
         return returners, fields, passes
 
@@ -299,6 +307,20 @@ def taint_checked(rules):
             for suffix in LANGUAGE_SUFFIXES.get(language, []):
                 checked.setdefault(suffix, set()).update(cwe_numbers(rule.get("metadata", {}).get("cwe")))
     return checked
+
+
+def added_names(before, after):
+    """Function names in after's {rule: {(name, ...)}} that before lacks."""
+    return {entry[0] for rule, found in after.items() for entry in found - before.get(rule, set())}
+
+
+def mentioning(ctx, targets, names):
+    """The targets whose text uses one of names. A deeper summary pass only adds sinks or sources for calls to the
+    functions the last one found, so a file that never names one gives what it gave before."""
+    return [t for t in targets if not names.isdisjoint(WORD_RE.findall(read_source(ctx.root / t) or ""))]
+
+
+WORD_RE = re.compile(r"\w+")
 
 
 def read_source(path):

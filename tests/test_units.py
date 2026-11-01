@@ -6,7 +6,8 @@ from core.analyzers.accessibility import blank_template_syntax
 from core.analyzers.base import Context, Finding, Result
 from core.analyzers.coverage import Coverage, add_unreported, parse_cobertura, parse_lcov, resolve, statement_lines
 from core.analyzers.dependencies import declaration_line, manifests
-from core.analyzers.summaries import NAME_BATCH, via_sinks
+from core.analyzers.multi_tools import added_names, mentioning
+from core.analyzers.summaries import NAME_BATCH, keyword_arguments, via_sinks, without_unused_keywords
 from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
 from core.fingerprint import assign_fingerprints
 from core.runner import is_new
@@ -336,3 +337,27 @@ def test_summarised_calls_share_one_sink_per_call_shape():
     for func, *_ in found:
         assert sum(bool(re.match(r, func)) for r in regexes) == len(shapes)
     assert not any(re.match(r, "helper_") for r in regexes)
+
+
+def test_keyword_sinks_only_for_keywords_the_project_passes():
+    source = "f(a, name=1)\ng(\n    x,  # why\n    other=2,\n)\nif a == b:\n    h(k==1)\n"
+    assert keyword_arguments([source]) == {"name", "other"}
+    rule = {"id": "r", "pattern-sinks": via_sinks({("f", 0, "name", False, "a.py"), ("g", 0, "gone", False, "a.py")},
+                                                  js=False)}
+    kept = [s["patterns"][0]["pattern"] for s in without_unused_keywords([rule], {"name"})[0]["pattern-sinks"]]
+    assert "$VIA_FUNC(..., name=$ARG, ...)" in kept
+    assert not any("gone=" in k for k in kept)
+    assert "$VIA_FUNC($ARG, ...)" in kept  # positional calls to g still count
+
+
+def test_deeper_passes_rescan_only_files_naming_new_functions():
+    before = {"r": {("helper", 0, "x", False, "a.py")}}
+    after = {"r": {("helper", 0, "x", False, "a.py"), ("wrapper", 0, "y", False, "b.py")}, "s": {("other", "c.py")}}
+    assert added_names(before, after) == {"wrapper", "other"}
+
+
+def test_mentioning_matches_whole_names(tmp_path):
+    (tmp_path / "calls.py").write_text("wrapper(x)\n")
+    (tmp_path / "prefix.py").write_text("wrapper_two(x)\n")
+    ctx = Context(root=tmp_path, files=[])
+    assert mentioning(ctx, ["calls.py", "prefix.py"], {"wrapper"}) == ["calls.py"]
