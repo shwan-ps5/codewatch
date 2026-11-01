@@ -1288,7 +1288,8 @@ def test_focus_narrows_only_the_per_file_pass(tmp_path):
 def test_redirect_checks_from_cve_fix_pairs(tmp_path):
     """From GHSA-9x43-5qcq-h79q (Grappelli): url_has_allowed_host_and_scheme called with url= is a check too.
     From GHSA-v279-v2xm-whq9 (oils-js): an HTTPS upgrade to the request's own Host and path isn't an open redirect,
-    but the path alone, or after a host from the query, still is."""
+    The request's own path alone is a review hotspot (`//evil.com` is a valid path); after a host from the query it
+    is still an open redirect."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     found = semgrep_findings(tmp_path, {
@@ -1317,7 +1318,7 @@ def test_redirect_checks_from_cve_fix_pairs(tmp_path):
     })
     assert found == {
         ("views.py", 16, "open-redirect", "vulnerability"),
-        ("web.js", 6, "open-redirect", "vulnerability"),
+        ("web.js", 6, "open-redirect-path", "security_hotspot"),
         ("web.js", 7, "open-redirect", "vulnerability"),
     }
 
@@ -1816,3 +1817,117 @@ def test_keyword_arguments_to_summarised_functions(tmp_path):
     })
     assert {line for path, line, rule, kind in found
             if path == "views.py" and rule == "path-traversal" and kind == "vulnerability"} == {8, 10, 12}
+
+
+def test_js_redirects_within_the_site_are_not_open(tmp_path):
+    """outline and node-express-mongoose-demo: the request's own path, a fixed relative prefix or a value after "?"
+    keep a redirect on the site; the path alone is a hotspot ("//host"). Driven by ordinary apps, not a suite."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {"routes.ts": (
+        "router.use(['/share/:id'], (ctx) => {\n"
+        "  ctx.redirect(ctx.path.replace(/^\\/share/, '/s') + ctx.request.URL.search)\n"
+        "})\n"
+        "router.get('/b', async (ctx) => {\n"
+        "  ctx.redirect(`/?notice=auth-error&description=${ctx.query.error}`)\n"
+        "  ctx.redirect(`/auth/${ctx.query.provider}`)\n"
+        "  ctx.redirect(await getValidatedHost(ctx.query.host))\n"
+        "  ctx.redirect(`https://www.${ctx.headers.host}${ctx.path}`)\n"
+        "  ctx.redirect(ctx.query.next)\n"
+        "  ctx.redirect('/' + ctx.query.next)\n"
+        "  ctx.redirect(`//${ctx.query.next}`)\n"
+        "})\n")})
+    assert found == {("routes.ts", 2, "open-redirect-path", "security_hotspot"),
+                     ("routes.ts", 9, "open-redirect", "vulnerability"),
+                     ("routes.ts", 10, "open-redirect", "vulnerability"),
+                     ("routes.ts", 11, "open-redirect", "vulnerability")}
+
+
+def test_js_ssrf_to_a_fixed_host_and_stack_traces_dropped_outside_development(tmp_path):
+    """proshop-v2: `${PAYPAL_API_URL}/v2/checkout/orders/${id}` can't leave PayPal. express-rest-boilerplate:
+    the stack is deleted from the response unless in development."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"server.js": (
+        "app.get('/a', (req, res) => {\n"
+        "  fetch(`${PAYPAL_API_URL}/v2/orders/${req.body.id}`)\n"
+        "  fetch(`https://api.example.com/v1/${req.query.id}`)\n"
+        "  fetch('https://api.example.com/' + req.query.id)\n"
+        "  fetch(`${req.query.base}/v2/orders`)\n"
+        "  fetch(`https://${req.query.host}/x`)\n"
+        "})\n"
+        "const handler = (err, req, res, next) => {\n"
+        "  const response = { message: err.message, stack: err.stack }\n"
+        "  if (env !== 'development') {\n"
+        "    delete response.stack\n"
+        "  }\n"
+        "  res.json(response)\n"
+        "}\n"
+        "const leaky = (err, req, res, next) => {\n"
+        "  const response = { message: err.message, stack: err.stack }\n"
+        "  res.json(response)\n"
+        "}\n")})
+    assert found == {("server.js", 5, "ssrf"), ("server.js", 6, "ssrf"), ("server.js", 17, "stack-trace-exposure")}
+
+
+def test_returner_calls_and_handlers_in_javascript(tmp_path):
+    """outline: one class's perform() returns request data and another's runs its argument, so a perform() call
+    was both source and sink of itself; and a Koa handler's return (`return renderShare(ctx, next)`) isn't data."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"actions.js": (
+        "const { exec } = require('child_process')\n"
+        "const app = require('express')()\n"
+        "class Notify {\n"
+        "  perform(event) {\n"
+        "    exec('notify ' + event.cmd)\n"
+        "  }\n"
+        "}\n"
+        "class Share {\n"
+        "  perform(req) {\n"
+        "    return req.query.share\n"
+        "  }\n"
+        "}\n"
+        "const share = new Share()\n"
+        "const renderShare = async (req, res, next) => {\n"
+        "  return req.params.id\n"
+        "}\n"
+        "app.get('/x', async (req, res, next) => {\n"
+        "  res.json(share.perform(res.locals))\n"
+        "  exec(await renderShare(req, res, next))\n"
+        "  exec(share.perform(req))\n"
+        "})\n")})
+    assert found == {("actions.js", 20, "command-injection")}
+
+
+def test_sqlalchemy_statements_and_safe_redirect_helpers(tmp_path):
+    """flaskbb: sa.select(...).where(...) binds its values; get_first_safe_redirect_url() returns an allowed URL."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "http.py": (
+            "def get_safe_redirect_url(url, allowed_hosts, fallback):\n"
+            "    return url if url and url.startswith('/') and not url.startswith('//') else fallback\n"),
+        "app.py": (
+            "import sqlalchemy as sa\nfrom flask import Flask, redirect, request\n\nfrom http import get_safe_redirect_url\n"
+            "app = Flask(__name__)\n\n\n"
+            "@app.route('/t')\n"
+            "def topics():\n"
+            "    ids = request.form.getlist('rowid')\n"
+            "    db.session.execute(sa.select(Topic).filter(Topic.id.in_(ids))).scalars().all()\n"
+            "    term = request.args.get('q')\n"
+            "    db.session.execute(sa.select(Topic.name).where(Topic.name.ilike(f'{term}%')).limit(10))\n"
+            "    db.session.execute(sa.text(\"SELECT * FROM t WHERE name = '\" + term + \"'\"))\n"
+            "    return redirect(get_safe_redirect_url(request.args.get('next'), ['x'], '/'))\n\n\n"
+            "@app.route('/u')\n"
+            "def unsafe():\n"
+            "    return redirect(request.args.get('next'))\n")})
+    assert found == {("app.py", 14, "sql-injection"), ("app.py", 20, "open-redirect")}
+
+
+def test_the_crypto_module_name_is_not_a_security_purpose():
+    """outline: an ETag from crypto.createHash('md5') was a weak-hash verdict because of the word "crypto"."""
+    from core.analyzers.python_tools import SECURITY_PURPOSE_RE
+    assert not SECURITY_PURPOSE_RE.search("res.setHeader('ETag', crypto.createHash('md5').update(m).digest('hex'))")
+    for text in ("const encrypted = encrypt(data)", "bcrypt.hash(password)", "from cryptography import x"):
+        assert SECURITY_PURPOSE_RE.search(text), text

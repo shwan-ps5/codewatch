@@ -135,11 +135,12 @@ rules:
           - pattern: Math.$F(...)
           - pattern: $X.length
           - pattern: typeof $X
-      # Functions named as validators (isValid, validateId, sanitizeName, escapeHtml) return checked data.
+      # Functions named as validators (isValid, validateId, sanitizeName, escapeHtml, outline's getValidatedHost)
+      # return checked data.
       - &san-named
         patterns:
           - pattern: $CHECK(...)
-          - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?(is_?valid|validat|sanitiz|escape|clean|safe|whitelist|allowlist)\w{0,40}$'}
+          - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?(get_?)?(is_?valid|validat|sanitiz|escape|clean|safe|whitelist|allowlist)\w{0,40}$'}
       # [allowed].includes(x) ? x : fallback only ever yields an allowed value.
       - &san-allowlist-ternary
         pattern: '$ALLOWED.includes($X) ? $X : $FALLBACK'
@@ -533,12 +534,25 @@ rules:
               - pattern: $REQ.get("host")
               - pattern: $REQ.header("host")
           - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request)$'}
-      # The request's own path after a literal "https://host" prefix stays on that host.
+      # The request's own path stays on this site unless it starts with "//"; open-redirect-path covers that
+      # (outline: /share/... rewritten to /s/..., and a URL on the team's host given the request's path).
       - patterns:
-          - pattern-inside: $PREFIX + $REQ.$PATH
-          - pattern: $REQ.$PATH
-          - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"`]https?://'}
-          - metavariable-regex: {metavariable: $PATH, regex: '^(url|originalUrl|path)$'}
+          - pattern-either:
+              - pattern: $REQ.$PATH
+              - pattern: $REQ.$PATH.$ANY
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request)$'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^(url|originalUrl|path|baseUrl)$'}
+      # A literal prefix of "/" and a character other than "/" or "\", or one with "?" or "#" before the value,
+      # keeps the target on this site: the value can change the path or query, not the host (outline:
+      # `/?notice=auth-error&description=${description}`). A bare "/" + value is still open ("//evil.example").
+      - &san-fixed-prefix
+        pattern-either:
+          - patterns:
+              - pattern: $TEMPLATE
+              - metavariable-regex: {metavariable: $TEMPLATE, regex: '^`(/[^/\\`$]|[^`$]*[?#])'}
+          - patterns:
+              - pattern: $PREFIX + $REST
+              - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"](/[^/\\''"]|[^''"]*[?#])'}
       # A URL object made from the page's own address keeps its origin when only its path or query is changed
       # (a filter link). What its query holds is still tainted: only the whole URL is clean.
       - patterns:
@@ -562,7 +576,7 @@ rules:
               - pattern: $U.href
               - pattern: String($U)
           - metavariable-regex: {metavariable: $LOC, regex: '^((window|document)\.)?(location(\.href)?|URL)$'}
-    pattern-sinks:
+    pattern-sinks: &js-redirect-sinks
       - patterns:
           - pattern-either:
               - pattern: $RES.redirect($URL)
@@ -593,6 +607,62 @@ rules:
               - pattern: window.location.replace($URL)
               - pattern: window.open($URL, ...)
           - focus-metavariable: $URL
+
+  - id: codewatch.js.open-redirect-path
+    mode: taint
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >-
+      The redirect target is built from the request's own path. That stays on this site unless the path can
+      start with "//" (a request for "//evil.example/..." becomes a redirect to another host): check that the
+      routes can't match such a path, or collapse repeated slashes first.
+    # For review, as in Python: whether "//host" can reach this handler depends on the routing.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Redirect built from the request path
+      interprocedural: false
+      cwe: ["CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+    pattern-sources:
+      - patterns:
+          - pattern: $REQ.$PATH
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request)$'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^(url|originalUrl|path|baseUrl)$'}
+    pattern-sanitizers:
+      - *san-named
+      - *san-guard
+      - *san-fixed-prefix
+      # After a literal "https://host" prefix the path stays on that host.
+      - patterns:
+          - pattern: $TEMPLATE
+          - metavariable-regex: {metavariable: $TEMPLATE, regex: '^`https?://[^`$]*\$\{[^}]*\}[^`$/]*\$\{'}
+      - patterns:
+          - pattern-inside: $PREFIX + $REQ.$PATH
+          - pattern: $REQ.$PATH
+          - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"`]https?://'}
+      - patterns:
+          - pattern: $X.replace($PATTERN, "/")
+          - metavariable-regex: {metavariable: $PATTERN, regex: '^/(\\/\{2,\}|\\/\+|\\/\\/\+)/g?$'}
+      # A URL object on a fixed host keeps that host when only its path is set from the request.
+      - patterns:
+          - pattern-inside: |
+              $U = new URL($BASE);
+              ...
+          - pattern-not-inside: |
+              $U.href = $V;
+              ...
+          - pattern-not-inside: |
+              $U.host = $V;
+              ...
+          - pattern-either:
+              - pattern: $U.toString()
+              - pattern: $U.href
+              - pattern: String($U)
+    pattern-sinks: *js-redirect-sinks
 
   - id: codewatch.js.code-injection
     mode: taint
@@ -655,7 +725,25 @@ rules:
       references:
         - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
     pattern-sources: *js-sources
-    pattern-sanitizers: *js-sanitizers
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - *san-allowlist-ternary
+      - *san-guard
+      - *san-file-content
+      # Only the path or query is user data when the scheme and host are fixed in front of it: a literal
+      # "https://host/", or a constant base (PAYPAL_API_URL, process.env.X, config.x) then "/" (proshop-v2:
+      # `${PAYPAL_API_URL}/v2/checkout/orders/${id}`).
+      - patterns:
+          - pattern: $URL
+          - metavariable-pattern:
+              metavariable: $URL
+              patterns:
+                - pattern: '`...`'
+                - pattern-regex: '^`(https?://[^/`$]+|\$\{\s*([A-Z][A-Z0-9_]*|process\.env\.\w+|(this\.)?(config|env|conf|settings)(\.\w+)+)\s*\})/'
+      - patterns:
+          - pattern: $PREFIX + $X
+          - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"]https?://[^/''"]+/'}
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -808,6 +896,16 @@ rules:
           - pattern-not-inside: 'if (<... $C.DEBUG ...>) { ... }'
           - pattern-not-inside: '<... $C.DEBUG ...> ? $A : $B'
           - pattern-not-inside: '<... $C.DEBUG ...> && $Y'
+          # Put in a response object that drops it again unless some condition holds (express-rest-boilerplate:
+          # `if (env !== 'development') { delete response.stack; }`).
+          - pattern-not-inside: |
+              $OBJ = {..., stack: $ERR.stack, ...};
+              ...
+              if ($COND) { ... delete $OBJ.stack; ... }
+          - pattern-not-inside: |
+              const $OBJ = {..., stack: $ERR.stack, ...};
+              ...
+              if ($COND) { ... delete $OBJ.stack; ... }
     pattern-sinks:
       - patterns:
           - pattern-either:

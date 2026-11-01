@@ -472,6 +472,19 @@ rules:
       - *checked-inside
       - *known-safe
       - *lookup-result
+      # A SQLAlchemy statement built by select()/insert()/update()/delete() binds the values in it as parameters
+      # (flaskbb: sa.select(Topic).filter(Topic.id.in_(ids)) run by session.execute). sqlalchemy.text() stays a sink.
+      - pattern-either:
+          - patterns:
+              - pattern: sqlalchemy.$BUILD(...)
+              - metavariable-regex: {metavariable: $BUILD, regex: '^(select|insert|update|delete)$'}
+          - patterns:
+              - pattern: $CHAIN.$METHOD(...)
+              - metavariable-pattern:
+                  metavariable: $CHAIN
+                  patterns:
+                    - pattern: <... sqlalchemy.$BUILD(...) ...>
+                    - metavariable-regex: {metavariable: $BUILD, regex: '^(select|insert|update|delete)$'}
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -843,6 +856,11 @@ rules:
           - pattern: urllib.parse.urlencode(...)
       # A model looked up by the value: redirect() sends the user to the stored object's own URL.
       - pattern: $MODEL.objects.$QUERY(...)
+      # A project helper that returns only a URL it found safe (flaskbb: get_first_safe_redirect_url(next, ...,
+      # allowed_hosts=...) returns the candidate when its host is allowed, else the fallback).
+      - patterns:
+          - pattern: $SAFE(...)
+          - metavariable-regex: {metavariable: $SAFE, regex: '(?i)^(.*\.)?(\w+_)?safe_(\w+_)?(url|redirect|next|target)$'}
     pattern-sinks: &redirect-sinks
       - patterns:
           - pattern-either:

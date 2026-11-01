@@ -301,6 +301,37 @@ knowledge.
    Both found cases are quiet at their fixes; GHSA-79wm is also found where the request's prompt is passed to
    the functions that spawn it. Quick suites and the 30 apps unchanged.
 
+10. **Ordinary-app learning set** (2026-11-01; five new apps, cloned in `~/.cache/codewatch/fresh/`, see Repos).
+   Verdict findings before: flaskbb 22, outline 23, node-express-mongoose-demo 3, express-rest-boilerplate 1,
+   proshop-v2 1. Fixes, each in a test:
+   - Python (flaskbb, `test_sqlalchemy_statements_and_safe_redirect_helpers`): a SQLAlchemy
+     `select()/insert()/update()/delete()` chain binds its values (`sa.text("..." + x)` is still a sink); a
+     project helper named `*safe_url`/`safe_redirect`/`*_safe_next` (`get_first_safe_redirect_url`) cleans an
+     open redirect.
+   - JS open redirect (outline, `test_js_redirects_within_the_site_are_not_open`): a template or concatenation
+     with a fixed relative prefix (`/auth/${x}`, not `//`) or with the value after `?`/`#` stays on the site; a
+     `getValidated...` helper is a sanitizer. The request's own path (`req.url`, `ctx.path`) moved to a separate
+     review-only rule, `open-redirect-path`, as in Python (`//evil.com` is a valid path). This also cleared seven
+     false alarms in dvna and vulnerable-node (fixed-path redirects such as `"/products/" + id`).
+   - JS summaries (outline, `test_returner_calls_and_handlers_in_javascript`): from-source rules use `exact: true`
+     (a `perform(context)` call was both the source and, through another class's `perform`, the sink of itself),
+     and Koa/Express handlers taking `next` aren't returners of request data (`renderShare`).
+   - JS SSRF and stack traces (proshop-v2, express-rest-boilerplate,
+     `test_js_ssrf_to_a_fixed_host_and_stack_traces_dropped_outside_development`): a URL whose host is fixed
+     (`https://host/...`, `${PAYPAL_API_URL}/...`, `${config.x}/...`) is not SSRF; a `stack` field deleted from
+     the response object outside development is not exposed.
+   - Weak hash (`test_the_crypto_module_name_is_not_a_security_purpose`): `crypto` (Node's module name, in every
+     `crypto.createHash('md5')`) no longer makes a call security-related.
+   - Measurement: `devtools.py repos` now skips bundles and vendored libraries as real scans do
+     (`collect.without_third_party`); flaskbb 78 s to 33 s.
+   After: flaskbb 0, express-rest-boilerplate 0, proshop-v2 0, node-express-mongoose-demo 2 (real: `err.stack` in
+   the 500 page), outline 8: six real (four `rejectUnauthorized: false`, two md5 of the JWT secret) and two known
+   false alarms: `plugins/passkeys/server/auth/passkeys.ts:266` (`getPasskeyLoginRedirect` returns a fixed
+   string; JS has no pass-through analysis) and `server/routes/app.ts:320` (`share.canonicalUrl` from a lookup
+   by request id; JS has no lookup-result sanitizer). Those two are the next JS candidates.
+   Quick suites unchanged; CVE pairs unchanged (Python verdict 5/14, 1; review 6/14, 1; JavaScript verdict 2/10,
+   0; review 4/10, 3); the 30 apps lose only the seven dvna/vulnerable-node redirects above.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -376,6 +407,11 @@ Already learned from (not blind), pinned commits, cloned in `~/.cache/codewatch/
 | https://github.com/hagopj13/node-express-boilerplate | 179ae84efe | ordinary Express app: expect 0 |
 | https://github.com/lujakob/nestjs-realworld-example-app | c1c2cc4e44 | ordinary NestJS app: expect 0 |
 | https://github.com/brocoders/nestjs-boilerplate | 9620f159ee | ordinary NestJS app: expect 0 |
+| https://github.com/flaskbb/flaskbb | 737d76f14e | ordinary Flask forum (step 10) |
+| https://github.com/outline/outline | 91bf8f5f6d | ordinary Koa/React app (step 10) |
+| https://github.com/madhums/node-express-mongoose-demo | 8a134ab5de | ordinary Express app (step 10) |
+| https://github.com/danielfsousa/express-rest-boilerplate | b8bed6d7cf | ordinary Express app (step 10) |
+| https://github.com/bradtraversy/proshop-v2 | e23e3a897e | ordinary Express/React app (step 10) |
 
 Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use to adjust rules:
 
@@ -385,6 +421,16 @@ Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use
 | https://github.com/igorbenav/FastAPI-boilerplate | 2d0ca1a79a | ordinary FastAPI app |
 | https://github.com/sahat/hackathon-starter | a2e4b4057a | ordinary Express app |
 | https://github.com/notiz-dev/nestjs-prisma-starter | 225e5a9068 | ordinary NestJS app |
+
+Second blind set, chosen and cloned 2026-11-01 before any scan (the first is spent), in `~/.cache/codewatch/blind2/`;
+scan only at the end of the next round, never use to adjust rules:
+
+| Repo | Commit | Kind |
+|---|---|---|
+| https://github.com/healthchecks/healthchecks | ab4b5c46d6 | ordinary Django app |
+| https://github.com/mealie-recipes/mealie | bc21069738 | ordinary FastAPI app |
+| https://github.com/w3tecch/express-typescript-boilerplate | 17727010f7 | ordinary Express app |
+| https://github.com/ghostfolio/ghostfolio | 841ff112c4 | ordinary NestJS app |
 
 CVE fix pairs are suites (`cve-pairs-*` in `benchmarks/suites.json`); the `cve-pairs-blind-*` suites are skipped
 unless named and follow the same rule.

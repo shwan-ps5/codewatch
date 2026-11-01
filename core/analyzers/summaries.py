@@ -91,7 +91,13 @@ JS_RETURN_SINKS = [
         {"pattern-inside": "$FUNC(...) { ... }"},
         {"pattern-inside": "$OBJ.$FUNC = (...) => { ... }"},
         {"pattern-inside": "$OBJ.$FUNC = function (...) { ... }"},
-    ]}, {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
+    ]},
+        # A Koa/Express handler (last parameter `next`) returns the response's promise, not data for its caller
+        # (outline: `return renderShare(ctx, next)` passing one route on to another).
+        {"pattern-not-inside": "function $FUNC(..., next) { ... }"},
+        {"pattern-not-inside": "const $FUNC = (..., next) => { ... }"},
+        {"pattern-not-inside": "$FUNC(..., next) { ... }"},
+        {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
 ]
 LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)_(?!"
 # What a helper looks up with the request data (a user by token, a row by id) is stored data, not the request's.
@@ -466,8 +472,11 @@ def from_sources(found, js):
         return []
     receivers = ["this"] if js else sorted(RECEIVERS)
     calls = ["$RET_FUNC(...)", "$MODULE.$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers)]
+    # Exact: the call's value is the source, not its arguments. Otherwise a call that is also a summarised
+    # function's via-sink matches itself (outline: `X.perform(context)`, one class's perform returning request
+    # data and another's passing its argument to a query).
     return [{"patterns": [{"pattern-either": [{"pattern": c} for c in calls]},
-                          {"metavariable-regex": {"metavariable": "$RET_FUNC", "regex": regex}}]}
+                          {"metavariable-regex": {"metavariable": "$RET_FUNC", "regex": regex}}], "exact": True}
             for regex in name_regexes(names)]
 
 

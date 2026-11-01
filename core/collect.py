@@ -285,6 +285,19 @@ def in_library_folder(path, folders):
     return Path(path).suffix.lower() in LIBRARY_SUFFIXES and any(path.startswith(f) for f in folders)
 
 
+def without_third_party(root, files, log=print):
+    """files less minified bundles and vendored libraries, which the dependency audit covers instead."""
+    bundles = [f for f in files if minified(root / f)]
+    if bundles:
+        log(f"Skipping {len(bundles)} minified JavaScript file(s), e.g. {bundles[0]}")
+    folders = library_folders(files)
+    libraries = [f for f in files if f not in bundles and (in_library_folder(f, folders) or vendored(root / f))]
+    if libraries:
+        log(f"Skipping {len(libraries)} vendored library file(s), e.g. {libraries[0]}")
+    skipped = set(bundles) | set(libraries)
+    return [f for f in files if f not in skipped]
+
+
 def is_url(path):
     return path.startswith(("http://", "https://", "file://"))
 
@@ -423,17 +436,7 @@ def code_only(changed, tracked):
 def collect(cfg, scan, log=print):
     """Analyse a ScanInput with the project's ScanConfig; returns the upload payload."""
     files = [f for f in scan.files if not excluded(f, cfg.exclusions)]
-    bundles = [f for f in files if minified(Path(scan.root) / f)]
-    if bundles:
-        log(f"Skipping {len(bundles)} minified JavaScript file(s), e.g. {bundles[0]}")
-    folders = library_folders(files)
-    libraries = [f for f in files if f not in bundles
-                 and (in_library_folder(f, folders) or vendored(Path(scan.root) / f))]
-    if libraries:
-        log(f"Skipping {len(libraries)} vendored library file(s), e.g. {libraries[0]}")
-    if bundles or libraries:
-        skipped = set(bundles) | set(libraries)
-        files = [f for f in files if f not in skipped]
+    files = without_third_party(Path(scan.root), files, log)
     changed = scan.changed
     ctx = make_context(cfg, scan, files)
     combined, tools = run_analyzers(cfg, ctx, log)

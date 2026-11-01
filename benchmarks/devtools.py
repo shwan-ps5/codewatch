@@ -34,7 +34,7 @@ import yaml
 from core import benchmark, catalog
 from core.analyzers.base import Context, isolated_tool
 from core.analyzers.multi_tools import Semgrep, analysis_copy
-from core.collect import DEFAULT_EXCLUSIONS
+from core.collect import DEFAULT_EXCLUSIONS, without_third_party
 
 HERE = Path(__file__).resolve().parent
 CACHE = Path.home() / ".cache" / "codewatch"
@@ -93,6 +93,7 @@ def repos(args):
     for arg in args[1:] if mode else args:
         root = Path(arg).expanduser()
         files = [f for f in project_files(root) if not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]
+        files = without_third_party(root, files, log=lambda message: print(f"-- note: {message}"))
         start = time.time()
         ctx = Context(root=root, files=files, semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
         result = Semgrep().run(ctx)
