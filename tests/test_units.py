@@ -15,7 +15,15 @@ from core.analyzers.summaries import (
     split_keyword,
     via_sinks,
 )
-from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
+from core.collect import (
+    ScanConfig,
+    choose_reference,
+    excluded,
+    minified,
+    new_code_metrics,
+    parse_diff,
+    parse_period,
+)
 from core.fingerprint import assign_fingerprints
 from core.runner import is_new
 
@@ -370,6 +378,15 @@ def test_mentioning_matches_whole_names(tmp_path):
     (tmp_path / "prefix.py").write_text("wrapper_two(x)\n")
     ctx = Context(root=tmp_path, files=[])
     assert mentioning(ctx, ["calls.py", "prefix.py"], {"wrapper"}) == ["calls.py"]
+
+
+def test_minified_bundles_are_recognised_by_content(tmp_path):
+    """litellm commits Next.js chunks (one 100 KB line each): ReDoS and Semgrep spent minutes per chunk."""
+    (tmp_path / "chunk-6a03.js").write_text("(self.webpackChunk=[]).push([[1],{1:function(e){" + "a," * 20_000 + "}}])")
+    (tmp_path / "app.js").write_text("const a = 1\n" * 5_000)
+    (tmp_path / "small.js").write_text("x" * 5_000)
+    (tmp_path / "data.py").write_text("x" * 50_000)
+    assert [p.name for p in sorted(tmp_path.iterdir()) if minified(p)] == ["chunk-6a03.js"]
 
 
 def test_semgrep_timeouts_are_reported_not_lost(monkeypatch, tmp_path):

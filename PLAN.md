@@ -257,7 +257,17 @@ knowledge.
    CVE suites re-run after all of this (2026-11-01): Python 90 min (was 1 h 45 min), JavaScript 22 min; every
    number unchanged (Python verdict 5/14 found, 1 still flagged; review 6/14, 1; JavaScript verdict 0/10; review
    3/10, 3). Large-project scans are 3-4 times faster, yet the suite is only 15% faster, so most of the suite's
-   time is elsewhere. Next: time each case and tool in the suite to find where.
+   time is elsewhere. Timing each case and tool (90 min in all): litellm alone took 46 min, 23 per side, of which
+   15 in Semgrep and 7 in codewatch's ReDoS check, nearly all on twelve minified Next.js chunks committed under
+   `litellm/proxy/_experimental/out/_next/` (one 100 KB line each, hundreds of regexes, each check allowed 3 s).
+   Done: `collect` skips JavaScript files of 20 KB or more whose lines average over 500 characters (bundler output,
+   whatever its name or folder) and logs how many. Across the 30 apps, ~/Dev and every benchmark checkout it
+   matches only bundles (Next.js, Astro, TinyMCE, archivy's static editor). litellm: 2,736 s to 476 s, its
+   codewatch check 435 s to 0.6 s per side. The whole Python CVE suite: 90 min to 48 min, every number unchanged;
+   quick suites and the 30 apps unchanged (`test_minified_bundles_are_recognised_by_content`). Left: Semgrep is now most of every case (open-webui 222 s and
+   litellm 229 s per side; dtale 135 s); Grappelli's check still takes 58 s per side on vendored, unminified
+   jQuery, jQuery UI, TinyMCE and select2 (left alone: telling vendored libraries from the app's own code by
+   content isn't safe yet).
 
 9. **JavaScript CVE misses** (2026-11-01, non-blind cases only; verdict 0/10 before this). Added:
    - GHSA-p849 (NocoBase, SQL injection): `Sequelize.literal()`/`sequelize.literal()` as a SQL sink, NocoBase's

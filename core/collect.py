@@ -223,6 +223,27 @@ def excluded(path, patterns):
     return any(fnmatch.fnmatch(path, p) or (p.startswith("**/") and fnmatch.fnmatch(path, p[3:])) for p in patterns)
 
 
+# Bundler output (webpack/Next.js chunks committed with an app) is not the project's source, and its hundreds of
+# regexes and huge lines cost the ReDoS check and Semgrep minutes per file. Recognised by content, since bundles
+# aren't always named .min.js or kept under dist/: long lines on average.
+BUNDLE_SUFFIXES = {".js", ".mjs", ".cjs"}
+BUNDLE_MIN_BYTES = 20_000
+BUNDLE_LINE_LENGTH = 500
+
+
+def minified(path):
+    """A JavaScript file whose lines average over BUNDLE_LINE_LENGTH characters (a minified bundle)."""
+    if path.suffix.lower() not in BUNDLE_SUFFIXES:
+        return False
+    try:
+        if path.stat().st_size < BUNDLE_MIN_BYTES:
+            return False
+        data = path.read_bytes()
+    except OSError:
+        return False
+    return len(data) / (data.count(b"\n") + 1) > BUNDLE_LINE_LENGTH
+
+
 def is_url(path):
     return path.startswith(("http://", "https://", "file://"))
 
@@ -361,6 +382,11 @@ def code_only(changed, tracked):
 def collect(cfg, scan, log=print):
     """Analyse a ScanInput with the project's ScanConfig; returns the upload payload."""
     files = [f for f in scan.files if not excluded(f, cfg.exclusions)]
+    bundles = [f for f in files if minified(Path(scan.root) / f)]
+    if bundles:
+        log(f"Skipping {len(bundles)} minified JavaScript file(s), e.g. {bundles[0]}")
+        skipped = set(bundles)
+        files = [f for f in files if f not in skipped]
     changed = scan.changed
     ctx = make_context(cfg, scan, files)
     combined, tools = run_analyzers(cfg, ctx, log)
