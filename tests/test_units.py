@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -5,6 +6,7 @@ from core.analyzers.accessibility import blank_template_syntax
 from core.analyzers.base import Context, Finding, Result
 from core.analyzers.coverage import Coverage, add_unreported, parse_cobertura, parse_lcov, resolve, statement_lines
 from core.analyzers.dependencies import declaration_line, manifests
+from core.analyzers.summaries import NAME_BATCH, via_sinks
 from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
 from core.fingerprint import assign_fingerprints
 from core.runner import is_new
@@ -320,3 +322,17 @@ def test_a_tool_timeout_kills_its_children(tmp_path):
     child = int(pid_file.read_text())
     time.sleep(0.2)
     assert not Path(f"/proc/{child}").exists() or "Z" in Path(f"/proc/{child}/stat").read_text().split()[2]
+
+
+def test_summarised_calls_share_one_sink_per_call_shape():
+    # A sink per summarised function made Semgrep match thousands of patterns in a large project and time out.
+    found = {(f"helper_{i}", 0, "value", False, "app.py") for i in range(NAME_BATCH + 1)}
+    sinks = via_sinks(found, js=False)
+    shapes = {s["patterns"][0]["pattern"] for s in sinks}
+    assert len(sinks) == 2 * len(shapes)  # each shape's names split into two regexes
+    assert shapes == {"$VIA_FUNC($ARG, ...)", "$VIA_FUNC(..., value=$ARG, ...)",
+                      "$MODULE.$VIA_FUNC($ARG, ...)", "$MODULE.$VIA_FUNC(..., value=$ARG, ...)"}
+    regexes = [s["patterns"][1]["metavariable-regex"]["regex"] for s in sinks]
+    for func, *_ in found:
+        assert sum(bool(re.match(r, func)) for r in regexes) == len(shapes)
+    assert not any(re.match(r, "helper_") for r in regexes)

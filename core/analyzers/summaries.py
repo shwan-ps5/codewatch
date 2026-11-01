@@ -269,13 +269,28 @@ def call_patterns(index, param, method, js):
     return patterns
 
 
+NAME_BATCH = 400
+
+
+def name_regexes(names):
+    """Anchored alternations of names, NAME_BATCH at a time: Semgrep's regex engine rejects one listing
+    a large project's thousands of functions."""
+    names = sorted(names)
+    return [f"^({'|'.join(map(re.escape, names[i:i + NAME_BATCH]))})$"
+            for i in range(0, len(names), NAME_BATCH)]
+
+
 def via_sinks(found, js):
-    sinks = []
-    for func, index, param, method, _path in sorted(found, key=repr):
-        name = {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": f"^{re.escape(func)}$"}}
-        sinks += [{"patterns": [{"pattern": pattern}, name, {"focus-metavariable": "$ARG"}]}
-                  for pattern in call_patterns(index, param, method, js)]
-    return sinks
+    """One sink per call shape, naming every function called that way: a sink per function made Semgrep match
+    thousands of patterns in a large project."""
+    callers = {}
+    for func, index, param, method, _path in found:
+        for pattern in call_patterns(index, param, method, js):
+            callers.setdefault(pattern, set()).add(func)
+    return [{"patterns": [{"pattern": pattern},
+                          {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": regex}},
+                          {"focus-metavariable": "$ARG"}]}
+            for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
 
 
 def merge(summaries, more):
@@ -408,8 +423,9 @@ def from_sources(found, js):
         return []
     receivers = ["this"] if js else sorted(RECEIVERS)
     calls = ["$RET_FUNC(...)", "$MODULE.$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers)]
-    name = {"metavariable-regex": {"metavariable": "$RET_FUNC", "regex": f"^({'|'.join(map(re.escape, names))})$"}}
-    return [{"patterns": [{"pattern-either": [{"pattern": c} for c in calls]}, name]}]
+    return [{"patterns": [{"pattern-either": [{"pattern": c} for c in calls]},
+                          {"metavariable-regex": {"metavariable": "$RET_FUNC", "regex": regex}}]}
+            for regex in name_regexes(names)]
 
 
 def from_rules(rules, returners, summaries):
@@ -478,8 +494,8 @@ def field_variants(rules, fields, summaries):
         variant["id"] = rule["id"] + FIELD_SUFFIX
         variant["pattern-sources"] = [{"patterns": [
             {"pattern": "this.$STORED_FIELD" if is_js(rule) else "self.$STORED_FIELD"},
-            {"metavariable-regex": {"metavariable": "$STORED_FIELD", "regex": f"^({'|'.join(map(re.escape, names))})$"}},
-        ]}]
+            {"metavariable-regex": {"metavariable": "$STORED_FIELD", "regex": regex}},
+        ]} for regex in name_regexes(names)]
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
         variant["message"] = rule["message"].strip() + " [field $STORED_FIELD]"
         out.append(variant)
@@ -487,7 +503,6 @@ def field_variants(rules, fields, summaries):
 
 
 PASS_THROUGH_MARK = "$KEEPS_PARAMS"
-PASS_THROUGH_BATCH = 400
 
 
 def pass_rules(rules):
@@ -546,13 +561,10 @@ def with_pass_through(rules, functions, passes, summaries, returners):
             out.append(rule)
             continue
         calls = [f"{a}{r}{PASS_THROUGH_MARK}(...)" for a in ("", "await ") for r in ("", "self.", "cls.")]
-        # One regex per batch of names: Semgrep's regex engine rejects a pattern listing a large project's
-        # thousands of functions at once.
         sanitizers = [{"patterns": [
             {"pattern-either": [{"pattern-inside": f"$RESULT = {c}\n...\n"} for c in calls]},
             {"pattern": "$RESULT"},
-            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK,
-                                    "regex": f"^({'|'.join(map(re.escape, clean[i:i + PASS_THROUGH_BATCH]))})$"}},
-        ]} for i in range(0, len(clean), PASS_THROUGH_BATCH)]
+            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
+        ]} for regex in name_regexes(clean)]
         out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *sanitizers]})
     return out

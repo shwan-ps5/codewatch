@@ -227,6 +227,14 @@ knowledge.
    functions that do return a parameter instead of the thousands that don't; fewer variant copies); start
    Semgrep fewer times (merge passes; skip summaries for files identical between the two commits of a pair).
    Every change is checked against the same detection numbers.
+   Profile of `cg` (1,023 Python files, about 6 cores): summaries 9 s, 123 s, 161 s; returners 65 s; final
+   198 s; 567 s in all. Depth 1, with no generated names, takes 9 s. Done: one via-sink per call shape whose name
+   regex lists every function called that way (it was one sink per function), and every generated name list
+   split into regexes of 400. `cg` now takes 304 s (summaries 49 s and 61 s, final 108 s). It also finds more:
+   the old rules hit Semgrep's per-file timeout 97 times in the final scan and 6-7 times per summary pass, each
+   one silently skipping that rule for that file; now 12 and 1-2. Quick suites and the 30 apps unchanged; those
+   apps scan in 8-53 s each, so the time is a large-project problem. Next: the final scan (108 s) and the
+   returner pass (65 s); report timeouts instead of losing them silently.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
