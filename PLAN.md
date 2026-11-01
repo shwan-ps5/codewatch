@@ -379,6 +379,30 @@ knowledge.
    `plugins/dispatch_core/plugin.py:225` (JWT `kid` in the path of `https://public-keys.auth.elb.{region}.amazonaws.com/{kid}`; a regex can't tell which interpolation is
    tainted, and a tainted region would be real).
 
+12. **Second blind run** (2026-11-01, at 81ce0e3; first and only scan of blind set 2, not to be used to adjust
+   rules). Verdict findings:
+   - express-typescript-boilerplate: 0.
+   - ghostfolio: 1, real at code level: `request.originalUrl` interpolated unescaped into
+     `<meta content="${rootUrl}${path}">` (html-template.middleware.ts:185; browsers percent-encode `"` in a path,
+     so hard to exploit, but nothing escapes it).
+   - mealie: 7. Real at code level: the session cookie is `httponly=False` (auth.py:163; commented as needed by
+     the SPA). False alarms: 4 path traversal via `_save_recipe_asset()` (the name goes through `slugify()` and
+     the extension through an allowlist; two lines, each reported twice), a `window.open` of a group-configured
+     action URL (stored settings, not a redirect), and `sql-value-formatting` of a value the database itself
+     returned (`PRAGMA`/`session_replication_role` state).
+   - healthchecks: 28, all false alarms: 10 open redirects (7 behind the project's own `_allow_redirect()`
+     check, which rejects any netloc and resolves the path against a list of routes, 3 `url = reverse(...);
+     url += query`), 7 trust-boundary session writes (OAuth state, a project code, a form's cleaned values),
+     6 weak-hash (SHA-1 of a code, or of a value plus `SECRET_KEY`, used as a key or unsubscribe token, not a
+     password), an insecure cookie (`secure=bool(settings.X)`, `httponly=True`, value "1"), and XSS
+     (`HttpResponse(csrf.get_token(request))`).
+   So 2 of 4 apps have verdict false alarms (34 in all, 28 in one Django app), the same rate as blind set 1
+   (2 of 4, 12). The two learning sets fixed the frameworks' common shapes, but each new app brings its own
+   helpers. Lessons (to act on only with non-blind cases): a positive guard is often a project function, so a
+   guard-shaped call (`if x and f(x): redirect(x)`) where `f` returns a bool might be better as a hotspot than
+   a verdict; trust-boundary on ordinary apps is almost always noise and might be review-only; weak-hash needs
+   a password-shaped context, not just a security-sounding function. The blind set is now spent.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -475,7 +499,7 @@ Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use
 | https://github.com/notiz-dev/nestjs-prisma-starter | 225e5a9068 | ordinary NestJS app |
 
 Second blind set, chosen and cloned 2026-11-01 before any scan (the first is spent), in `~/.cache/codewatch/blind2/`;
-scan only at the end of the next round, never use to adjust rules:
+scanned once at 81ce0e3 (step 12) and now spent, never use to adjust rules:
 
 | Repo | Commit | Kind |
 |---|---|---|
