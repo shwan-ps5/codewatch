@@ -317,6 +317,23 @@ rules:
                   if <... $X in $ALLOWED ...>:
                     ...
           - pattern: $X
+      # Used only where a check said yes: `if is_safe_url(x): return redirect(x)` (GHSA-6rmf-cv6p-4h27).
+      - &checked-inside
+        patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if $CHECK(..., $X, ...):
+                    ...
+              - pattern-inside: |
+                  if $CHECK(..., $X, ...) and $MORE:
+                    ...
+              - pattern-inside: |
+                  if $FIRST and $CHECK(..., $X, ...):
+                    ...
+          - metavariable-regex:
+              metavariable: $CHECK
+              regex: '(?i)^(.*\.)?(is_?|check_?)?(safe|valid|allowed|permitted|trusted|whitelisted|allowlisted)\w{0,40}$|^(.*\.)?url_has_allowed_host_and_scheme$'
+          - pattern: $X
       # Shared: functions named as validators (safe_next, validate_url, sanitize_path, clean_*) return checked
       # data, taken at face value since the analysis doesn't look inside them; and request.path in a route with
       # no variable parts, whose value routing has already fixed.
@@ -419,6 +436,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
     pattern-sinks:
@@ -451,6 +469,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
     pattern-sinks:
@@ -498,6 +517,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       - pattern: os.path.basename(...)
@@ -583,6 +603,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       - pattern: html.escape(...)
@@ -696,6 +717,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       # Replacing the quote that delimits the value (' -> &apos;) stops it from closing the XPath string.
@@ -734,6 +756,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       - patterns:
@@ -785,6 +808,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       # Back to the page the user came from: only the site that linked here chose it, so it can't send anyone
@@ -793,6 +817,14 @@ rules:
           - pattern: $REQ.referrer
           - pattern: $REQ.headers.get("Referer", ...)
           - pattern: $REQ.META.get("HTTP_REFERER", ...)
+      # The app's own root (scheme and Host): a link can't change the Host header (GHSA-g3cm-qg2v-2hj5, pyload,
+      # urljoin(request.url_root, url_for(...))).
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.url_root
+              - pattern: $REQ.host_url
+              - pattern: $REQ.build_absolute_uri("/")
+          - metavariable-regex: {metavariable: $REQ, regex: '^((flask\.)?request|self\.request)$'}
       # The request's own path stays on this site unless it starts with "//"; open-redirect-path covers that.
       - &request-path
         pattern-either:
@@ -856,6 +888,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       # What a login or verification call returns is the checked identity, not the raw request value.
@@ -902,6 +935,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
     pattern-sinks:
@@ -945,6 +979,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
     pattern-sinks:
@@ -1055,6 +1090,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
     pattern-sinks:
@@ -1148,6 +1184,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       # Only the path or query is user data when the scheme and host are fixed in front of it.
@@ -1201,6 +1238,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       - pattern: re.escape(...)
@@ -1233,6 +1271,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       - pattern: repr(...)
@@ -1284,6 +1323,7 @@ rules:
       - *request-path
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
       - patterns:
@@ -1588,6 +1628,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *checked-inside
       - *known-safe
       - *lookup-result
     pattern-sinks:

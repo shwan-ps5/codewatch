@@ -1644,6 +1644,49 @@ def test_request_data_kept_in_fields_and_class_based_views(tmp_path):
     }
 
 
+def test_checked_values_and_functions_that_dont_return_their_argument(tmp_path):
+    """From GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyload) at their fixes: a value
+    used only where a check said yes, the result of a project function that can't return its argument (it returns
+    it only inside `if self.is_safe_url(...)`), and the app's own url_root aren't redirect targets from the
+    request. A negated check, a helper that does hand the argument back, and host_url joined with the request
+    value still are."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "views.py": (
+            "import flask\n"
+            "from django.http import HttpResponseRedirect\n"
+            "from django.utils.encoding import iri_to_uri\n"
+            "from flask import redirect, request, url_for\n"
+            "from urllib.parse import urljoin\n\n\n"
+            "@app.route('/login')\n"
+            "def login():\n"
+            "    next_url = request.args.get('next')\n"
+            "    if next_url and is_safe_redirect_url(next_url):\n"
+            "        return redirect(next_url)\n"
+            "    if not is_safe_redirect_url(next_url):\n"
+            "        return redirect(next_url)\n"
+            "    return redirect(urljoin(flask.request.url_root, url_for('app.' + request.args['page'])))\n\n\n"
+            "class Terms(View):\n"
+            "    def get_return_to(self, from_dict):\n"
+            "        return_to = from_dict.get('returnTo', '/')\n"
+            "        if self.is_safe_url(return_to):\n"
+            "            return iri_to_uri(return_to)\n"
+            "        return '/'\n\n"
+            "    def get_next(self, from_dict):\n"
+            "        return from_dict.get('next', '/')\n\n"
+            "    def post(self, request):\n"
+            "        return_url = self.get_return_to(self.request.POST)\n"
+            "        next_url = self.get_next(self.request.POST)\n"
+            "        if return_url:\n"
+            "            return HttpResponseRedirect(return_url)\n"
+            "        if next_url:\n"
+            "            return HttpResponseRedirect(next_url)\n"
+            "        return HttpResponseRedirect(urljoin(request.host_url, request.POST['to']))\n"),
+    })
+    assert {line for path, line, rule, kind in found if rule == "open-redirect"} == {14, 34, 35}
+
+
 def test_helpers_that_return_request_data(tmp_path):
     """A call to a function that returns request data is request data where that function is visible; what a helper
     looks up with the request (a user by id) isn't, and neither is a view's response."""

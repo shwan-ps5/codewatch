@@ -206,6 +206,28 @@ knowledge.
    URI looked up from the client's registered list, and one after `isValidReturnToUrl(...)`), so honestly 0/4.
    The blind set is now spent; a new one is needed before the next blind measurement.
 
+7. **After step 6** (2026-10-31, from non-blind cases only): a positive-guard sanitizer (`checked-inside`: a
+   value used inside `if is_safe_url(x):` or `if a and is_valid(x):`, not `if not ...`), `request.url_root`/
+   `host_url` as open-redirect sanitizers, and a pass-through summary for Python: the returner pass's first scan
+   also finds which project functions can return a parameter, and the variable assigned from a call to one that
+   can't (and isn't summarised or a returner) is clean. Driven by GHSA-6rmf and GHSA-g3cm at their fixes.
+   Python CVE pairs after it: verdict 5/14 found, 1 still flagged (was 6/14 and 3); review 6/14, 1 (was 7 and 3).
+   GHSA-6rmf is now found at the vulnerable commit and quiet at its fix. GHSA-g3cm went quiet on both sides:
+   its vulnerable code redirects only to values that passed the project's own `is_safe_url()`, and the advisory
+   is that check being incomplete, so trusting a validator by name loses it (the old "find" was the same two
+   lines on both sides of the fix, so it never told the commits apart). Follow-up: a value cleared only by a
+   project-defined check (not a library one like `url_has_allowed_host_and_scheme`) should be a review hotspot
+   rather than silent. The names of clean functions are split into regexes of 400: one regex listing all of
+   them (`cg`, GHSA-w228, about 70K characters) made Semgrep exit with an error.
+
+8. **Speed** (next, asked for 2026-11-01): the Python CVE suite took 1h45m and one large project's scan took
+   minutes per pass. A profile of one `cg` pass showed 12.7 s of 13.3 s loading the generated rules and 0.55 s
+   scanning. Budget: a typical project of around 100k lines scans in under 5 minutes; a run that misses it
+   fails like a new false alarm. In order: time each pass on `cg`; shrink generated rules (list the few
+   functions that do return a parameter instead of the thousands that don't; fewer variant copies); start
+   Semgrep fewer times (merge passes; skip summaries for files identical between the two commits of a pair).
+   Every change is checked against the same detection numbers.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the

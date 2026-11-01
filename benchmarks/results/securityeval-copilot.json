@@ -1804,7 +1804,7 @@
  },
  "suite": "securityeval-copilot",
  "commit": "6f4fb70f782c6d47b02ea24341e8ef8c1eb04a6a",
- "scanned_at": "2026-10-31T18:01:54+00:00",
+ "scanned_at": "2026-10-31T20:49:39+00:00",
  "overall": {
   "verdict": {
    "tp": 33,

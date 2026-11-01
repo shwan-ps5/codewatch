@@ -101,10 +101,13 @@ class Semgrep(Analyzer):
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
-            returners, fields = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
-            rules = (custom_rules + summaries_module.via_rules(custom_rules, summaries)
-                     + summaries_module.from_rules(custom_rules, returners, summaries)
-                     + summaries_module.field_variants(custom_rules, fields, summaries))
+            returners, fields, passes = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
+            functions = summaries_module.python_functions_with_params(
+                read_source(ctx.root / f) or "" for f in ctx.files_with({".py"}))
+            final = summaries_module.with_pass_through(custom_rules, functions, passes, summaries, returners)
+            rules = (final + summaries_module.via_rules(final, summaries)
+                     + summaries_module.from_rules(final, returners, summaries)
+                     + summaries_module.field_variants(final, fields, summaries))
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
             if rules:
                 (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
@@ -221,8 +224,9 @@ class Semgrep(Analyzer):
 
     def find_returners(self, ctx, custom_rules, targets, originals, work):
         """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
-        and (in the first scan) which fields of self/this request data is stored in."""
-        returners, fields = {}, {}
+        and (in the first scan) which fields of self/this request data is stored in and which Python functions
+        can return a parameter."""
+        returners, fields, passes = {}, {}, {}
         # An unminified library bundled with the app (materialize.js, 366 KB) multiplies this pass's time by ten,
         # and big single-file apps are Python's habit, not JavaScript's.
         targets = [t for t in targets
@@ -230,7 +234,7 @@ class Semgrep(Analyzer):
         for depth in range(summaries_module.MAX_DEPTH):
             rules = summaries_module.returner_rules(custom_rules, returners)
             if depth == 0:
-                rules += summaries_module.field_rules(custom_rules)
+                rules += summaries_module.field_rules(custom_rules) + summaries_module.pass_rules(custom_rules)
             if not rules or not targets:
                 break
             config = work / "returners.yml"
@@ -243,13 +247,15 @@ class Semgrep(Analyzer):
                      for item in data["results"]]
             stored = [f for f in found if f[0].endswith(summaries_module.FIELDS_SUFFIX)]
             fields = summaries_module.merge(fields, summaries_module.parse_fields(stored)) or fields
-            more = summaries_module.parse_returners([f for f in found if f not in stored],
+            passing = [f for f in found if f[0].endswith(summaries_module.PASSES_SUFFIX)]
+            passes = summaries_module.merge(passes, summaries_module.parse_passes(passing)) or passes
+            more = summaries_module.parse_returners([f for f in found if f not in stored and f not in passing],
                                                     lambda rel: read_source(ctx.root / rel))
             merged = summaries_module.merge(returners, more)
             if merged is None:
                 break
             returners = merged
-        return returners, fields
+        return returners, fields, passes
 
     @staticmethod
     def field_stored(path, message, fields):

@@ -19,12 +19,19 @@ Data also waits in object fields: `self.term = request.GET["q"]` in one method, 
 in another. The returner pass's first scan also runs each rule with stores to `self.x`/`this.x` as the sink, and
 the final rules get a variant whose sources are reads of those fields, kept only in the file that stores them.
 
+Semgrep taints whatever a call returns when an argument is tainted. For the project's own Python functions the
+same first scan finds which ones can return a parameter (params as sources, `return` as the sink); a function
+that can't, isn't summarised and doesn't return request data itself is a sanitizer: the variable its result is
+assigned to is clean (`return_url = self.get_return_to(request.POST)`, which returns the value only inside
+`if self.is_safe_url(...)`).
+
 A call only counts where the function is visible: in the file that defines it, or in a file that imports it or
 its module, so same-named functions elsewhere don't connect.
 """
 import ast
 import copy
 import functools
+import json
 import re
 from pathlib import Path
 
@@ -34,6 +41,7 @@ VIA_RE = re.compile(r"\[via (\w+)\(\)\]$")
 RETURNS_SUFFIX = ".returns"
 FROM_SUFFIX = ".from"
 FROM_RE = re.compile(r"\[from (\w+)\(\)\]$")
+PASSES_SUFFIX = ".passes"
 FIELDS_SUFFIX = ".fields"
 FIELD_SUFFIX = ".field"
 FIELD_RE = re.compile(r"\[field (\w+)\]$")
@@ -423,9 +431,10 @@ def from_rules(rules, returners, summaries):
 
 
 def without_lookup_result(rule):
-    """The rule's sanitizers minus lookup-result (python-web.yml), which would also clean get_cmd() when get_cmd
-    is a returner: what the returner pass found overrides the name."""
-    return [s for s in rule.get("pattern-sanitizers", []) if LOOKUP_RESULT_MARK not in repr(s)]
+    """The rule's sanitizers minus lookup-result (python-web.yml) and the pass-through sanitizer, which would also
+    clean get_cmd() when get_cmd is a returner: what the returner pass found overrides the name."""
+    return [s for s in rule.get("pattern-sanitizers", [])
+            if LOOKUP_RESULT_MARK not in repr(s) and PASS_THROUGH_MARK not in repr(s)]
 
 
 # Not $FIELD: the JS request sources bind that name (req.$FIELD).
@@ -474,4 +483,76 @@ def field_variants(rules, fields, summaries):
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
         variant["message"] = rule["message"].strip() + " [field $STORED_FIELD]"
         out.append(variant)
+    return out
+
+
+PASS_THROUGH_MARK = "$KEEPS_PARAMS"
+PASS_THROUGH_BATCH = 400
+
+
+def pass_rules(rules):
+    """Python taint rules with function parameters as sources and `return` as the sink: which functions can hand a
+    parameter back (under the rule's sanitizers)."""
+    out = []
+    for rule in taint_rules(rules):
+        if is_js(rule):
+            continue
+        variant = copy.deepcopy(rule)
+        variant["id"] = rule["id"] + PASSES_SUFFIX
+        variant["message"] = "$FUNC"
+        # The source's own function name is bound as $OWNER so the message names the function that returns.
+        variant["pattern-sources"] = json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER"))
+        variant["pattern-sanitizers"] = without_lookup_result(rule)
+        variant["pattern-sinks"] = copy.deepcopy(PYTHON_RETURN_SINKS)
+        out.append(variant)
+    return out
+
+
+def parse_passes(results):
+    """{rule id: {function names that can return a parameter}}."""
+    passes = {}
+    for check_id, _path, _line, func in results:
+        if func and not func.startswith("$"):
+            passes.setdefault(check_id.removesuffix(PASSES_SUFFIX), set()).add(func)
+    return passes
+
+
+def python_functions_with_params(texts):
+    """Names of the project's Python functions that take a parameter other than self/cls."""
+    names = set()
+    for text in texts:
+        for name, nodes in python_functions(text).items():
+            for node, _in_class in nodes:
+                params = [a.arg for a in node.args.posonlyargs + node.args.args + node.args.kwonlyargs]
+                if node.args.vararg or node.args.kwarg or any(p not in RECEIVERS for p in params):
+                    names.add(name)
+    return names
+
+
+def with_pass_through(rules, functions, passes, summaries, returners):
+    """Each Python taint rule plus a sanitizer for the result of calls to functions that can't return a
+    parameter: not found by pass_rules, not summarised (a call to one is a via-sink) and not a returner."""
+    out = []
+    for rule in rules:
+        if rule not in taint_rules([rule]) or is_js(rule):
+            out.append(rule)
+            continue
+        rule_id = rule["id"]
+        clean = sorted(functions - passes.get(rule_id, set())
+                       - {func for func, *_ in summaries.get(rule_id, ())}
+                       - {func for func, _path in returners.get(rule_id, ())}
+                       - HANDLER_NAMES)
+        if not clean:
+            out.append(rule)
+            continue
+        calls = [f"{a}{r}{PASS_THROUGH_MARK}(...)" for a in ("", "await ") for r in ("", "self.", "cls.")]
+        # One regex per batch of names: Semgrep's regex engine rejects a pattern listing a large project's
+        # thousands of functions at once.
+        sanitizers = [{"patterns": [
+            {"pattern-either": [{"pattern-inside": f"$RESULT = {c}\n...\n"} for c in calls]},
+            {"pattern": "$RESULT"},
+            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK,
+                                    "regex": f"^({'|'.join(map(re.escape, clean[i:i + PASS_THROUGH_BATCH]))})$"}},
+        ]} for i in range(0, len(clean), PASS_THROUGH_BATCH)]
+        out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *sanitizers]})
     return out
