@@ -267,7 +267,13 @@ knowledge.
    quick suites and the 30 apps unchanged (`test_minified_bundles_are_recognised_by_content`). Left: Semgrep is now most of every case (open-webui 222 s and
    litellm 229 s per side; dtale 135 s); Grappelli's check still takes 58 s per side on vendored, unminified
    jQuery, jQuery UI, TinyMCE and select2 (left alone: telling vendored libraries from the app's own code by
-   content isn't safe yet).
+   content isn't safe yet). Every case side now scans within the 5-minute budget (largest open-webui 4.3 min,
+   litellm 4.0). Measured on open-webui's first returner scan (178 files, 85 s): the pass-through rules are 50 s of
+   Semgrep's core time (9,066 results), the returns rules 4 s, the fields rules none beyond the scan's own cost. The
+   16 Python pass rules have 11 distinct sanitizer sets (six rules share one). Done: one pass rule per group of
+   rules alike apart from sources and sinks, its message naming the rules it answers for; open-webui's first
+   returner scan 78 s to 65 s, its side 252 s to 237 s, quick suites and 30 apps unchanged. The deeper returner and summary passes also re-report what the previous depth
+   found in each file they rescan. Both are possible next speed steps, after detection work.
 
 9. **JavaScript CVE misses** (2026-11-01, non-blind cases only; verdict 0/10 before this). Added:
    - GHSA-p849 (NocoBase, SQL injection): `Sequelize.literal()`/`sequelize.literal()` as a SQL sink, NocoBase's

@@ -11,6 +11,7 @@ from core.analyzers.summaries import (
     NAME_BATCH,
     assigned_calls,
     keyword_summarised,
+    parse_passes,
     pass_rules,
     split_keyword,
     via_sinks,
@@ -423,3 +424,10 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     [variant] = pass_rules([rule], {"build"})
     [sink] = variant["pattern-sinks"]
     assert {"metavariable-regex": {"metavariable": "$FUNC", "regex": "^(build)$"}} in sink["patterns"]
+    # Rules with the same sanitizers share one variant, whose results answer for each of them.
+    same = {**rule, "id": "s", "pattern-sinks": [{"pattern": "eval(...)"}]}
+    other = {**rule, "id": "o", "pattern-sanitizers": [{"pattern": "int(...)"}]}
+    variants = pass_rules([rule, same, other], {"build"})
+    assert [v["message"] for v in variants] == ["$FUNC|r,s", "$FUNC|o"]
+    assert parse_passes([("r.passes", "a.py", 1, "build|r,s"), ("o.passes", "a.py", 2, "$FUNC|o")]) == {
+        "r": {"build"}, "s": {"build"}}

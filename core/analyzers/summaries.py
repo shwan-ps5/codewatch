@@ -549,6 +549,9 @@ def assigned_calls(texts):
     return {name for text in texts for name in ASSIGNED_CALL_RE.findall(text)}
 
 
+PASS_RULE_OWN_KEYS = {"id", "message", "metadata", "severity", "pattern-sources", "pattern-sinks", "pattern-sanitizers"}
+
+
 def pass_rules(rules, names):
     """Python taint rules with function parameters as sources and `return` as the sink: which of names can hand a
     parameter back (under the rule's sanitizers). Only the functions whose result is assigned need an answer; every
@@ -557,27 +560,33 @@ def pass_rules(rules, names):
         return []
     sinks = [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": "$FUNC", "regex": regex}}]}
              for sink in PYTHON_RETURN_SINKS for regex in name_regexes(names)]
-    out = []
+    # Sources and sinks are the same for every rule, so rules alike in the rest (sanitizers, propagators) give the
+    # same answer: one variant per such group (16 Python rules make 11), its message naming the rules it answers for.
+    groups = {}
     for rule in taint_rules(rules):
         if is_js(rule):
             continue
-        variant = copy.deepcopy(rule)
-        variant["id"] = rule["id"] + PASSES_SUFFIX
-        variant["message"] = "$FUNC"
-        # The source's own function name is bound as $OWNER so the message names the function that returns.
-        variant["pattern-sources"] = json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER"))
+        variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
         variant["pattern-sanitizers"] = without_lookup_result(rule)
-        variant["pattern-sinks"] = copy.deepcopy(sinks)
-        out.append(variant)
+        groups.setdefault(json.dumps(variant, sort_keys=True), (variant, []))[1].append(rule["id"])
+    out = []
+    for variant, ids in groups.values():
+        out.append({**copy.deepcopy(variant), "id": ids[0] + PASSES_SUFFIX, "severity": "INFO",
+                    "message": "$FUNC|" + ",".join(ids),
+                    # The source's own function name is bound as $OWNER so the message names the function that returns.
+                    "pattern-sources": json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER")),
+                    "pattern-sinks": copy.deepcopy(sinks)})
     return out
 
 
 def parse_passes(results):
     """{rule id: {function names that can return a parameter}}."""
     passes = {}
-    for check_id, _path, _line, func in results:
+    for _check_id, _path, _line, message in results:
+        func, _, ids = message.partition("|")
         if func and not func.startswith("$"):
-            passes.setdefault(check_id.removesuffix(PASSES_SUFFIX), set()).add(func)
+            for rule_id in ids.split(","):
+                passes.setdefault(rule_id, set()).add(func)
     return passes
 
 
