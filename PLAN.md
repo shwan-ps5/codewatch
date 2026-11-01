@@ -215,9 +215,10 @@ knowledge.
    GHSA-6rmf is now found at the vulnerable commit and quiet at its fix. GHSA-g3cm went quiet on both sides:
    its vulnerable code redirects only to values that passed the project's own `is_safe_url()`, and the advisory
    is that check being incomplete, so trusting a validator by name loses it (the old "find" was the same two
-   lines on both sides of the fix, so it never told the commits apart). Follow-up: a value cleared only by a
-   project-defined check (not a library one like `url_has_allowed_host_and_scheme`) should be a review hotspot
-   rather than silent. The names of clean functions are split into regexes of 400: one regex listing all of
+   lines on both sides of the fix, so it never told the commits apart). Considered and dropped: making a value
+   cleared only by a project-defined check (not a library one like `url_has_allowed_host_and_scheme`) a review
+   hotspot. GHSA-6rmf's fix also clears its redirect with a project-defined `is_safe_url`, so the hotspot would
+   be a review false alarm there for every one it found. The names of clean functions are split into regexes of 400: one regex listing all of
    them (`cg`, GHSA-w228, about 70K characters) made Semgrep exit with an error.
 
 8. **Speed** (next, asked for 2026-11-01): the Python CVE suite took 1h45m and one large project's scan took
@@ -253,7 +254,27 @@ knowledge.
    after the scan (`test_keyword_arguments_to_summarised_functions`). This replaced the unused-keyword filter.
    Only 160 s to 153 s: what remains in the summary passes is taint itself (every parameter is a source there,
    so log-injection's and path-traversal's many via-sinks are checked against every call), not pattern count.
-   Next: re-run the CVE suites to time the whole benchmark (was 1 h 45 min for Python).
+   CVE suites re-run after all of this (2026-11-01): Python 90 min (was 1 h 45 min), JavaScript 22 min; every
+   number unchanged (Python verdict 5/14 found, 1 still flagged; review 6/14, 1; JavaScript verdict 0/10; review
+   3/10, 3). Large-project scans are 3-4 times faster, yet the suite is only 15% faster, so most of the suite's
+   time is elsewhere. Next: time each case and tool in the suite to find where.
+
+9. **JavaScript CVE misses** (2026-11-01, non-blind cases only; verdict 0/10 before this). Added:
+   - GHSA-p849 (NocoBase, SQL injection): `Sequelize.literal()`/`sequelize.literal()` as a SQL sink, NocoBase's
+     `ctx.action.params` (also `ctx.action?.params`, which a plain pattern doesn't match) as a request source, and
+     names destructured with a default (`const { filter = {} } = req.body`), where Semgrep's taint drops the
+     value. The last is general: an Express handler with a defaulted query field was invisible too.
+     `test_sequelize_literal_and_resource_action_params`.
+   - GHSA-79wm (claude-code-templates, command injection): with `shell: true`, `spawn`/`spawnSync` join the
+     argument array into the shell command, so request data anywhere in it is a sink, not only in the command.
+     `test_spawn_with_a_shell_joins_its_argument_array`.
+   Not rules: GHSA-w6x9 (MagicMirror, SSRF) is paired with the wrong fix commit (58c2a5e fixes GHSA-w26r, an IP
+   allowlist for Socket.IO, not the calendar fetch), so it can't be found as listed; GHSA-vmg4 (Apostrophe,
+   prototype pollution) is a deny-list that missed inherited properties such as `toString.call`, a judgement
+   about which keys are safe rather than a source reaching a sink. The five CWE-22 misses are in step 2 above.
+   JavaScript CVE pairs after it: verdict 2/10 found, 0 still flagged (was 0/10); review 4/10, 3 (was 3/10, 3).
+   Both found cases are quiet at their fixes; GHSA-79wm is also found where the request's prompt is passed to
+   the functions that spawn it. Quick suites and the 30 apps unchanged.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

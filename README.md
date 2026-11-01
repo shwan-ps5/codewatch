@@ -137,7 +137,7 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 | [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
 | [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |
 | CVE fix pairs, Python: 14 published advisories in web apps (vulnerable commit, then its fix) | 5 of 14 found, 1 still flagged after the fix | 6 of 14 found, 1 still flagged |
-| CVE fix pairs, JS/TS: 10 advisories | 0 of 10 found | 3 of 10 found, 3 still flagged |
+| CVE fix pairs, JS/TS: 10 advisories | 2 of 10 found | 4 of 10 found, 3 still flagged |
 | Blind CVE fix pairs (never looked at before this run): 5 Python, 4 JS/TS | Python 2 of 5 found, 1 still flagged; JS 1 of 4, 1 still flagged | same, JS 2 still flagged |
 | Blind ordinary apps (Django, FastAPI, Express, NestJS; expected clean) | false alarms in 2 of 4 apps (12 findings, 10 in the Express app) | |
 

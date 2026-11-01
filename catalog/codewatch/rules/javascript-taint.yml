@@ -28,6 +28,43 @@ rules:
           - metavariable-regex:
               metavariable: $FIELD
               regex: '^(body|query|params|cookies|signedCookies|headers|path|url|originalUrl|baseUrl|hostname|files|file)$'
+      # NocoBase resource actions (Koa): ctx.action.params holds the request's filter, values and query.
+      # Added for GHSA-p849-8hwh-84j9 (cve-pairs-javascript).
+      - &src-resource-action-params
+        pattern-either:
+          - pattern: ctx.action.params
+          - pattern: ctx.action?.params
+          - pattern: ctx.action.params.$ANY
+          - pattern: ctx.action?.params.$ANY
+      # A name destructured with a default, `const { filter = {} } = req.body`: Semgrep's taint loses it there.
+      # Added for GHSA-p849-8hwh-84j9 (cve-pairs-javascript).
+      - &src-destructured-default
+        patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  const {..., $X = $D, ...} = $RHS;
+                  ...
+              - pattern-inside: |
+                  let {..., $X = $D, ...} = $RHS;
+                  ...
+          - pattern: $X
+          - metavariable-pattern:
+              metavariable: $RHS
+              pattern-either:
+                - pattern-either:
+                    - pattern: ctx.action.params
+                    - pattern: ctx.action?.params
+                    - pattern: ctx.action.params ?? $E
+                    - pattern: ctx.action?.params ?? $E
+                    - pattern: ctx.action.params || $E
+                    - pattern: ctx.action?.params || $E
+                - patterns:
+                    - pattern-either:
+                        - pattern: $REQ.$FIELD
+                        - pattern: $REQ.$FIELD ?? $E
+                        - pattern: $REQ.$FIELD || $E
+                    - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
+                    - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|signedCookies|headers|files|file)$'}
       - &src-request-getter
         patterns:
           - pattern: $REQ.$GETTER(...)
@@ -215,6 +252,12 @@ rules:
               metavariable: $DB
               regex: '(?i)^(.*\.)?(sequelize|db|database|conn|connection|pool|client|knex|pg|mysql|sql|sqlite|prisma|tx|trx|transaction|datasource|queryrunner|manager|entitymanager|\w*repository|\w*repo)$'
           - focus-metavariable: $SQL
+      # Raw SQL fragment inside a Sequelize query (GHSA-p849-8hwh-84j9).
+      - patterns:
+          - pattern-either:
+              - pattern: Sequelize.literal($SQL)
+              - pattern: sequelize.literal($SQL)
+          - focus-metavariable: $SQL
 
   - id: codewatch.js.command-injection
     mode: taint
@@ -243,6 +286,9 @@ rules:
               - pattern: require('child_process').execSync($CMD, ...)
               - pattern: 'child_process.spawn($CMD, ..., {..., shell: true, ...})'
               - pattern: 'child_process.spawnSync($CMD, ..., {..., shell: true, ...})'
+              # With shell: true the argument array is joined into the shell command too (GHSA-79wm-x847-7cvg).
+              - pattern: 'child_process.spawn($PROG, [..., $CMD, ...], {..., shell: true, ...})'
+              - pattern: 'child_process.spawnSync($PROG, [..., $CMD, ...], {..., shell: true, ...})'
               - pattern: execa.command($CMD, ...)
               - pattern: shelljs.exec($CMD, ...)
               # A shell started by hand: spawn("sh", ["-c", cmd])

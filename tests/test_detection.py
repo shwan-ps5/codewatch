@@ -623,6 +623,45 @@ def test_javascript_injection_rules_and_guards(tmp_path):
                      ("app.js", 5, "command-injection"), ("app.js", 6, "nosql-injection")}
 
 
+def test_spawn_with_a_shell_joins_its_argument_array(tmp_path):
+    """GHSA-79wm-x847-7cvg (claude-code-templates): spawn(cmd, [..., value], { shell: true }) runs value in a shell."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"server.js": (
+        "const { spawn } = require('child_process')\n"
+        "const cp = require('child_process')\n"
+        "app.post('/a', (req, res) => {\n"
+        "  const { agentName } = req.body\n"
+        "  spawn('npx', ['tool', '--agent', agentName], { cwd: '.', shell: true })\n"
+        "  spawn('npx', ['tool', '--agent', agentName], { cwd: '.' })\n"
+        "  cp.spawnSync('npx', ['tool', agentName], { shell: true })\n"
+        "  if (!/^[A-Za-z0-9._/-]+$/.test(agentName)) return res.status(400).end()\n"
+        "  spawn('npx', ['tool', '--agent', agentName], { shell: true })\n"
+        "})\n")})
+    assert found == {("server.js", 5, "command-injection"), ("server.js", 7, "command-injection")}
+
+
+def test_sequelize_literal_and_resource_action_params(tmp_path):
+    """GHSA-p849-8hwh-84j9 (NocoBase): ctx.action.params is the request's filter, Sequelize.literal() is raw SQL."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"channels.ts": (
+        "import { Op, Sequelize } from 'sequelize'\n"
+        "export const list = async (ctx) => {\n"
+        "  const { filter = {} } = ctx.action?.params ?? {}\n"
+        "  const sql = '(SELECT ts FROM messages LIMIT 1)'\n"
+        "  const a = Sequelize.literal(`${sql} < ${filter.latest.$lt}`)\n"
+        "  const b = Sequelize.where(Sequelize.literal(sql), Op.lt, Number(filter.latest.$lt))\n"
+        "  const c = Sequelize.literal(sql)\n"
+        "  return [a, b, c]\n"
+        "}\n"
+        "app.get('/u', (req, res) => {\n"
+        "  const { table = 'users' } = req.query\n"
+        "  pool.query('SELECT * FROM ' + table)\n"
+        "})\n")})
+    assert found == {("channels.ts", 5, "sql-injection"), ("channels.ts", 12, "sql-injection")}
+
+
 def test_javascript_summaries_follow_dao_methods_across_files(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
