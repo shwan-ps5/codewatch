@@ -334,6 +334,25 @@ rules:
               metavariable: $CHECK
               regex: '(?i)^(.*\.)?(is_?|check_?)?(safe|valid|allowed|permitted|trusted|whitelisted|allowlisted)\w{0,40}$|^(.*\.)?url_has_allowed_host_and_scheme$'
           - pattern: $X
+      # Replaced where a check said no: `if not url_has_allowed_host_and_scheme(next, ...): next = reverse(...)`
+      # (wger), so afterwards it is either checked or the replacement.
+      - &checked-or-replaced
+        patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if <... not $CHECK(..., $X, ...) ...>:
+                    ...
+                    $X = $OTHER
+                  ...
+              - pattern-inside: |
+                  if <... not $CHECK(..., url=$X, ...) ...>:
+                    ...
+                    $X = $OTHER
+                  ...
+          - metavariable-regex:
+              metavariable: $CHECK
+              regex: '(?i)^(.*\.)?(is_?|check_?)?(safe|valid|allowed|permitted|trusted|whitelisted|allowlisted)\w{0,40}$|^(.*\.)?url_has_allowed_host_and_scheme$'
+          - pattern: $X
       # Shared: functions named as validators (safe_next, validate_url, sanitize_path, clean_*) return checked
       # data, taken at face value since the analysis doesn't look inside them; and request.path in a route with
       # no variable parts, whose value routing has already fixed.
@@ -349,6 +368,15 @@ rules:
           - pattern: len(...)
           - pattern: flask.url_for(...)
           - pattern: url_for(...)
+          # Django's equivalents: a URL for one of this app's routes, or a model's own page (wger).
+          - pattern: django.urls.reverse(...)
+          - pattern: reverse(...)
+          - pattern: $OBJ.get_absolute_url()
+          # The signed-in account and a model's metadata are the server's data, not what the client sent (taiga:
+          # request.user.id and qs.model._meta.db_table formatted into SQL).
+          - pattern: request.user
+          - pattern: self.request.user
+          - pattern: $MODEL._meta
           - patterns:
               - pattern: request.$PART.get(..., type=$NUMERIC, ...)
               - metavariable-regex: {metavariable: $NUMERIC, regex: ^(int|float|bool)$}
@@ -472,19 +500,30 @@ rules:
       - *checked-inside
       - *known-safe
       - *lookup-result
-      # A SQLAlchemy statement built by select()/insert()/update()/delete() binds the values in it as parameters
-      # (flaskbb: sa.select(Topic).filter(Topic.id.in_(ids)) run by session.execute). sqlalchemy.text() stays a sink.
+      # A SQLAlchemy statement built by select()/insert()/update()/delete() or a session's ORM query() binds the
+      # values in it as parameters (flaskbb: sa.select(Topic).filter(Topic.id.in_(ids)) run by session.execute;
+      # dispatch: db_session.query(...).filter(Entity.value == value)). sqlalchemy.text() stays a sink.
       - pattern-either:
           - patterns:
               - pattern: sqlalchemy.$BUILD(...)
               - metavariable-regex: {metavariable: $BUILD, regex: '^(select|insert|update|delete)$'}
           - patterns:
+              - pattern: $SESSION.query(...)
+              - metavariable-regex: {metavariable: $SESSION, regex: '(?i)^(.*\.)?(db_?)?session$'}
+          - patterns:
               - pattern: $CHAIN.$METHOD(...)
               - metavariable-pattern:
                   metavariable: $CHAIN
-                  patterns:
-                    - pattern: <... sqlalchemy.$BUILD(...) ...>
-                    - metavariable-regex: {metavariable: $BUILD, regex: '^(select|insert|update|delete)$'}
+                  pattern-either:
+                    - patterns:
+                        - pattern: <... sqlalchemy.$BUILD(...) ...>
+                        - metavariable-regex: {metavariable: $BUILD, regex: '^(select|insert|update|delete)$'}
+                    - patterns:
+                        - pattern: <... $SESSION.query(...) ...>
+                        - metavariable-regex: {metavariable: $SESSION, regex: '(?i)^(.*\.)?(db_?)?session$'}
+      # Django's compiled WHERE/query: SQL with %s placeholders, the values returned separately (taiga:
+      # queryset.query.where.as_sql(compiler, connection)). str(queryset.query) inlines them and stays tainted.
+      - pattern: $NODE.as_sql(...)
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -822,6 +861,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *checked-inside
+      - *checked-or-replaced
       - *known-safe
       - *lookup-result
       # Back to the page the user came from: only the site that linked here chose it, so it can't send anyone
@@ -1203,6 +1243,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *checked-inside
+      - *checked-or-replaced
       - *known-safe
       - *lookup-result
       # Only the path or query is user data when the scheme and host are fixed in front of it.
@@ -1342,6 +1383,7 @@ rules:
     pattern-sanitizers:
       - *validated-guard
       - *checked-inside
+      - *checked-or-replaced
       - *known-safe
       - *lookup-result
       - patterns:

@@ -138,7 +138,9 @@ class Analyzer:
         return proc.stdout if stream == "stdout" else proc.stderr
 
 
-TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]{0,200}\.py$|_test\.py$|\.(test|spec)\.[jt]sx?$")
+# End-to-end suites too (immich: e2e/src/specs/server/api/oauth.e2e-spec.ts).
+TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|specs?|e2e|cypress)/|(^|/)test_[^/]{0,200}\.py$|_test\.py$"
+                          r"|[.-](test|spec|e2e-spec|e2e)\.[jt]sx?$")
 
 
 def is_test_file(path):

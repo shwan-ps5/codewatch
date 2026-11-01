@@ -2,13 +2,14 @@
 
     venv/bin/python benchmarks/devtools.py bench [SUITE...]          # score suites (all by default), one line each
     venv/bin/python benchmarks/devtools.py rules SUBSTR FILE...      # one Semgrep pass of matching built-in rules
-    venv/bin/python benchmarks/devtools.py repos [--via|--entry] DIR...
+    venv/bin/python benchmarks/devtools.py repos [--via|--entry|--messages] DIR...
                                                                      # full Semgrep analyzer on projects (git or not)
     venv/bin/python benchmarks/devtools.py owasp [CATEGORY...]      # OWASP Python cases scored wrong (verdict mode)
 
 `rules` scans the same line-preserving rewritten copy of Python files that the analyzer does, but skips summaries;
 `repos` runs everything (summaries, via-findings, entry-point hotspots) and prints vulnerabilities, or only
-via-findings (--via) or only entry-point hotspots (--entry).
+via-findings (--via) or only entry-point hotspots (--entry); --messages prints every vulnerability with the end of
+its message, which names the helper a via/from/field finding went through.
 """
 import collections
 import fnmatch
@@ -89,7 +90,7 @@ def project_files(root):
 
 
 def repos(args):
-    mode = args[0] if args and args[0] in ("--via", "--entry") else None
+    mode = args[0] if args and args[0] in ("--via", "--entry", "--messages") else None
     for arg in args[1:] if mode else args:
         root = Path(arg).expanduser()
         files = [f for f in project_files(root) if not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]

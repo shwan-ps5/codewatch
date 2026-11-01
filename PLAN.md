@@ -340,6 +340,45 @@ knowledge.
    Quick suites unchanged; CVE pairs unchanged (Python verdict 5/14, 1; review 6/14, 1; JavaScript verdict 2/10,
    0; review 4/10, 3); the 30 apps lose only the seven dvna/vulnerable-node redirects above.
 
+11. **Second ordinary-app learning set** (2026-11-01; Django, FastAPI, NestJS and Next.js to match blind set 2's
+   frameworks without using it; cloned in `~/.cache/codewatch/fresh/`, see Repos). Verdict findings before:
+   taiga-back 52, immich 11, wger 9, dispatch 8, linkwarden 6 (86). Fixes, each in a test:
+   - Python summaries (taiga, `test_view_actions_builtins_and_orm_chains_are_not_returner_calls`): DRF's
+     `ViewSet.list`/`create` were returners, so every bare `list(...)` and, through `$MODULE.$RET_FUNC(...)`,
+     every `Project.objects.create(...)` became request data (52 importer and SQL findings). A returner named like
+     a Python builtin no longer counts; the module form takes one name, not a chain; a `return` of a response
+     (`Response(...)`, `response.Ok(...)`, `HttpResponse*`, `render`, `jsonify`, `redirect`) isn't data for a
+     caller. Taiga's scan went from 151 s to 109 s with fewer returners.
+   - Python sources (taiga, wger, `test_signed_in_user_model_metadata_and_compiled_django_sql`): `request.user`
+     (the signed-in account) and `Model._meta` are the server's data (`known-safe`); Django's
+     `queryset.query.where.as_sql(...)` is SQL with placeholders (`str(queryset.query)` stays tainted); a quoted
+     `_meta.db_table` isn't a `sql-value-formatting` value.
+   - Python redirects (wger, `test_django_redirect_replaced_after_a_failed_check_and_reverse`):
+     `checked-or-replaced`, `if not url_has_allowed_host_and_scheme(x, ...): x = reverse(...)`; Django's
+     `reverse()` and `get_absolute_url()` join `url_for()` in `known-safe`.
+   - SQLAlchemy (dispatch): a session's ORM `query(...)` chain binds values like `select()`.
+   - `sql-value-formatting` (dispatch, `test_sql_value_formatting_skips_migrations_and_constant_identifiers`):
+     not in Alembic's `upgrade`/`downgrade`/`run_migrations_*` or Django `migrations/` folders, and not an
+     upper-case constant interpolated (`"{CORE_SCHEMA_NAME}"`, an identifier).
+   - JS (linkwarden, immich): `Math.random()` for a username or other display value isn't a secret even inside an
+     auth function (`test_a_generated_username_is_not_a_secret`); the Host and X-Forwarded-* headers aren't XSS
+     sources (a victim's browser sends the real host) and `http.request({...})` is SSRF only through
+     host/hostname/url, not path or headers (`test_host_headers_and_request_option_paths`); the request getter
+     source is exact and the `request` library sink only matches its verbs, since Semgrep resolves a function
+     imported from a project's `utils/request` module as `request.$NAME`
+     (`test_a_request_getter_argument_is_not_request_data`).
+   - JS weak hash (immich, `test_a_javascript_hash_is_judged_by_its_own_function`): the security-purpose context is
+     the enclosing function by indentation (through if/for blocks), not a ±10-line window that reached a
+     neighbouring signature check.
+   - Test files: `e2e/`, `specs/`, `cypress/` folders and `.e2e-spec.ts`/`-spec.js` names are test code (hotspots).
+   - Tools: `devtools.py repos --messages` prints each finding's message tail (via/from/field helper names).
+   After: wger 0, taiga-back 0, linkwarden 0, immich 0 (its e2e findings are now hotspots), dispatch 1;
+   taiga's scan 151 s → 111 s. Quick suites and CVE pairs unchanged (Python verdict 5/14, 1; JavaScript 2/10, 0);
+   the 30 apps lose only pygoat `challenge/views.py:383` path-traversal (an image name cut to `[A-Za-z0-9_-]` and a
+   build path from the lab's own config, not a real path); learning set 1 unchanged. Known false alarm left: dispatch
+   `plugins/dispatch_core/plugin.py:225` (JWT `kid` in the path of `https://public-keys.auth.elb.{region}.amazonaws.com/{kid}`; a regex can't tell which interpolation is
+   tainted, and a tainted region would be real).
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -420,6 +459,11 @@ Already learned from (not blind), pinned commits, cloned in `~/.cache/codewatch/
 | https://github.com/madhums/node-express-mongoose-demo | 8a134ab5de | ordinary Express app (step 10) |
 | https://github.com/danielfsousa/express-rest-boilerplate | b8bed6d7cf | ordinary Express app (step 10) |
 | https://github.com/bradtraversy/proshop-v2 | e23e3a897e | ordinary Express/React app (step 10) |
+| https://github.com/wger-project/wger | dde740753e | ordinary Django app (step 11) |
+| https://github.com/kaleidos-ventures/taiga-back | 8309789629 | ordinary Django/DRF app (step 11) |
+| https://github.com/Netflix/dispatch | dd2837e82a | ordinary FastAPI app (step 11) |
+| https://github.com/immich-app/immich | b7510e79ac | ordinary NestJS app (step 11) |
+| https://github.com/linkwarden/linkwarden | eff7c6b735 | ordinary Next.js app (step 11) |
 
 Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use to adjust rules:
 

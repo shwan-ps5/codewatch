@@ -124,12 +124,49 @@ SECURITY_PURPOSE_RE = re.compile(
 
 
 def security_purpose(cache, path, line):
-    """The code around a finding is about secrets or verification: the innermost Python function, else a window."""
+    """The code around a finding is about secrets or verification: the innermost Python function, else the
+    enclosing function found by indentation, within a window."""
     if path.endswith(".py"):
         text = cache.function_text(path, line)
     else:
-        text = "\n".join(cache.lines(path)[max(0, line - 1 - 2 * CONTEXT_LINES):line + 2 * CONTEXT_LINES])
+        text = enclosing_function_text(cache.lines(path), line, 2 * CONTEXT_LINES)
     return bool(SECURITY_PURPOSE_RE.search(text))
+
+
+# A line that opens a function: `function f(`, an arrow, or a method `name(...) {` (not if/for/while/switch/catch).
+FUNCTION_HEADER_RE = re.compile(
+    r"\bfunction\b|=>|^\s*(async\s+|static\s+|public\s+|private\s+|protected\s+|get\s+|set\s+)*"
+    r"(?!(if|for|while|switch|catch|with|return)\b)[\w$]+\s*\(.*\)\s*(:\s*[^={]+)?\{\s*$")
+
+
+def enclosing_function_text(rows, line, limit):
+    """The lines of the function around a JS/TS line, by indentation, at most limit lines either side: what a
+    neighbouring method does (immich: hashSha1 next to a signature check) isn't this code's purpose. Blocks such as
+    if/for are walked through, so the handler's earlier `const password = ...` still counts."""
+    i = line - 1
+    if not 0 <= i < len(rows):
+        return ""
+
+    def indent(text):
+        return len(text) - len(text.lstrip())
+
+    level, start = indent(rows[i]), i
+    # A line that opens a function (`sha1: (b) => createHash('sha1')...`) is its own context, not its siblings'.
+    for j in range(i - 1, max(-1, i - 1 - limit), -1) if not FUNCTION_HEADER_RE.search(rows[i]) else ():
+        if not rows[j].strip():
+            continue
+        if indent(rows[j]) < level:
+            level = indent(rows[j])
+            if FUNCTION_HEADER_RE.search(rows[j]):
+                start = j
+                break
+        start = j
+    end = i
+    for j in range(i + 1, min(len(rows), i + 1 + limit)):
+        if rows[j].strip() and indent(rows[j]) <= level:
+            break
+        end = j
+    return "\n".join(rows[start:end + 1])
 
 
 def is_random_call(call):

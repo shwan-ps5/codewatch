@@ -207,9 +207,10 @@ def test_framework_required_arguments():
 def test_test_file_detection():
     from core.analyzers.base import is_test_file
 
-    for path in ("tests/test_a.py", "app/tests/x.py", "test_a.py", "a_test.py", "src/a.spec.ts", "b.test.jsx"):
+    for path in ("tests/test_a.py", "app/tests/x.py", "test_a.py", "a_test.py", "src/a.spec.ts", "b.test.jsx",
+                 "e2e/src/utils.ts", "e2e/src/specs/server/api/oauth.e2e-spec.ts", "src/app-spec.js"):
         assert is_test_file(path), path
-    for path in ("app/testing.py", "contest.py", "src/latest.js"):
+    for path in ("app/testing.py", "contest.py", "src/latest.js", "src/respect.ts", "src/inspect/x.ts"):
         assert not is_test_file(path), path
 
 

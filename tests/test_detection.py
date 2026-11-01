@@ -1901,7 +1901,8 @@ def test_returner_calls_and_handlers_in_javascript(tmp_path):
 
 
 def test_sqlalchemy_statements_and_safe_redirect_helpers(tmp_path):
-    """flaskbb: sa.select(...).where(...) binds its values; get_first_safe_redirect_url() returns an allowed URL."""
+    """flaskbb: sa.select(...).where(...) binds its values (dispatch: so does db_session.query(...).filter(...));
+    get_first_safe_redirect_url() returns an allowed URL."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     found = semgrep_vulnerabilities(tmp_path, {
@@ -1917,12 +1918,13 @@ def test_sqlalchemy_statements_and_safe_redirect_helpers(tmp_path):
             "    db.session.execute(sa.select(Topic).filter(Topic.id.in_(ids))).scalars().all()\n"
             "    term = request.args.get('q')\n"
             "    db.session.execute(sa.select(Topic.name).where(Topic.name.ilike(f'{term}%')).limit(10))\n"
+            "    db_session.execute(db_session.query(Topic.id).filter(Topic.name == term).as_scalar()).fetchone()\n"
             "    db.session.execute(sa.text(\"SELECT * FROM t WHERE name = '\" + term + \"'\"))\n"
             "    return redirect(get_safe_redirect_url(request.args.get('next'), ['x'], '/'))\n\n\n"
             "@app.route('/u')\n"
             "def unsafe():\n"
             "    return redirect(request.args.get('next'))\n")})
-    assert found == {("app.py", 14, "sql-injection"), ("app.py", 20, "open-redirect")}
+    assert found == {("app.py", 15, "sql-injection"), ("app.py", 21, "open-redirect")}
 
 
 def test_the_crypto_module_name_is_not_a_security_purpose():
@@ -1962,3 +1964,240 @@ def test_what_a_javascript_helper_looks_up_is_stored_data(tmp_path):
         "})\n")})
     assert found == {("routes.js", 11, "open-redirect"), ("routes.js", 15, "open-redirect"),
                      ("routes.js", 19, "open-redirect")}
+
+
+def test_signed_in_user_model_metadata_and_compiled_django_sql(tmp_path):
+    """taiga: request.user.id, qs.model._meta.db_table and queryset.query.where.as_sql(...) formatted into SQL are
+    the server's data or placeholders (wger: _meta.db_table quoted as a value too). A request parameter,
+    str(queryset.query) or another quoted value formatted the same way isn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"views.py": (
+        "from django.db import connection\n\n\n"
+        "def watched(request):\n"
+        "    sql = 'SELECT * FROM w WHERE user_id = {}'.format(request.user.id)\n"
+        "    connection.cursor().execute(sql)\n\n\n"
+        "def contacts(request, qs):\n"
+        "    qs = qs.exclude(projects__id=request.GET.get('p'))\n"
+        "    table = qs.model._meta.db_table\n"
+        "    qs = qs.extra(where=['{}.name @@ %s'.format(table)], params=[request.GET.get('q')])\n"
+        "    return qs\n\n\n"
+        "def counts(request, queryset):\n"
+        "    queryset = queryset.filter(name=request.GET.get('name'))\n"
+        "    compiler = connection.ops.compiler(queryset.query.compiler)(queryset.query, connection, None)\n"
+        "    where, params = queryset.query.where.as_sql(compiler, connection)\n"
+        "    connection.cursor().execute('SELECT count(*) FROM t WHERE ' + where, params)\n"
+        "    connection.cursor().execute('SELECT count(*) FROM (%s) q' % str(queryset.query))\n"
+        "    connection.cursor().execute('SELECT * FROM t WHERE name = %s' % request.GET.get('name'))\n\n\n"
+        "def approximate(self, cursor):\n"
+        "    cursor.execute(\"SELECT reltuples FROM pg_class WHERE relname = '%s'\" % self.model._meta.db_table)\n"
+        "    cursor.execute(\"SELECT 1 FROM t WHERE name = '%s'\" % self.name)\n")})
+    assert found == {("views.py", 21, "sql-injection"), ("views.py", 22, "sql-injection"),
+                     ("views.py", 27, "sql-value-formatting")}
+
+
+def test_view_actions_builtins_and_orm_chains_are_not_returner_calls(tmp_path):
+    """taiga: DRF's ViewSet.list/create returned request data, so every bare list(...) and every
+    Project.objects.create(...) became a source; a view returning response.Ok(...) isn't data for a caller.
+    A real helper and a call on self still count."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"views.py": (
+        "from django.db import connection\n"
+        "from rest_framework.response import Response\n\n\n"
+        "class ProjectViewSet:\n"
+        "    def list(self, request):\n"
+        "        return request.GET.get('q')\n\n"
+        "    def create(self, request):\n"
+        "        return request.data.get('name')\n\n"
+        "    def retrieve(self, request):\n"
+        "        return Response(request.GET.get('id'))\n\n"
+        "    def other(self, request):\n"
+        "        connection.cursor().execute('SELECT 1 WHERE n = ' + self.create(request))\n\n\n"
+        "def names(tags):\n"
+        "    unique = list(set(tags))\n"
+        "    connection.cursor().execute('SELECT 1 WHERE t = ' + unique[0])\n\n\n"
+        "def store(Project):\n"
+        "    project = Project.objects.create(name='x')\n"
+        "    connection.cursor().execute('SELECT 1 WHERE s = ' + project.slug)\n\n\n"
+        "def shown(view):\n"
+        "    connection.cursor().execute('SELECT 1 WHERE r = ' + view.retrieve(None).data)\n")})
+    assert found == {("views.py", 16, "sql-injection")}
+
+
+def test_django_redirect_replaced_after_a_failed_check_and_reverse(tmp_path):
+    """wger: `if not url_has_allowed_host_and_scheme(next_url, ...): next_url = reverse(...)` leaves a checked URL
+    or the replacement; reverse() and get_absolute_url() are this site's own. A check that only logs, or a
+    replacement under a positive check, isn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"views.py": (
+        "import logging\n"
+        "from django.http import HttpResponseRedirect\n"
+        "from django.shortcuts import redirect\n"
+        "from django.urls import reverse\n"
+        "from django.utils.http import url_has_allowed_host_and_scheme\n\n\n"
+        "def login_next(request):\n"
+        "    next_url = request.GET.get('next')\n"
+        "    if not next_url or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):\n"
+        "        next_url = reverse('core:dashboard')\n"
+        "    return redirect(next_url)\n\n\n"
+        "def copy(request, Routine):\n"
+        "    routine = Routine.objects.get(pk=request.GET.get('pk'))\n"
+        "    return HttpResponseRedirect(routine.get_absolute_url())\n\n\n"
+        "def gym(request):\n"
+        "    return HttpResponseRedirect(reverse('gym:user-list', kwargs={'pk': request.GET.get('gym')}))\n\n\n"
+        "def logged(request):\n"
+        "    next_url = request.GET.get('next')\n"
+        "    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts=None):\n"
+        "        logging.warning('odd next %s', next_url)\n"
+        "    return redirect(next_url)\n\n\n"
+        "def flipped(request):\n"
+        "    next_url = request.GET.get('next')\n"
+        "    if url_has_allowed_host_and_scheme(next_url, allowed_hosts=None):\n"
+        "        next_url = next_url.strip()\n"
+        "    return redirect(next_url)\n")})
+    assert found == {("views.py", 28, "open-redirect"), ("views.py", 35, "open-redirect")}
+
+
+def test_sql_value_formatting_skips_migrations_and_constant_identifiers(tmp_path):
+    """dispatch: Alembic's upgrade()/downgrade() and env.py's run_migrations_online() rewrite the app's own rows or
+    schemas, and `set search_path to
+    "{CORE_SCHEMA_NAME}"` names a schema from a constant. Django's migrations folders are skipped too."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "versions/2021_add_slug.py": (
+            "from alembic import op\n\n\n"
+            "def upgrade():\n"
+            "    conn = op.get_bind()\n"
+            "    for r in conn.execute('select id, name from org').fetchall():\n"
+            "        conn.execute(f\"update org set slug = '{r[1]}' where id = {r[0]}\")\n\n\n"
+            "def downgrade():\n"
+            "    conn = op.get_bind()\n"
+            "    for r in conn.execute('select id, name from org').fetchall():\n"
+            "        conn.execute(f\"update org set slug = '{r[1].lower()}' where id = {r[0]}\")\n"),
+        "revisions/env.py": (
+            "def run_migrations_online():\n"
+            "    for schema in get_tenant_schemas(connection):\n"
+            "        connection.execute(text(f'set search_path to \"{schema}\"'))\n"),
+        "app/migrations/0002_fill.py": (
+            "def fill(apps, schema_editor):\n"
+            "    for r in rows:\n"
+            "        schema_editor.execute(f\"update t set n = '{r.name}'\")\n"),
+        "db.py": (
+            "CORE_SCHEMA_NAME = 'core'\n\n\n"
+            "def migrate(connection, name):\n"
+            "    connection.execute(f'set search_path to \"{CORE_SCHEMA_NAME}\"')\n"
+            "    connection.execute(f\"select 1 from org where name = '{name}'\")\n"),
+    })
+    assert found == {("db.py", 6, "sql-value-formatting")}
+
+
+def test_a_generated_username_is_not_a_secret(tmp_path):
+    """linkwarden: an auth callback's `"user" + Math.round(Math.random() * 1e9)` username is a display value; a code
+    in the same function, and a token-making function's variable, are still secrets."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"auth.ts": (
+        "async function authorize(user) {\n"
+        "  const autoGeneratedUsername =\n"
+        "    'user' + Math.round(Math.random() * 1000000000);\n"
+        "  await prisma.user.create({ data: { username: 'user' + Math.round(Math.random() * 1e9) } });\n"
+        "  const resetCode = Math.random().toString(36);\n"
+        "  return { autoGeneratedUsername, resetCode };\n"
+        "}\n"
+        "function makeToken() {\n"
+        "  const t = Math.random().toString(36);\n"
+        "  return t;\n"
+        "}\n")})
+    assert found == {("auth.ts", 5, "weak-random-secret"), ("auth.ts", 9, "weak-random-secret")}
+
+
+def test_host_headers_and_request_option_paths(tmp_path):
+    """linkwarden: an RSS feed's site_url from req.headers.host and X-Forwarded-Proto isn't XSS (a victim's browser
+    sends the real host; a proxy sets the rest), and an http.request to a checked IP with the request's path and
+    headers isn't SSRF. A request-chosen host or URL, a query value and other headers still are."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"proxy.js": (
+        "const http = require('http');\n"
+        "const axios = require('axios');\n"
+        "function handle(req, res) {\n"
+        "  const target = new URL(req.url || '');\n"
+        "  resolvePinned(target.hostname).then((ip) => {\n"
+        "    http.request({ host: ip, path: target.pathname + target.search, headers: { ...req.headers } });\n"
+        "  });\n"
+        "  http.request({ host: target.hostname, path: '/' });\n"
+        "  http.get(req.query.url);\n"
+        "  axios.request({ url: req.query.url });\n"
+        "}\n"
+        "function feed(req, res) {\n"
+        "  const host = req.headers.host;\n"
+        "  const protocol = req.headers['x-forwarded-proto'] || 'https';\n"
+        "  res.write(`<a href=\"${protocol}://${host}/feed\">feed</a>`);\n"
+        "  res.write(`<p>${req.query.name}</p>`);\n"
+        "  res.write(`<p>${req.headers['user-agent']}</p>`);\n"
+        "}\n")})
+    assert found == {("proxy.js", 8, "ssrf"), ("proxy.js", 9, "ssrf"), ("proxy.js", 10, "ssrf"),
+                     ("proxy.js", 16, "xss"), ("proxy.js", 17, "xss")}
+
+
+def test_a_javascript_hash_is_judged_by_its_own_function():
+    """immich: hashSha1() for file checksums sat within ten lines of a signature check, so its SHA-1 was a
+    weak-hash verdict. The enclosing function decides, walking through if/for blocks to the handler."""
+    from core.analyzers.python_tools import SECURITY_PURPOSE_RE, enclosing_function_text
+    rows = (
+        "class CryptoRepository {\n"
+        "  verifySha256(value, signature, key) {\n"
+        "    return verifier.verify(key, signature);\n"
+        "  }\n"
+        "\n"
+        "  hashSha1(value) {\n"
+        "    return createHash('sha1').update(value).digest();\n"
+        "  }\n"
+        "}\n"
+        "app.post('/login', (req, res) => {\n"
+        "  const pw = req.body.password;\n"
+        "  if (pw) {\n"
+        "    const h = md5(pw);\n"
+        "  }\n"
+        "});\n"
+        "const utils = {\n"
+        "  token: () => randomBytes(16),\n"
+        "  sha1: (bytes) => createHash('sha1').update(bytes).digest('base64'),\n"
+        "};\n").splitlines()
+
+    def about_security(line):
+        return bool(SECURITY_PURPOSE_RE.search(enclosing_function_text(rows, line, 10)))
+
+    assert not about_security(7)
+    assert about_security(13)
+    assert not about_security(18)
+
+
+def test_a_request_getter_argument_is_not_request_data(tmp_path):
+    """immich: with the incoming request named `request`, `request.header('accept')` matched the request library's
+    request.$METHOD(url) sink around its own argument, and Semgrep resolved fromMaybeArray imported from the project's
+    utils/request module as request.fromMaybeArray. The library called with request data is still SSRF."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"guard.ts": (
+        "import request from 'request';\n"
+        "export const Details = createParamDecorator((data, context) => {\n"
+        "  const request = context.switchToHttp().getRequest();\n"
+        "  throw new Error(`was requested as ${request.header('accept')}`);\n"
+        "});\n"
+        "function proxy(req, res) {\n"
+        "  request.get(req.query.url);\n"
+        "}\n"),
+        "utils/request.ts": "export const fromMaybeArray = (v) => (Array.isArray(v) ? v[0] : v);\n",
+        "interceptor.ts": (
+            "import { fromMaybeArray } from './utils/request';\n"
+            "export class Interceptor {\n"
+            "  async intercept(context) {\n"
+            "    const req = context.switchToHttp().getRequest();\n"
+            "    return fromMaybeArray(req.headers['x-immich-checksum']);\n"
+            "  }\n"
+            "}\n")})
+    assert found == {("guard.ts", 7, "ssrf")}

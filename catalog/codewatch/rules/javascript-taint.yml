@@ -65,11 +65,14 @@ rules:
                         - pattern: $REQ.$FIELD || $E
                     - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
                     - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|signedCookies|headers|files|file)$'}
+      # Exact: the call's value, not its argument. Otherwise `request.header('accept')` with `request` the incoming
+      # request also matched the request library's request.$METHOD(url) sink around its own argument (immich).
       - &src-request-getter
         patterns:
           - pattern: $REQ.$GETTER(...)
           - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request)$'}
           - metavariable-regex: {metavariable: $GETTER, regex: '^(get|header|param|cookies|json|text|formData)$'}
+        exact: true
       - &src-search-params
         pattern: new URLSearchParams(...).get(...)
       - &src-url-search-params
@@ -441,6 +444,22 @@ rules:
       - *san-guard
       - *san-file-content
       - *san-lookup-result
+      # The Host and X-Forwarded-* headers: a victim's browser sends the real host for a page, and a proxy sets the
+      # rest, so a link can't make them carry markup (linkwarden: an RSS feed's site_url from req.headers.host).
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.headers.host
+              - pattern: $REQ.hostname
+              - pattern: $REQ.host
+              - pattern: $REQ.protocol
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.headers[$HEADER]
+              - pattern: $REQ.get($HEADER)
+              - pattern: $REQ.header($HEADER)
+          - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
+          - metavariable-regex: {metavariable: $HEADER, regex: '(?i)^[''"](host|x-forwarded-[a-z-]+)[''"]$'}
       - pattern-either:
           - pattern: escapeHtml(...)
           - pattern: escape(...)
@@ -775,13 +794,31 @@ rules:
               - pattern: got($URL, ...)
               - pattern: got.$METHOD($URL, ...)
               - pattern: request($URL, ...)
-              - pattern: request.$METHOD($URL, ...)
+              # The request library's verbs only: Semgrep resolves a function imported from a project's own
+              # utils/request module as request.$NAME (immich: fromMaybeArray(req.headers[...])).
+              - patterns:
+                  - pattern: request.$METHOD($URL, ...)
+                  - metavariable-regex: {metavariable: $METHOD, regex: '^(get|post|put|patch|del|delete|head|options)$'}
               - pattern: needle.get($URL, ...)
               - pattern: superagent.$METHOD($URL, ...)
               - pattern: http.get($URL, ...)
               - pattern: http.request($URL, ...)
               - pattern: https.get($URL, ...)
               - pattern: https.request($URL, ...)
+          # With an options object only the host decides where it goes: a path or headers from the request don't
+          # (linkwarden's SSRF-guard proxy connects to a checked IP with the request's path).
+          - pattern-not: http.get({...}, ...)
+          - pattern-not: http.request({...}, ...)
+          - pattern-not: https.get({...}, ...)
+          - pattern-not: https.request({...}, ...)
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern: '$HTTP.$CALL({..., host: $URL, ...}, ...)'
+              - pattern: '$HTTP.$CALL({..., hostname: $URL, ...}, ...)'
+              - pattern: '$HTTP.$CALL({..., url: $URL, ...}, ...)'
+          - metavariable-regex: {metavariable: $HTTP, regex: '^https?$'}
+          - metavariable-regex: {metavariable: $CALL, regex: '^(get|request)$'}
           - focus-metavariable: $URL
 
   - id: codewatch.js.unsafe-deserialization

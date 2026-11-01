@@ -135,19 +135,44 @@ rules:
         - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
     patterns:
       - pattern: Math.random()
+      # A generated display value (linkwarden: { username: "user" + Math.round(Math.random() * 1e9) }) isn't a secret.
+      - pattern-not-inside: '{..., username: <... Math.random() ...>, ...}'
+      - pattern-not-inside: '{..., name: <... Math.random() ...>, ...}'
+      - pattern-not-inside: '{..., nickname: <... Math.random() ...>, ...}'
+      - pattern-not-inside: '{..., displayName: <... Math.random() ...>, ...}'
+      - pattern-not-inside: '{..., label: <... Math.random() ...>, ...}'
+      - pattern-not-inside: '{..., title: <... Math.random() ...>, ...}'
+      - pattern-not-inside: '{..., color: <... Math.random() ...>, ...}'
       - pattern-either:
+          # Inside a function named for secrets, unless it goes to a variable named for display: a
+          # generated username in an auth callback (linkwarden: "user" + Math.round(Math.random() * 1e9)).
           - patterns:
               - pattern-inside: |
                   function $FN(...) { ... }
               - metavariable-regex: {metavariable: $FN, regex: &secret-name '(?i).*(token|secret|passw|nonce|salt|otp|csrf|session_?id|api_?key|auth|cred|uuid).*'}
+              - &not-a-display-name
+                pattern-either:
+                  - patterns:
+                      - pattern: Math.random()
+                      - pattern-not-inside: const $SHOWN = <... Math.random() ...>
+                      - pattern-not-inside: let $SHOWN = <... Math.random() ...>
+                  - patterns:
+                      - pattern-either:
+                          - pattern-inside: const $SHOWN = <... Math.random() ...>
+                          - pattern-inside: let $SHOWN = <... Math.random() ...>
+                      - metavariable-regex:
+                          metavariable: $SHOWN
+                          regex: '^(?!(?i:.*(user_?name|nick_?name|display_?name|label|title|colou?r|avatar|placeholder))).*$'
           - patterns:
               - pattern-inside: |
                   const $FN = (...) => { ... }
               - metavariable-regex: {metavariable: $FN, regex: *secret-name}
+              - *not-a-display-name
           - patterns:
               - pattern-inside: |
                   $FN(...) { ... }
               - metavariable-regex: {metavariable: $FN, regex: *secret-name}
+              - *not-a-display-name
           - patterns:
               - pattern-inside: const $VAR = <... Math.random() ...>
               - metavariable-regex: {metavariable: $VAR, regex: *secret-name}

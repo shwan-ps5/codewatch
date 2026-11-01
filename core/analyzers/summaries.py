@@ -29,6 +29,7 @@ A call only counts where the function is visible: in the file that defines it, o
 its module, so same-named functions elsewhere don't connect.
 """
 import ast
+import builtins
 import copy
 import functools
 import json
@@ -76,12 +77,20 @@ ROUTE_DECORATORS = ("route", "get", "post", "put", "patch", "delete", "api_route
 # Class-based handlers (Django's View.get, a Nest controller's get) also return responses, and their names are
 # everyone's: requests.get(...) isn't a call to one.
 HANDLER_NAMES = {*ROUTE_DECORATORS, "head", "options", "dispatch", "handle", "handler", "render", "__call__"}
+# A Python function named like a builtin is a method (DRF's ViewSet.list, taiga): a bare list(...) call is the builtin.
+PYTHON_BUILTINS = {name for name in dir(builtins) if not name.startswith("_")}
+RESPONSE_CALL_RE = (r"^(?!([\w.]+\.)?(\w*Response|Ok|Created|Accepted|NoContent|BadRequest|NotFound|Forbidden|Unauthorized"
+                    r"|jsonify|render|render_template|redirect|HttpResponse\w*)\()")
 PYTHON_RETURN_SINKS = [
     {"patterns": [{"pattern-either": [{"pattern-inside": "def $FUNC(...):\n  ...\n"},
                                       {"pattern-inside": "async def $FUNC(...):\n  ...\n"}]},
                   *({"pattern-not-inside": f"@$APP.{d}(...)\n{a}def $FUNC(...):\n  ...\n"}
                     for d in ROUTE_DECORATORS for a in ("", "async ")),
-                  {"pattern": "return $VALUE"}, {"focus-metavariable": "$VALUE"}]},
+                  {"pattern": "return $VALUE"},
+                  # A view's response (DRF's Response(...), taiga's response.Ok(...)) is for the client, not data
+                  # for a caller.
+                  {"metavariable-regex": {"metavariable": "$VALUE", "regex": RESPONSE_CALL_RE}},
+                  {"focus-metavariable": "$VALUE"}]},
 ]
 JS_RETURN_SINKS = [
     {"patterns": [{"pattern-either": [
@@ -459,6 +468,8 @@ def parse_returners(results, read_text):
         if not func or func.startswith("$") or func in HANDLER_NAMES:
             continue
         if path.endswith(".py"):
+            if func in PYTHON_BUILTINS:
+                continue
             text = read_text(path)
             if text is None or innermost_python_function(text, line) != func:
                 continue
@@ -472,11 +483,15 @@ def from_sources(found, js):
     if not names:
         return []
     receivers = ["this"] if js else sorted(RECEIVERS)
-    calls = ["$RET_FUNC(...)", "$MODULE.$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers)]
+    calls = [{"pattern": c} for c in ("$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers))]
+    # A module or object named once (services.get_x(), share.perform()), not a chain: Project.objects.create()
+    # is Django's, not a view's create() (taiga).
+    calls.append({"patterns": [{"pattern": "$MODULE.$RET_FUNC(...)"},
+                               {"metavariable-regex": {"metavariable": "$MODULE", "regex": "^\\w+$"}}]})
     # Exact: the call's value is the source, not its arguments. Otherwise a call that is also a summarised
     # function's via-sink matches itself (outline: `X.perform(context)`, one class's perform returning request
     # data and another's passing its argument to a query).
-    return [{"patterns": [{"pattern-either": [{"pattern": c} for c in calls]},
+    return [{"patterns": [{"pattern-either": calls},
                           {"metavariable-regex": {"metavariable": "$RET_FUNC", "regex": regex}}], "exact": True}
             for regex in name_regexes(names)]
 
