@@ -9,11 +9,14 @@ from core.analyzers.dependencies import declaration_line, manifests
 from core.analyzers.multi_tools import added_names, mentioning
 from core.analyzers.summaries import (
     NAME_BATCH,
+    added,
     assigned_calls,
     keyword_summarised,
     parse_passes,
     pass_rules,
+    returner_rules,
     split_keyword,
+    summary_rules,
     via_sinks,
 )
 from core.collect import (
@@ -431,3 +434,18 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     assert [v["message"] for v in variants] == ["$FUNC|r,s", "$FUNC|o"]
     assert parse_passes([("r.passes", "a.py", 1, "build|r,s"), ("o.passes", "a.py", 2, "$FUNC|o")]) == {
         "r": {"build"}, "s": {"build"}}
+
+
+def test_deeper_passes_use_only_what_the_last_pass_added():
+    rule = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
+            "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "eval(...)"}]}
+    other = {**rule, "id": "o"}
+    assert added({"r": {"a"}}, {"r": {"a", "b"}, "o": {"c"}}) == {"r": {"b"}, "o": {"c"}}
+    assert added({"r": {"a"}}, {"r": {"a"}}) == {}
+    full, = summary_rules([rule, other], {"r": {("f", 0, "x", False, "a.py")}})
+    deeper, = summary_rules([rule, other], {"r": {("f", 0, "x", False, "a.py")}}, base=False)
+    assert {"pattern": "eval(...)"} in full["pattern-sinks"]
+    assert {"pattern": "eval(...)"} not in deeper["pattern-sinks"] and deeper["pattern-sinks"]
+    deeper, = returner_rules([rule, other], {"r": {("get_name", "a.py")}}, base=False)
+    assert deeper["id"].startswith("r") and {"pattern": "request.args"} not in deeper["pattern-sources"]
+    assert len(returner_rules([rule, other], {"r": {("get_name", "a.py")}})) == 2

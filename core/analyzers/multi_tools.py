@@ -215,10 +215,12 @@ class Semgrep(Analyzer):
     def summarise(self, ctx, custom_rules, targets, originals, work):
         """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
         functions already summarised."""
-        summaries, known, hits = {}, None, []
+        summaries, known, new, hits = {}, None, None, []
         scanned = targets
         for _ in range(summaries_module.MAX_DEPTH):
-            rules = summaries_module.summary_rules(custom_rules, known)
+            # Semi-naive: a deeper pass has only the summaries the last one added as sinks. Whatever reaches an
+            # older one was found when it was added, in every file that names it.
+            rules = summaries_module.summary_rules(custom_rules, new, base=new is None)
             if not rules or not scanned:
                 break
             config = work / "summaries.yml"
@@ -233,6 +235,7 @@ class Semgrep(Analyzer):
             merged = summaries_module.merge(summaries, more)
             if merged is None:
                 break
+            new = summaries_module.added(summaries, merged)
             scanned = mentioning(ctx, targets, added_names(summaries, merged))
             summaries = known = merged
         return summaries, hits
@@ -250,9 +253,10 @@ class Semgrep(Analyzer):
         # and big single-file apps are Python's habit, not JavaScript's.
         targets = [t for t in targets
                    if Path(t).suffix not in JS_SUFFIXES or (ctx.root / t).stat().st_size <= RETURNER_MAX_JS_BYTES]
-        scanned = targets
+        scanned, new = targets, {}
         for depth in range(summaries_module.MAX_DEPTH):
-            rules = summaries_module.returner_rules(custom_rules, returners)
+            # Semi-naive, as in summarise: a deeper pass's sources are calls to the returners the last one added.
+            rules = summaries_module.returner_rules(custom_rules, new, base=depth == 0)
             if depth == 0:
                 rules += summaries_module.field_rules(custom_rules) + summaries_module.pass_rules(custom_rules, functions)
             if not rules or not scanned:
@@ -274,6 +278,7 @@ class Semgrep(Analyzer):
             merged = summaries_module.merge(returners, more)
             if merged is None:
                 break
+            new = summaries_module.added(returners, merged)
             scanned = mentioning(ctx, targets, added_names(returners, merged))
             returners = merged
         return returners, fields, passes, functions

@@ -272,8 +272,10 @@ knowledge.
    Semgrep's core time (9,066 results), the returns rules 4 s, the fields rules none beyond the scan's own cost. The
    16 Python pass rules have 11 distinct sanitizer sets (six rules share one). Done: one pass rule per group of
    rules alike apart from sources and sinks, its message naming the rules it answers for; open-webui's first
-   returner scan 78 s to 65 s, its side 252 s to 237 s, quick suites and 30 apps unchanged. The deeper returner and summary passes also re-report what the previous depth
-   found in each file they rescan. Both are possible next speed steps, after detection work.
+   returner scan 78 s to 65 s, its side 252 s to 237 s, quick suites and 30 apps unchanged. Done: the deeper returner and summary passes
+   take only what the previous depth added as their extra sources or sinks (semi-naive evaluation), so they no
+   longer re-report what it found; open-webui's side 237 s to 206 s. Quick suites and 30 apps unchanged; CVE pairs
+   Python 48 to 40 min, JavaScript 22 to 11 min, findings unchanged.
 
 9. **JavaScript CVE misses** (2026-11-01, non-blind cases only; verdict 0/10 before this). Added:
    - GHSA-p849 (NocoBase, SQL injection): `Sequelize.literal()`/`sequelize.literal()` as a SQL sink, NocoBase's

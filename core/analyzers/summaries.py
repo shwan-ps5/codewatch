@@ -114,11 +114,12 @@ def is_js(rule):
     return bool(JS_LANGUAGES & set(rule.get("languages", [])))
 
 
-def summary_rules(rules, summaries=None):
+def summary_rules(rules, summaries=None, base=True):
     """Pass 1: every taint rule with function parameters as sources, reporting "function|parameter|callee".
 
     With summaries, only the summarised rules, and calls to the summarised functions are sinks as well (the callee
-    names which one was reached, so parse_summaries can check it is visible)."""
+    names which one was reached, so parse_summaries can check it is visible). Without base, those calls are the
+    only sinks: a deeper pass given just the summaries the last one added finds only what they add."""
     out = []
     for rule in taint_rules(rules):
         found = (summaries or {}).get(rule["id"])
@@ -129,7 +130,7 @@ def summary_rules(rules, summaries=None):
         variant["message"] = "$FUNC|$PARAM|$VIA_FUNC|$VIA_KW"
         variant["pattern-sources"] = copy.deepcopy(JS_PARAM_SOURCES if is_js(rule) else PYTHON_PARAM_SOURCES)
         if found:
-            variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(found, is_js(rule))
+            variant["pattern-sinks"] = (rule["pattern-sinks"] if base else []) + via_sinks(found, is_js(rule))
         out.append(variant)
     return out
 
@@ -327,6 +328,11 @@ def split_keyword(message):
     return message[:match.start()] + message[match.end():], match.group(1), match.group(2)
 
 
+def added(before, after):
+    """{rule: entries of after that before lacks}, for the rules that gained some."""
+    return {rule: new for rule, found in after.items() if (new := found - before.get(rule, set()))}
+
+
 def merge(summaries, more):
     """summaries plus more; None when more adds nothing."""
     merged = {rule: set(found) for rule, found in summaries.items()}
@@ -408,17 +414,20 @@ def visible(path, defining_paths, read_text):
     return bool(normalised & set(defining_paths))
 
 
-def returner_rules(rules, returners=None):
+def returner_rules(rules, returners=None, base=True):
     """Pass 3: every taint rule with `return` as its sink, reporting the function that returns request data.
 
-    With returners, calls to them are sources too, so a helper that returns another helper's result is found."""
+    With returners, calls to them are sources too, so a helper that returns another helper's result is found.
+    Without base, those calls are the only sources, and rules with no returners are left out."""
     out = []
     for rule in taint_rules(rules):
+        found = (returners or {}).get(rule["id"], ())
+        if not base and not found:
+            continue
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + RETURNS_SUFFIX
         variant["message"] = "$FUNC"
-        variant["pattern-sources"] = rule["pattern-sources"] + from_sources((returners or {}).get(rule["id"], ()),
-                                                                            is_js(rule))
+        variant["pattern-sources"] = (rule["pattern-sources"] if base else []) + from_sources(found, is_js(rule))
         variant["pattern-sanitizers"] = [*without_lookup_result(rule), copy.deepcopy(LOOKUP_SANITIZER)]
         variant["pattern-sinks"] = copy.deepcopy(JS_RETURN_SINKS if is_js(rule) else PYTHON_RETURN_SINKS)
         out.append(variant)
