@@ -592,6 +592,37 @@ rules:
           - patterns:
               - pattern: $PREFIX + $REST
               - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"](/[^/\\''"]|[^''"]*[?#])'}
+      # The same after the app's configured base URL, which a link can't change (CTFd:
+      # CTFd.config.urlRoot + "/login?next=" + ..., `${CTFd.config.urlRoot}/login?next=...`).
+      - pattern-either:
+          - patterns:
+              - pattern: $TEMPLATE
+              - metavariable-regex:
+                  metavariable: $TEMPLATE
+                  regex: '(?i)^`\$\{[\w$.]*\.(url_?root|root_?url|base_?url|base_?path|app_?url|site_?url)\}(/[^/\\`$]|[^`$]*[?#])'
+          # Each value added after that prefix, however long the chain: `+` nests to the left, so in
+          # root + "/login?next=" + root + location.pathname + location.hash the prefix is deep inside the
+          # left operand of every later value.
+          - patterns:
+              - pattern-inside: $LEFT + $VALUE
+              - metavariable-pattern:
+                  metavariable: $LEFT
+                  patterns:
+                    - pattern: <... $ROOT + $LITERAL ...>
+                    - metavariable-regex:
+                        metavariable: $ROOT
+                        regex: '(?i)^[\w$.]*\.(url_?root|root_?url|base_?url|base_?path|app_?url|site_?url)$'
+                    - metavariable-regex: {metavariable: $LITERAL, regex: '^[''"](/[^/\\''"]|[^''"]*[?#])'}
+              - pattern: $VALUE
+      # The page's own address up to its fragment is this site, path included, so nothing appended can change the
+      # host: a same-page jump (CTFd: window.location.href.split("#")[0] + "#preview"). Not location.origin, which
+      # "@evil.example" or ".evil.example" appended would move to another host.
+      - patterns:
+          - pattern-either:
+              - pattern: $LOC.href.split(...)[0]
+              - pattern: $LOC.href.split(...)[0] + $REST
+              - pattern: $LOC.href.split(...)[0] + $REST + $MORE
+          - metavariable-regex: {metavariable: $LOC, regex: '^((window|document)\.)?location$'}
       # A URL object made from the page's own address keeps its origin when only its path or query is changed
       # (a filter link). What its query holds is still tainted: only the whole URL is clean.
       - patterns:

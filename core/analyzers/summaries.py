@@ -114,7 +114,10 @@ JS_LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)(?!("
 LOOKUP_SANITIZER = {"patterns": [
     {"pattern-either": [{"pattern": "$F(...)"}, {"pattern": "await $F(...)"}]},
     {"metavariable-regex": {"metavariable": "$F", "regex": (
-        "(?i)(.*\\.(objects|query|session|db|repo|repository|manager|collection|model)\\.\\w+"
+        "(?is)(.*\\.(objects|query|session|db|repo|repository|manager|collection|model)\\.\\w+"
+        # An ORM query run to its row: manager.only(...).filter(id=x).first() (paperless-ngx).
+        "|.*\\.(only|filter|filter_by|exclude|where|select_related|prefetch_related|order_by)\\(.*\\)"
+        "\\.(first|last|get|one|one_or_none|scalar_one_or_none|first_or_404|get_or_404)"
         "|(.*\\.)?(get_object_or_404|get_list_or_404|first_or_404|get_or_404|find\\w*|load\\w*|fetch\\w*"
         "|lookup\\w*|decode\\w*|verify\\w*|authenticate\\w*|get_user\\w*|get_current_user\\w*))$")}},
 ]}

@@ -229,18 +229,25 @@ def excluded(path, patterns):
 BUNDLE_SUFFIXES = {".js", ".mjs", ".cjs"}
 BUNDLE_MIN_BYTES = 20_000
 BUNDLE_LINE_LENGTH = 500
+# A smaller file counts when it is all one line, as a bundler's per-page chunk is (CTFd's 3 KB
+# static/assets/pages/submissions-BsvbO10u.js); hand-written code isn't kept on one line that long.
+SMALL_BUNDLE_MIN_BYTES = 2 * BUNDLE_LINE_LENGTH
 
 
 def minified(path):
-    """A JavaScript file whose lines average over BUNDLE_LINE_LENGTH characters (a minified bundle)."""
+    """A JavaScript file whose lines average over BUNDLE_LINE_LENGTH characters (a minified bundle), or a smaller
+    one that is a single long line."""
     if path.suffix.lower() not in BUNDLE_SUFFIXES:
         return False
     try:
-        if path.stat().st_size < BUNDLE_MIN_BYTES:
+        size = path.stat().st_size
+        if size < SMALL_BUNDLE_MIN_BYTES:
             return False
         data = path.read_bytes()
     except OSError:
         return False
+    if size < BUNDLE_MIN_BYTES:
+        return data.rstrip(b"\n").count(b"\n") == 0
     return len(data) / (data.count(b"\n") + 1) > BUNDLE_LINE_LENGTH
 
 

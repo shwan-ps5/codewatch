@@ -403,6 +403,53 @@ knowledge.
    a verdict; trust-boundary on ordinary apps is almost always noise and might be review-only; weak-hash needs
    a password-shaped context, not just a security-sounding function. The blind set is now spent.
 
+13. **Third ordinary-app learning set** (2026-11-01, after blind set 2; two Django apps since Django was the
+   weak framework there, plus Flask and Next.js; cloned in `~/.cache/codewatch/fresh/`, see Repos; blind set 3
+   pinned before any of this). Verdict findings before: CTFd 23, paperless-ngx 13, recipes 12, umami 0 (48).
+   Fixes, each in a test:
+   - Stored rows (`test_orm_rows_and_self_lookups_are_stored_data`): lookup-result now covers an ORM query run to
+     its row (`Users.query.filter_by(...).first()`, `manager.only(...).filter(id=v).first()`, also in the
+     returner pass), `x, created = Model.objects.get_or_create(...)`, and `self._get_X()` methods (paperless's
+     version resolver made every document path request data: 8 path traversals). Not `self.get_serializer`,
+     `get_form`, `get_success_url`/`get_redirect_*`/`get_next_*`, which hand back the request's own data.
+   - Python (`test_site_urls_session_ids_equal_values_and_plain_text`): a `reverse()`/`url_for()` URL (or
+     `build_absolute_uri(request, reverse(...))`) followed by text that doesn't start with "/" stays on the
+     site (recipes; a bare `reverse("index") + x` is still open, "/" + "/evil.example"); `request.script_root`
+     is the server's mount point (CTFd); trust-boundary: a record's `.id`/`.pk` and a hash or signature aren't
+     request data (CTFd's `login_user(user)` after sign-up); validated-guard: `if x != expected: abort(...)`/
+     `return`/`raise` (CTFd share.py), plain comparisons only; XSS: `HttpResponse`/`Response` typed as plain
+     text, CSV or a download (`application/force-download`), or re-typed on a later line (`r.mimetype =
+     "text/plain"`), isn't HTML; insecure-cookie: only a missing or literal-False `secure=`, not a value from
+     config (CTFd's session interface); SQL: a model's `__table__.select()/insert()/...` binds values (CTFd).
+   - JS (`test_same_page_jumps_and_the_configured_root_are_not_open_redirects`): `location.href.split("#")[0]`
+     plus anything is this page (its path is included, so nothing appended moves the host; `location.origin` is
+     not cleaned, "@evil.example" would); the configured base URL (`*.urlRoot`, `baseUrl`, `rootUrl`, ...)
+     followed by a fixed path or "?"/"#" is the fixed-prefix case (CTFd).
+     The prefix is matched deep in the left operand of each value after it, so a long `+` chain counts.
+   - Python, also: Django `Model.objects.*(...)` rows are stored data wherever used (a `for` over a query), not
+     `raw()`/`extra()`; `mimetypes.guess_extension()`/`guess_type()` are known-safe (recipes). The equality guard
+     needs an expected value that is neither a bare variable nor request data: the first version hid vulpy's
+     real SQL injection behind `if password != password_again: return`.
+   - Bundles: a JS file of 1-20 KB on one line is a bundler chunk (CTFd's Vite pages: 27 files skipped, was 11),
+     not source.
+   After: CTFd 7, paperless-ngx 9, recipes 3, umami 0 (19 of 48). Quick suites and CVE pairs unchanged; the 30
+   apps lose two trust-boundary findings that store a user's database id after login or sign-up (dvpwa
+   sqli/views.py:42, pygoat insecure_design_lab app.py:80) and own-app-5 game.ts:338 (a known false alarm);
+   learning sets 1 and 2 unchanged. Left:
+   - Real: recipes api.py:2960 (`traceback.format_exc()` in the response). CTFd git.py:132/150/169 store a route
+     parameter in the session: the rule's shape, little impact.
+   - paperless views.py:1461-1479: a DRF view's whole `request` is a source, so any helper called with it
+     returns tainted data (`resolve_requested_version_for_root(root_doc, request)` only reads an int from it).
+     Pass-through summaries are per function; per-parameter ones (a call is clean when only arguments that
+     aren't passed through are tainted) would fix it. Next.
+   - Objects built from request data taint every attribute (paperless_mail: an OAuth manager made with the
+     session's state, then its configured redirect URL); a serializer's related-object field is a model
+     (paperless views.py:4226); a file-like result of a project function given to send_file (CTFd exports);
+     an Angular bypass after an origin allowlist (safeurl.pipe.ts); Jinja for LLM prompts (render.py); a
+     quote check before formatting a table name (CTFd exports:416); rows read back from a cache
+     (recipes automation_helper.py:221/222); `${location.pathname}?...` (CTFd submissions.js:122, which a
+     "//host" path could in principle turn into another host).
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -488,6 +535,10 @@ Already learned from (not blind), pinned commits, cloned in `~/.cache/codewatch/
 | https://github.com/Netflix/dispatch | dd2837e82a | ordinary FastAPI app (step 11) |
 | https://github.com/immich-app/immich | b7510e79ac | ordinary NestJS app (step 11) |
 | https://github.com/linkwarden/linkwarden | eff7c6b735 | ordinary Next.js app (step 11) |
+| https://github.com/paperless-ngx/paperless-ngx | 5b63c9a0ff | ordinary Django app (step 13) |
+| https://github.com/TandoorRecipes/recipes | cbb96e151f | ordinary Django app (step 13) |
+| https://github.com/CTFd/CTFd | eccab90318 | ordinary Flask app (step 13) |
+| https://github.com/umami-software/umami | 559e3c607c | ordinary Next.js app (step 13) |
 
 Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use to adjust rules:
 
@@ -507,6 +558,16 @@ scanned once at 81ce0e3 (step 12) and now spent, never use to adjust rules:
 | https://github.com/mealie-recipes/mealie | bc21069738 | ordinary FastAPI app |
 | https://github.com/w3tecch/express-typescript-boilerplate | 17727010f7 | ordinary Express app |
 | https://github.com/ghostfolio/ghostfolio | 841ff112c4 | ordinary NestJS app |
+
+Third blind set, chosen and cloned 2026-11-01 before any scan, in `~/.cache/codewatch/blind3/`; scan only at the
+end of the next round, never use to adjust rules:
+
+| Repo | Commit | Kind |
+|---|---|---|
+| https://github.com/babybuddy/babybuddy | 2bd0461f5a | ordinary Django app |
+| https://github.com/fastapi/full-stack-fastapi-template | f4bcfaba7c | ordinary FastAPI app |
+| https://github.com/gothinkster/node-express-realworld-example-app | 30b68e1e88 | ordinary Express app |
+| https://github.com/gitroomhq/postiz-app | 4d13c6a2a8 | ordinary NestJS app |
 
 CVE fix pairs are suites (`cve-pairs-*` in `benchmarks/suites.json`); the `cve-pairs-blind-*` suites are skipped
 unless named and follow the same rule.

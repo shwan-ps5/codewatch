@@ -389,12 +389,15 @@ def test_mentioning_matches_whole_names(tmp_path):
 
 
 def test_minified_bundles_are_recognised_by_content(tmp_path):
-    """litellm commits Next.js chunks (one 100 KB line each): ReDoS and Semgrep spent minutes per chunk."""
+    """litellm commits Next.js chunks (one 100 KB line each): ReDoS and Semgrep spent minutes per chunk. CTFd commits
+    Vite's per-page chunks, a few KB on one line."""
     (tmp_path / "chunk-6a03.js").write_text("(self.webpackChunk=[]).push([[1],{1:function(e){" + "a," * 20_000 + "}}])")
+    (tmp_path / "page-BsvbO10u.js").write_text("import{a as e}from'./main.js';" + "e(1);" * 600 + "\n")
     (tmp_path / "app.js").write_text("const a = 1\n" * 5_000)
-    (tmp_path / "small.js").write_text("x" * 5_000)
+    (tmp_path / "small.js").write_text("const a = 1;\n" * 300)
+    (tmp_path / "tiny.js").write_text("export const routes = ['/a', '/b'];" * 20)
     (tmp_path / "data.py").write_text("x" * 50_000)
-    assert [p.name for p in sorted(tmp_path.iterdir()) if minified(p)] == ["chunk-6a03.js"]
+    assert [p.name for p in sorted(tmp_path.iterdir()) if minified(p)] == ["chunk-6a03.js", "page-BsvbO10u.js"]
 
 
 

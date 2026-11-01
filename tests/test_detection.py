@@ -2201,3 +2201,147 @@ def test_a_request_getter_argument_is_not_request_data(tmp_path):
             "  }\n"
             "}\n")})
     assert found == {("guard.ts", 7, "ssrf")}
+
+
+def test_orm_rows_and_self_lookups_are_stored_data(tmp_path):
+    """paperless-ngx, CTFd, recipes: a row an ORM query runs to (Users.query.filter_by(...).first(),
+    manager.only(...).filter(id=v).first()) and what a `self._get_X()` method looks up are the database's, not the
+    request's. A helper that hands back the request's data (self.get_serializer) and a raw value still count."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\n"
+        "from flask import Flask, request, send_file\n"
+        "from models import Document, Users, manager\n\n"
+        "app = Flask(__name__)\n\n\n"
+        "class Docs:\n"
+        "    def show(self):\n"
+        "        doc = self._get_effective_doc(request.args['id'])\n"
+        "        return send_file(doc.source_path)\n\n"
+        "    def form(self):\n"
+        "        data = self.get_serializer(request.args['path'])\n"
+        "        return send_file(data)\n\n\n"
+        "def resolve():\n"
+        "    return manager.only('id').filter(id=request.args.get('v')).first()\n\n\n"
+        "@app.route('/rows')\n"
+        "def rows():\n"
+        "    row = Document.query.filter_by(id=request.args['id']).first()\n"
+        "    user, created = Users.objects.get_or_create(name=request.args['name'])\n"
+        "    version = resolve()\n"
+        "    return send_file(os.path.join(row.path, user.path, version.path))\n\n\n"
+        "@app.route('/plain')\n"
+        "def plain():\n"
+        "    return send_file(request.args['path'])\n\n\n"
+        "@app.route('/rules')\n"
+        "def rules():\n"
+        "    import mimetypes\n"
+        "    for rule in Document.objects.filter(owner=request.args['o']).only('path')[:10]:\n"
+        "        send_file(rule.path)\n"
+        "    return send_file('/data/upload' + mimetypes.guess_extension(request.args['type']))\n")})
+    assert found == {("app.py", 15, "path-traversal"), ("app.py", 32, "path-traversal")}
+
+
+def test_site_urls_session_ids_equal_values_and_plain_text(tmp_path):
+    """recipes: a route's URL followed by text that doesn't start with "/" stays on the site; CTFd: a new user's
+    id and password HMAC in the session, a value that must equal a known one or abort, a response re-typed as
+    text/plain, a cookie whose Secure flag comes from config, and a statement built from a model's __table__."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "views.py": (
+            "from django.http import HttpResponse, HttpResponseRedirect\n"
+            "from django.urls import reverse\n\n\n"
+            "def build_absolute_uri(request, path):\n"
+            "    return request.build_absolute_uri(path)\n\n\n"
+            "def recipe(request):\n"
+            "    pk = request.GET.get('pk')\n"
+            "    return HttpResponseRedirect(build_absolute_uri(request, reverse('index')) + f'recipe/{pk}')\n\n\n"
+            "def login(request):\n"
+            "    return HttpResponseRedirect(reverse('account_login') + '?next=' + request.GET.get('next', '/'))\n\n\n"
+            "def slash(request):\n"
+            "    return HttpResponseRedirect(reverse('index') + request.GET.get('to'))\n\n\n"
+            "def export(request):\n"
+            "    return HttpResponse(request.GET.get('csv'), content_type='application/force-download')\n"),
+        "app.py": (
+            "from flask import Flask, abort, make_response, redirect, request, session\n"
+            "from models import Pages, Users, db, hmac, mac\n\n"
+            "app = Flask(__name__)\n\n\n"
+            "def login_user(user):\n"
+            "    session['id'] = user.id\n"
+            "    session['hash'] = hmac(user.password)\n\n\n"
+            "@app.route('/register', methods=['POST'])\n"
+            "def register():\n"
+            "    user = Users(name=request.form['name'], password=request.form['password'])\n"
+            "    login_user(user)\n"
+            "    session['name'] = request.form['name']\n"
+            "    return redirect(app.config['ROOT'] + request.script_root + request.full_path)\n\n\n"
+            "@app.route('/share')\n"
+            "def share():\n"
+            "    name = request.args['name']\n"
+            "    if name != mac() + '.png':\n"
+            "        abort(404)\n"
+            "    return make_response(name)\n\n\n"
+            "@app.route('/echo')\n"
+            "def echo():\n"
+            "    resp = make_response(request.args['q'])\n"
+            "    resp.mimetype = 'text/plain'\n"
+            "    return resp\n\n\n"
+            "@app.route('/echo2')\n"
+            "def echo2():\n"
+            "    return make_response(request.args['q'])\n\n\n"
+            "@app.route('/cookie')\n"
+            "def cookie():\n"
+            "    r = make_response('x')\n"
+            "    r.set_cookie('sid', 'v', secure=app.config['SECURE'], httponly=True)\n"
+            "    r.set_cookie('a', 'v')\n"
+            "    r.set_cookie('b', 'v', secure=False)\n"
+            "    return r\n\n\n"
+            "def get_page(route):\n"
+            "    return db.session.execute(Pages.__table__.select().where(Pages.route == route)).fetchone()\n\n\n"
+            "@app.route('/page')\n"
+            "def page():\n"
+            "    db.session.execute(\"select * from pages where route = '%s'\" % request.args['r'])\n"
+            "    get_page(request.args['r'])\n"
+            "    return 'ok'\n\n\n"
+            "@app.route('/again', methods=['POST'])\n"
+            "def again():\n"
+            "    name = request.form['name']\n"
+            "    repeated = request.form['again']\n"
+            "    if name != repeated:\n"
+            "        abort(400)\n"
+            "    return make_response(name)\n")})
+    # vulpy: two request values compared (password != password_again) check nothing about either.
+    assert found == {("views.py", 19, "open-redirect"), ("app.py", 16, "trust-boundary"),
+                     ("app.py", 37, "xss"), ("app.py", 44, "insecure-cookie"), ("app.py", 45, "insecure-cookie"),
+                     ("app.py", 55, "sql-injection"), ("app.py", 55, "sql-value-formatting"), ("app.py", 66, "xss")}
+
+
+def test_same_page_jumps_and_the_configured_root_are_not_open_redirects(tmp_path):
+    """CTFd: the page's own address up to its fragment plus a new fragment, and the configured base URL plus a
+    fixed path, stay on the site. The origin alone doesn't: "@evil.example" appended changes the host."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"challenges.js": (
+        "function preview() {\n"
+        "  window.location.replace(window.location.href.split('#')[0] + '#' + location.hash.substring(1));\n"
+        "}\n"
+        "function login() {\n"
+        "  window.location = CTFd.config.urlRoot + '/login?next=' + window.location.hash.substring(1);\n"
+        "}\n"
+        "function login2() {\n"
+        "  window.location = `${CTFd.config.urlRoot}/login?next=${window.location.hash.substring(1)}`;\n"
+        "}\n"
+        "function jump() {\n"
+        "  window.location = location.hash.substring(1);\n"
+        "}\n"
+        "function origin() {\n"
+        "  window.location = location.origin + location.hash.substring(1);\n"
+        "}\n"
+        "function chain() {\n"
+        "  window.location = CTFd.config.urlRoot + '/login?next=' + CTFd.config.urlRoot + location.pathname + location.hash;\n"
+        "}\n"
+        "function first() {\n"
+        "  window.location = location.hash.substring(1) + CTFd.config.urlRoot + '/login?next=' + location.hash;\n"
+        "}\n")})
+    assert found == {("challenges.js", 11, "open-redirect"), ("challenges.js", 14, "open-redirect"),
+                     ("challenges.js", 20, "open-redirect")}
