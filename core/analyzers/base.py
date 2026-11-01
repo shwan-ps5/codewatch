@@ -40,6 +40,8 @@ class Result:
     covered_lines: dict[str, set[int]] = field(default_factory=dict)
     coverable_lines: dict[str, set[int]] = field(default_factory=dict)
     duplicated_lines: dict[str, set[int]] = field(default_factory=dict)
+    # What the analysis couldn't do (a file a tool gave up on), shown with the tool's status.
+    notes: list[str] = field(default_factory=list)
 
 
 @dataclass

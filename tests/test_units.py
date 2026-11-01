@@ -7,7 +7,14 @@ from core.analyzers.base import Context, Finding, Result
 from core.analyzers.coverage import Coverage, add_unreported, parse_cobertura, parse_lcov, resolve, statement_lines
 from core.analyzers.dependencies import declaration_line, manifests
 from core.analyzers.multi_tools import added_names, mentioning
-from core.analyzers.summaries import NAME_BATCH, keyword_arguments, via_sinks, without_unused_keywords
+from core.analyzers.summaries import (
+    NAME_BATCH,
+    assigned_calls,
+    keyword_arguments,
+    pass_rules,
+    via_sinks,
+    without_unused_keywords,
+)
 from core.collect import ScanConfig, choose_reference, excluded, new_code_metrics, parse_diff, parse_period
 from core.fingerprint import assign_fingerprints
 from core.runner import is_new
@@ -361,3 +368,39 @@ def test_mentioning_matches_whole_names(tmp_path):
     (tmp_path / "prefix.py").write_text("wrapper_two(x)\n")
     ctx = Context(root=tmp_path, files=[])
     assert mentioning(ctx, ["calls.py", "prefix.py"], {"wrapper"}) == ["calls.py"]
+
+
+def test_semgrep_timeouts_are_reported_not_lost(monkeypatch, tmp_path):
+    import json
+
+    from core import collect
+    from core.analyzers.multi_tools import Semgrep
+
+    semgrep = Semgrep()
+    errors = [{"type": "Timeout", "path": "app/big.py", "rule_id": "x"}, {"type": "Syntax", "path": "app/ok.py"}]
+    monkeypatch.setattr(semgrep, "exec", lambda *a, **k: json.dumps({"results": [], "errors": errors}))
+    semgrep.scan(Context(root=tmp_path, files=[]), [], ["app/big.py"])
+    assert semgrep.timeouts == {"app/big.py"}
+
+    class Noted:
+        name = "noted"
+
+        def run(self, ctx):
+            return Result(notes=["Gave up on app/big.py."])
+
+    monkeypatch.setattr(collect, "ANALYZERS", [Noted()])
+    monkeypatch.setattr(collect, "analyzer_skip_reason", lambda *a: None)
+    _, tools = collect.run_analyzers(None, Context(root=tmp_path, files=[]), lambda m: None)
+    assert tools["noted"]["detail"] == "Gave up on app/big.py."
+
+
+def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
+    source = "x = build(a)\ny = await self.fetch(b)\nz = cls.make (c)\nlog(d)\nif a == check(e):\n    pass\n"
+    assert assigned_calls([source]) >= {"build", "fetch", "make"}
+    assert "log" not in assigned_calls([source])
+    rule = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
+            "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "os.system(...)"}]}
+    assert pass_rules([rule], set()) == []
+    [variant] = pass_rules([rule], {"build"})
+    [sink] = variant["pattern-sinks"]
+    assert {"metavariable-regex": {"metavariable": "$FUNC", "regex": "^(build)$"}} in sink["patterns"]

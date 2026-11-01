@@ -240,9 +240,15 @@ knowledge.
    path-traversal via-variant had 309 keyword names, 107 used). `cg`: 259 s (summaries 9, 40, 39 s; returners
    65 s; final 96 s). Quick suites 619 s to 508 s, results unchanged; 30 apps unchanged. Tried and reverted: one
    keyword sink per callee kind with a `metavariable-comparison` naming each (keyword, function) pair; it is
-   evaluated on every keyword call and made the final scan slower (129 s). Next: the final scan, where on `cg`
-   log-injection's and path-traversal's via-variants took 800 of 1,260 CPU seconds; the returner pass (65 s);
-   report Semgrep timeouts instead of losing them silently.
+   evaluated on every keyword call and made the final scan slower (129 s).
+   Also done: the returner pass spent 60 of its 65 s on the pass-through rules' 32,868 results (1,982 functions
+   times 16 rules; Semgrep's matching was 10 s, the rest writing results out). Pass rules now ask only about
+   functions that take a parameter and whose result some code assigns (`x = f(...)`, the only form the
+   pass-through sanitizer cleans), and that same set bounds the sanitizer, so a function outside it is never
+   clean. `cg`: 160 s (summaries 10, 41, 41 s; returners 32 s; final 29 s, which also lost its timeouts because
+   the sanitizers list fewer names). Semgrep timeouts are now reported in the tool's status detail (and by
+   `devtools.py repos`) rather than dropped. Quick suites and 30 apps unchanged.
+   Next: the summary passes (90 s of `cg`'s 160); then re-run the CVE suites to time the whole benchmark.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

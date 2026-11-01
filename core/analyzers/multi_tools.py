@@ -89,6 +89,9 @@ class Semgrep(Analyzer):
     name = executable = "semgrep"
     extensions = CODE | {".yml", ".yaml", ".html"}
 
+    def __init__(self):
+        self.timeouts = set()
+
     def binary(self):
         # Own venv: semgrep pins dependencies (e.g. an old mcp) that conflict with codewatch's.
         return isolated_tool("semgrep") or super().binary()
@@ -98,12 +101,12 @@ class Semgrep(Analyzer):
         if not ctx.semgrep_config and not custom_rules:
             return Result()
         custom_rules = with_model_sources(custom_rules, (read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})))
+        self.timeouts = set()
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
             summaries, hits, keywords = self.summarise(ctx, custom_rules, targets, originals, Path(work))
-            returners, fields, passes = self.find_returners(ctx, custom_rules, targets, originals, Path(work))
-            functions = summaries_module.python_functions_with_params(
-                read_source(ctx.root / f) or "" for f in ctx.files_with({".py"}))
+            returners, fields, passes, functions = self.find_returners(ctx, custom_rules, targets, originals,
+                                                                       Path(work))
             final = summaries_module.with_pass_through(custom_rules, functions, passes, summaries, returners)
             rules = (final + summaries_module.via_rules(final, summaries)
                      + summaries_module.from_rules(final, returners, summaries)
@@ -120,6 +123,10 @@ class Semgrep(Analyzer):
             # Semgrep given no targets scans the working directory.
             data = self.scan(ctx, configs, main_targets) if main_targets else {"results": []}
         result = Result()
+        if self.timeouts:
+            paths = sorted({ctx.rel(originals.get(p, p)) for p in self.timeouts})
+            result.notes.append(f"Semgrep gave up on some rules in {len(paths)} file(s), so they may hide findings: "
+                                f"{', '.join(paths[:5])}{' and more' if len(paths) > 5 else ''}.")
         traced = taint_checked(custom_rules)
         source = LineCache(ctx.root)
         custom_ids = [r["id"] for r in custom_rules]
@@ -198,7 +205,10 @@ class Semgrep(Analyzer):
 
     def scan(self, ctx, configs, targets):
         args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
-        return json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
+        data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
+        # A timeout skips that rule on that file, silently unless it's reported.
+        self.timeouts.update(e["path"] for e in data.get("errors", []) if e.get("type") == "Timeout" and e.get("path"))
+        return data
 
     def summarise(self, ctx, custom_rules, targets, originals, work):
         """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
@@ -231,8 +241,12 @@ class Semgrep(Analyzer):
     def find_returners(self, ctx, custom_rules, targets, originals, work):
         """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
         and (in the first scan) which fields of self/this request data is stored in and which Python functions
-        can return a parameter."""
+        can return a parameter (of those whose result is assigned, also returned)."""
         returners, fields, passes = {}, {}, {}
+        # The functions with_pass_through may treat as clean: take a parameter, and their result is assigned.
+        functions = summaries_module.python_functions_with_params(
+            read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})) & summaries_module.assigned_calls(
+            read_source(ctx.root / t) or "" for t in targets if t.endswith(".py"))
         # An unminified library bundled with the app (materialize.js, 366 KB) multiplies this pass's time by ten,
         # and big single-file apps are Python's habit, not JavaScript's.
         targets = [t for t in targets
@@ -241,7 +255,7 @@ class Semgrep(Analyzer):
         for depth in range(summaries_module.MAX_DEPTH):
             rules = summaries_module.returner_rules(custom_rules, returners)
             if depth == 0:
-                rules += summaries_module.field_rules(custom_rules) + summaries_module.pass_rules(custom_rules)
+                rules += summaries_module.field_rules(custom_rules) + summaries_module.pass_rules(custom_rules, functions)
             if not rules or not scanned:
                 break
             config = work / "returners.yml"
@@ -263,7 +277,7 @@ class Semgrep(Analyzer):
                 break
             scanned = mentioning(ctx, targets, added_names(returners, merged))
             returners = merged
-        return returners, fields, passes
+        return returners, fields, passes, functions
 
     @staticmethod
     def field_stored(path, message, fields):

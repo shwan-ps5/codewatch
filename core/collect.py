@@ -267,6 +267,8 @@ def run_analyzers(cfg, ctx, log):
         combined.coverable_lines.update(result.coverable_lines)
         combined.duplicated_lines.update(result.duplicated_lines)
         tools[analyzer.name] = {"status": "ok", "issues": len(kept), "seconds": round(time.monotonic() - started, 1)}
+        if result.notes:
+            tools[analyzer.name]["detail"] = " ".join(result.notes)
     return combined, tools
 
 

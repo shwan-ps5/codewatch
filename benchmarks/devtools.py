@@ -95,8 +95,11 @@ def repos(args):
         files = [f for f in project_files(root) if not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]
         start = time.time()
         ctx = Context(root=root, files=files, semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
-        found = Semgrep().run(ctx).findings
+        result = Semgrep().run(ctx)
+        found = result.findings
         print(f"== {root.name}: {len(files)} files, {time.time() - start:.0f}s")
+        for note in result.notes:
+            print("-- note:", note)
         for f in found:
             if mode == "--entry":
                 keep = ENTRY_MARK in f.message

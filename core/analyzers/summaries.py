@@ -524,9 +524,24 @@ def field_variants(rules, fields, summaries):
 PASS_THROUGH_MARK = "$KEEPS_PARAMS"
 
 
-def pass_rules(rules):
-    """Python taint rules with function parameters as sources and `return` as the sink: which functions can hand a
-    parameter back (under the rule's sanitizers)."""
+# What with_pass_through's sanitizer matches: a variable assigned from a call (a superset; a miss only means a
+# function is never treated as clean).
+ASSIGNED_CALL_RE = re.compile(r"=\s*(?:await\s+)?(?:(?:self|cls)\.)?(\w+)\s*\(")
+
+
+def assigned_calls(texts):
+    """Names of functions whose result some code assigns to a variable."""
+    return {name for text in texts for name in ASSIGNED_CALL_RE.findall(text)}
+
+
+def pass_rules(rules, names):
+    """Python taint rules with function parameters as sources and `return` as the sink: which of names can hand a
+    parameter back (under the rule's sanitizers). Only the functions whose result is assigned need an answer; every
+    function in a large project meant tens of thousands of results for Semgrep to write out."""
+    if not names:
+        return []
+    sinks = [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": "$FUNC", "regex": regex}}]}
+             for sink in PYTHON_RETURN_SINKS for regex in name_regexes(names)]
     out = []
     for rule in taint_rules(rules):
         if is_js(rule):
@@ -537,7 +552,7 @@ def pass_rules(rules):
         # The source's own function name is bound as $OWNER so the message names the function that returns.
         variant["pattern-sources"] = json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER"))
         variant["pattern-sanitizers"] = without_lookup_result(rule)
-        variant["pattern-sinks"] = copy.deepcopy(PYTHON_RETURN_SINKS)
+        variant["pattern-sinks"] = copy.deepcopy(sinks)
         out.append(variant)
     return out
 
