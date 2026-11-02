@@ -118,9 +118,13 @@ SECRET_USE_RE = re.compile(
     r"|session\s{0,5}\[|\bkey\s{0,5}=[^=\n]{0,80}rand",
 )
 CONTEXT_LINES = 5
-# A digest protects something when it stands for a secret or vouches for data (signatures, certificates).
+# A weak digest is a weakness where it stores a password (fast to brute-force) or vouches for data against
+# forgery (collisions: signatures, certificates, integrity checks). A token or code derived from a secret, an
+# HMAC or a cache key keeps its secret: preimages of MD5 and SHA-1 are still out of reach (outline's deletion
+# code from the user's JWT secret; TOTP is HMAC-SHA-1 by standard).
 SECURITY_PURPOSE_RE = re.compile(
-    rf"{SECRET_USE_RE.pattern}|\b(\w+_)?(cert\w*|sign(ed|er|ing|atures?)?|hmac\w*|integrity|verif\w*)\b", re.IGNORECASE)
+    r"\b(\w*passw\w*|pwd|passphrase|\w*credential\w*|\w*salt\w*|(?!crypto\b)\w*crypt\w*"
+    r"|(\w+_)?(cert\w*|sign(ed|er|ing|atures?)?|integrity|verif\w*))\b", re.IGNORECASE)
 
 
 def security_purpose(cache, path, line):

@@ -721,8 +721,8 @@ def test_python_autoescape_off_and_hash_chosen_by_constant(tmp_path):
         "    setup_jinja(app, loader=jinja2.PackageLoader('x', 'templates'), autoescape=False)\n"
         "    sql = jinja2.Environment(autoescape=False)\n"
         "    return sql\n\n\n"
-        "def otp(key):\n"
-        "    return hashlib.new(ALGORITHM, key).hexdigest()\n")})
+        "def store(password):\n"
+        "    return hashlib.new(ALGORITHM, password).hexdigest()\n")})
     assert found == {("app.py", 9, "template-autoescape-disabled"), ("app.py", 15, "weak-hash")}
 
 
@@ -2397,3 +2397,17 @@ def test_arguments_a_helper_does_not_hand_back_are_not_its_result(tmp_path):
     # An argument that holds a sink keeps it (OWASP Benchmark: escape_for_html(p.read_text()[:1000])).
     assert found == {("views.py", 22, "path-traversal"), ("views.py", 23, "path-traversal"),
                      ("views.py", 26, "path-traversal")}
+
+
+def test_a_weak_hash_of_a_secret_is_not_a_password_hash():
+    """outline: an account-deletion code is MD5 of the user's JWT secret; a token or code derived from a secret
+    keeps it (MD5 preimages are out of reach), unlike a stored password or a signature, where speed or collisions
+    break it. Such a hash is for review, not a verdict."""
+    from core.analyzers.python_tools import SECURITY_PURPOSE_RE
+    for text in ("get deleteConfirmationCode() { return crypto.createHash('md5').update(this.jwtSecret)",
+                 "def unsubscribe_token(email): return hashlib.sha1(email + settings.SECRET_KEY)",
+                 "def otp(key): return hmac.new(key, counter, hashlib.sha1)"):
+        assert not SECURITY_PURPOSE_RE.search(text), text
+    for text in ("def store(password): hashlib.md5(password)", "def verify_signature(data, sig)",
+                 "certificate_matches(certificate, known_hash)", "hashed = md5(salt + pw)"):
+        assert SECURITY_PURPOSE_RE.search(text), text

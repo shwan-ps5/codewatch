@@ -470,6 +470,16 @@ knowledge.
    After: paperless views.py:1461-1479 gone (4); quick suites, both CVE-pair suites, the 30 apps and learning
    sets 1-3 otherwise unchanged.
 
+15. **Weak hash only where it stores a password or vouches for data** (2026-11-02; item 12's lesson, acted on with
+   non-blind cases only: outline Team.ts:327/User.ts:337, `test_a_weak_hash_of_a_secret_is_not_a_password_hash`).
+   A weak-hash verdict now needs a password, salt, credential, encryption, certificate, signature, integrity or
+   verification context; a token or code derived from a secret, an HMAC, an OTP or a cache key is for review
+   (MD5/SHA-1 preimages are still out of reach; speed and collisions are what break them). Ground truth checked
+   first: all 151 OWASP Benchmark hash cases write a password file; SecurityEval's are a certificate and
+   passwords. After: quick suites unchanged; outline's 2 deletion-code hashes and vulpy's S/KEY hash chain
+   (utils/skey.py:11/16/25, never recorded as real; an S/KEY chain relies on preimage resistance) moved to
+   review; nothing else changed.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
