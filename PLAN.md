@@ -16,8 +16,9 @@ real issues, measured against published ground truth. Python first, JavaScript/T
   change that removes a true finding is a regression even if the score goes up.
 - Verdict mode (vulnerabilities) must stay at 0% false alarms on clean code; uncertain cases go to review mode as
   hotspots.
-- Every rule change gets a test in `tests/test_detection.py`; run the full suite (`venv/bin/pytest -q`) and
-  `venv/bin/ruff check .` before committing. Commit and push only when asked.
+- Every rule change gets a test in `tests/test_detection.py`; run the full suite (`venv/bin/pytest -q -n auto`)
+  and `venv/bin/ruff check .` before committing. Commit and push only when asked, as
+  `Shwan <344055753+shwan-ps5@users.noreply.github.com>` (see `CLAUDE.md`).
 
 ## Baseline (commit e4d086c, 2026-10-30)
 
@@ -41,6 +42,8 @@ Remaining Juice Shop misses are business logic, data files, Solidity and a Docke
 SecurityEval misses are design flaws or plain functions with no request source. Don't chase those with rules.
 
 ## Where things stand (2026-10-31, commit 799955c)
+
+(The record of that date. Current numbers are in the README's benchmark table and steps 12-21 below.)
 
 - Step 1 is built: `cve-pairs-python` (14 cases), `cve-pairs-javascript` (10), and blind `cve-pairs-blind-*`
   (run only when named). Ordinary apps (7) give 0 vulnerability false alarms. Standards-gap rules (CWE-208, 209,
@@ -644,7 +647,11 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
   `pattern-not-inside` on the source instead. Operators can't be metavariables (`$A $OP $B` fails to parse).
 - `metavariable-pattern` matches anywhere inside the value; use `metavariable-regex` on the text when the whole
   value must be the thing (mass-assignment rules).
-- Don't run two scans at once: one benchmark scan failed with Semgrep exit 2 while another scan ran.
+- Scans at once (parallel benchmarks) need two things, both in place: Semgrep on POSIX I/O (`EIO_BACKEND=posix`;
+  io_uring rings count against an 8 MB locked-memory limit and concurrent runs failed with exit 2), and each run
+  limited to its share of the CPUs (`CODEWATCH_SEMGREP_JOBS`): with a job per CPU each, rules ran past their
+  timeouts and findings disappeared without an error (step 21). Don't run anything else heavy alongside a run
+  whose results will be compared.
 - CVE-pair scans set `Context.focus` to the changed files: summaries, the caller index and other analyzers still
   see the whole scope, only Semgrep's per-file final pass is narrowed. Checked identical on Parsl and mockoon
   (both sides); saves ~50% on JS, only 10-17% on Python, where the summary passes dominate.
@@ -652,7 +659,8 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
 ## Tools
 
 - `venv/bin/python benchmarks/devtools.py bench|rules|repos|owasp` (see its docstring); `codewatch benchmark` for
-  the full suite run that writes `benchmarks/results/`.
+  the full suite run that writes `benchmarks/results/`. `bench`, `repos` and `codewatch benchmark` run in parallel
+  (`CODEWATCH_BENCH_WORKERS`, default a third of the CPUs); `CODEWATCH_BENCH_WORKERS=1` for one at a time.
 - Suites are cached in `~/.cache/codewatch/benchmarks/`, extra repos in `~/.cache/codewatch/fresh/`.
 
 ## Repos
