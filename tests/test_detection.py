@@ -2466,3 +2466,34 @@ def test_a_path_name_or_extension_is_not_a_file_opened(tmp_path):
         "    Path(name).stat()\n"
         "    return 'ok' if kind else 'no'\n")})
     assert found == {("app.py", 11, "path-traversal")}
+
+
+def test_a_named_check_that_ends_the_request_guards_what_follows(tmp_path):
+    """Django's idiom, `if not url_has_allowed_host_and_scheme(nxt, ...): abort(400)`, and a project's own
+    `is_safe_url` with an early return, clear what follows; the branch where the check said no doesn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from django.utils.http import url_has_allowed_host_and_scheme\n"
+        "from flask import Flask, abort, redirect, request\n\napp = Flask(__name__)\n\n\n"
+        "def is_safe_url(target):\n"
+        "    return target.startswith('/') and not target.startswith('//')\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    nxt = request.args['next']\n"
+        "    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts=None):\n"
+        "        abort(400)\n"
+        "    return redirect(nxt)\n\n\n"
+        "@app.route('/b')\n"
+        "def b():\n"
+        "    nxt = request.args['next']\n"
+        "    if not is_safe_url(nxt):\n"
+        "        return redirect(nxt)\n"
+        "    return redirect(nxt)\n\n\n"
+        "@app.route('/c')\n"
+        "def c():\n"
+        "    nxt = request.args['next']\n"
+        "    if not nxt:\n"
+        "        abort(400)\n"
+        "    return redirect(nxt)\n")})
+    assert found == {("app.py", 23, "open-redirect"), ("app.py", 32, "open-redirect")}

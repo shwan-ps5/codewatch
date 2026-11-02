@@ -492,6 +492,15 @@ knowledge.
      paperless documents/views.py:4226): `Path(x).suffix`/`.suffixes`/`.stem`/`.name`/`.parts` read the string only.
    After: those 5 gone; quick suites, both CVE-pair suites, the 30 apps and the other learning-set findings unchanged.
 
+17. **A named check that ends the request** (2026-11-02; item 12's guard lesson, from Django's documented idiom,
+   no ground-truth case; `test_a_named_check_that_ends_the_request_guards_what_follows`). `if not
+   url_has_allowed_host_and_scheme(nxt, ...): abort(400)` was a verdict open redirect: only `return`/`raise` ended
+   the request there, and a project's own `if not is_safe_url(nxt): return ...` wasn't a guard at all (only its
+   yes-branch form, item 7). Now both clear what follows, with the same check names as item 7; the no-branch itself
+   isn't cleared. After: quick suites, both CVE-pair suites, the 30 apps and the learning sets unchanged. Known gap
+   in the older guards: their `if <... check(x) ...>: ... return` form also clears the branch body, so
+   `if not url_has_allowed_host_and_scheme(x): return redirect(x)` is missed.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -607,9 +616,13 @@ end of the next round, never use to adjust rules:
 | Repo | Commit | Kind |
 |---|---|---|
 | https://github.com/babybuddy/babybuddy | 2bd0461f5a | ordinary Django app |
-| https://github.com/fastapi/full-stack-fastapi-template | f4bcfaba7c | ordinary FastAPI app |
-| https://github.com/gothinkster/node-express-realworld-example-app | 30b68e1e88 | ordinary Express app |
+| https://github.com/papermerge/papermerge-core | c0f22f1ac1 | ordinary FastAPI app |
+| https://github.com/louislam/uptime-kuma | cbd357eb39 | ordinary Express app |
 | https://github.com/gitroomhq/postiz-app | 4d13c6a2a8 | ordinary NestJS app |
+
+2026-11-02: full-stack-fastapi-template and node-express-realworld-example-app were in this set at the same
+commits as the dev-set apps every run scans (expected 0 since the start), so they weren't blind. Replaced, before
+any scan, by papermerge-core and uptime-kuma (cloned at their latest commits; neither is used anywhere else).
 
 CVE fix pairs are suites (`cve-pairs-*` in `benchmarks/suites.json`); the `cve-pairs-blind-*` suites are skipped
 unless named and follow the same rule.
