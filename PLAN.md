@@ -41,7 +41,7 @@ gaps, not from these suites.
 Remaining Juice Shop misses are business logic, data files, Solidity and a Docker image; most remaining
 SecurityEval misses are design flaws or plain functions with no request source. Don't chase those with rules.
 
-## Where things stand (2026-11-02, commit e721864)
+## Where things stand (2026-11-02, commit ec6a841)
 
 Detection, measured at this commit (verdict mode first; review mode adds hotspots):
 
@@ -65,15 +65,21 @@ False alarms on ordinary apps (verdict mode):
   outline's four TLS settings; little impact: CTFd's three session writes; the rest need models codewatch
   doesn't have, such as an OAuth manager built from session state).
 - Learning set 4 (wiki.js, actual, habitica): 27 findings, all false alarms, grouped by shape in step 19.
+- Learning set 5 (netbox, label-studio, lemur): first scanned by the first nightly run (2026-11-03).
 - Blind sets: 1 had false alarms in 2 of 4 apps (12), 2 in 2 of 4 (34), 3 in 4 of 4 (24, 13 in one Express app).
   Python is close (3 false alarms in two apps in set 3); JavaScript isn't. Set 4 is pinned and unscanned.
 
 The server: a full security review is done (step 20), each fix tested in `tests/test_security.py`. Still open:
 analyzers read repository content, so untrusted code should be scanned in a container (not built yet).
 
-Speed on the 20-thread desktop (step 21): tests 1 minute, `check.sh` (lint, tests, quick suites, 30 apps)
-7 minutes, both CVE-pair suites about 20, the 17 learning-set apps 10; the largest app (immich, 3,488 files) about
-3 minutes alone. Results are identical whether scans run one at a time or in parallel.
+Speed on the 20-thread desktop (step 21): tests 1.5 minutes, quick suites 4, the 30 apps 4, the three
+non-blind CVE-pair suites (49 pairs) about 58, the 17 learning-set apps 11; the largest app (immich, 3,488 files)
+about 3 minutes alone. Results are identical whether scans run one at a time or in parallel. So, since
+2026-11-02 (the user's call), a change is checked in isolation during the day (its tests, a probe on the case's
+files, `devtools.py cases ID...` for the CVE pairs it targets) and the full verification runs nightly:
+`benchmarks/nightly.sh` from the systemd user timer `codewatch-nightly.timer` at 01:30, over the committed tip of
+`detection-gaps`, with the apps in `~/.config/codewatch/nightly-apps.txt` (outside the repository: it names the
+user's own projects) and a report in `~/.cache/codewatch/nightly/DATE/summary.txt`, read the next morning.
 
 Focus (2026-11-02, the user's call): Python web apps (Django, Flask, FastAPI) and the JavaScript those projects
 ship (templates, static scripts, React/Vue/Angular front ends), to a very good standard first. Node-only back ends
@@ -81,12 +87,19 @@ and other languages come later, possibly from cloud sessions, one language or fr
 their own catalog files with tests and ground-truth results, merged only after a full verification here.
 
 Next, in order:
-1. Finish what step 19 started (verify, commit); no more Node-back-end-only shapes for now.
-2. More Python ground truth: CVE fix pairs from Django, Flask and FastAPI advisories, and from those projects'
-   front-end JavaScript (DOM XSS, client-side redirects). 14 Python pairs is too few to measure detection.
-3. Learning set 5 (netbox, label-studio, lemur: Python apps with JS front ends), case by case.
-4. End of the round: blind set 4 (redash, InvenTree, pretalx, fief), scanned once, measurement only.
-5. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
+1. Read the first nightly report (2026-11-03): the round-one changes of step 22 on every suite and app, and
+   learning set 5 for the first time.
+2. Learning set 5 (netbox, label-studio, lemur: Python apps with JS front ends), case by case.
+3. The front end (step 22): score a template-only fix against the views that render the template; Whoogle's
+   `'http' in q` passing as a guard (the fix exposed paperless-ngx false alarms, so understand that flow first);
+   verdict detection for front-end JS (request data into innerHTML or jQuery HTML).
+4. The Python miss still in reach: pyLoad's SSRF through its own pycurl wrapper (`get_url`); the rest (stored
+   data, settings flags, template-built SQL, `g`-stored state) are recorded as out of reach.
+5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the two blind CVE suites
+   (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-frontend`), each scanned once, measurement only.
+6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
+7. Other languages and frameworks (Node/Express first), from cloud sessions as pull requests, one topic each,
+   following CLAUDE.md's "Cloud sessions" section; merged only after local verification and a nightly run.
 
 Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
 knowledge.
@@ -679,7 +692,9 @@ rule):
      each to be read: an unrecognised guard shape is a false alarm to fix, an incomplete fix is a real finding.
    - cve-pairs-python-frontend: verdict 0/6; review 4/6 (template `|safe`, jQuery HTML), 2 still flagged.
    Next: the six still-flagged fixes, then the misses whose flow is visible (changedetection.io's filter that
-   keeps ".", Fides and CodeRed paths, Scout and pyLoad SSRF, Gerapy's shell commands), then the front end.
+   keeps ".", Fides and CodeRed paths, Scout and pyLoad SSRF), then the front end. (This line first listed
+   Gerapy's shell commands too: Gerapy, GHSA-9w7f, is in the blind suite `cve-pairs-blind-python-2`, so it was
+   struck on 2026-11-02 without being looked at.)
 
    First round on the new cases (2026-11-02), each change with a test in `tests/test_detection.py`:
    - Still-flagged fixes read one by one. Real (kept): MindsDB (the request's `file` still reaches a path),
