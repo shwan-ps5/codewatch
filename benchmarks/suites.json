@@ -115,7 +115,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks.",
+      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules.",
       "cases": [
         {
           "id": "GHSA-f2mf-q878-gh58",
@@ -564,6 +564,231 @@
           "summary": "`pyLoad` has Path Traversal Vulnerability in `json/upload` Endpoint that allows Arbitrary File Write",
           "scope": [
             "src/pyload"
+          ]
+        },
+        {
+          "id": "GHSA-3864-rp2m-2qfj",
+          "cve": "CVE-2024-52787",
+          "repo": "https://github.com/vemonet/libre-chat.git",
+          "fix": "dbb8e3400e5258112179783d74c9cc54310cb72b",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "libre-chat Path Traversal vulnerability",
+          "scope": [
+            "src/libre_chat"
+          ]
+        },
+        {
+          "id": "GHSA-cr8c-972v-rmp3",
+          "cve": "CVE-2022-0959",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "dccd4f0bbaafa783d9f0360c7592b128d5cc3928",
+          "cwe": [
+            22,
+            434
+          ],
+          "license": "PostgreSQL",
+          "summary": "pgAdmin 4 Path Traversal vulnerability",
+          "scope": [
+            "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-f63h-wc26-pmvc",
+          "cve": "CVE-2026-8754",
+          "repo": "https://github.com/AstrBotDevs/AstrBot.git",
+          "fix": "aaec41e5054569ceaa1113593a34da7568e2d211",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "AstrBot: File upload vulnerability in the function post_file of the file astrbot/dashboard/routes/chat.py",
+          "scope": [
+            "astrbot"
+          ]
+        },
+        {
+          "id": "GHSA-f6pr-83pg-ghh6",
+          "cve": "CVE-2026-42351",
+          "repo": "https://github.com/geopython/pygeoapi.git",
+          "fix": "bf25b8695edbdd5476eeffc102b633d1d3e45f52",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "pygeoapi 0.23.x: Path Traversal in STAC FileSystemProvider",
+          "scope": [
+            "pygeoapi"
+          ]
+        },
+        {
+          "id": "GHSA-g73c-fw68-pwx3",
+          "cve": "CVE-2025-2945",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "75be0bc22d3d8d7620711835db817bd7c021007c",
+          "cwe": [
+            94
+          ],
+          "license": "PostgreSQL",
+          "summary": "pgAdmin 4 Vulnerable to Remote Code Execution",
+          "scope": [
+            "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-hwv5-w8gm-fq9f",
+          "cve": "CVE-2020-15239",
+          "repo": "https://github.com/horazont/xmpp-http-upload.git",
+          "fix": "82056540191e89f0cd697c81f57714c00962ed75",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Directory Traversal vulnerability in GET/PUT allows attackers to Disclose Information or Write Files via a crafted GET/PUT request"
+        },
+        {
+          "id": "GHSA-m5gr-86j6-99jp",
+          "cve": "CVE-2026-40258",
+          "repo": "https://github.com/gramps-project/gramps-web-api.git",
+          "fix": "3ed4342711e3ec849552df09b1fe2fbf2ca5c29a",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "gramps-webapi: Zip Slip Path Traversal in Media Archive Import",
+          "scope": [
+            "gramps_webapi"
+          ]
+        },
+        {
+          "id": "GHSA-q93c-p2mw-p23f",
+          "cve": "CVE-2023-51232",
+          "repo": "https://github.com/dagster-io/dagster.git",
+          "fix": "dbb064c2ddda74265b8174edd9775e1302ca6ba0",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Dagster vulnerable to Path Traversal attack through its /logs endpoint",
+          "scope": [
+            "python_modules/dagster/dagster/_core/storage",
+            "python_modules/dagster-webserver/dagster_webserver"
+          ]
+        },
+        {
+          "id": "GHSA-r49h-6qxq-624f",
+          "cve": "CVE-2024-7340",
+          "repo": "https://github.com/wandb/weave.git",
+          "fix": "f43d5fb75e0d52933a52ecd9a0ce2f9b082e6c9f",
+          "cwe": [
+            20,
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Weave server API vulnerable to arbitrary file leak",
+          "scope": [
+            "weave"
+          ]
+        },
+        {
+          "id": "GHSA-rv25-9wgj-xg75",
+          "cve": "CVE-2017-12614",
+          "repo": "https://github.com/apache/airflow.git",
+          "fix": "e1a2d74c0045c9231f7a5365c956b8e048dd6af3",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Apache Airflow Reflected Cross-site Scripting vulnerability in 404 Endpoint",
+          "scope": [
+            "airflow/www"
+          ]
+        },
+        {
+          "id": "GHSA-v798-mcc6-2m3m",
+          "cve": "CVE-2026-7873",
+          "repo": "https://github.com/langflow-ai/langflow.git",
+          "fix": "e7c33dbaade20b5295c7fa26bf83cc1ff68fba02",
+          "cwe": [
+            94
+          ],
+          "license": "MIT",
+          "summary": "Langflow: Code Injection Vulnerability in Code Validation Endpoint",
+          "scope": [
+            "src/backend/base/langflow/api",
+            "src/lfx/src/lfx/custom"
+          ]
+        },
+        {
+          "id": "GHSA-v9w6-9hq9-33ch",
+          "cve": "CVE-2025-6773",
+          "repo": "https://github.com/HKUDS/LightRAG.git",
+          "fix": "60777d535b719631680bcf5d0969bdef79ca4eaf",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "HKUDS LightRAG allows Path Traversal via function upload_to_input_dir",
+          "scope": [
+            "lightrag/api"
+          ]
+        },
+        {
+          "id": "GHSA-vghm-8cjp-hjw6",
+          "cve": "CVE-2018-25088",
+          "repo": "https://github.com/blue-yonder/postgraas_server.git",
+          "fix": "7cd8d016edc74a78af0d81c948bfafbcc93c937c",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "postgraas-server vulnerable to SQL injection",
+          "scope": [
+            "postgraas_server"
+          ]
+        },
+        {
+          "id": "GHSA-vxp9-wv2f-wqmw",
+          "cve": "CVE-2018-8021",
+          "repo": "https://github.com/apache/superset.git",
+          "fix": "2c72a7ae4fc0a8bac1f037a79efa90e1c5549710",
+          "cwe": [
+            502
+          ],
+          "license": "Apache-2.0",
+          "summary": "Deserialization of Untrusted Data in superset",
+          "scope": [
+            "superset"
+          ]
+        },
+        {
+          "id": "GHSA-wqmh-qccw-pqwf",
+          "cve": "CVE-2026-53995",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "31ff9e56f5038d61ec75344518912945f60dffec",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "MLflow FileStore trace IDs allow path traversal and arbitrary file writes",
+          "scope": [
+            "mlflow"
+          ]
+        },
+        {
+          "id": "GHSA-wv28-7fpw-fj49",
+          "cve": "CVE-2024-28335",
+          "repo": "https://github.com/lektor/lektor.git",
+          "fix": "7393d87bd354e43120937789956175064e4610a0",
+          "cwe": [
+            22
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "Lektor does not sanitize database path traversal",
+          "scope": [
+            "lektor"
           ]
         }
       ]
@@ -1109,6 +1334,105 @@
           "summary": "Open redirect endpoint in Datasette",
           "scope": [
             "datasette"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-3",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Third blind set of Python CVE fix pairs, split from the second 2026-11-02 batch (PLAN.md step 23) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-227r-w5j2-6243",
+          "cve": "CVE-2024-11042",
+          "repo": "https://github.com/invoke-ai/InvokeAI.git",
+          "fix": "5440c037674882b2ab7acd59087e9bb04b49657a",
+          "cwe": [
+            20,
+            22,
+            73
+          ],
+          "license": "Apache-2.0",
+          "summary": "InvokeAI Arbitrary File Deletion vulnerability",
+          "scope": [
+            "invokeai/app"
+          ]
+        },
+        {
+          "id": "GHSA-3363-2ph6-35wh",
+          "cve": "CVE-2026-44716",
+          "repo": "https://github.com/pipecat-ai/pipecat.git",
+          "fix": "7519c26ac5508573c35fa3a9c4717b013993d129",
+          "cwe": [
+            22
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "Pipecat: Path Traversal in Pipecat Runner `/files` Endpoint \u2014 Arbitrary File Read via `%2F`-Encoded Separator",
+          "scope": [
+            "src/pipecat/runner"
+          ]
+        },
+        {
+          "id": "GHSA-4pwq-fj89-6rjc",
+          "cve": "CVE-2020-13944",
+          "repo": "https://github.com/apache/airflow.git",
+          "fix": "5c2bb7b0b0e717b11f093910b443243330ad93ca",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Apache Airflow Cross-site Scripting ",
+          "scope": [
+            "airflow/www"
+          ]
+        },
+        {
+          "id": "GHSA-rj98-crf4-g69w",
+          "cve": "CVE-2024-2044",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "4e49d752fba72953acceeb7f4aa2e6e32d25853d",
+          "cwe": [
+            22,
+            31,
+            502
+          ],
+          "license": "PostgreSQL",
+          "summary": "pgAdmin 4 vulnerable to Unsafe Deserialization and Remote Code Execution by an Authenticated user",
+          "scope": [
+            "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-vfj6-275q-4pvm",
+          "cve": "CVE-2017-18638",
+          "repo": "https://github.com/graphite-project/graphite-web.git",
+          "fix": "71726a0e41a5263f49b973a7b856505a5b931c1f",
+          "cwe": [
+            918
+          ],
+          "license": "Apache-2.0",
+          "summary": "graphite.composer.views.send_email vulnerable to SSRF",
+          "scope": [
+            "webapp/graphite"
+          ]
+        },
+        {
+          "id": "GHSA-xg73-94fp-g449",
+          "cve": "CVE-2023-1177",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "7162a50c654792c21f3e4a160eb1a0e6a34f6e6e",
+          "cwe": [
+            22,
+            29
+          ],
+          "license": "Apache-2.0",
+          "summary": "mlflow is vulnerable to remote file access in `mlflow server` and `mlflow ui` CLIs",
+          "scope": [
+            "mlflow"
           ]
         }
       ]
