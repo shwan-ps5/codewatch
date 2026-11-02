@@ -460,13 +460,36 @@ def test_registry_rules_defer_to_codewatch_taint_rules():
     assert cwe_numbers("CWE-611: XXE") == {611}
 
 
-def semgrep_vulnerabilities(tmp_path, files):
+def semgrep_vulnerabilities(tmp_path, files, full_ids=False):
+    """{(path, line, rule)} of the vulnerabilities codewatch's rules find in files; rule is the last part of the rule
+    id (xss), or the whole id with full_ids (codewatch.python.web.template.xss), where the last part is ambiguous."""
     for name, text in files.items():
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_text(text)
     ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
-    return {(f.path, f.line, f.rule.rsplit(".", 1)[1]) for f in Semgrep().run(ctx).findings
+    return {(f.path, f.line, f.rule if full_ids else f.rule.rsplit(".", 1)[1]) for f in Semgrep().run(ctx).findings
             if f.type == "vulnerability"}
+
+
+def test_semgrep_vulnerabilities_keeps_the_full_rule_id_when_asked(tmp_path):
+    """Two rules end in .xss: the template rule (codewatch.python.web.template.xss) and the direct one
+    (codewatch.python.web.xss). full_ids tells them apart; the default keeps the short name other tests use."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    files = {
+        "app/templates/error.html": "<p>{{ error_message|safe }}</p>\n",
+        "app/routes.py": (
+            "from flask import Flask, render_template, request\n\napp = Flask(__name__)\n\n\n"
+            "@app.route('/a')\n"
+            "def a():\n"
+            "    return render_template('error.html', error_message=request.args['q'])\n\n\n"
+            "@app.route('/b')\n"
+            "def b():\n"
+            "    return request.args['q']\n"),
+    }
+    assert semgrep_vulnerabilities(tmp_path, files, full_ids=True) == {
+        ("app/routes.py", 8, "codewatch.python.web.template.xss"), ("app/routes.py", 13, "codewatch.python.web.xss")}
+    assert semgrep_vulnerabilities(tmp_path, files) == {("app/routes.py", 8, "xss"), ("app/routes.py", 13, "xss")}
 
 
 def test_taint_follows_one_call_into_a_helper(tmp_path):
