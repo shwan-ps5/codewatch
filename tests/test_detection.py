@@ -2549,3 +2549,119 @@ def test_a_javascript_helper_that_never_returns_its_argument_cleans_its_result(t
         '});\n'
     )})
     assert found == {("app.js", 30, "xss"), ("app.js", 35, "xss"), ("app.js", 40, "xss")}
+
+
+def test_a_javascript_check_that_ends_the_request_guards_what_follows(tmp_path):
+    """actual: `if (!isValidRedirectUrl(url)) { res.status(400).send(...); return; } res.redirect(url)`, and a CORS
+    proxy that fetches only after `if (!isUrlAllowed(url.href)) return ...`. The branch where the check said no,
+    and a check that only tests for a value, still leave it open."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.js": (
+        "const express = require('express');\n"
+        "const app = express();\n\n"
+        "function isValidRedirectUrl(url) {\n"
+        "  return url.startsWith('/') && !url.startsWith('//');\n"
+        "}\n\n"
+        "function isUrlAllowed(href) {\n"
+        "  return href.startsWith('https://raw.githubusercontent.com/');\n"
+        "}\n\n"
+        "app.get('/a', (req, res) => {\n"
+        "  const url = req.query.url;\n"
+        "  if (!isValidRedirectUrl(url)) {\n"
+        "    res.status(400).send({ reason: 'Invalid redirect URL' });\n"
+        "    return;\n"
+        "  }\n"
+        "  res.redirect(url);\n"
+        "});\n\n"
+        "app.post('/proxy', async (req, res) => {\n"
+        "  const url = new URL(req.body.url);\n"
+        "  if (!isUrlAllowed(url.href)) {\n"
+        "    return res.status(403).json({ error: 'URL not allowed' });\n"
+        "  }\n"
+        "  const response = await fetch(url.href);\n"
+        "  res.json({ status: response.status });\n"
+        "});\n\n"
+        "app.get('/b', (req, res) => {\n"
+        "  const url = req.query.url;\n"
+        "  if (!isValidRedirectUrl(url)) {\n"
+        "    return res.redirect(url);\n"
+        "  }\n"
+        "  return res.redirect('/');\n"
+        "});\n\n"
+        "app.get('/c', (req, res) => {\n"
+        "  const url = req.query.url;\n"
+        "  if (!url) {\n"
+        "    return res.status(400).end();\n"
+        "  }\n"
+        "  res.redirect(url);\n"
+        "});\n")})
+    assert found == {("app.js", 33, "open-redirect"), ("app.js", 43, "open-redirect")}
+
+
+def test_a_signed_cookie_is_the_servers_own_data(tmp_path):
+    """wiki.js: the login flow read back from a cookie the server signed (`req.unsignCookie(raw)`), or Express's
+    `req.signedCookies`, holds what the server stored, like a session. A plain cookie is still the client's."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.js": (
+        "const express = require('express');\n"
+        "const app = express();\n\n"
+        "app.get('/callback', (req, res) => {\n"
+        "  const raw = req.cookies.flow;\n"
+        "  const unsigned = req.unsignCookie(raw);\n"
+        "  const flow = JSON.parse(unsigned.value);\n"
+        "  res.redirect(flow.redirect);\n"
+        "});\n\n"
+        "app.get('/next', (req, res) => {\n"
+        "  res.redirect(req.signedCookies.next);\n"
+        "});\n\n"
+        "app.get('/plain', (req, res) => {\n"
+        "  res.redirect(req.cookies.next);\n"
+        "});\n")})
+    assert found == {("app.js", 16, "open-redirect")}
+
+
+def test_input_escaped_for_a_regex_is_not_regex_injection(tmp_path):
+    """habitica: `new RegExp(String.raw`^${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`)` matches the name literally.
+    Removing characters some other way leaves a pattern."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.js": (
+        "const express = require('express');\n"
+        "const app = express();\n\n"
+        "app.get('/find', (req, res) => {\n"
+        "  const name = req.query.name;\n"
+        "  const re = new RegExp(String.raw`^${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`);\n"
+        "  const loose = new RegExp(name.replace(/\\s/g, ''));\n"
+        "  res.json({ a: re.test('x'), b: loose.test('y') });\n"
+        "});\n")})
+    assert found == {("app.js", 7, "regex-injection")}
+
+
+def test_a_url_that_starts_as_a_path_on_this_site_stays_there(tmp_path):
+    """habitica: `let url = `/static/apple-redirect?code=${code}`; url += `&name=${first}`` only ever adds to the
+    query. A variable set to something else later, or one that starts as a bare "/", is still open."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.js": (
+        "const express = require('express');\n"
+        "const app = express();\n\n"
+        "app.post('/apple', (req, res) => {\n"
+        "  let url = `/static/apple-redirect?code=${req.body.code}`;\n"
+        "  if (req.body.user) {\n"
+        "    url += `&name=${req.body.user}`;\n"
+        "  }\n"
+        "  return res.redirect(303, url);\n"
+        "});\n\n"
+        "app.post('/later', (req, res) => {\n"
+        "  let url = `/home?tab=${req.body.tab}`;\n"
+        "  url = req.body.next;\n"
+        "  return res.redirect(url);\n"
+        "});\n\n"
+        "app.post('/bare', (req, res) => {\n"
+        "  let url = '/';\n"
+        "  url += req.body.next;\n"
+        "  return res.redirect(url);\n"
+        "});\n")})
+    assert found == {("app.js", 15, "open-redirect"), ("app.js", 21, "open-redirect")}

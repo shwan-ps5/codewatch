@@ -27,7 +27,7 @@ rules:
           - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
           - metavariable-regex:
               metavariable: $FIELD
-              regex: '^(body|query|params|cookies|signedCookies|headers|path|url|originalUrl|baseUrl|hostname|files|file)$'
+              regex: '^(body|query|params|cookies|headers|path|url|originalUrl|baseUrl|hostname|files|file)$'
       # NocoBase resource actions (Koa): ctx.action.params holds the request's filter, values and query.
       # Added for GHSA-p849-8hwh-84j9 (cve-pairs-javascript).
       - &src-resource-action-params
@@ -64,7 +64,7 @@ rules:
                         - pattern: $REQ.$FIELD ?? $E
                         - pattern: $REQ.$FIELD || $E
                     - metavariable-regex: {metavariable: $REQ, regex: '^(req|request|ctx|ctx\.request|context\.req)$'}
-                    - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|signedCookies|headers|files|file)$'}
+                    - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|headers|files|file)$'}
       # Exact: the call's value, not its argument. Otherwise `request.header('accept')` with `request` the incoming
       # request also matched the request library's request.$METHOD(url) sink around its own argument (immich).
       - &src-request-getter
@@ -85,7 +85,7 @@ rules:
               - pattern-inside: 'function $F({..., $FIELD, ...}: Request, ...) { ... }'
               - pattern-inside: '$APP.$METHOD($PATH, ..., ({..., $FIELD, ...}, $RES, ...) => { ... })'
           - pattern: $FIELD
-          - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|signedCookies|headers|files|file)$'}
+          - metavariable-regex: {metavariable: $FIELD, regex: '^(body|query|params|cookies|headers|files|file)$'}
       # NestJS controller parameters: @Body() dto, @Query('q') q, @Param('id') id, @Headers() headers. Not those a
       # pipe or a number/boolean/Date type converts (ParseIntPipe, `id: number` under ValidationPipe's transform).
       - &src-nest-param
@@ -147,95 +147,127 @@ rules:
       # [allowed].includes(x) ? x : fallback only ever yields an allowed value.
       - &san-allowlist-ternary
         pattern: '$ALLOWED.includes($X) ? $X : $FALLBACK'
+      # A cookie the server signed holds what the server stored there, like a session (wiki.js reads its login
+      # flow back with Fastify's req.unsignCookie(raw)); req.signedCookies (Express) isn't a source for the same reason.
+      - &san-signed
+        pattern: $REQ.unsignCookie(...)
       # A check on the value that bails out: if (!next.startsWith("/") || next.startsWith("//")) return ...
       - &san-guard
-        patterns:
-          - pattern-either:
-              - pattern-inside: |
-                  if (<... $X.startsWith(...) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.startsWith(...) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.startsWith(...) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.startsWith(...) ...>) throw $E;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.endsWith(...) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.endsWith(...) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.endsWith(...) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.endsWith(...) ...>) throw $E;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.includes(...) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.includes(...) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.includes(...) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.includes(...) ...>) throw $E;
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.includes($X) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.includes($X) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.includes($X) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.includes($X) ...>) throw $E;
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.has($X) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.has($X) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.has($X) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $ALLOWED.has($X) ...>) throw $E;
-                  ...
-              - pattern-inside: |
-                  if (<... $RE.test($X) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $RE.test($X) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $RE.test($X) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $RE.test($X) ...>) throw $E;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.match(...) ...>) { ... return ...; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.match(...) ...>) return ...;
-                  ...
-              - pattern-inside: |
-                  if (<... $X.match(...) ...>) { ... throw $E; }
-                  ...
-              - pattern-inside: |
-                  if (<... $X.match(...) ...>) throw $E;
-                  ...
-          - pattern: $X
+        pattern-either:
+          # A named check that said no ends the request: `if (!isValidRedirectUrl(url)) { ...; return; }` (actual).
+          # Not in that branch itself, and only a check named for it (`if (!url) return` says nothing).
+          - patterns:
+              - pattern-either:
+                  - pattern-inside: |
+                      if (!$CHECK(..., $X, ...)) { ... return ...; }
+                      ...
+                  - pattern-inside: |
+                      if (!$CHECK(..., $X, ...)) { ... return; }
+                      ...
+                  - pattern-inside: |
+                      if (!$CHECK(..., $X, ...)) return ...;
+                      ...
+                  - pattern-inside: |
+                      if (!$CHECK(..., $X, ...)) { ... throw $E; }
+                      ...
+                  - pattern-inside: |
+                      if (!$CHECK(..., $X, ...)) throw $E;
+                      ...
+              - pattern-not-inside: |
+                  if (!$CHECK(..., $X, ...)) { ... }
+              - pattern-not-inside: |
+                  if (!$CHECK(..., $X, ...)) $STMT;
+              - metavariable-regex:
+                  metavariable: $CHECK
+                  regex: '(?i)^(.*\.)?(is|check|can)\w{0,30}(safe|valid|allowed|permitted|trusted|whitelist|allowlist)\w{0,30}$'
+              - pattern: $X
+          - patterns:
+            - pattern-either:
+                - pattern-inside: |
+                    if (<... $X.startsWith(...) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.startsWith(...) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.startsWith(...) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.startsWith(...) ...>) throw $E;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.endsWith(...) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.endsWith(...) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.endsWith(...) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.endsWith(...) ...>) throw $E;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.includes(...) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.includes(...) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.includes(...) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.includes(...) ...>) throw $E;
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.includes($X) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.includes($X) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.includes($X) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.includes($X) ...>) throw $E;
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.has($X) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.has($X) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.has($X) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $ALLOWED.has($X) ...>) throw $E;
+                    ...
+                - pattern-inside: |
+                    if (<... $RE.test($X) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $RE.test($X) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $RE.test($X) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $RE.test($X) ...>) throw $E;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.match(...) ...>) { ... return ...; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.match(...) ...>) return ...;
+                    ...
+                - pattern-inside: |
+                    if (<... $X.match(...) ...>) { ... throw $E; }
+                    ...
+                - pattern-inside: |
+                    if (<... $X.match(...) ...>) throw $E;
+                    ...
+            - pattern: $X
       # What a file contains is the server's data, whatever path was used to read it (path-traversal checks the path).
       - &san-file-content
         pattern-either:
@@ -346,6 +378,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-lookup-result
       - pattern: path.basename(...)
       # multer and express-fileupload take the file name through busboy, which drops any directory part.
@@ -442,6 +475,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-file-content
       - *san-lookup-result
       # The Host and X-Forwarded-* headers: a victim's browser sends the real host for a page, and a proxy sets the
@@ -554,6 +588,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-file-content
       - *san-lookup-result
       - patterns:
@@ -592,6 +627,24 @@ rules:
           - patterns:
               - pattern: $PREFIX + $REST
               - metavariable-regex: {metavariable: $PREFIX, regex: '^[''"](/[^/\\''"]|[^''"]*[?#])'}
+      # A variable that starts as such a path stays on this site whatever is appended to it (habitica:
+      # let url = `/static/apple-redirect?code=${code}`; url += `&name=${name}`): the append is clean. Semgrep sees
+      # `url += x` as an assignment to url like any other, so a later `url = req.body.next` can't be told apart;
+      # it stays tainted because it isn't an append, but one appended to after that would be missed.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  let $U = $START;
+                  ...
+              - pattern-inside: |
+                  var $U = $START;
+                  ...
+          - metavariable-regex:
+              metavariable: $START
+              regex: '^(`(/[^/\\`$]|[^`$]*[?#])|[''"](/[^/\\''"]|[^''"]*[?#]))'
+          - pattern-either:
+              - pattern: $U + $X
+              - pattern: $U += $X
       # The same after the app's configured base URL, which a link can't change (CTFd:
       # CTFd.config.urlRoot + "/login?next=" + ..., `${CTFd.config.urlRoot}/login?next=...`).
       - pattern-either:
@@ -705,6 +758,7 @@ rules:
     pattern-sanitizers:
       - *san-named
       - *san-guard
+      - *san-signed
       - *san-lookup-result
       - *san-fixed-prefix
       # After a literal "https://host" prefix the path stays on that host.
@@ -801,6 +855,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-file-content
       - *san-lookup-result
       # Only the path or query is user data when the scheme and host are fixed in front of it: a literal
@@ -911,6 +966,12 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
+      # Its special characters escaped by hand: x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') puts a backslash before
+      # each match (habitica), so the pattern matches the text literally.
+      - patterns:
+          - pattern: $X.replace($RE, $ESCAPE)
+          - metavariable-regex: {metavariable: $ESCAPE, regex: '^[''"`]\\\\\$&[''"`]$'}
       - *san-lookup-result
       - patterns:
           - pattern: $X.replace($RE, $WITH)
@@ -1028,6 +1089,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-lookup-result
     pattern-sinks:
       - patterns:
@@ -1067,6 +1129,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-lookup-result
     pattern-sinks:
       - patterns:
@@ -1097,6 +1160,7 @@ rules:
       - *san-named
       - *san-allowlist-ternary
       - *san-guard
+      - *san-signed
       - *san-lookup-result
     pattern-sinks:
       - patterns:

@@ -63,7 +63,7 @@ False alarms on ordinary apps (verdict mode):
 - Learning sets 1-3 (14 apps): 18 findings left, each classified in steps 13 and 18 (real: recipes api.py:2960,
   outline's four TLS settings; little impact: CTFd's three session writes; the rest need models codewatch
   doesn't have, such as an OAuth manager built from session state).
-- Learning set 4 (wiki.js, actual, habitica): 37 findings, all false alarms, grouped by shape in step 19.
+- Learning set 4 (wiki.js, actual, habitica): 27 findings, all false alarms, grouped by shape in step 19.
 - Blind sets: 1 had false alarms in 2 of 4 apps (12), 2 in 2 of 4 (34), 3 in 4 of 4 (24, 13 in one Express app).
   Python is close (3 false alarms in two apps in set 3); JavaScript isn't. Set 4 is pinned and unscanned.
 
@@ -74,15 +74,18 @@ Speed on the 20-thread desktop (step 21): tests 1 minute, `check.sh` (lint, test
 7 minutes, both CVE-pair suites about 20, the 17 learning-set apps 10; the largest app (immich, 3,488 files) about
 3 minutes alone. Results are identical whether scans run one at a time or in parallel.
 
+Focus (2026-11-02, the user's call): Python web apps (Django, Flask, FastAPI) and the JavaScript those projects
+ship (templates, static scripts, React/Vue/Angular front ends), to a very good standard first. Node-only back ends
+and other languages come later, possibly from cloud sessions, one language or framework each, adding rules in
+their own catalog files with tests and ground-truth results, merged only after a full verification here.
+
 Next, in order:
-1. Learning set 4's shapes (step 19), each with a test: a named check that ends the request in JS, signed
-   cookies and sessions read back, fixed same-site paths built around a value, hash digests, escaped regex input,
-   `path.relative()` containment, opt-in TLS bypasses as review, model-registry lookups.
-2. End of the round: blind set 4 (NodeBB, hedgedoc, pretalx, fief), scanned once, measurement only.
-3. More ground truth: the CVE-pair suites are small (14 + 10), so each case moves the score; finding and
-   checking new advisories with clean fix commits is research that could run in cloud sessions.
-4. A container for server-side scans of untrusted repositories.
-5. Semgrep timeouts: record files that time out in each run, so a lost finding is never silent.
+1. Finish what step 19 started (verify, commit); no more Node-back-end-only shapes for now.
+2. More Python ground truth: CVE fix pairs from Django, Flask and FastAPI advisories, and from those projects'
+   front-end JavaScript (DOM XSS, client-side redirects). 14 Python pairs is too few to measure detection.
+3. Learning set 5 (netbox, label-studio, lemur: Python apps with JS front ends), case by case.
+4. End of the round: blind set 4 (redash, InvenTree, pretalx, fief), scanned once, measurement only.
+5. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
 
 Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
 knowledge.
@@ -588,16 +591,27 @@ rule):
    object methods, `obj.f = ...`), never a class field, a reassigned name or an object literal's property;
    only names whose result is assigned in a file that reads the request. Matching every object literal and every
    assigned call made actual's scan 92s -> 142s; with those limits 91s -> 97s. After: actual's 8 sync-server XSS
-   gone (37 left); everything else unchanged. Shapes left (all false alarms; next, each with a test):
-   - A named check that ends the request in JS: `if (!isValidRedirectUrl(url)) { ...; return; }` (actual
-     app-openid.ts:112; app-cors-proxy.js:213/248 behind `isUrlAllowed`), item 17's Python fix for JS.
-   - A signed cookie (`req.unsignCookie()`) or session read back is server data (wiki authentication.ts:156-198);
-     `req.signedCookies` is a source today though no suite uses it.
-   - A fixed same-site path built around the value: `` `/login?${params}` `` in a helper, `let url =
-     `/static/apple-redirect?...`; url += ...` (wiki 1272, habitica auth.js:165).
-   - A hash digest isn't markup (wiki notifications.ts:156, an ETag); input escaped with
-     `.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')` isn't a regex (habitica admin.js:74); `path.relative()` containment
-     (actual serve-build.mjs:87); an opt-in TLS bypass (wiki hooks.ts:95) is review, as blind set 3 said.
+   gone (37 left); everything else unchanged. Then, each with a test (`test_a_javascript_check_that_ends_the_request_guards_what_follows`,
+   `test_a_signed_cookie_is_the_servers_own_data`, `test_input_escaped_for_a_regex_is_not_regex_injection`,
+   `test_a_url_that_starts_as_a_path_on_this_site_stays_there`):
+   - JS `san-guard` takes a named check that ends the request (`if (!isValidRedirectUrl(url)) return`; names
+     starting is/check/can and containing safe/valid/allowed/permitted/trusted/whitelist/allowlist), not in its
+     own branch, and not a bare `if (!url)`.
+   - `req.unsignCookie(...)` is a sanitizer and `req.signedCookies` no longer a source: what the server signed is
+     its own data, like a session.
+   - regex-injection: `x.replace(<regex>, '\\$&')` escapes the value.
+   - open-redirect: a `let`/`var` that starts as a same-site path stays clean through appends (`url += ...`);
+     known gap, in the rule: a variable set to request data and then appended to would be missed.
+   After: 27 left (wiki's five auth-flow redirects, actual's OpenID redirect, CORS-proxy SSRF and one sync XSS,
+   habitica's Apple redirect and admin regex gone); quick suites, CVE pairs, the 30 apps and learning sets 1-3
+   unchanged. With the focus now on Python (see "Where things stand"), the rest waits. Shapes left:
+   - A fixed same-site path built in a helper: `` `/login?${params}` `` (wiki 1272); an OAuth provider's
+     authorization URL from a library call (wiki 1268).
+   - A value hashed by a project helper before it names a file (habitica content.js, `hashForFilter()` with
+     `charCodeAt` arithmetic): the summary pass treats a helper's result as carrying its argument, so this needs
+     pass-through in pass 1 too; and a value used only inside `if (x && allowed.includes(x)) { ... }` in JS.
+   - A hash digest isn't markup (wiki notifications.ts:156, an ETag); `path.relative()` containment (actual
+     serve-build.mjs:87); an opt-in TLS bypass (wiki hooks.ts:95) is review, as blind set 3 said.
    - `WIKI.models.x.y(...)` model-registry lookups and summaries through `this.getEntry(...)` (wiki
      navigation.ts:705, feedback.ts:754, assets.ts:951); PayPal's approval link (habitica paypal.js:41/105).
 
@@ -742,6 +756,9 @@ Already learned from (not blind), pinned commits, cloned in `~/.cache/codewatch/
 | https://github.com/requarks/wiki | 54cda2cb48 | ordinary Express/GraphQL app (step 19) |
 | https://github.com/actualbudget/actual | 741d1615b7 | ordinary Express app (sync server; step 19) |
 | https://github.com/HabitRPG/habitica | 12091ca029 | ordinary Express app (step 19) |
+| https://github.com/netbox-community/netbox | 6955afbac5 | ordinary Django app with JS (learning set 5, unscanned) |
+| https://github.com/HumanSignal/label-studio | 60b7f987b7 | ordinary Django app with a React front end (learning set 5, unscanned) |
+| https://github.com/Netflix/lemur | 3a3c2c201d | ordinary Flask app with an Angular front end (learning set 5, unscanned) |
 
 Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use to adjust rules:
 
@@ -781,10 +798,13 @@ Fourth blind set, chosen and cloned 2026-11-02 with learning set 4 and before an
 
 | Repo | Commit | Kind |
 |---|---|---|
-| https://github.com/NodeBB/NodeBB | f47b6404b3 | ordinary Express app |
-| https://github.com/hedgedoc/hedgedoc | 3e60fa1488 | ordinary NestJS app |
+| https://github.com/getredash/redash | 4e62d11000 | ordinary Flask app with a React front end |
+| https://github.com/inventree/InvenTree | 2629cde722 | ordinary Django app with a React front end |
 | https://github.com/pretalx/pretalx | 887b50ac22 | ordinary Django app |
 | https://github.com/fief-dev/fief | a77e7fb65f | ordinary FastAPI app |
+
+2026-11-02, still before any scan: NodeBB (Express) and hedgedoc (NestJS) were swapped for redash and InvenTree
+when the focus moved to Python web apps and the JavaScript they ship (see "Where things stand").
 
 CVE fix pairs are suites (`cve-pairs-*` in `benchmarks/suites.json`); the `cve-pairs-blind-*` suites are skipped
 unless named and follow the same rule.
