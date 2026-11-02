@@ -2,15 +2,17 @@
 
 ## Commit identity
 
-Commit only as `Shwan <344055753+shwan-ps5@users.noreply.github.com>`, in every session, local or cloud. Before the
-first commit, run:
+Local sessions (on the maintainer's machine) commit only as `Shwan <344055753+shwan-ps5@users.noreply.github.com>`.
+Before the first commit, run:
 
 ```
 git config user.name "Shwan"
 git config user.email "344055753+shwan-ps5@users.noreply.github.com"
 ```
 
-Never commit with another name or email, and never add one to commit messages, files or pull requests.
+Cloud sessions (Claude Code on the web) commit as `Claude <noreply@anthropic.com>`, the identity their environment
+requires (the maintainer agreed, 2026-11-02). Never commit with any other name or email, never the maintainer's
+real name, and never add one to commit messages, files or pull requests.
 
 ## How work is done here
 
@@ -42,8 +44,8 @@ verifies, including the nightly run, before merging.
 Setup, before anything else:
 
 ```
-git config user.name "Shwan"
-git config user.email "344055753+shwan-ps5@users.noreply.github.com"
+git config user.name "Claude"
+git config user.email "noreply@anthropic.com"
 python3 -m venv venv && venv/bin/pip install -q -e '.[dev]'
 python3 -m venv tools/semgrep-venv && tools/semgrep-venv/bin/pip install -q --require-hashes -r tools/semgrep.lock
 venv/bin/pytest -q -n auto     # check: the detection tests must run, not skip ("semgrep not installed")
