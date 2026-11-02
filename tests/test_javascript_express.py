@@ -11,6 +11,8 @@ RULES = catalog.BUILTIN_RULES_DIR
 
 
 def scan(tmp_path, files):
+    """Like test_detection.semgrep_vulnerabilities, but with full rule ids: that helper keeps only the last part,
+    which this file's rules share with javascript-taint.yml's."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     for name, body in files.items():
@@ -20,6 +22,9 @@ def scan(tmp_path, files):
 
 
 def lines(found, rule):
+    """Lines the rule reports; each is reported by one rule only."""
+    reported = [(path, line) for path, line, r in found if r.endswith(rule.rsplit(".", 1)[1])]
+    assert len(reported) == len(set(reported)), f"a line reported twice: {sorted(reported)}"
     return {(path, line) for path, line, r in found if r == rule}
 
 
