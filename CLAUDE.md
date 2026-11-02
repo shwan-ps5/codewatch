@@ -50,25 +50,37 @@ venv/bin/pytest -q -n auto     # check: the detection tests must run, not skip (
 ```
 
 Without `tools/semgrep-venv` every rule test skips itself and passes, which proves nothing. `npm ci --prefix tools`
-adds ESLint and the other Node analyzers, needed only for JavaScript lint work.
+adds ESLint and the other Node analyzers, needed only for JavaScript lint work. Setup takes about ten minutes; the
+same commands can go in the cloud environment's setup script so each session starts ready.
+
+For the maintainer: push `detection-gaps` (and with it this file and PLAN.md) before starting a cloud session. A
+session clones what GitHub has when it starts and never sees later pushes unless it rebases.
 
 Working rules for a cloud session:
-- Branch from `detection-gaps` as `cloud/<topic>` and open the pull request against `detection-gaps`. Never push to
-  `main` or `detection-gaps` directly.
+- Branch from `detection-gaps` (the session's own branch name, such as `claude/<topic>-<id>`, is fine) and open the
+  pull request against `detection-gaps`. Never push to `main` or `detection-gaps` directly.
+- Priorities, in order: Python (Django, Flask, FastAPI) and the JavaScript those apps ship; then Node and other JS
+  frameworks; then PHP, Ruby, Rust, C/C++ and C#. Always detection of real issues with false alarms as close to
+  zero as possible.
 - One topic per session, for example "Express/Node injection rules", "FastAPI-specific sources", or "more Python
-  front-end CVE pairs". New rules go in their own file, `catalog/codewatch/rules/<language>-<topic>.yml`, which is
-  loaded automatically. YAML anchors don't cross files, so the file defines its own sources and sanitizers rather
-  than reusing `*web-sources` from `python-web.yml`. Tests go in their own file, `tests/test_<language>_<topic>.py`,
-  using the `semgrep_vulnerabilities` helper from `tests/test_detection.py`. Separate files keep pull requests
-  from conflicting with work on the main branch.
+  front-end CVE pairs".
+- New sinks, sources or sanitizers for a weakness that already has a rule go into that rule, in its existing file
+  (e.g. more Node file APIs into `javascript-taint.yml`'s `codewatch.js.path-traversal`): no copied sources, no
+  line reported by two rules, and no extra rule for the summary passes to multiply. A new file,
+  `catalog/codewatch/rules/<language>-<topic>.yml` (loaded automatically), is for a new rule or a language with
+  none yet; YAML anchors don't cross files, so it defines its own sources and sanitizers. Tests go in their own file,
+  `tests/test_<language>_<topic>.py`; `semgrep_vulnerabilities` from `tests/test_detection.py` is the helper.
 - Changes to shared files (`python-web.yml`, `javascript-taint.yml`, `core/analyzers/`) are allowed when needed,
   but the pull request has to say what changed there and why.
 - Every rule has a test that fails without it, a vulnerable case and a safe look-alike, as in
   `tests/test_detection.py`. Verdict-mode false alarms must stay at 0% on the suites that measure them.
-- Measure with the suites that can be fetched: `venv/bin/python benchmarks/devtools.py bench SUITE...` clones the
-  pinned commits, for example `juice-shop`, `vulnerable-node-seeds`, `owasp-benchmark-python`, `cve-pairs-javascript`.
-  Held-out suites (`securityeval-copilot`, `securityeval-incoder`, `vulnerable-snippets-js`) may be run and
-  reported, never tuned on. Never run a blind suite (`cve-pairs-blind-*`).
+- Checks in a cloud session: `venv/bin/ruff check .`, the full `venv/bin/pytest -q -n auto` (a few minutes), the
+  topic's tests each failing without its rule, and quick probes; `devtools.py cases GHSA-...` for a single CVE pair
+  is fine. Leave whole benchmark suites and app scans to the maintainer's machine and the nightly run (an hour or
+  more, lots of memory, and a container restart loses them); say in the pull request what to measure. Never run a
+  blind suite (`cve-pairs-blind-*`); held-out suites are measured, never tuned on.
+- Stop a background process by its PID, never `pkill -f` with a pattern: the pattern matches the shell running the
+  command and kills it too.
 - New ground truth follows PLAN.md step 22: reviewed GitHub advisories with one small fix commit in application
   code, each read and accepted or rejected with a reason, and split before any scan by the fixed rule (blind when
   `int(sha256(id), 16) % 3 == 0`). The blind half goes in its own `"blind": true` suite and is never scanned in
