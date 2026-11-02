@@ -5,10 +5,12 @@ Suites are listed in benchmarks/suites.json, fetched at a pinned commit into the
 """
 import csv
 import json
+import multiprocessing
 import os
 import re
 import subprocess
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -22,6 +24,9 @@ CACHE = Path(os.environ.get("CODEWATCH_CACHE", Path.home() / ".cache" / "codewat
 SECURITY_TYPES = {"vulnerability", "security_hotspot"}
 # Not about the code under test: dependency audits, live pages, coverage import, duplication.
 SKIPPED_ANALYZERS = ["pip-audit", "osv", "axe", "coverage", "jscpd"]
+# Scans run in parallel by default from the command line (devtools bench, codewatch benchmark): each suite or CVE
+# case is its own process. A third of the CPUs, since each Semgrep run also uses several; memory is about 1-3 GB a run.
+WORKERS = int(os.environ.get("CODEWATCH_BENCH_WORKERS") or max(1, (os.cpu_count() or 2) // 3))
 SNIPPET_RE = re.compile(r"vuln-code-snippet vuln-line ([\w ]{1,500})")
 NEARBY_LINES = 3
 
@@ -362,11 +367,15 @@ def score_pairs_mode(cases, scanned, types, parents):
 
 
 def score_cve_pairs(suite, log):
-    parents = catalog.load()[1].get("cwe_parents", {})
     scanned = {}
     for case in suite["cases"]:
         log(f"   {case['id']}: {case['repo']} {case['fix'][:10]}")
         scanned[case["id"]] = scan_pair(suite, case, log)
+    return score_scanned_pairs(suite, scanned)
+
+
+def score_scanned_pairs(suite, scanned):
+    parents = catalog.load()[1].get("cwe_parents", {})
     (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(scanned))
     return {mode: score_pairs_mode(suite["cases"], scanned, types, parents) for mode, types in MODES.items()}
 
@@ -381,19 +390,69 @@ def run_suite(suite, log):
         return score_cve_pairs(suite, log)
     log(f"== {suite['name']}: fetching {suite['commit'][:10]}")
     root = fetch(suite)
-    issues = scan(root, log)
+    return score_scanned_suite(suite, root, scan(root, log))
+
+
+def score_scanned_suite(suite, root, issues):
     (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(issues))
     return SCORERS[suite["kind"]](root, suite, issues)
 
 
-def run(names=None, log=print):
-    """Score the named suites, or every suite except blind ones, which run only when named."""
-    suites = json.loads((ROOT / "suites.json").read_text())["suites"]
+def setup_worker(workers=1):
+    """A parallel run's process: Django, and its share of the CPUs for Semgrep."""
+    os.environ["CODEWATCH_SEMGREP_JOBS"] = str(max(1, (os.cpu_count() or 2) // workers))
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "codewatch.settings")
+    import django  # only in a worker process, which starts without Django
+
+    django.setup()
+
+
+def scan_job(suite, case=None):
+    """One unit of a parallel run: a whole suite, or one CVE case. Returns its scan and the log lines."""
+    lines = []
+    if case is None:
+        lines.append(f"== {suite['name']}: fetching {suite['commit'][:10]}")
+        root = fetch(suite)
+        return suite["name"], None, (str(root), scan(root, lines.append)), lines
+    lines.append(f"   {suite['name']} {case['id']}: {case['repo']} {case['fix'][:10]}")
+    return suite["name"], case["id"], scan_pair(suite, case, lines.append), lines
+
+
+def scan_parallel(suites, log, workers):
+    """{suite name: (root, issues) or {case id: pair}}, every suite and CVE case scanned in its own process."""
+    jobs = [(suite, None) for suite in suites if suite["kind"] != "cve-pairs"]
+    jobs += [(suite, case) for suite in suites if suite["kind"] == "cve-pairs" for case in suite["cases"]]
+    scanned = {suite["name"]: {} for suite in suites if suite["kind"] == "cve-pairs"}
+    # spawn: a worker starts clean rather than forking a process that may hold threads or open connections.
+    with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn"),
+                             initializer=setup_worker, initargs=(workers,)) as pool:
+        for future in as_completed([pool.submit(scan_job, suite, case) for suite, case in jobs]):
+            name, case_id, result, lines = future.result()
+            for line in lines:
+                log(line)
+            if case_id is None:
+                scanned[name] = result
+            else:
+                scanned[name][case_id] = result
+    return scanned
+
+
+def run(names=None, log=print, workers=1):
+    """Score the named suites, or every suite except blind ones, which run only when named. With workers > 1 the
+    scans run in that many processes; scoring and the order of the results are the same."""
+    suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
+              if not ((names and suite["name"] not in names) or (not names and suite.get("blind")))]
+    scanned = scan_parallel(suites, log, workers) if workers > 1 else {}
     out = {}
     for suite in suites:
-        if (names and suite["name"] not in names) or (not names and suite.get("blind")):
-            continue
-        scored = run_suite(suite, log)
+        if suite["name"] not in scanned:
+            scored = run_suite(suite, log)
+        elif suite["kind"] == "cve-pairs":
+            # In the suite's order, as a sequential run writes them.
+            scored = score_scanned_pairs(suite, {c["id"]: scanned[suite["name"]][c["id"]] for c in suite["cases"]})
+        else:
+            root, issues = scanned[suite["name"]]
+            scored = score_scanned_suite(suite, Path(root), issues)
         result = {**scored, "suite": suite["name"], "commit": suite.get("commit", "per case"),
                   "scanned_at": datetime.now(UTC).isoformat(timespec="seconds"),
                   "overall": {mode: scored[mode]["overall"] for mode in MODES}}

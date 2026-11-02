@@ -14,11 +14,13 @@ its message, which names the helper a via/from/field finding went through.
 import collections
 import fnmatch
 import json
+import multiprocessing
 import os
 import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -43,7 +45,7 @@ ENTRY_MARK = "nothing in the project calls"
 
 
 def bench(suites):
-    out = benchmark.run(suites, log=lambda m: print(m) if "fail" in m else None)
+    out = benchmark.run(suites, log=lambda m: print(m) if "fail" in m else None, workers=benchmark.WORKERS)
     for name, r in out.items():
         print(name, "verdict", r["verdict"]["overall"], "review", r["review"]["overall"])
 
@@ -90,25 +92,34 @@ def project_files(root):
 
 
 def repos(args):
+    """Projects scanned in parallel (benchmark.WORKERS processes), printed in the order given."""
     mode = args[0] if args and args[0] in ("--via", "--entry", "--messages") else None
-    for arg in args[1:] if mode else args:
-        root = Path(arg).expanduser()
-        files = [f for f in project_files(root) if not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]
-        files = without_third_party(root, files, log=lambda message: print(f"-- note: {message}"))
-        start = time.time()
-        ctx = Context(root=root, files=files, semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
-        result = Semgrep().run(ctx)
-        found = result.findings
-        print(f"== {root.name}: {len(files)} files, {time.time() - start:.0f}s")
-        for note in result.notes:
-            print("-- note:", note)
-        for f in found:
-            if mode == "--entry":
-                keep = ENTRY_MARK in f.message
-            else:
-                keep = f.type == "vulnerability" and (mode != "--via" or "[via " in f.message)
-            if keep:
-                print("  ", f.path, f.line, f.rule.rsplit(".", 1)[-1], f.message[-40:] if mode else "")
+    roots = [str(Path(arg).expanduser()) for arg in (args[1:] if mode else args)]
+    workers = min(benchmark.WORKERS, len(roots) or 1)
+    with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn"),
+                             initializer=benchmark.setup_worker, initargs=(workers,)) as pool:
+        for lines in pool.map(scan_repo, roots, [mode] * len(roots)):
+            print("\n".join(lines))
+
+
+def scan_repo(root, mode):
+    """The lines repos() prints for one project. Its time is wall time, so it rises with the other scans running."""
+    root, lines = Path(root), []
+    files = [f for f in project_files(root) if not any(fnmatch.fnmatch(f, ex) for ex in DEFAULT_EXCLUSIONS)]
+    files = without_third_party(root, files, log=lambda message: lines.append(f"-- note: {message}"))
+    start = time.time()
+    ctx = Context(root=root, files=files, semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    result = Semgrep().run(ctx)
+    lines.append(f"== {root.name}: {len(files)} files, {time.time() - start:.0f}s")
+    lines += [f"-- note: {note}" for note in result.notes]
+    for f in result.findings:
+        if mode == "--entry":
+            keep = ENTRY_MARK in f.message
+        else:
+            keep = f.type == "vulnerability" and (mode != "--via" or "[via " in f.message)
+        if keep:
+            lines.append(f"   {f.path} {f.line} {f.rule.rsplit('.', 1)[-1]} {f.message[-40:] if mode else ''}")
+    return lines
 
 
 def owasp(categories):

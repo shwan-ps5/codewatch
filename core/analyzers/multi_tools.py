@@ -97,6 +97,13 @@ class Semgrep(Analyzer):
         # Own venv: semgrep pins dependencies (e.g. an old mcp) that conflict with codewatch's.
         return isolated_tool("semgrep") or super().binary()
 
+    def exec(self, args, ctx, ok_codes=(0,), stream="stdout", cwd=None):
+        # semgrep-core gives each of its workers an io_uring, whose memory counts against the user's locked-memory
+        # limit (8 MB by default): a few scans at once failed with "io_uring_queue_init: Cannot allocate memory".
+        # Plain POSIX I/O has no such limit.
+        os.environ.setdefault("EIO_BACKEND", "posix")
+        return super().exec(args, ctx, ok_codes, stream, cwd)
+
     def run(self, ctx):
         custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
         if not ctx.semgrep_config and not custom_rules:
@@ -107,14 +114,16 @@ class Semgrep(Analyzer):
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
             # The first round of pass_rules shares pass 1's first scan.
             signatures = self.signatures(ctx, targets)
-            self.first_rules = summaries_module.pass_rules(custom_rules, set(signatures))
+            js_functions = self.js_functions(ctx, targets)
+            self.first_rules = (summaries_module.pass_rules(custom_rules, set(signatures))
+                                + summaries_module.js_pass_rules(custom_rules, js_functions))
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
             passes = self.find_passes(ctx, custom_rules, (targets, originals, Path(work)), signatures)
             returners, fields = self.find_returners(
                 ctx, summaries_module.with_arguments(custom_rules, signatures, passes), targets, originals, Path(work))
             final = summaries_module.with_pass_through(
                 summaries_module.with_arguments(custom_rules, signatures, passes, summaries),
-                set(signatures), passes, summaries, returners)
+                {False: set(signatures), True: js_functions}, passes, summaries, returners)
             rules = (final + summaries_module.via_rules(final, summaries)
                      + summaries_module.from_rules(final, returners, summaries)
                      + summaries_module.field_variants(final, fields, summaries))
@@ -213,7 +222,10 @@ class Semgrep(Analyzer):
         return out
 
     def scan(self, ctx, configs, targets):
-        args = ["scan", *configs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
+        # Several scans at once (parallel benchmarks) share the CPUs: Semgrep's default, a job per CPU each,
+        # stretched every rule past its timeout and dropped findings without an error.
+        jobs = ["--jobs", os.environ["CODEWATCH_SEMGREP_JOBS"]] if os.environ.get("CODEWATCH_SEMGREP_JOBS") else []
+        args = ["scan", *configs, *jobs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
         data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
         # A timeout skips that rule on that file, silently unless it's reported.
         self.timeouts.update(e["path"] for e in data.get("errors", []) if e.get("type") == "Timeout" and e.get("path"))
@@ -260,11 +272,23 @@ class Semgrep(Analyzer):
         return {name: defs for name, defs in summaries_module.python_signatures(
             read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})).items() if name in calls}
 
+    @staticmethod
+    def js_functions(ctx, targets):
+        """js_functions whose result is assigned or returned in a file that reads the request, and not also a Python
+        function's name (pass-through rounds after the first replace Python's answers by name). Asking about every
+        assigned call made a large app's scan half as long again (actual)."""
+        texts = [read_source(ctx.root / t) or "" for t in targets if Path(t).suffix in JS]
+        handling = [text for text in texts if summaries_module.JS_REQUEST_RE.search(text)]
+        python = {name for text in (read_source(ctx.root / t) or "" for t in targets if t.endswith(".py"))
+                  for name in summaries_module.python_functions(text)}
+        return summaries_module.js_functions(texts) & summaries_module.assigned_calls(handling) - python
+
     def find_passes(self, ctx, custom_rules, copies, signatures):
         """Which parameters of signatures' functions can be returned (pass_rules), from the first round's results
         (self.first_found). Later rounds clean the arguments the last one found aren't handed back, asking again only
         about the functions that call one whose answer changed. copies: (targets, originals, work)."""
         targets, originals, work = copies
+        js_ids = {rule["id"] for rule in custom_rules if summaries_module.is_js(rule)}
         texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
         passes = summaries_module.parse_passes([(c, p, line, m.strip()) for c, p, line, m in self.first_found])
         # Before the first round every argument counted as handed back.
@@ -284,7 +308,7 @@ class Semgrep(Analyzer):
             found = summaries_module.parse_passes([
                 (item["check_id"], ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
                  item["extra"]["message"].strip()) for item in data["results"]])
-            kept = {rule: {e for e in entries if e[0] not in asked} for rule, entries in passes.items()}
+            kept = {rule: {e for e in entries if rule in js_ids or e[0] not in asked} for rule, entries in passes.items()}
             found = summaries_module.merge(kept, found) or kept
             changed = {e[0] for rule in set(found) | set(passes)
                        for e in found.get(rule, set()) ^ passes.get(rule, set())}

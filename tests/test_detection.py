@@ -2497,3 +2497,55 @@ def test_a_named_check_that_ends_the_request_guards_what_follows(tmp_path):
         "        abort(400)\n"
         "    return redirect(nxt)\n")})
     assert found == {("app.py", 23, "open-redirect"), ("app.py", 32, "open-redirect")}
+
+
+def test_a_javascript_helper_that_never_returns_its_argument_cleans_its_result(tmp_path):
+    """actual (sync server): `const err = requireFileAccess(file, userId); res.send(err)` sends a fixed string or
+    nothing. A helper that hands its argument back (also as an arrow's expression body) still taints, and so does a
+    method called on another object."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.js": (
+        "const express = require('express');\n"
+        'const app = express();\n'
+        '\n'
+        'function requireAccess(file, user) {\n'
+        '  if (file.owner === user) {\n'
+        '    return null;\n'
+        '  }\n'
+        "  return 'file-access-not-allowed';\n"
+        '}\n'
+        '\n'
+        'function label(name) {\n'
+        "  return 'File ' + name;\n"
+        '}\n'
+        '\n'
+        'const shout = (text) => text.toUpperCase();\n'
+        '\n'
+        'class Files {\n'
+        '  check(name) {\n'
+        "    return name.length > 3 ? 'ok' : 'short';\n"
+        '  }\n'
+        '}\n'
+        '\n'
+        "app.get('/a', (req, res) => {\n"
+        '  const error = requireAccess(req.query.file, 1);\n'
+        '  res.send(error);\n'
+        '});\n'
+        '\n'
+        "app.get('/b', (req, res) => {\n"
+        '  const title = label(req.query.name);\n'
+        '  res.send(title);\n'
+        '});\n'
+        '\n'
+        "app.get('/c', (req, res) => {\n"
+        '  const loud = shout(req.query.name);\n'
+        '  res.send(loud);\n'
+        '});\n'
+        '\n'
+        "app.get('/d', (req, res) => {\n"
+        '  const verdict = new Files().check(req.query.name);\n'
+        '  res.send(verdict);\n'
+        '});\n'
+    )})
+    assert found == {("app.js", 30, "xss"), ("app.js", 35, "xss"), ("app.js", 40, "xss")}

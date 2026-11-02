@@ -587,7 +587,7 @@ PASS_MAX_ROUNDS = 4
 
 # What with_pass_through's sanitizer matches: a variable assigned from a call, or a call returned (a superset; a
 # miss only means a function is never treated as clean).
-ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:(?:self|cls)\.)?(\w+)\s*\(")
+ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:(?:self|cls|this)\.)?(\w+)\s*\(")
 
 
 def assigned_calls(texts):
@@ -633,6 +633,82 @@ def pass_rules(rules, names, signatures=None, passes=None):
                     "pattern-sources": json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER")),
                     "pattern-sinks": copy.deepcopy(sinks)})
     return out
+
+
+# Every shape of JS function the pass rule sees a parameter and a return of. Not an object literal's properties
+# (`{ onSave: (a) => a }`): matching every object literal doubled the scan's time (actual).
+JS_PASS_SOURCES = [{"patterns": [{"pattern-either": [{"pattern-inside": p} for p in (
+    "function $OWNER(..., $PARAM, ...) { ... }",
+    "const $OWNER = (..., $PARAM, ...) => $BODY",
+    "const $OWNER = function (..., $PARAM, ...) { ... }",
+    "$OWNER(..., $PARAM, ...) { ... }",
+    "$OBJ.$OWNER = (..., $PARAM, ...) => $BODY",
+    "$OBJ.$OWNER = function (..., $PARAM, ...) { ... }",
+)]}, {"pattern": "$PARAM"}]}]
+JS_NOT_HANDLERS = [{"pattern-not-inside": p} for p in (
+    "function $FUNC(..., next) { ... }", "const $FUNC = (..., next) => { ... }", "$FUNC(..., next) { ... }")]
+JS_PASS_SINKS = [
+    {"patterns": [{"pattern-either": [{"pattern-inside": p} for p in (
+        "function $FUNC(...) { ... }",
+        "const $FUNC = (...) => { ... }",
+        "const $FUNC = function (...) { ... }",
+        "$FUNC(...) { ... }",
+        "$OBJ.$FUNC = (...) => { ... }",
+        "$OBJ.$FUNC = function (...) { ... }",
+    )]}, *JS_NOT_HANDLERS, {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
+    # An arrow's expression body is what it returns.
+    {"patterns": [{"pattern-either": [{"pattern": p} for p in (
+        "const $FUNC = (...) => $VALUE", "$OBJ.$FUNC = (...) => $VALUE")]},
+        *({"pattern-not": p} for p in ("const $FUNC = (...) => { ... }", "$OBJ.$FUNC = (...) => { ... }")),
+        {"focus-metavariable": "$VALUE"}]},
+]
+JS_KEYWORDS = {"if", "for", "while", "switch", "catch", "function", "return", "with", "constructor", "super"}
+# Function definitions in the shapes JS_PASS_SOURCES covers (a miss only means a function is never clean)...
+JS_DEFINED_RE = re.compile(
+    r"\bfunction\s*\*?\s*(\w+)\s*\("
+    r"|\b(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*(?::[^=;{]+)?=>|\w+\s*=>)"
+    r"|^[ \t]*(?:(?:public|private|protected|static|async|override|get|set)\s+)*(\w+)\s*(?:<[^>()]*>)?\s*\([^()]*\)"
+    r"\s*(?::[^{;=]+)?\{[ \t]*$", re.MULTILINE)
+# ...and in shapes it doesn't: a class field (`handle = (a) => a`), a plain reassignment or an object literal's
+# property. A name defined either way is never clean.
+JS_UNCOVERED_RE = re.compile(
+    r"^[ \t]*(?:(?:public|private|protected|static|readonly|override)\s+)*(\w+)\s*(?:\??:[^=;]+)?=\s*(?:async\s+)?"
+    r"(?:function\b|\(|\w+\s*=>)"
+    r"|\b(\w+)\s*:\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*(?::[^=;{]+)?=>|\w+\s*=>)", re.MULTILINE)
+
+
+# A file that reads the request: Express/Koa handlers and Nest's parameter decorators.
+JS_REQUEST_RE = re.compile(r"\b(req|request|ctx)\.|@(Body|Query|Param|Req|Headers)\(")
+
+
+def js_functions(texts):
+    """Names of the JS functions pass-through can answer for: defined only in the shapes JS_PASS_SOURCES covers."""
+    defined, uncovered = set(), set()
+    for text in texts:
+        defined |= {name for groups in JS_DEFINED_RE.findall(text) for name in groups if name}
+        uncovered |= {name for groups in JS_UNCOVERED_RE.findall(text) for name in groups if name}
+    return defined - uncovered - JS_KEYWORDS - HANDLER_NAMES
+
+
+def js_pass_rules(rules, names):
+    """pass_rules for JS taint rules: which functions in names can return a parameter. Per function, not per
+    parameter (no argument sanitizers)."""
+    js = [rule for rule in taint_rules(rules) if is_js(rule)]
+    if not names or not js:
+        return []
+    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in js]
+    common = [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])]
+    sinks = [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": "$FUNC", "regex": regex}}]}
+             for sink in JS_PASS_SINKS for regex in name_regexes(names)]
+    groups = {}
+    for rule in js:
+        variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
+        variant["pattern-sanitizers"] = copy.deepcopy(common)
+        groups.setdefault(json.dumps(variant, sort_keys=True), (variant, []))[1].append(rule["id"])
+    return [{**copy.deepcopy(variant), "id": ids[0] + PASSES_SUFFIX, "severity": "INFO",
+             "message": "$FUNC|$OWNER|$PARAM|" + ",".join(ids),
+             "pattern-sources": copy.deepcopy(JS_PASS_SOURCES), "pattern-sinks": copy.deepcopy(sinks)}
+            for variant, ids in groups.values()]
 
 
 ANY_PARAMETER = "*"
@@ -783,22 +859,25 @@ def with_arguments(rules, signatures, passes, summaries=None):
 
 
 def with_pass_through(rules, functions, passes, summaries, returners):
-    """Each Python taint rule plus a sanitizer for the result of calls to functions that can't return a
-    parameter: not found by pass_rules, not summarised (a call to one is a via-sink) and not a returner."""
+    """Each taint rule plus a sanitizer for the result of calls to functions that can't return a parameter: not
+    found by pass_rules (js_pass_rules for JS), not summarised (a call to one is a via-sink) and not a returner.
+    functions: {is_js: names asked about}. Only a plain call or one on self/cls/this: `obj.check(x)` may be anyone's."""
     out = []
     for rule in rules:
-        if rule not in taint_rules([rule]) or is_js(rule):
+        if rule not in taint_rules([rule]):
             out.append(rule)
             continue
         rule_id = rule["id"]
-        clean = sorted(set(functions) - set(passing_parameters(passes.get(rule_id, ())))
+        clean = sorted(set(functions.get(is_js(rule), ()))
+                       - set(passing_parameters(passes.get(rule_id, ())))
                        - {func for func, *_ in summaries.get(rule_id, ())}
                        - {func for func, _path in returners.get(rule_id, ())}
                        - HANDLER_NAMES)
         if not clean:
             out.append(rule)
             continue
-        calls = [f"{a}{r}{PASS_THROUGH_MARK}(...)" for a in ("", "await ") for r in ("", "self.", "cls.")]
+        receivers, end = (("", "this."), ";") if is_js(rule) else (("", "self.", "cls."), "")
+        calls = [f"{a}{r}{PASS_THROUGH_MARK}(...){end}" for a in ("", "await ") for r in receivers]
         sanitizers = [{"patterns": [
             {"pattern-either": [{"pattern-inside": f"$RESULT = {c}\n...\n"} for c in calls]},
             {"pattern": "$RESULT"},

@@ -12,6 +12,7 @@ from core.analyzers.summaries import (
     added,
     argument_sanitizers,
     assigned_calls,
+    js_functions,
     keyword_summarised,
     parse_passes,
     pass_rules,
@@ -522,3 +523,21 @@ def test_deeper_passes_use_only_what_the_last_pass_added():
     deeper, = returner_rules([rule, other], {"r": {("get_name", "a.py")}}, base=False)
     assert deeper["id"].startswith("r") and {"pattern": "request.args"} not in deeper["pattern-sources"]
     assert len(returner_rules([rule, other], {"r": {("get_name", "a.py")}})) == 2
+
+
+def test_only_javascript_functions_the_pass_rule_can_see_into_can_be_clean():
+    text = (
+        "function plain(a) { return a; }\n"
+        "export async function exported(a) { return a; }\n"
+        "const arrow = (a: string): string => a;\n"
+        "const block = async (a) => {\n  return a;\n};\n"
+        "const handlers = { onUpload: (a) => a, onSave: function (a) { return a; } };\n"
+        "class Files {\n"
+        "  async method(a: File): Promise<File> {\n    return a;\n  }\n"
+        "  field = (a) => a;\n"
+        "  constructor(a) {\n    super(a);\n  }\n"
+        "}\n"
+        "let reassigned = (a) => a;\nreassigned = (a) => a.x;\n"
+        "const typed: Handler = (a) => a;\n"
+        "if (ready) {\n  run();\n}\n")
+    assert js_functions([text]) == {"plain", "exported", "arrow", "block", "method"}
