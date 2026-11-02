@@ -28,6 +28,14 @@ rules:
           - metavariable-regex:
               metavariable: $FIELD
               regex: '^(body|query|params|cookies|headers|path|url|originalUrl|baseUrl|hostname|files|file)$'
+          # Where multer (default storage) put the upload is the server's choice, not the client's: req.file.path,
+          # req.file.filename, req.files[i].path. originalname is the client's and stays request data.
+          - pattern-not-inside: $REQ.file.path
+          - pattern-not-inside: $REQ.file.filename
+          - pattern-not-inside: $REQ.files[$I].path
+          - pattern-not-inside: $REQ.files[$I].filename
+          - pattern-not-inside: $REQ.files.$NAME[$I].path
+          - pattern-not-inside: $REQ.files.$NAME[$I].filename
       # NocoBase resource actions (Koa): ctx.action.params holds the request's filter, values and query.
       # Added for GHSA-p849-8hwh-84j9 (cve-pairs-javascript).
       - &src-resource-action-params
@@ -354,6 +362,99 @@ rules:
                       ...
                   - metavariable-regex: {metavariable: $METHOD, regex: ^(exec|execSync)$}
           - focus-metavariable: $CMD
+      # node:child_process, however it's bound. Semgrep resolves require('child_process') and its imports to
+      # child_process.exec, which javascript-taint.yml covers, but not the `node:` specifier.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $CP = require("node:child_process");
+                  ...
+              - pattern-inside: |
+                  import * as $CP from "node:child_process";
+                  ...
+              - pattern-inside: |
+                  import $CP from "node:child_process";
+                  ...
+          - pattern: $CP.$EXEC($CMD, ...)
+          - metavariable-regex: {metavariable: $EXEC, regex: '^(exec|execSync)$'}
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $CP = require("node:child_process");
+                  ...
+              - pattern-inside: |
+                  import * as $CP from "node:child_process";
+                  ...
+              - pattern-inside: |
+                  import $CP from "node:child_process";
+                  ...
+          - pattern-either:
+              - pattern: '$CP.$SPAWN($CMD, ..., {..., shell: true, ...})'
+              - pattern: '$CP.$SPAWN($PROG, [..., $CMD, ...], {..., shell: true, ...})'
+              - pattern: '$CP.$SPAWN("=~/^(\/bin\/|\/usr\/bin\/)?(sh|bash|zsh|dash|cmd|cmd\.exe|powershell)$/", [..., $CMD, ...], ...)'
+          - metavariable-regex: {metavariable: $SPAWN, regex: '^(spawn|spawnSync|execFile|execFileSync)$'}
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern: require("node:child_process").$EXEC($CMD, ...)
+          - metavariable-regex: {metavariable: $EXEC, regex: '^(exec|execSync)$'}
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { $EXEC } from "node:child_process";
+                  ...
+              - pattern-inside: |
+                  const { $EXEC } = require("node:child_process");
+                  ...
+          - pattern: $EXEC($CMD, ...)
+          - metavariable-regex: {metavariable: $EXEC, regex: '^(exec|execSync)$'}
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { $SPAWN } from "node:child_process";
+                  ...
+              - pattern-inside: |
+                  const { $SPAWN } = require("node:child_process");
+                  ...
+          - pattern-either:
+              - pattern: '$SPAWN($CMD, ..., {..., shell: true, ...})'
+              - pattern: '$SPAWN($PROG, [..., $CMD, ...], {..., shell: true, ...})'
+              - pattern: '$SPAWN("=~/^(\/bin\/|\/usr\/bin\/)?(sh|bash|zsh|dash|cmd|cmd\.exe|powershell)$/", [..., $CMD, ...], ...)'
+          - metavariable-regex: {metavariable: $SPAWN, regex: '^(spawn|spawnSync|execFile|execFileSync)$'}
+          - focus-metavariable: $CMD
+      # const run = util.promisify(exec); await run(cmd)
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $RUN = util.promisify($EXEC);
+                  ...
+              - pattern-inside: |
+                  $RUN = promisify($EXEC);
+                  ...
+          - pattern: $RUN($CMD, ...)
+          - metavariable-pattern:
+              metavariable: $EXEC
+              pattern-either:
+                - pattern: exec
+                - pattern: $CP.exec
+                - pattern: require("$M").exec
+          - focus-metavariable: $CMD
+      # execa runs the program directly unless told to use a shell; execaCommand splits a whole command line.
+      - patterns:
+          - pattern-either:
+              - pattern: '$EXECA($CMD, ..., {..., shell: true, ...})'
+              - pattern: '$EXECA($PROG, [..., $CMD, ...], {..., shell: true, ...})'
+              - pattern: '$EXECA("=~/^(\/bin\/|\/usr\/bin\/)?(sh|bash|zsh|dash|cmd|cmd\.exe|powershell)$/", [..., $CMD, ...], ...)'
+          - metavariable-regex: {metavariable: $EXECA, regex: '^(execa|execaSync)$'}
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern: execaCommand($CMD, ...)
+              - pattern: execaCommandSync($CMD, ...)
+              - pattern: execa.commandSync($CMD, ...)
+          - focus-metavariable: $CMD
 
   - id: codewatch.js.path-traversal
     mode: taint
@@ -415,9 +516,9 @@ rules:
                       - pattern: fs.$FN($PATH, ...)
                       - pattern: fs.promises.$FN($PATH, ...)
                       - pattern: fsPromises.$FN($PATH, ...)
-                  - metavariable-regex:
+                  - metavariable-regex: &js-file-functions
                       metavariable: $FN
-                      regex: '^(readFile|readFileSync|createReadStream|writeFile|writeFileSync|createWriteStream|appendFile|appendFileSync|unlink|unlinkSync|rm|rmSync|readdir|readdirSync|open|openSync|copyFile|copyFileSync|rename|renameSync)$'
+                      regex: '^(readFile|readFileSync|createReadStream|writeFile|writeFileSync|createWriteStream|appendFile|appendFileSync|unlink|unlinkSync|rm|rmSync|readdir|readdirSync|open|openSync|copyFile|copyFileSync|rename|renameSync|rmdir|rmdirSync|cp|cpSync|opendir|opendirSync|truncate|truncateSync|symlink|symlinkSync|remove|removeSync|outputFile|outputFileSync|outputJson|outputJsonSync|outputJSON|readJson|readJsonSync|readJSON|writeJson|writeJsonSync|writeJSON|copy|copySync|move|moveSync)$'
               - patterns:
                   - pattern: $RES.sendFile($PATH)
                   - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
@@ -426,6 +527,62 @@ rules:
                   - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
               # express-fileupload: req.files.upload.mv(path)
               - pattern: $FILE.mv($PATH, ...)
+          - focus-metavariable: $PATH
+      # A file module under any name, or one Semgrep doesn't resolve to fs: const fsp = require('fs/promises'),
+      # import fse from 'fs-extra', node:fs, node:fs/promises.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $FS = require("$MOD");
+                  ...
+              - pattern-inside: |
+                  import * as $FS from "$MOD";
+                  ...
+              - pattern-inside: |
+                  import $FS from "$MOD";
+                  ...
+          - pattern: $FS.$FN($PATH, ...)
+          - metavariable-regex: &js-file-modules {metavariable: $MOD, regex: '^(node:)?fs(/promises)?$|^(fs-extra|graceful-fs)$'}
+          - metavariable-regex: {metavariable: $FS, regex: '^[A-Za-z_$][\w$]*$'}
+          # Semgrep also binds a destructured name to itself (const { readFile } = require('fs') as readFile.readFile).
+          - metavariable-comparison: {comparison: str($FS) != str($FN)}
+          - metavariable-regex: *js-file-functions
+          - focus-metavariable: $PATH
+      # require('fs').createReadStream(p), inline.
+      - patterns:
+          - pattern: require("$MOD").$FN($PATH, ...)
+          - metavariable-regex: *js-file-modules
+          - metavariable-regex: *js-file-functions
+          - focus-metavariable: $PATH
+      # import { readFile } from 'fs/promises'
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { $FN } from "$MOD";
+                  ...
+              - pattern-inside: |
+                  const { $FN } = require("$MOD");
+                  ...
+          - pattern: $FN($PATH, ...)
+          - metavariable-regex: *js-file-modules
+          - metavariable-regex: *js-file-functions
+          - focus-metavariable: $PATH
+      # The destination of a move or copy: fs.rename(upload.path, path.join(dir, req.body.name)).
+      - patterns:
+          - pattern-either:
+              - pattern: $FS.$FN($SRC, $PATH, ...)
+              - pattern: $FN($SRC, $PATH, ...)
+          - metavariable-regex: {metavariable: $FN, regex: '^(rename|renameSync|copyFile|copyFileSync|cp|cpSync|copy|copySync|move|moveSync|symlink|symlinkSync)$'}
+          - metavariable-regex: {metavariable: $FS, regex: '^(fs|fsPromises|fsp|fse|fsExtra|fs\.promises)$'}
+          - focus-metavariable: $PATH
+      # res.sendFile(p, options) without a root, or with a callback. With root, send rejects "..".
+      - patterns:
+          - pattern-either:
+              - pattern: '$RES.sendFile($PATH, {...}, ...)'
+              - pattern: '$RES.sendFile($PATH, function (...) { ... })'
+              - pattern: '$RES.sendFile($PATH, (...) => $BODY)'
+          - pattern-not: '$RES.sendFile($PATH, {..., root: $ROOT, ...}, ...)'
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply)$'}
           - focus-metavariable: $PATH
 
   - id: codewatch.js.xss
@@ -905,6 +1062,68 @@ rules:
               - pattern: '$HTTP.$CALL({..., url: $URL, ...}, ...)'
           - metavariable-regex: {metavariable: $HTTP, regex: '^https?$'}
           - metavariable-regex: {metavariable: $CALL, regex: '^(get|request)$'}
+          - focus-metavariable: $URL
+      # Clients called directly, which javascript-taint.yml only matches through a method (superagent.get(url),
+      # needle.get(url)): superagent(url), needle('get', url), ky(url).
+      - patterns:
+          - pattern-either:
+              - pattern: superagent($URL, ...)
+              - pattern: superagent($METHOD, $URL, ...)
+              - pattern: needle($METHOD, $URL, ...)
+              - pattern: needle.request($METHOD, $URL, ...)
+              - pattern: ky($URL, ...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: needle.$VERB($URL, ...)
+                      - pattern: ky.$VERB($URL, ...)
+                  - metavariable-regex: {metavariable: $VERB, regex: '^(post|put|patch|delete|head)$'}
+              - patterns:
+                  - pattern: ky.get($URL, ...)
+          - pattern-not: superagent("$LITERAL", $URL, ...)
+          - focus-metavariable: $URL
+      # undici through its module object, or a name imported under another name: undici.request(url),
+      # import { fetch as ufetch } from 'undici'. javascript-taint.yml's fetch(url) and request(url) cover the
+      # plain names.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $U = require("undici");
+                  ...
+              - pattern-inside: |
+                  import * as $U from "undici";
+                  ...
+              - pattern-inside: |
+                  import $U from "undici";
+                  ...
+          - pattern: $U.$FN($URL, ...)
+          - metavariable-regex: {metavariable: $FN, regex: '^(request|fetch|stream|pipeline|connect)$'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern: require("undici").$FN($URL, ...)
+          - metavariable-regex: {metavariable: $FN, regex: '^(request|fetch|stream|pipeline|connect)$'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { $IMP as $FN } from "undici";
+                  ...
+              - pattern-inside: |
+                  const { $IMP: $FN } = require("undici");
+                  ...
+          - pattern: $FN($URL, ...)
+          - metavariable-regex: {metavariable: $IMP, regex: '^(request|fetch|stream|pipeline|connect)$'}
+          - metavariable-regex: {metavariable: $FN, regex: '^(?!(request|fetch)$)'}
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { $FN } from "undici";
+                  ...
+              - pattern-inside: |
+                  const { $FN } = require("undici");
+                  ...
+          - pattern: $FN($URL, ...)
+          - metavariable-regex: {metavariable: $FN, regex: '^(stream|pipeline|connect)$'}
           - focus-metavariable: $URL
 
   - id: codewatch.js.unsafe-deserialization

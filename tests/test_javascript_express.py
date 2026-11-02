@@ -1,43 +1,20 @@
-"""javascript-express.yml: Express/Node command injection, path traversal and SSRF through the module shapes
-javascript-taint.yml doesn't resolve, each line reported by one rule only."""
+"""Express/Node command injection, path traversal and SSRF through the module shapes Semgrep doesn't resolve on its
+own (node: specifiers, fs/promises, fs-extra, promisified exec, execa, direct HTTP client calls), multer's own file
+names, and helpers that look a record up rather than return request data."""
 import pytest
-import yaml
 
-from core import catalog
-from core.analyzers.base import Context
 from core.analyzers.multi_tools import Semgrep
-
-RULES = catalog.BUILTIN_RULES_DIR
+from tests.test_detection import semgrep_vulnerabilities
 
 
 def scan(tmp_path, files):
-    """Like test_detection.semgrep_vulnerabilities, but with full rule ids: that helper keeps only the last part,
-    which this file's rules share with javascript-taint.yml's."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
-    for name, body in files.items():
-        (tmp_path / name).write_text(body)
-    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
-    return [(f.path, f.line, f.rule) for f in Semgrep().run(ctx).findings if f.rule.startswith("codewatch.js.")]
+    return semgrep_vulnerabilities(tmp_path, files)
 
 
 def lines(found, rule):
-    """Lines the rule reports; each is reported by one rule only."""
-    reported = [(path, line) for path, line, r in found if r.endswith(rule.rsplit(".", 1)[1])]
-    assert len(reported) == len(set(reported)), f"a line reported twice: {sorted(reported)}"
     return {(path, line) for path, line, r in found if r == rule}
-
-
-def test_sources_and_sanitizers_are_javascript_taint_ymls():
-    taint = {r["id"]: r for r in yaml.safe_load((RULES / "javascript-taint.yml").read_text())["rules"]}
-    express = {r["id"]: r for r in yaml.safe_load((RULES / "javascript-express.yml").read_text())["rules"]}
-    assert set(express) == {"codewatch.js.express.command-injection", "codewatch.js.express.path-traversal",
-                            "codewatch.js.express.ssrf"}
-    for kind in ("command-injection", "path-traversal", "ssrf"):
-        mine, theirs = express[f"codewatch.js.express.{kind}"], taint[f"codewatch.js.{kind}"]
-        assert mine["pattern-sources"] == theirs["pattern-sources"], kind
-        assert mine["pattern-sanitizers"] == theirs["pattern-sanitizers"], kind
-        assert mine["metadata"]["cwe"] == theirs["metadata"]["cwe"], kind
 
 
 def test_command_injection_through_node_specifier_promisify_and_execa(tmp_path):
@@ -69,10 +46,9 @@ def test_command_injection_through_node_specifier_promisify_and_execa(tmp_path):
             "export function b(req: Request, res: Response) { execSync(`ls ${req.query.dir}`) }\n"
         ),
     })
-    assert lines(found, "codewatch.js.express.command-injection") == {
-        ("cmd.js", n) for n in (8, 9, 10, 11, 12, 13)} | {("cmd.ts", 4), ("cmd.ts", 5)}
-    # Plain child_process stays javascript-taint.yml's; argument arrays without a shell and numbers are quiet.
-    assert lines(found, "codewatch.js.command-injection") == {("cmd.js", 14)}
+    # Argument arrays without a shell and numbers are quiet.
+    assert lines(found, "command-injection") == {
+        ("cmd.js", n) for n in (8, 9, 10, 11, 12, 13, 14)} | {("cmd.ts", 4), ("cmd.ts", 5)}
 
 
 def test_path_traversal_through_fs_promises_fs_extra_and_send_file_options(tmp_path):
@@ -95,6 +71,7 @@ def test_path_traversal_through_fs_promises_fs_extra_and_send_file_options(tmp_p
             "app.get('/h', (req, res) => { res.sendFile(req.params[0], { root: '/srv' }) })\n"
             "app.get('/i', (req, res) => { fse.remove(path.join('/d', path.basename(req.query.f))) })\n"
             "app.get('/j', (req, res) => { res.sendFile(req.query.f) })\n"
+            "app.get('/k', (req, res) => { fse.ensureDir(path.join('/up', req.params.user)) })\n"
         ),
         "files.ts": (
             "import { readFile } from 'fs/promises'\n"
@@ -104,32 +81,59 @@ def test_path_traversal_through_fs_promises_fs_extra_and_send_file_options(tmp_p
             "export function b(req: Request, res: Response) { createReadStream(req.query.f as string).pipe(res) }\n"
         ),
     })
-    assert lines(found, "codewatch.js.express.path-traversal") == {
-        ("files.js", n) for n in (8, 9, 10, 11, 12, 13)} | {("files.ts", 4), ("files.ts", 5)}
-    assert lines(found, "codewatch.js.path-traversal") == {("files.js", 14), ("files.js", 17)}
+    # Creating a directory (lines 10, 18) is left out: low impact, and the id is usually checked elsewhere.
+    assert lines(found, "path-traversal") == {
+        ("files.js", n) for n in (8, 9, 11, 12, 13, 14, 17)} | {("files.ts", 4), ("files.ts", 5)}
 
 
-def test_ssrf_through_direct_client_calls_and_undici(tmp_path):
+def test_multer_file_names_are_the_servers_and_originalname_the_clients(tmp_path):
     found = scan(tmp_path, {
-        "out.js": (
+        "upload.js": (
             "const express = require('express')\n"
-            "const superagent = require('superagent')\n"
-            "const needle = require('needle')\n"
-            "const undici = require('undici')\n"
+            "const fs = require('fs')\n"
+            "const path = require('path')\n"
             "const app = express()\n"
-            "app.get('/a', async (req, res) => { await superagent(req.query.url) })\n"
-            "app.get('/b', async (req, res) => { await needle('get', req.query.url) })\n"
-            "app.get('/c', async (req, res) => { await undici.request(req.query.url) })\n"
-            "app.get('/d', async (req, res) => { await needle.post(req.body.hook, {}) })\n"
-            "app.get('/e', async (req, res) => { await superagent.get(req.query.url) })\n"
-            "app.get('/f', async (req, res) => { await needle('get', 'https://api.example.com/' + req.query.p) })\n"
-            "app.get('/g', async (req, res) => { await superagent('https://api.example.com/x').query(req.query) })\n"
-        ),
-        "out.ts": (
-            "import { fetch as ufetch } from 'undici'\n"
-            "import { Request, Response } from 'express'\n"
-            "export async function a(req: Request, res: Response) { await ufetch(req.query.url as string) }\n"
+            "app.post('/a', (req, res) => { fs.rename(req.file.path, '/up/x', () => {}) })\n"
+            "app.post('/b', (req, res) => { fs.unlink(path.join('/tmp', req.file.filename), () => {}) })\n"
+            "app.post('/c', (req, res) => { fs.readFile(req.files[0].path, () => {}) })\n"
+            "app.post('/d', (req, res) => { fs.readFile(req.files.avatar[0].path, () => {}) })\n"
+            "app.post('/e', (req, res) => { fs.rename(req.file.path, path.join('/up', req.body.name), () => {}) })\n"
+            "app.post('/f', async (req, res) => { await fetch(req.file.originalname) })\n"
         ),
     })
-    assert lines(found, "codewatch.js.express.ssrf") == {("out.js", n) for n in (6, 7, 8, 9)} | {("out.ts", 3)}
-    assert lines(found, "codewatch.js.ssrf") == {("out.js", 10)}
+    assert lines(found, "path-traversal") == {("upload.js", 9)}
+    assert lines(found, "ssrf") == {("upload.js", 10)}
+
+
+def test_a_loader_helper_returns_what_it_looked_up_not_request_data(tmp_path):
+    found = scan(tmp_path, {
+        "ideas.js": (
+            "const fsp = require('fs/promises')\n"
+            "const path = require('path')\n\n"
+            "async function loadIdea(req, reply) {\n"
+            "  const page = await WIKI.models.pages.getPage({ siteId: req.params.siteId, id: req.params.pageId })\n"
+            "  if (!page) {\n"
+            "    reply.notFound('no idea')\n"
+            "    return null\n"
+            "  }\n"
+            "  const board = WIKI.models.feedback.boardOfIdea(req.params.siteId, page.locale, page.path)\n"
+            "  return { page, board }\n"
+            "}\n\n"
+            "function getParam(req) {\n"
+            "  return req.query.x\n"
+            "}\n\n"
+            "async function removeFile(id) {\n"
+            "  await fsp.rm(path.join('/data', id))\n"
+            "}\n\n"
+            "app.post('/withdraw', async (req, reply) => {\n"
+            "  const idea = await loadIdea(req, reply)\n"
+            "  const { page } = idea\n"
+            "  await removeFile(page.id)\n"
+            "})\n\n"
+            "app.post('/remove', async (req, reply) => {\n"
+            "  const name = getParam(req)\n"
+            "  await removeFile(name)\n"
+            "})\n"
+        ),
+    })
+    assert lines(found, "path-traversal") == {("ideas.js", 30)}

@@ -121,6 +121,21 @@ LOOKUP_SANITIZER = {"patterns": [
         "|(.*\\.)?(get_object_or_404|get_list_or_404|first_or_404|get_or_404|find\\w*|load\\w*|fetch\\w*"
         "|lookup\\w*|decode\\w*|verify\\w*|authenticate\\w*|get_user\\w*|get_current_user\\w*))$")}},
 ]}
+# The same in JavaScript's names: a camelCase loader (WIKI.models.pages.getPage({ id }), Repo.findOne(...)) other
+# than one named for request data (getQuery, getParam), or any method of a model or store
+# (WIKI.models.feedback.boardOfIdea(...), db.users.byId(...)). So wiki.js's loadIdea(req, reply), which returns the
+# page and board it looked up, isn't a returner of request data, while getParam(req) { return req.query.x } is.
+JS_LOOKUP_SANITIZER = {"patterns": [
+    {"pattern-either": [{"pattern": "$F(...)"}, {"pattern": "await $F(...)"}]},
+    {"metavariable-regex": {"metavariable": "$F", "regex": (
+        "(?s)^(?!(req|request|ctx|ctx\\.request|context\\.req|reply|res|response)\\.)"
+        "(([\\w$]+\\.)*_?(get|fetch|load|find|lookup)(?!(Json|Data|Params?|Args?|Query|Queries|Headers?|Cookies?|Body"
+        "|Form|Fields?|Values?|Inputs?|Text|Str|String|Url|Uri|Path|File|Filename|Name|Key|Id|Var|Env|Config|Setting"
+        "|Content|Request|Req|Payload|Redirect|Next|Return|Target|Dest|Destination|Location|Callback|Referr?er|Host"
+        "|Origin)([A-Z]|$))[A-Z][\\w$]*"
+        "|([\\w$]+\\.)*(models?|db|database|repo|repository|repositories|store|collection|collections|prisma)"
+        "(\\.[\\w$]+){1,2})$")}},
+]}
 
 
 def taint_rules(rules):
@@ -447,7 +462,8 @@ def returner_rules(rules, returners=None, base=True):
         variant["id"] = rule["id"] + RETURNS_SUFFIX
         variant["message"] = "$FUNC"
         variant["pattern-sources"] = (rule["pattern-sources"] if base else []) + from_sources(found, is_js(rule))
-        variant["pattern-sanitizers"] = [*without_lookup_result(rule), copy.deepcopy(LOOKUP_SANITIZER)]
+        lookup = JS_LOOKUP_SANITIZER if is_js(rule) else LOOKUP_SANITIZER
+        variant["pattern-sanitizers"] = [*without_lookup_result(rule), copy.deepcopy(lookup)]
         variant["pattern-sinks"] = copy.deepcopy(JS_RETURN_SINKS if is_js(rule) else PYTHON_RETURN_SINKS)
         out.append(variant)
     return out
