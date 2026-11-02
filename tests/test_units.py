@@ -10,10 +10,12 @@ from core.analyzers.multi_tools import added_names, mentioning
 from core.analyzers.summaries import (
     NAME_BATCH,
     added,
+    argument_sanitizers,
     assigned_calls,
     keyword_summarised,
     parse_passes,
     pass_rules,
+    python_signatures,
     returner_rules,
     split_keyword,
     summary_rules,
@@ -450,8 +452,9 @@ def test_semgrep_timeouts_are_reported_not_lost(monkeypatch, tmp_path):
 
 
 def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
-    source = "x = build(a)\ny = await self.fetch(b)\nz = cls.make (c)\nlog(d)\nif a == check(e):\n    pass\n"
-    assert assigned_calls([source]) >= {"build", "fetch", "make"}
+    source = ("x = build(a)\ny = await self.fetch(b)\nz = cls.make (c)\nlog(d)\nif a == check(e):\n    pass\n"
+              "return resolve(f)\n")
+    assert assigned_calls([source]) >= {"build", "fetch", "make", "resolve"}
     assert "log" not in assigned_calls([source])
     rule = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
             "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "os.system(...)"}]}
@@ -459,13 +462,51 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     [variant] = pass_rules([rule], {"build"})
     [sink] = variant["pattern-sinks"]
     assert {"metavariable-regex": {"metavariable": "$FUNC", "regex": "^(build)$"}} in sink["patterns"]
-    # Rules with the same sanitizers share one variant, whose results answer for each of them.
-    same = {**rule, "id": "s", "pattern-sinks": [{"pattern": "eval(...)"}]}
-    other = {**rule, "id": "o", "pattern-sanitizers": [{"pattern": "int(...)"}]}
-    variants = pass_rules([rule, same, other], {"build"})
-    assert [v["message"] for v in variants] == ["$FUNC|r,s", "$FUNC|o"]
-    assert parse_passes([("r.passes", "a.py", 1, "build|r,s"), ("o.passes", "a.py", 2, "$FUNC|o")]) == {
-        "r": {"build"}, "s": {"build"}}
+    # Rules share one variant, whose results answer for each of them, with only the sanitizers they all have.
+    same = {**rule, "id": "s", "pattern-sinks": [{"pattern": "eval(...)"}], "pattern-sanitizers": [{"pattern": "f(...)"}]}
+    other = {**rule, "id": "o", "pattern-sanitizers": [{"pattern": "int(...)"}, {"pattern": "f(...)"}]}
+    variants = pass_rules([same, other], {"build"})
+    assert [(v["message"], v["pattern-sanitizers"]) for v in variants] == [
+        ("$FUNC|$OWNER|$PARAM|s,o", [{"pattern": "f(...)"}])]
+    # Different propagators still make different variants.
+    spread = {**rule, "id": "p", "pattern-propagators": [{"pattern": "$A.extend($B)", "from": "$B", "to": "$A"}]}
+    assert [v["message"] for v in pass_rules([rule, spread], {"build"})] == ["$FUNC|$OWNER|$PARAM|r",
+                                                                              "$FUNC|$OWNER|$PARAM|p"]
+    # A nested def returning its outer function's parameter says nothing of which of its own it passes.
+    assert parse_passes([("r.passes", "a.py", 1, "build|build|x|r,s"), ("o.passes", "a.py", 2, "$FUNC|$OWNER|$PARAM|o"),
+                         ("o.passes", "a.py", 3, "inner|outer|y|o")]) == {
+        "r": {("build", "x", "a.py")}, "s": {("build", "x", "a.py")}, "o": {("inner", "*", "a.py")}}
+
+
+def test_only_arguments_no_def_of_the_name_hands_back_are_cleaned():
+    source = ("def one(a, b, *, c=None):\n    return a\n\n"
+              "class K:\n    def one(self, a, b):\n        return a\n\n"
+              "    @staticmethod\n    def two(x, y):\n        return x\n\n"
+              "def three(a, *args):\n    return a\n\n"
+              "def four(p, **kwargs):\n    return p\n")
+    signatures = python_signatures([source])
+    assert signatures["one"] == [(("a", "b"), ("c",), 0), (("a", "b"), (), 0)]
+    assert signatures["two"] == [(("x", "y"), (), 0)]
+    sanitizers = argument_sanitizers(signatures, {"one": {"a"}, "two": {"x"}, "three": {"a"}, "four": {"p"}})
+    regexes = {(s["patterns"][0]["pattern-either"][0]["pattern"],
+                tuple(str(m.get("metavariable-regex", m.get("metavariable-comparison"))) for m in s["patterns"][1:-1]))
+               for s in sanitizers}
+    # Second positions: one's b (both defs), two's y; not three's (*args) or four's (none). Keywords: b and y, not
+    # c (one def lacks it) or anything for four (**kwargs). An argument with a call in it is never cleaned: it may
+    # hold a sink.
+    plain = str({"metavariable": "$PT_ARG", "regex": "^[^()]+$"})
+    assert regexes == {
+        ("$PT_FUNC($PT_0, $PT_ARG, ...)", (str({"metavariable": "$PT_FUNC", "regex": "^(one|two)$"}), plain)),
+        ("$PT_FUNC(..., $PT_KW=$PT_ARG, ...)", (
+            str({"metavariable": "$PT_FUNC", "regex": "^(one|two)$"}), str({"metavariable": "$PT_KW", "regex": "^(b|y)$"}),
+            str({"comparison": (
+            '(re.match("^(one)$", str($PT_FUNC)) and re.match("^(b)$", str($PT_KW))) or '
+            '(re.match("^(two)$", str($PT_FUNC)) and re.match("^(y)$", str($PT_KW)))')}), plain))}
+    # A function that hands nothing back is left to the result sanitizer, except in pass_rules.
+    assert argument_sanitizers(signatures, {}) == []
+    assert len(argument_sanitizers(signatures, {}, mixed_only=False)) == 3
+    # A function that can return an enclosing one's parameter keeps every argument.
+    assert argument_sanitizers(signatures, {"one": {"*"}, "two": {"*"}, "three": {"*"}, "four": {"*"}}) == []
 
 
 def test_deeper_passes_use_only_what_the_last_pass_added():

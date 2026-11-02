@@ -575,69 +575,211 @@ def field_variants(rules, fields, summaries):
 
 
 PASS_THROUGH_MARK = "$KEEPS_PARAMS"
+# The mark of the argument sanitizers: what a call's own arguments contribute, kept in every variant (cleaning an
+# argument inside a returner's call leaves the call itself a source).
+ARGUMENT_MARK = "$PT_FUNC"
+# Arguments past this position are never cleaned: a sanitizer per position.
+MAX_ARGUMENT_POSITION = 6
+# Pass-through is a fixpoint: a helper that hands its argument to one that drops it doesn't pass it either
+# (paperless-ngx: a view's request goes three helpers deep to a version number). Each round can only remove.
+PASS_MAX_ROUNDS = 4
 
 
-# What with_pass_through's sanitizer matches: a variable assigned from a call (a superset; a miss only means a
-# function is never treated as clean).
-ASSIGNED_CALL_RE = re.compile(r"=\s*(?:await\s+)?(?:(?:self|cls)\.)?(\w+)\s*\(")
+# What with_pass_through's sanitizer matches: a variable assigned from a call, or a call returned (a superset; a
+# miss only means a function is never treated as clean).
+ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:(?:self|cls)\.)?(\w+)\s*\(")
 
 
 def assigned_calls(texts):
-    """Names of functions whose result some code assigns to a variable."""
+    """Names of functions whose result some code assigns to a variable or returns."""
     return {name for text in texts for name in ASSIGNED_CALL_RE.findall(text)}
 
 
 PASS_RULE_OWN_KEYS = {"id", "message", "metadata", "severity", "pattern-sources", "pattern-sinks", "pattern-sanitizers"}
 
 
-def pass_rules(rules, names):
-    """Python taint rules with function parameters as sources and `return` as the sink: which of names can hand a
-    parameter back (under the rule's sanitizers). Only the functions whose result is assigned need an answer; every
-    function in a large project meant tens of thousands of results for Semgrep to write out."""
+def pass_rules(rules, names, signatures=None, passes=None):
+    """Python taint rules with function parameters as sources and `return` as the sink: which parameters of names
+    can be handed back (under the rule's sanitizers). Only the functions whose result is assigned or returned need
+    an answer; every function in a large project meant tens of thousands of results for Semgrep to write out.
+
+    With passes from the last round, the arguments its functions don't hand back are clean (argument_sanitizers)."""
     if not names:
         return []
     sinks = [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": "$FUNC", "regex": regex}}]}
              for sink in PYTHON_RETURN_SINKS for regex in name_regexes(names)]
-    # Sources and sinks are the same for every rule, so rules alike in the rest (sanitizers, propagators) give the
-    # same answer: one variant per such group (16 Python rules make 11), its message naming the rules it answers for.
+    # Sources and sinks are the same for every rule, so rules alike in the rest (propagators) give the same answer:
+    # one variant per such group, its message naming the rules it answers for. Only the sanitizers every rule has
+    # count (a parameter handed back under fewer is still handed back): a group per rule's own sanitizers made
+    # eleven variants, the slowest part of a large project's scan (paperless-ngx).
+    python = [rule for rule in taint_rules(rules) if not is_js(rule)]
+    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in python]
+    common = [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])] if python else []
     groups = {}
-    for rule in taint_rules(rules):
-        if is_js(rule):
-            continue
+    for rule in python:
         variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
-        variant["pattern-sanitizers"] = without_lookup_result(rule)
+        variant["pattern-sanitizers"] = copy.deepcopy(common)
+        if passes is not None:
+            variant["pattern-sanitizers"] += argument_sanitizers(
+                signatures, passing_parameters(passes.get(rule["id"], ())), PYTHON_BUILTINS | HANDLER_NAMES,
+                mixed_only=False)
         groups.setdefault(json.dumps(variant, sort_keys=True), (variant, []))[1].append(rule["id"])
     out = []
     for variant, ids in groups.values():
         out.append({**copy.deepcopy(variant), "id": ids[0] + PASSES_SUFFIX, "severity": "INFO",
-                    "message": "$FUNC|" + ",".join(ids),
-                    # The source's own function name is bound as $OWNER so the message names the function that returns.
+                    # The source's own function name is bound as $OWNER: the message names the function that
+                    # returns, the one whose parameter it is (a nested def can return its outer one's) and which.
+                    "message": "$FUNC|$OWNER|$PARAM|" + ",".join(ids),
                     "pattern-sources": json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER")),
                     "pattern-sinks": copy.deepcopy(sinks)})
     return out
 
 
+ANY_PARAMETER = "*"
+
+
 def parse_passes(results):
-    """{rule id: {function names that can return a parameter}}."""
+    """{rule id: {(function, parameter it can return, path)}}; ANY_PARAMETER when the returned one is an
+    enclosing function's (or Semgrep didn't say)."""
     passes = {}
-    for _check_id, _path, _line, message in results:
-        func, _, ids = message.partition("|")
-        if func and not func.startswith("$"):
-            for rule_id in ids.split(","):
-                passes.setdefault(rule_id, set()).add(func)
+    for _check_id, path, _line, message in results:
+        func, owner, param, ids = [*message.split("|", 3), "", "", ""][:4]
+        if not func or func.startswith("$"):
+            continue
+        if owner != func or not param or param.startswith("$"):
+            param = ANY_PARAMETER
+        for rule_id in ids.split(","):
+            passes.setdefault(rule_id, set()).add((func, param, path))
     return passes
 
 
-def python_functions_with_params(texts):
-    """Names of the project's Python functions that take a parameter other than self/cls."""
-    names = set()
+def passing_parameters(found):
+    """{function: parameters it can return} from parse_passes entries."""
+    passing = {}
+    for func, param, *_path in found:
+        passing.setdefault(func, set()).add(param)
+    return passing
+
+
+def python_signatures(texts):
+    """{name: [(positional parameters, keyword-only parameters, positional-only count) per def]} of the project's
+    Python functions that take a parameter other than self/cls (left out of a method's positions)."""
+    signatures = {}
     for text in texts:
         for name, nodes in python_functions(text).items():
+            for node, in_class in nodes:
+                args = node.args
+                positional = [a.arg for a in args.posonlyargs + args.args]
+                static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in node.decorator_list)
+                dropped = int(in_class and not static and bool(positional) and positional[0] in RECEIVERS)
+                positional = positional[dropped:]
+                keyword_only = [a.arg for a in args.kwonlyargs]
+                if args.vararg or args.kwarg or positional or keyword_only:
+                    # *args and **kwargs aren't named by position or keyword: a call can't be cleaned past them.
+                    signatures.setdefault(name, []).append((
+                        tuple(positional) + ((ANY_PARAMETER,) if args.vararg else ()),
+                        tuple(keyword_only) + ((ANY_PARAMETER,) if args.kwarg else ()),
+                        max(0, len(args.posonlyargs) - dropped)))
+    return signatures
+
+
+def python_callers(texts, callees):
+    """{function name: paths of its defs} for the defs whose body calls one of callees, by name or as a method:
+    what a later round of pass_rules can change. texts: {path: text}."""
+    callers = {}
+    for path, text in texts.items():
+        for name, nodes in python_functions(text).items():
             for node, _in_class in nodes:
-                params = [a.arg for a in node.args.posonlyargs + node.args.args + node.args.kwonlyargs]
-                if node.args.vararg or node.args.kwarg or any(p not in RECEIVERS for p in params):
-                    names.add(name)
-    return names
+                called = {c.func.id if isinstance(c.func, ast.Name) else c.func.attr
+                          for c in ast.walk(node) if isinstance(c, ast.Call)
+                          and isinstance(c.func, (ast.Name, ast.Attribute))}
+                if not called.isdisjoint(callees):
+                    callers.setdefault(name, set()).add(path)
+    return callers
+
+
+def python_definers(texts, names):
+    """Paths whose text defines one of names. texts: {path: text}."""
+    return {path for path, text in texts.items() if not names.isdisjoint(python_functions(text))}
+
+
+def excluded_callees(rule):
+    """Names whose arguments are never cleaned: builtins, handlers, and what the rule's sinks name (a project
+    method called open() mustn't clean the builtin's argument)."""
+    return PYTHON_BUILTINS | HANDLER_NAMES | set(re.findall(r"\w+", repr(rule.get("pattern-sinks", []))))
+
+
+# Only an argument without a call is cleaned: one with a call can hold a sink, which a sanitizer around it hides
+# (OWASP Benchmark: escape_for_html(p.read_text()[:1000])).
+PLAIN_ARGUMENT = {"metavariable-regex": {"metavariable": "$PT_ARG", "regex": "^[^()]+$"}}
+
+
+def argument_sanitizers(signatures, passing, excluded=frozenset(), mixed_only=True):
+    """Sanitizers for each argument of a call to the project's functions that the function can't hand back:
+    `self.resolve(doc, request)` is the doc's data, not the request's, when resolve returns only what it looks up
+    with the request. A position is clean only when it is a parameter that isn't passed in every def of the name.
+
+    mixed_only: only for functions that hand back some parameter. One that hands back none has the cheaper result
+    sanitizer in the final scan (with_pass_through); pass_rules have no such sanitizer and need every function."""
+    positions, by_names = {}, {}
+    for func, defs in (signatures or {}).items():
+        through = passing.get(func, set())
+        if func in excluded or (mixed_only and not through) or ANY_PARAMETER in through:
+            continue
+        for k in range(MAX_ARGUMENT_POSITION):
+            if all(k < len(pos) and pos[k] not in through | {ANY_PARAMETER} for pos, _kw, _only in defs):
+                positions.setdefault(k, set()).add(func)
+        named = [set(pos[only:]) | set(kw) for pos, kw, only in defs]
+        if not any(ANY_PARAMETER in n for n in named) and (safe := set.intersection(*named) - through):
+            by_names[func] = safe
+    sanitizers = []
+    for k, funcs in sorted(positions.items()):
+        args = ", ".join([*(f"$PT_{i}" for i in range(k)), "$PT_ARG", "..."])
+        sanitizers += [{"patterns": [
+            {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}({args})"} for r in ("", "self.", "cls.")]},
+            {"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": regex}},
+            PLAIN_ARGUMENT,
+            {"focus-metavariable": "$PT_ARG"},
+        ]} for regex in name_regexes(funcs)]
+    # One sanitizer for every keyword, its comparison pairing each function with its own keywords: a pattern per
+    # keyword made the final scan half as slow again (djangoproject.com).
+    groups = {}
+    for func, names in by_names.items():
+        groups.setdefault(frozenset(names), set()).add(func)
+    terms = [f're.match("{f}", str($PT_FUNC)) and re.match("{k}", str($PT_KW))'
+             for names, funcs in sorted(groups.items(), key=lambda item: sorted(item[1]))
+             for f in name_regexes(funcs) for k in name_regexes(names)]
+    # The comparison is slow: plain name filters first.
+    funcs_filter = [{"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": regex}}
+                    for regex in name_regexes(by_names)][:1] if len(by_names) <= NAME_BATCH else []
+    names = set().union(*by_names.values())
+    names_filter = [{"metavariable-regex": {"metavariable": "$PT_KW", "regex": regex}}
+                    for regex in name_regexes(names)][:1] if len(names) <= NAME_BATCH else []
+    for i in range(0, len(terms), NAME_BATCH):
+        sanitizers.append({"patterns": [
+            {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}(..., $PT_KW=$PT_ARG, ...)"}
+                                for r in ("", "self.", "cls.")]},
+            *funcs_filter, *names_filter,
+            {"metavariable-comparison": {"comparison": " or ".join(f"({t})" for t in terms[i:i + NAME_BATCH])}},
+            PLAIN_ARGUMENT,
+            {"focus-metavariable": "$PT_ARG"},
+        ]})
+    return sanitizers
+
+
+def with_arguments(rules, signatures, passes, summaries=None):
+    """Each Python taint rule plus argument_sanitizers for its passes; a summarised function's arguments reach a
+    sink, so they stay as they are."""
+    out = []
+    for rule in rules:
+        if rule not in taint_rules([rule]) or is_js(rule) or not signatures:
+            out.append(rule)
+            continue
+        summarised = {func for func, *_ in (summaries or {}).get(rule["id"], ())}
+        extra = argument_sanitizers(signatures, passing_parameters(passes.get(rule["id"], ())),
+                                    excluded_callees(rule) | summarised)
+        out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *extra]} if extra else rule)
+    return out
 
 
 def with_pass_through(rules, functions, passes, summaries, returners):
@@ -649,7 +791,7 @@ def with_pass_through(rules, functions, passes, summaries, returners):
             out.append(rule)
             continue
         rule_id = rule["id"]
-        clean = sorted(functions - passes.get(rule_id, set())
+        clean = sorted(set(functions) - set(passing_parameters(passes.get(rule_id, ())))
                        - {func for func, *_ in summaries.get(rule_id, ())}
                        - {func for func, _path in returners.get(rule_id, ())}
                        - HANDLER_NAMES)

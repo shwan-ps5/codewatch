@@ -91,6 +91,7 @@ class Semgrep(Analyzer):
 
     def __init__(self):
         self.timeouts = set()
+        self.first_rules, self.first_found = [], []
 
     def binary(self):
         # Own venv: semgrep pins dependencies (e.g. an old mcp) that conflict with codewatch's.
@@ -101,13 +102,19 @@ class Semgrep(Analyzer):
         if not ctx.semgrep_config and not custom_rules:
             return Result()
         custom_rules = with_model_sources(custom_rules, (read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})))
-        self.timeouts = set()
+        self.timeouts, self.first_found = set(), []
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
+            # The first round of pass_rules shares pass 1's first scan.
+            signatures = self.signatures(ctx, targets)
+            self.first_rules = summaries_module.pass_rules(custom_rules, set(signatures))
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
-            returners, fields, passes, functions = self.find_returners(ctx, custom_rules, targets, originals,
-                                                                       Path(work))
-            final = summaries_module.with_pass_through(custom_rules, functions, passes, summaries, returners)
+            passes = self.find_passes(ctx, custom_rules, (targets, originals, Path(work)), signatures)
+            returners, fields = self.find_returners(
+                ctx, summaries_module.with_arguments(custom_rules, signatures, passes), targets, originals, Path(work))
+            final = summaries_module.with_pass_through(
+                summaries_module.with_arguments(custom_rules, signatures, passes, summaries),
+                set(signatures), passes, summaries, returners)
             rules = (final + summaries_module.via_rules(final, summaries)
                      + summaries_module.from_rules(final, returners, summaries)
                      + summaries_module.field_variants(final, fields, summaries))
@@ -214,13 +221,15 @@ class Semgrep(Analyzer):
 
     def summarise(self, ctx, custom_rules, targets, originals, work):
         """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
-        functions already summarised."""
+        functions already summarised. self.first_rules join the first scan, their results kept in
+        self.first_found."""
         summaries, known, new, hits = {}, None, None, []
         scanned = targets
         for _ in range(summaries_module.MAX_DEPTH):
             # Semi-naive: a deeper pass has only the summaries the last one added as sinks. Whatever reaches an
             # older one was found when it was added, in every file that names it.
-            rules = summaries_module.summary_rules(custom_rules, new, base=new is None)
+            own = summaries_module.summary_rules(custom_rules, new, base=new is None)
+            rules = own + (self.first_rules if new is None else [])
             if not rules or not scanned:
                 break
             config = work / "summaries.yml"
@@ -231,6 +240,10 @@ class Semgrep(Analyzer):
                       ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
                       item["extra"]["message"])
                      for item in data["results"]]
+            if new is None:
+                theirs = {r["id"] for r in rules} - {r["id"] for r in own}
+                self.first_found = [f for f in found if f[0] in theirs]
+                found = [f for f in found if f[0] not in theirs]
             more = summaries_module.parse_summaries(found, lambda rel: read_source(ctx.root / rel), known, hits)
             merged = summaries_module.merge(summaries, more)
             if merged is None:
@@ -240,15 +253,48 @@ class Semgrep(Analyzer):
             summaries = known = merged
         return summaries, hits
 
+    @staticmethod
+    def signatures(ctx, targets):
+        """python_signatures of the functions whose result is assigned or returned: the ones pass_rules asks about."""
+        calls = summaries_module.assigned_calls(read_source(ctx.root / t) or "" for t in targets if t.endswith(".py"))
+        return {name: defs for name, defs in summaries_module.python_signatures(
+            read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})).items() if name in calls}
+
+    def find_passes(self, ctx, custom_rules, copies, signatures):
+        """Which parameters of signatures' functions can be returned (pass_rules), from the first round's results
+        (self.first_found). Later rounds clean the arguments the last one found aren't handed back, asking again only
+        about the functions that call one whose answer changed. copies: (targets, originals, work)."""
+        targets, originals, work = copies
+        texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
+        passes = summaries_module.parse_passes([(c, p, line, m.strip()) for c, p, line, m in self.first_found])
+        # Before the first round every argument counted as handed back.
+        changed = set(signatures)
+        for _ in range(summaries_module.PASS_MAX_ROUNDS - 1):
+            # Only a function that hands something back and calls one whose answer changed can change, and only
+            # the files defining one need a scan.
+            handing = {e[0] for entries in passes.values() for e in entries}
+            asked = set(summaries_module.python_callers(texts, changed)) & handing
+            scanned = sorted(summaries_module.python_definers(texts, asked))
+            rules = summaries_module.pass_rules(custom_rules, asked, signatures, passes)
+            if not rules or not scanned:
+                break
+            config = work / "passes.yml"
+            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+            data = self.scan(ctx, ["--config", str(config)], scanned)
+            found = summaries_module.parse_passes([
+                (item["check_id"], ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
+                 item["extra"]["message"].strip()) for item in data["results"]])
+            kept = {rule: {e for e in entries if e[0] not in asked} for rule, entries in passes.items()}
+            found = summaries_module.merge(kept, found) or kept
+            changed = {e[0] for rule in set(found) | set(passes)
+                       for e in found.get(rule, set()) ^ passes.get(rule, set())}
+            passes = found
+        return passes
+
     def find_returners(self, ctx, custom_rules, targets, originals, work):
         """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
-        and (in the first scan) which fields of self/this request data is stored in and which Python functions
-        can return a parameter (of those whose result is assigned, also returned)."""
-        returners, fields, passes = {}, {}, {}
-        # The functions with_pass_through may treat as clean: take a parameter, and their result is assigned.
-        functions = summaries_module.python_functions_with_params(
-            read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})) & summaries_module.assigned_calls(
-            read_source(ctx.root / t) or "" for t in targets if t.endswith(".py"))
+        and (in the first scan) which fields of self/this request data is stored in."""
+        returners, fields = {}, {}
         # An unminified library bundled with the app (materialize.js, 366 KB) multiplies this pass's time by ten,
         # and big single-file apps are Python's habit, not JavaScript's.
         targets = [t for t in targets
@@ -258,7 +304,7 @@ class Semgrep(Analyzer):
             # Semi-naive, as in summarise: a deeper pass's sources are calls to the returners the last one added.
             rules = summaries_module.returner_rules(custom_rules, new, base=depth == 0)
             if depth == 0:
-                rules += summaries_module.field_rules(custom_rules) + summaries_module.pass_rules(custom_rules, functions)
+                rules += summaries_module.field_rules(custom_rules)
             if not rules or not scanned:
                 break
             config = work / "returners.yml"
@@ -271,9 +317,7 @@ class Semgrep(Analyzer):
                      for item in data["results"]]
             stored = [f for f in found if f[0].endswith(summaries_module.FIELDS_SUFFIX)]
             fields = summaries_module.merge(fields, summaries_module.parse_fields(stored)) or fields
-            passing = [f for f in found if f[0].endswith(summaries_module.PASSES_SUFFIX)]
-            passes = summaries_module.merge(passes, summaries_module.parse_passes(passing)) or passes
-            more = summaries_module.parse_returners([f for f in found if f not in stored and f not in passing],
+            more = summaries_module.parse_returners([f for f in found if f not in stored],
                                                     lambda rel: read_source(ctx.root / rel))
             merged = summaries_module.merge(returners, more)
             if merged is None:
@@ -281,7 +325,7 @@ class Semgrep(Analyzer):
             new = summaries_module.added(returners, merged)
             scanned = mentioning(ctx, targets, added_names(returners, merged))
             returners = merged
-        return returners, fields, passes, functions
+        return returners, fields
 
     @staticmethod
     def field_stored(path, message, fields):

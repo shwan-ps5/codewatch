@@ -2345,3 +2345,55 @@ def test_same_page_jumps_and_the_configured_root_are_not_open_redirects(tmp_path
         "}\n")})
     assert found == {("challenges.js", 11, "open-redirect"), ("challenges.js", 14, "open-redirect"),
                      ("challenges.js", 20, "open-redirect")}
+
+
+def test_arguments_a_helper_does_not_hand_back_are_not_its_result(tmp_path):
+    """paperless-ngx: a view passes its request three helpers deep, where only a version number is read from it to
+    look a document up (and whether one was asked for, to a helper that hands nothing back); the document is the
+    database's. Pass-through is per parameter: a helper that returns its
+    first argument still taints its result through that one, by position or keyword."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "versioning.py": (
+            "from documents.models import Document\n\n\n"
+            "def get_request_version_param(request):\n"
+            "    return request.query_params.get('version')\n\n\n"
+            "def _document_manager(*, include_deleted=False):\n"
+            "    log.debug('deleted too: %s', include_deleted)\n"
+            "    return Document.objects\n\n\n"
+            "def resolve_version(root_doc, request, *, include_deleted=False):\n"
+            "    version_param = get_request_version_param(request)\n"
+            "    if not version_param:\n"
+            "        return latest_version(root_doc)\n"
+            "    version_id = int(version_param)\n"
+            "    manager = _document_manager(include_deleted=include_deleted)\n"
+            "    return manager.only('id').filter(id=version_id).first()\n"),
+        "views.py": (
+            "from pathlib import Path\n"
+            "from rest_framework.viewsets import ModelViewSet\n"
+            "from versioning import get_request_version_param, resolve_version\n\n\n"
+            "class DocumentViewSet(ModelViewSet):\n"
+            "    def _resolve_file_doc(self, root_doc, request):\n"
+            "        requested = get_request_version_param(request) is not None\n"
+            "        return resolve_version(root_doc, request, include_deleted=requested)\n"
+            "    def _effective_doc(self, request_doc, root_doc, request):\n"
+            "        if request_doc.root_id is not None and get_request_version_param(request) is None:\n"
+            "            return request_doc\n"
+            "        return self._resolve_file_doc(root_doc, request)\n\n"
+            "    def metadata(self, request, pk=None):\n"
+            "        doc = self._effective_doc(self.get_object(), None, request)\n"
+            "        return {'size': Path(doc.source_path).stat().st_size}\n\n"
+            "    def raw(self, request, pk=None):\n"
+            "        doc = self._effective_doc(request.query_params['doc'], None, request)\n"
+            "        named = self._effective_doc(root_doc=None, request=request, request_doc=request.data['p'])\n"
+            "        first = open(doc.source_path).read()\n"
+            "        return first + open(named).read()\n\n"
+            "    def counted(self, request):\n"
+            "        return self._count(None, open(request.data['f']).read())\n\n"
+            "    def _count(self, doc, text):\n"
+            "        self.total += 1\n"
+            "        return doc\n")})
+    # An argument that holds a sink keeps it (OWASP Benchmark: escape_for_html(p.read_text()[:1000])).
+    assert found == {("views.py", 22, "path-traversal"), ("views.py", 23, "path-traversal"),
+                     ("views.py", 26, "path-traversal")}

@@ -441,7 +441,7 @@ knowledge.
    - paperless views.py:1461-1479: a DRF view's whole `request` is a source, so any helper called with it
      returns tainted data (`resolve_requested_version_for_root(root_doc, request)` only reads an int from it).
      Pass-through summaries are per function; per-parameter ones (a call is clean when only arguments that
-     aren't passed through are tainted) would fix it. Next.
+     aren't passed through are tainted) would fix it. Fixed in item 14.
    - Objects built from request data taint every attribute (paperless_mail: an OAuth manager made with the
      session's state, then its configured redirect URL); a serializer's related-object field is a model
      (paperless views.py:4226); a file-like result of a project function given to send_file (CTFd exports);
@@ -449,6 +449,26 @@ knowledge.
      quote check before formatting a table name (CTFd exports:416); rows read back from a cache
      (recipes automation_helper.py:221/222); `${location.pathname}?...` (CTFd submissions.js:122, which a
      "//host" path could in principle turn into another host).
+
+14. **Per-parameter pass-through** (2026-11-02; the paperless-ngx shape from item 13,
+   `test_arguments_a_helper_does_not_hand_back_are_not_its_result`). The pass rules now report which parameter
+   comes back (`$FUNC|$OWNER|$PARAM`), and each call to a project function cleans the arguments at positions or
+   keywords that no def of that name hands back: `self._resolve_file_doc(root_doc, request)` is the document's
+   data when only an int is read from the request. It is a fixpoint (a helper that hands its argument to one that
+   drops it doesn't pass it either; up to 4 rounds, each asking again only about functions that call one whose
+   answer changed), and the returner pass now uses it too. Guards (the first and third in tests):
+   - Only an argument without a call is cleaned: one with a call can hold a sink (a first version lost 6 OWASP
+     Benchmark path traversals, `escape_for_html(p.read_text()[:1000])`).
+   - Never builtins, handlers, names in the rule's sinks, or (in the final scan) summarised functions.
+   - `*args`/`**kwargs` and differing defs of one name keep their arguments.
+   Speed: a straightforward version made Python apps 30-90% slower (djangoproject.com 30s -> 56s, paperless 154s
+   -> 260s). Now within 2-10%: the first round shares pass 1's first scan; the pass rules are one variant with the
+   sanitizers every rule shares (was eleven; fewer sanitizers can only mean more pass-through, the safe side);
+   keyword arguments are one sanitizer with a `metavariable-comparison` pairing function and keyword (was a
+   pattern per keyword); and outside the pass rules only functions that hand back some parameter get argument
+   sanitizers (one that hands back none keeps the cheaper result sanitizer).
+   After: paperless views.py:1461-1479 gone (4); quick suites, both CVE-pair suites, the 30 apps and learning
+   sets 1-3 otherwise unchanged.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
