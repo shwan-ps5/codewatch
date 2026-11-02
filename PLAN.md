@@ -97,6 +97,10 @@ Next, in order:
    verdict detection for front-end JS (request data into innerHTML or jQuery HTML).
 4. The Python miss still in reach: pyLoad's SSRF through its own pycurl wrapper (`get_url`); the rest (stored
    data, settings flags, template-built SQL, `g`-stored state) are recorded as out of reach.
+   Also from step 24 (MobSF GHSA-8m9j at its fix): `redirect(auth.login(return_to=x))` is flagged, though
+   python3-saml's login() returns the identity provider's URL with x only as RelayState, a library call's
+   result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
+   in the nightly run.
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the three blind CVE suites
    (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-3`, `cve-pairs-blind-python-4`,
    `cve-pairs-blind-python-frontend`), each scanned once, measurement only.
