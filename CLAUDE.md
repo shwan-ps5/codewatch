@@ -96,7 +96,8 @@ Working rules for a cloud session:
 - New ground truth follows PLAN.md step 22: reviewed GitHub advisories with one small fix commit in application
   code, each read and accepted or rejected with a reason, and split before any scan by the fixed rule (blind when
   `int(sha256(id), 16) % 3 == 0`). The blind half goes in its own `"blind": true` suite and is never scanned in
-  the session. Keep GitHub API calls slow (two at a time with pauses): bursts have tripped rate limits before.
+  the session. Before reading a candidate's diff, drop it if its fix commit is already in any suite, blind ones
+  included (PR #2 read a blind case's diff that way). Keep GitHub API calls slow (two at a time with pauses): bursts have tripped rate limits before.
 - Run `git checkout benchmarks/results` before committing, unless the pull request is about results.
 - The pull request says which rules were added, which cases or suites drove them, what the suites measured
   before and after, and which shapes might cause false alarms on ordinary apps, so the nightly run can check
