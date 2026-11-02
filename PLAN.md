@@ -41,9 +41,53 @@ gaps, not from these suites.
 Remaining Juice Shop misses are business logic, data files, Solidity and a Docker image; most remaining
 SecurityEval misses are design flaws or plain functions with no request source. Don't chase those with rules.
 
-## Where things stand (2026-10-31, commit 799955c)
+## Where things stand (2026-11-02, commit e721864)
 
-(The record of that date. Current numbers are in the README's benchmark table and steps 12-21 below.)
+Detection, measured at this commit (verdict mode first; review mode adds hotspots):
+
+| Suite | Verdict | Review |
+|---|---|---|
+| OWASP Benchmark for Python (1,230 cases) | finds 100%, false alarms 0% | finds 100%, false alarms 35% |
+| SecurityEval (121 samples) | 51 flagged | 77 flagged |
+| SecurityEval Copilot / InCoder answers (held out) | 34% / 31%, false alarms 0% / 0% | 51% / 47%, false alarms 6% / 0% |
+| Juice Shop (35 challenges) | 15 | 17 |
+| Vulnerable-Code-Snippets JS (22, held out) | 11 | 13 |
+| vulnerable-node seeds (12 + 2 clean) | 92%, false alarms 0% | 100%, false alarms 50% |
+| CVE fix pairs, Python (14) | 5 found, 1 still flagged after the fix | 6 found, 1 still flagged |
+| CVE fix pairs, JS/TS (10) | 2 found, 0 still flagged | 4 found, 3 still flagged |
+
+False alarms on ordinary apps (verdict mode):
+- The 30 dev apps (six deliberately vulnerable apps, nine ordinary ones, the user's 15 own projects): unchanged
+  from run to run. The vulnerable apps' findings are real; the user's projects have the real findings and the two
+  known false alarms listed in the 2026-10-31 notes after step 18.
+- Learning sets 1-3 (14 apps): 18 findings left, each classified in steps 13 and 18 (real: recipes api.py:2960,
+  outline's four TLS settings; little impact: CTFd's three session writes; the rest need models codewatch
+  doesn't have, such as an OAuth manager built from session state).
+- Learning set 4 (wiki.js, actual, habitica): 37 findings, all false alarms, grouped by shape in step 19.
+- Blind sets: 1 had false alarms in 2 of 4 apps (12), 2 in 2 of 4 (34), 3 in 4 of 4 (24, 13 in one Express app).
+  Python is close (3 false alarms in two apps in set 3); JavaScript isn't. Set 4 is pinned and unscanned.
+
+The server: a full security review is done (step 20), each fix tested in `tests/test_security.py`. Still open:
+analyzers read repository content, so untrusted code should be scanned in a container (not built yet).
+
+Speed on the 20-thread desktop (step 21): tests 1 minute, `check.sh` (lint, tests, quick suites, 30 apps)
+7 minutes, both CVE-pair suites about 20, the 17 learning-set apps 10; the largest app (immich, 3,488 files) about
+3 minutes alone. Results are identical whether scans run one at a time or in parallel.
+
+Next, in order:
+1. Learning set 4's shapes (step 19), each with a test: a named check that ends the request in JS, signed
+   cookies and sessions read back, fixed same-site paths built around a value, hash digests, escaped regex input,
+   `path.relative()` containment, opt-in TLS bypasses as review, model-registry lookups.
+2. End of the round: blind set 4 (NodeBB, hedgedoc, pretalx, fief), scanned once, measurement only.
+3. More ground truth: the CVE-pair suites are small (14 + 10), so each case moves the score; finding and
+   checking new advisories with clean fix commits is research that could run in cloud sessions.
+4. A container for server-side scans of untrusted repositories.
+5. Semgrep timeouts: record files that time out in each run, so a lost finding is never silent.
+
+Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
+knowledge.
+
+### Record of 2026-10-31 (commit 799955c)
 
 - Step 1 is built: `cve-pairs-python` (14 cases), `cve-pairs-javascript` (10), and blind `cve-pairs-blind-*`
   (run only when named). Ordinary apps (7) give 0 vulnerability false alarms. Standards-gap rules (CWE-208, 209,
@@ -120,8 +164,6 @@ rule):
    guard; GHSA-8gh5 is an uploaded HTML file served inline.
 4. Then continue the steps below, re-running the CVE suites after each.
 
-Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
-knowledge.
 
 ## Next steps, in order
 
@@ -539,14 +581,14 @@ knowledge.
 
 19. **Fourth learning set and JS pass-through** (2026-11-02; wiki.js, actual, habitica, cloned with blind set 4
    before any scan, see Repos; kitchenowl's clone stalled and was dropped). Verdict findings before: wiki 20,
-   actual 19, habitica 8 (47), all false alarms. First fix, `test_a_javascript_helper_that_never_returns_its_argument_cleans_its_result`:
+   actual 17, habitica 8 (45), all false alarms. First fix, `test_a_javascript_helper_that_never_returns_its_argument_cleans_its_result`:
    item 7's pass-through for JS, per function. A call to a project function that can't return a parameter
    (`const err = requireFileAccess(file, userId); res.send(err)`, which returns a fixed string or null) is
    clean. Only a plain or `this.` call; only shapes the pass rule sees into (functions, `const` arrows, class and
    object methods, `obj.f = ...`), never a class field, a reassigned name or an object literal's property;
    only names whose result is assigned in a file that reads the request. Matching every object literal and every
    assigned call made actual's scan 92s -> 142s; with those limits 91s -> 97s. After: actual's 8 sync-server XSS
-   gone; everything else unchanged. Shapes left (all false alarms; next, each with a test):
+   gone (37 left); everything else unchanged. Shapes left (all false alarms; next, each with a test):
    - A named check that ends the request in JS: `if (!isValidRedirectUrl(url)) { ...; return; }` (actual
      app-openid.ts:112; app-cors-proxy.js:213/248 behind `isUrlAllowed`), item 17's Python fix for JS.
    - A signed cookie (`req.unsignCookie()`) or session read back is server data (wiki authentication.ts:156-198);
