@@ -33,8 +33,9 @@ from .constant_branches import blank_dead_branches
 from .containers import track_slots
 from .match_statements import match_as_if
 from .python_tools import LineCache, complexity_severity, security_purpose
-from .route_converters import scalar_parameters, type_route_converters
+from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
 from .slices import index_slices
+from .template_sinks import TEMPLATE_EXTENSIONS, with_template_sinks
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
 JS_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"}
@@ -109,6 +110,8 @@ class Semgrep(Analyzer):
         if not ctx.semgrep_config and not custom_rules:
             return Result()
         custom_rules = with_model_sources(custom_rules, (read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})))
+        custom_rules = with_template_sinks(custom_rules, {
+            f: text for f in ctx.files_with(TEMPLATE_EXTENSIONS) if (text := read_source(ctx.root / f)) is not None})
         self.timeouts, self.first_found = set(), []
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
@@ -416,20 +419,30 @@ def read_source(path):
         return None
 
 
-def analysis_copy(source):
+def analysis_copy(source, url_views=None):
     """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, container
-    slots tracked one by one, match statements made ifs and Flask converter types written on view parameters. None
-    when nothing changes."""
+    slots tracked one by one, match statements made ifs, Flask converter types written on view parameters and
+    Django views' free-text URL arguments marked (url_views, from django_text_parameters). None when nothing
+    changes."""
     current = None
-    for rewrite in (blank_dead_branches, index_slices, track_slots, match_as_if, type_route_converters):
+    for rewrite in (blank_dead_branches, index_slices, track_slots, match_as_if, type_route_converters,
+                    lambda text: mark_url_text(text, url_views)):
         current = rewrite(current or source) or current
     return current
+
+
+def url_routes(ctx, files):
+    """django_text_parameters for the project's Django URL modules (urls.py, or a urls package)."""
+    return django_text_parameters(
+        text for rel in files if "urls" in Path(rel).parts[-1] or "urls" in Path(rel).parts[:-1]
+        if (text := read_source(ctx.root / rel)) is not None)
 
 
 def analysis_copies(ctx, files, copies):
     """Targets for Semgrep: Python files that need it are scanned as rewritten copies (see analysis_copy).
     Returns the target list and {copy path: original relative path}."""
     targets, originals = [], {}
+    url_views = url_routes(ctx, [rel for rel in files if rel.endswith(".py")])
     for rel in files:
         # Semgrep refuses a symlink given as a target and fails the whole scan; the file it points to is scanned.
         if (ctx.root / rel).is_symlink():
@@ -437,7 +450,7 @@ def analysis_copies(ctx, files, copies):
         rewritten = None
         if rel.endswith(".py"):
             try:
-                rewritten = analysis_copy((ctx.root / rel).read_text())
+                rewritten = analysis_copy((ctx.root / rel).read_text(), url_views)
             except (OSError, UnicodeDecodeError):
                 rewritten = None
         if rewritten is None:

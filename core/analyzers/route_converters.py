@@ -45,6 +45,11 @@ def type_route_converters(source):
         edits.extend((arg.lineno, arg.end_col_offset, f": {types[arg.arg]}")
                      for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs
                      if arg.arg in types and arg.annotation is None)
+    return annotated(source, edits)
+
+
+def annotated(source, edits):
+    """The source with each (line, column, text) inserted, or None if there are none."""
     if not edits:
         return None
     lines = source.splitlines(keepends=True)
@@ -53,6 +58,84 @@ def type_route_converters(source):
         raw = lines[row - 1].encode()
         lines[row - 1] = (raw[:col] + text.encode() + raw[col:]).decode()
     return "".join(lines)
+
+
+# Django routes its URLs in urls.py: path("files/<path:name>", views.serve) or re_path(r"^files/(?P<name>.*)$", serve).
+# A view's arguments past the request come from the URL; those whose converter or regex group lets through free
+# text (str, path, or a group that allows dots or excludes characters, like .* or [^/]+) are marked on the copy
+# Semgrep scans with the annotation URL_TEXT, which the request-source rule matches. <int:pk>, <slug:slug>, [\w-]+
+# and \d+ can't carry a path, quotes or markup, and a view the analysis can't see routed stays unmarked.
+URL_TEXT = "codewatch_url_text"
+DJANGO_ROUTES = {"path", "re_path", "url"}
+PATH_PARAMETER_RE = re.compile(r"<(?:(\w+):)?(\w+)>")
+TEXT_PATH_CONVERTERS = {"", "str", "path"}
+GROUP_RE = re.compile(r"\(\?P<(\w+)>((?:[^()\\]|\\.|\((?:[^()\\]|\\.)*\))*)\)")
+TEXT_GROUP_RE = re.compile(r"\.|\[\^|\\[SWD]")
+
+
+def constant_text(node):
+    """A route string: a constant, 'constant'.format(...), an f-string's constant parts or constants added."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
+        return constant_text(node.func.value)
+    if isinstance(node, ast.JoinedStr):
+        return "".join(part.value for part in node.values if isinstance(part, ast.Constant))
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = constant_text(node.left), constant_text(node.right)
+        return None if left is None and right is None else (left or "") + (right or "")
+    return None
+
+
+def call_name(node):
+    return node.id if isinstance(node, ast.Name) else node.attr if isinstance(node, ast.Attribute) else None
+
+
+def django_text_parameters(sources):
+    """{view function name: {parameter}} for the URL arguments Django's routes pass as free text, from the
+    urlpatterns in sources."""
+    views = {}
+    for source in sources:
+        if "urlpatterns" not in source:
+            continue
+        try:
+            tree = ast.parse(source)
+        except (SyntaxError, ValueError):
+            continue
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and call_name(node.func) in DJANGO_ROUTES and len(node.args) >= 2):
+                continue
+            route, view = constant_text(node.args[0]), call_name(node.args[1])
+            if route is None or view is None:
+                continue
+            if call_name(node.func) == "path":
+                names = {name for converter, name in PATH_PARAMETER_RE.findall(route)
+                         if converter in TEXT_PATH_CONVERTERS}
+            else:
+                names = {name for name, group in GROUP_RE.findall(route) if TEXT_GROUP_RE.search(group)}
+            if names:
+                views.setdefault(view, set()).update(names)
+    return views
+
+
+def mark_url_text(source, views):
+    """The source with the free-text URL arguments of the function views in views annotated URL_TEXT, or None."""
+    if not views or not any(name in source for name in views):
+        return None
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        return None
+    edits = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name not in views:
+            continue
+        arguments = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
+        if not arguments or arguments[0].arg != "request":
+            continue
+        edits.extend((arg.lineno, arg.end_col_offset, f": {URL_TEXT}")
+                     for arg in arguments[1:] if arg.arg in views[node.name] and arg.annotation is None)
+    return annotated(source, edits)
 
 
 SCALAR_RE = re.compile(r"^(typing\.)?(Optional\[)?(int|float|bool|(uuid\.)?UUID|(datetime\.)?(date|datetime|time)|"

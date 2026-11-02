@@ -198,9 +198,11 @@ make lint
 make lock    # new analyzer versions into tools/*.lock (hashed); review, re-run the benchmarks, commit
 venv/bin/python benchmarks/devtools.py bench [SUITE...]   # score suites, in parallel
 venv/bin/python benchmarks/devtools.py repos DIR...        # Semgrep findings on whole projects, in parallel
+venv/bin/python benchmarks/devtools.py cases GHSA-...     # only the CVE pairs a change targets, nothing written
+benchmarks/nightly.sh [BRANCH]                            # the full verification, unattended, with a dated report
 ```
 
-Benchmarks and `repos` scan in a third of the CPUs' worth of processes (`CODEWATCH_BENCH_WORKERS`), each Semgrep run with its share of the CPUs: results are identical to one-at-a-time runs, and all suites take about half an hour on a 20-thread machine. `make tools` installs the analyzers at the versions and hashes in `tools/*.lock` and `tools/package-lock.json`.
+Benchmarks and `repos` scan in a third of the CPUs' worth of processes (`CODEWATCH_BENCH_WORKERS`), each Semgrep run with its share of the CPUs: results are identical to one-at-a-time runs, and all suites take about half an hour on a 20-thread machine. `nightly.sh` checks the branch tip out in its own worktree, runs lint, tests, every suite that isn't blind and the apps listed in `~/.config/codewatch/nightly-apps.txt`, and writes `~/.cache/codewatch/nightly/DATE/summary.txt` (what changed since the last report); a systemd user timer can run it overnight. `make tools` installs the analyzers at the versions and hashes in `tools/*.lock` and `tools/package-lock.json`.
 
 ## License
 

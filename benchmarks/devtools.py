@@ -1,6 +1,8 @@
 """Quick loops for rule work, without the server.
 
     venv/bin/python benchmarks/devtools.py bench [SUITE...]          # score suites (all by default), one line each
+    venv/bin/python benchmarks/devtools.py cases ID...               # only these CVE pairs (id prefixes), no files
+                                                                     # written: a minute instead of the whole suite
     venv/bin/python benchmarks/devtools.py rules SUBSTR FILE...      # one Semgrep pass of matching built-in rules
     venv/bin/python benchmarks/devtools.py repos [--via|--entry|--messages] DIR...
                                                                      # full Semgrep analyzer on projects (git or not)
@@ -48,6 +50,14 @@ def bench(suites):
     out = benchmark.run(suites, log=lambda m: print(m) if "fail" in m else None, workers=benchmark.WORKERS)
     for name, r in out.items():
         print(name, "verdict", r["verdict"]["overall"], "review", r["review"]["overall"])
+
+
+def cases(ids):
+    """Each named CVE pair's row, in both modes."""
+    for suite, modes in benchmark.score_cases(ids, log=lambda m: print(m) if "fail" in m else None,
+                                              workers=benchmark.WORKERS):
+        for mode, r in modes.items():
+            print(f"{r['id']} {suite} {mode}: {', '.join(r['by']) or 'missed'} | {', '.join(r['still_by']) or 'quiet'}")
 
 
 def rules(rule_filter, files):
@@ -148,7 +158,7 @@ def main(argv):
         COMMANDS[command](rest)
 
 
-COMMANDS = {"bench": bench, "rules": rules, "repos": repos, "owasp": owasp}
+COMMANDS = {"bench": bench, "cases": cases, "rules": rules, "repos": repos, "owasp": owasp}
 
 if __name__ == "__main__":
     main(sys.argv[1:])

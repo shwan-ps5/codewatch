@@ -440,6 +440,24 @@ def scan_parallel(suites, log, workers):
     return scanned
 
 
+def score_cases(ids, log=print, workers=1):
+    """Scan only the CVE cases whose id starts with one of ids (from suites that aren't blind) and score each,
+    without writing results: a quick check of the cases a rule change is meant to move. Returns
+    [(suite name, {mode: case result})]."""
+    suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
+              if suite["kind"] == "cve-pairs" and not suite.get("blind")]
+    chosen = [{**suite, "cases": [c for c in suite["cases"] if c["id"].startswith(tuple(ids))]} for suite in suites]
+    chosen = [suite for suite in chosen if suite["cases"]]
+    jobs = [(suite, case) for suite in chosen for case in suite["cases"]]
+    workers = max(1, min(workers, len(jobs)))
+    scanned = scan_parallel(chosen, log, workers) if workers > 1 else {
+        suite["name"]: {case["id"]: scan_pair(suite, case, log) for case in suite["cases"]} for suite in chosen}
+    parents = catalog.load()[1].get("cwe_parents", {})
+    return [(suite["name"], {mode: score_pair(case, *scanned[suite["name"]][case["id"]], types, parents)
+                             for mode, types in MODES.items()})
+            for suite in chosen for case in suite["cases"]]
+
+
 def run(names=None, log=print, workers=1):
     """Score the named suites, or every suite except blind ones, which run only when named. With workers > 1 the
     scans run in that many processes; scoring and the order of the results are the same."""

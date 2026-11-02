@@ -46,7 +46,8 @@ rules:
       # A route function's parameters come from the URL path or, in FastAPI, the query string, form or headers:
       # @app.route("/user/<name>") def user(name). Typed ones count only as text (str, Optional[str], list[str]);
       # numbers, UUIDs, models and Depends() don't. Flask converters (<int:id>) are written on the scanned copy
-      # as annotations (route_converters.py).
+      # as annotations (route_converters.py). The parameter itself is the source (focus-metavariable), not each use of
+      # its name, so `name = secure_filename(name)` replaces it (changedetection.io GHSA-9jj8-v89v-xjvw).
       - patterns:
           - pattern-either:
               - pattern-inside: |
@@ -62,7 +63,7 @@ rules:
               regex: '^((typing\.)?(Optional|List|Annotated)\[str\b.*|(list|set)\[str\]|str( \| None)?|Any)$'
           - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
           - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
-          - pattern: $PARAM
+          - focus-metavariable: $PARAM
       - patterns:
           - pattern-either:
               - pattern-inside: |
@@ -100,7 +101,19 @@ rules:
           - metavariable-regex: {metavariable: $PARAM, regex: '^(?!(self|cls)$)\w+$'}
           - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
           - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
-          - pattern: $PARAM
+          - focus-metavariable: $PARAM
+      # A Django function view's arguments from its urls.py route, where the converter or regex group passes free
+      # text (path("files/<path:name>", serve)); marked on the scanned copy by route_converters.py. CodeRed CMS
+      # GHSA-h454-rq3m-89rc.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  def $VIEW($REQUEST, ..., $PARAM: codewatch_url_text, ...):
+                    ...
+              - pattern-inside: |
+                  async def $VIEW($REQUEST, ..., $PARAM: codewatch_url_text, ...):
+                    ...
+          - focus-metavariable: $PARAM
     pattern-propagators: &propagators
       - {pattern: '$TO.append($FROM)', from: $FROM, to: $TO}
       - {pattern: '$TO.extend($FROM)', from: $FROM, to: $TO}
@@ -114,6 +127,18 @@ rules:
     pattern-sanitizers:
       - &validated-guard
         pattern-either:
+          # A validator that raises, called on its own before the value is used: check_lfi_path(image_url)
+          # (LLaMA Factory), validate_path_is_safe(path) (MLflow). Named for what it checks, so an authorization
+          # call (check_permission(user, name)) doesn't clear the name.
+          - patterns:
+              - pattern-inside: |
+                  $CHECK(..., $X, ...)
+                  ...
+              - pattern-not-inside: $CHECK(..., $X, ...)
+              - metavariable-regex:
+                  metavariable: $CHECK
+                  regex: '(?i)^(.*\.)?_?(check|validate|verify|ensure|assert)_?\w{0,30}(path|url|uri|file|filename|safe|ssrf|lfi|traversal|redirect|host)\w{0,30}$'
+              - pattern: $X
           # A named check that said no ends the request: `if not is_safe_url(nxt): return redirect("/")`, or
           # `if not url_has_allowed_host_and_scheme(nxt, ...): abort(400)`. The yes-branch form is checked-inside.
           - patterns:
@@ -319,6 +344,69 @@ rules:
                       except:
                         ...
                       ...
+                  # A normalised path checked against its base and a separator (pyLoad GHSA-48rp at its fix):
+                  # if not os.path.abspath(p).startswith(os.path.abspath(base) + os.sep): return. Not without the
+                  # separator: /srv/files_evil starts with /srv/files (xiaomusic's advisory).
+                  - pattern-inside: |
+                      if <... os.path.abspath($X).startswith($BASE + os.sep) ...>:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.abspath($X).startswith($BASE + os.sep) ...>:
+                        ...
+                        raise ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.abspath($X).startswith($BASE + "/") ...>:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.abspath($X).startswith($BASE + "/") ...>:
+                        ...
+                        raise ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.realpath($X).startswith($BASE + os.sep) ...>:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.realpath($X).startswith($BASE + os.sep) ...>:
+                        ...
+                        raise ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.realpath($X).startswith($BASE + "/") ...>:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.realpath($X).startswith($BASE + "/") ...>:
+                        ...
+                        raise ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.normpath($X).startswith($BASE + os.sep) ...>:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.normpath($X).startswith($BASE + os.sep) ...>:
+                        ...
+                        raise ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.normpath($X).startswith($BASE + "/") ...>:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      if <... os.path.normpath($X).startswith($BASE + "/") ...>:
+                        ...
+                        raise ...
+                      ...
                   # A resolved path checked against its base directory: if not str(p).startswith(str(base)): return
                   - pattern-inside: |
                       if <... str($X).startswith(...) ...>:
@@ -351,6 +439,13 @@ rules:
                         ...
                         $X = $SAFE
                       ...
+                  # ...or used only inside the branch where an allowlist check passed.
+                  - pattern-inside: |
+                      if <... url_has_allowed_host_and_scheme($X, ...) ...>:
+                        ...
+                  - pattern-inside: |
+                      if <... url_has_allowed_host_and_scheme(..., url=$X, ...) ...>:
+                        ...
                   # A forbidden-character check that bails out: if "'" in name: return ...
                   - pattern-inside: |
                       if <... "..." in $X ...>:
@@ -362,13 +457,6 @@ rules:
                         ...
                         raise ...
                       ...
-                  # ...or used only inside the branch where an allowlist check passed.
-                  - pattern-inside: |
-                      if <... url_has_allowed_host_and_scheme($X, ...) ...>:
-                        ...
-                  - pattern-inside: |
-                      if <... url_has_allowed_host_and_scheme(..., url=$X, ...) ...>:
-                        ...
                   - pattern-inside: |
                       if <... $X in $ALLOWED ...>:
                         ...
@@ -446,7 +534,7 @@ rules:
         pattern-either:
           - patterns:
               - pattern: $CHECK(...)
-              - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?((get_|make_|to_)?safe|valid|sanitiz|clean|is_allowed)\w{0,40}$'}
+              - metavariable-regex: {metavariable: $CHECK, regex: '(?i)(.*\.)?((get_|make_|to_)?safe|valid|saniti[sz]|clean|is_allowed)\w{0,40}$'}
           # Numbers can't carry markup, paths or quotes; url_for() only builds links to this app's own routes.
           - pattern: int(...)
           - pattern: float(...)
@@ -514,9 +602,11 @@ rules:
                   metavariable: $LOOKUP
                   # A method on self counts too (paperless: self._get_effective_file_doc(...)), but not one that
                   # hands back the request's own data (get_serializer, get_form, get_success_url, get_next_url).
+                  # So does one on a store or a call that returns one (MLflow GHSA-wc6j-5g83-xfm6 at its fix:
+                  # _get_tracking_store().get_run(run_id)), but not on the request.
                   # An ORM query run to its row (Model.objects.filter(...).first(), Users.query.filter_by(...).first(),
                   # manager.only(...).filter(id=x).first()) is the stored row too.
-                  regex: '(?s)^((self\.)?_?(cached_)?(get|fetch|load|find|lookup)_(?!(json|data|params?|args?|query|queries|headers?|cookies?|body|form|forms|fields?|values?|inputs?|text|str|string|url|uri|path|file|filename|name|key|id|var|env|config|setting|content|request|req|payload|serializer|success|redirect|next|return|kwargs)(_|$))\w+|(?!((flask\.)?request|self\.request|req)\.)\w+(\.\w+)*\.(objects\.|query\.|(only|filter|filter_by|exclude|where|select_related|prefetch_related|order_by)\(.*\)\.(first|last|get|one|one_or_none|scalar_one_or_none|first_or_404|get_or_404|get_or_create|update_or_create)$).*)$'
+                  regex: '(?s)^((self\.|(?!((flask\.)?request|self\.request|req)\b)[\w.]+(\(\))?\.)?_?(cached_)?(get|fetch|load|find|lookup)_(?!(json|data|params?|args?|query|queries|headers?|cookies?|body|form|forms|fields?|values?|inputs?|text|str|string|url|uri|path|file|filename|name|key|id|var|env|config|setting|content|request|req|payload|serializer|success|redirect|next|return|kwargs)(_|$))\w+|(?!((flask\.)?request|self\.request|req)\.)\w+(\.\w+)*\.(objects\.|query\.|(only|filter|filter_by|exclude|where|select_related|prefetch_related|order_by)\(.*\)\.(first|last|get|one|one_or_none|scalar_one_or_none|first_or_404|get_or_404|get_or_create|update_or_create)$).*)$'
           # Rows a Django query returns, wherever they're used (recipes: `for rule in
           # Automation.objects.filter(space=request.space)...`). The query's own arguments can't be a
           # project function's sink; raw() and extra() take SQL and stay out.
@@ -690,6 +780,15 @@ rules:
       - pattern: pathlib.PurePath(...).stem
       - pattern: werkzeug.utils.secure_filename(...)
       - pattern: secure_filename(...)
+      # Replacing every character outside a class of letters, digits, "_", "-" and spaces leaves one name that can't
+      # climb (changedetection.io GHSA-9jj8-v89v-xjvw at its fix: re.sub(r'[^a-z0-9_]+', '', group)). [^\w.-] keeps
+      # "..", so it doesn't.
+      - patterns:
+          - pattern: re.sub($PATTERN, $WITH, ...)
+          - metavariable-regex:
+              metavariable: $PATTERN
+              regex: '^r?[''"]\[\^([a-zA-Z0-9_ -]|\\[wd])+\][+*]?[''"]$'
+          - metavariable-regex: {metavariable: $WITH, regex: '^[rbu]*[''"][-_]?[''"]$'}
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -743,6 +842,9 @@ rules:
               - pattern: flask.send_file($PATH, ...)
               - pattern: send_file($PATH, ...)
               - pattern: django.http.FileResponse(open($PATH, ...), ...)
+              # Starlette and FastAPI open the path they're given (Fides GHSA-r25m-cr6v-p9hq).
+              - pattern: starlette.responses.FileResponse($PATH, ...)
+              - pattern: fastapi.responses.FileResponse($PATH, ...)
           # A path's name or extension is a string, not a file opened (paperless-ngx: Path(str(doc.filename)).suffix).
           - pattern-not-inside: pathlib.Path(...).suffix
           - pattern-not-inside: pathlib.Path(...).suffixes
@@ -788,11 +890,19 @@ rules:
       - pattern: send_file(...)
       - pattern: flask.send_from_directory(...)
       - pattern: send_from_directory(...)
+      # What a file holds isn't what the request sent, even when the request named the file; reading from a path it
+      # chose is path traversal, reported by its own rule (CodeRed: HttpResponse(open(fullpath, 'rb').read())).
+      - pattern: open(...)
+      - pattern: $PATH.read_text(...)
+      - pattern: $PATH.read_bytes(...)
       # Jinja templates escape what they're given; redirect() escapes the URL in its body.
       - pattern: flask.render_template(...)
       - pattern: render_template(...)
       - pattern: django.shortcuts.render(...)
       - pattern: django.template.loader.render_to_string(...)
+      # A model or helper that renders its own template, given the request for context (djangoproject.com:
+      # instance.render_to_string(request=request)).
+      - pattern: $OBJ.render_to_string(...)
       - pattern: django.template.response.TemplateResponse(...)
       - pattern: flask.redirect(...)
       - pattern: redirect(...)
@@ -839,10 +949,13 @@ rules:
           - pattern-not: return flask.make_response(...)
           - pattern-not: return make_response(...)
           - focus-metavariable: $BODY
+      # A dict or list body is turned into JSON by Flask (MLflow: make_response({"user": user.to_json()})).
       - patterns:
           - pattern-either:
               - pattern: flask.make_response(($BODY, $SECOND, ...), ...)
               - pattern: make_response(($BODY, $SECOND, ...), ...)
+          - pattern-not: $MAKE(({...}, ...), ...)
+          - pattern-not: $MAKE(([...], ...), ...)
           - focus-metavariable: $BODY
       - patterns:
           - pattern-either:
@@ -852,6 +965,8 @@ rules:
                       - pattern: make_response($BODY, ...)
                   - pattern-not: flask.make_response(($FIRST, $SECOND, ...), ...)
                   - pattern-not: make_response(($FIRST, $SECOND, ...), ...)
+                  - pattern-not: $MAKE({...}, ...)
+                  - pattern-not: $MAKE([...], ...)
               - patterns:
                   - pattern-either:
                       - pattern: flask.Response($BODY, ...)
@@ -1139,6 +1254,8 @@ rules:
               - pattern: flask.session[$KEY] = $VALUE
               - pattern: session[$KEY] = $VALUE
               - pattern: $REQ.session[$KEY] = $VALUE
+          # A key with a fixed prefix (f"player_{code}") can't name another entry, such as the logged-in user's.
+          - metavariable-regex: {metavariable: $KEY, regex: '^(?![rbuf]*[''"][^''"{]+)'}
           - focus-metavariable: $KEY
       - patterns:
           - pattern-either: *session-store
@@ -1448,6 +1565,13 @@ rules:
               - pattern: requests.$METHOD($URL, ...)
               - pattern: httpx.$METHOD($URL, ...)
           - metavariable-regex: {metavariable: $METHOD, regex: ^(get|post|put|patch|delete|head|options|stream)$}
+          - focus-metavariable: $URL
+      # The URL by keyword (Scout GHSA-g53g-q539-93cv: requests.request(method=request.method, url=remote_url)).
+      - patterns:
+          - pattern-either:
+              - pattern: requests.$METHOD(..., url=$URL, ...)
+              - pattern: httpx.$METHOD(..., url=$URL, ...)
+          - metavariable-regex: {metavariable: $METHOD, regex: ^(get|post|put|patch|delete|head|options|stream|request)$}
           - focus-metavariable: $URL
       - patterns:
           - pattern-either:

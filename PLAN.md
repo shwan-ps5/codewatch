@@ -53,7 +53,7 @@ Detection, measured at this commit (verdict mode first; review mode adds hotspot
 | Juice Shop (35 challenges) | 15 | 17 |
 | Vulnerable-Code-Snippets JS (22, held out) | 11 | 13 |
 | vulnerable-node seeds (12 + 2 clean) | 92%, false alarms 0% | 100%, false alarms 50% |
-| CVE fix pairs, Python (33; 14 until step 22) | 14 found, 7 still flagged after the fix | 16 found, 8 still flagged |
+| CVE fix pairs, Python (33; 14 until step 22) | 18 found, 5 still flagged after the fix | 20 found, 7 still flagged |
 | CVE fix pairs, Python front end (6, step 22) | 0 found | 4 found, 2 still flagged |
 | CVE fix pairs, JS/TS (10) | 2 found, 0 still flagged | 4 found, 3 still flagged |
 
@@ -680,6 +680,41 @@ rule):
    - cve-pairs-python-frontend: verdict 0/6; review 4/6 (template `|safe`, jQuery HTML), 2 still flagged.
    Next: the six still-flagged fixes, then the misses whose flow is visible (changedetection.io's filter that
    keeps ".", Fides and CodeRed paths, Scout and pyLoad SSRF, Gerapy's shell commands), then the front end.
+
+   First round on the new cases (2026-11-02), each change with a test in `tests/test_detection.py`:
+   - Still-flagged fixes read one by one. Real (kept): MindsDB (the request's `file` still reaches a path),
+     label-studio (only `file://` blocked), LLaMA Factory (`os.path.isfile(url)` runs before the new check),
+     Scout (its fix is an allowlist check whose name, `check_session_tracks`, says nothing about URLs). False
+     alarms fixed: a validator that raises named for what it checks (`check_lfi_path(url)`,
+     `validate_path_is_safe(path)`; GHSA-527m, GHSA-wc6j); `abspath/realpath/normpath(p).startswith(base +
+     os.sep)` (GHSA-48rp; not without the separator); Flask `make_response({...})` is JSON (GHSA-vwhf); a record
+     looked up through a store or call chain, `_get_tracking_store().get_run(id)` (GHSA-wc6j).
+   - Misses found: Django URL arguments are request input when their urls.py route passes free text
+     (`route_converters.py` marks them on the scanned copy; `<int:pk>`, `<slug:...>`, `\d+` stay clean; CodeRed
+     GHSA-h454); route parameters are tainted where declared (`focus-metavariable`), so `name =
+     secure_filename(name)` clears them (changedetection.io GHSA-9jj8, which also needed `re.sub(r'[^a-z0-9_]+',
+     '', x)` as a path sanitizer; `[^\w.-]` keeps ".." and doesn't count); FastAPI/Starlette `FileResponse(path)`
+     and `sanitise_*` (British spelling) as a validator name (Fides GHSA-r25m); `requests.request(...,
+     url=...)` (Scout GHSA-g53g); and a new rule, `codewatch.python.web.template.xss`: request data passed to a
+     variable a template prints with `|safe` or under `autoescape off` (`template_sinks.py`; Whoogle
+     GHSA-mxvc). Whoogle's vulnerable view still passes for checked, because a forbidden-character guard
+     (`if "'" in x: return`) accepts any literal, `'http' in q` too; requiring non-word characters fixed it but
+     exposed four false alarms in paperless-ngx (views.py:1461-1479, a document resolved through several
+     helpers), so it was reverted until that flow is understood.
+   - False alarms these exposed on the 30 apps, fixed: a session key with a fixed prefix (`f"player_{code}"`)
+     isn't a trust-boundary sink; a model's own `render_to_string(request=request)` isn't request data
+     (djangoproject.com); `{{ form.field|safe }}` renders an escaping widget (pygoat). On the learning sets: an admin-only view (`@admins_only`) renders the administrator's own HTML (CTFd's page preview). New real findings: four
+     XSS in pygoat's labs, and djangoproject.com docs/views.py:57 (a `[\w./-]*` URL part reaches
+     `docroot / Path(*bits)`: any `.fjson` file outside the docs root).
+   - Result: cve-pairs-python verdict 18/33 found (was 14), still flagged 5 (was 7); review 20/33, 7. Front
+     end unchanged at 0/6 verdict: Whoogle's flow needs the guard change above, and its fix changes only error.html,
+     while a pair is scored only in the files its fix changed. Scoring a template fix against the views that render
+     the template is next for the front-end suite.
+   Faster loop from here (the user's call): during the day, each change is checked in isolation (its tests, a
+   probe on the case's files, `devtools.py cases ID...` for the CVE pairs it targets); the full verification runs
+   nightly (`benchmarks/nightly.sh` from a systemd user timer at 01:30, the app list in
+   `~/.config/codewatch/nightly-apps.txt`, a dated report in `~/.cache/codewatch/nightly/`) and is read the next
+   morning.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

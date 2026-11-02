@@ -2665,3 +2665,271 @@ def test_a_url_that_starts_as_a_path_on_this_site_stays_there(tmp_path):
         "  return res.redirect(url);\n"
         "});\n")})
     assert found == {("app.js", 15, "open-redirect"), ("app.js", 21, "open-redirect")}
+
+
+def test_a_resolved_path_checked_against_its_base_and_separator_stays_inside(tmp_path):
+    """pyLoad (GHSA-48rp, at its fix): `if not os.path.abspath(p).startswith(os.path.abspath(base) + os.sep):
+    return` keeps p inside base. Without the separator /srv/files_evil passes a check for /srv/files (xiaomusic's
+    advisory), so that is still a finding."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nBASE = '/srv/files'\n\n\n"
+        "@app.post('/save')\n"
+        "def save():\n"
+        "    path = os.path.normpath(os.path.join(BASE, request.form['name']))\n"
+        "    if not os.path.abspath(path).startswith(os.path.abspath(BASE) + os.sep):\n"
+        "        return 'invalid', 400\n"
+        "    with open(path, 'wb') as fp:\n"
+        "        fp.write(b'x')\n"
+        "    return 'ok'\n\n\n"
+        "@app.post('/loose')\n"
+        "def loose():\n"
+        "    path = os.path.join(BASE, request.form['name'])\n"
+        "    if not os.path.realpath(path).startswith(BASE):\n"
+        "        return 'invalid', 400\n"
+        "    with open(path, 'wb') as fp:\n"
+        "        fp.write(b'x')\n"
+        "    return 'ok'\n")})
+    assert found == {("app.py", 23, "path-traversal")}
+
+
+def test_flask_make_response_of_a_dict_is_json(tmp_path):
+    """MLflow (GHSA-vwhf, both sides of its fix): `make_response({"user": user.to_json()})` is a JSON response, as
+    are a list and a (dict, status) tuple. A string made from the request is still HTML."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, make_response, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.get('/user')\n"
+        "def user():\n"
+        "    name = request.args['name']\n"
+        "    if request.args.get('list'):\n"
+        "        return make_response([name])\n"
+        "    if request.args.get('created'):\n"
+        "        return make_response(({'user': name}, 201))\n"
+        "    if request.args.get('plain'):\n"
+        "        return make_response(f'No user {name}', 404)\n"
+        "    return make_response({'user': name})\n")})
+    assert found == {("app.py", 14, "xss")}
+
+
+def test_a_validator_that_raises_guards_what_follows(tmp_path):
+    """LLaMA Factory and MLflow (GHSA-527m, GHSA-wc6j at their fixes): `check_lfi_path(image_url)` and
+    `validate_path_is_safe(path)` raise when the value is unsafe, so what follows them is checked. Only a check named
+    for what it checks: `check_permission(user, name)` says nothing about a path."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import requests\nfrom flask import Flask, abort, request\n\napp = Flask(__name__)\n\n\n"
+        "def check_lfi_path(path):\n"
+        "    if '..' in path:\n"
+        "        abort(403)\n\n\n"
+        "def check_ssrf_url(url):\n"
+        "    if not url.startswith('https://'):\n"
+        "        abort(403)\n\n\n"
+        "def check_permission(user, name):\n"
+        "    return user is not None\n\n\n"
+        "@app.post('/media')\n"
+        "def media():\n"
+        "    image_url = request.json['image_url']\n"
+        "    check_lfi_path(image_url)\n"
+        "    data = open(image_url, 'rb').read()\n"
+        "    check_ssrf_url(image_url)\n"
+        "    requests.get(image_url, timeout=5)\n"
+        "    return str(len(data))\n\n\n"
+        "@app.post('/other')\n"
+        "def other():\n"
+        "    name = request.json['name']\n"
+        "    check_permission(None, name)\n"
+        "    return open(name).read()\n")})
+    assert found == {("app.py", 35, "path-traversal")}
+
+
+def test_django_url_arguments_that_carry_text_are_request_input(tmp_path):
+    """CodeRed CMS (GHSA-h454-rq3m-89rc): re_path(r'^media/(?P<path>.*)$', serve_protected_file) passes any text,
+    `..` included, as `path`. Only arguments a route passes as free text: <int:pk>, <slug:slug> and \\d+ can't hold a
+    path, and a view no urls.py routes stays as it was."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "site/urls.py": (
+            "from django.urls import path, re_path\n\nfrom . import views\n\n"
+            "urlpatterns = [\n"
+            "    re_path(r'^{0}(?P<path>.*)$'.format('media/'), views.serve_protected_file),\n"
+            "    path('docs/<str:name>/', views.doc),\n"
+            "    path('items/<int:pk>/<slug:slug>/', views.item),\n"
+            "    re_path(r'^old/(?P<pk>\\d+)/$', views.old),\n"
+            "]\n"),
+        "site/views.py": (
+            "import os\n\nfrom django.http import HttpResponse\n\nROOT = '/srv/protected'\n\n\n"
+            "def serve_protected_file(request, path):\n"
+            "    with open(os.path.join(ROOT, path), 'rb') as f:\n"
+            "        return HttpResponse(f.read())\n\n\n"
+            "def doc(request, name):\n"
+            "    return HttpResponse(open(os.path.join(ROOT, name)).read())\n\n\n"
+            "def item(request, pk, slug):\n"
+            "    return HttpResponse(open(os.path.join(ROOT, slug, str(pk))).read())\n\n\n"
+            "def old(request, pk):\n"
+            "    return HttpResponse(open(os.path.join(ROOT, pk)).read())\n\n\n"
+            "def helper(request, path):\n"
+            "    return open(os.path.join(ROOT, path)).read()\n")})
+    assert found == {("site/views.py", 9, "path-traversal"), ("site/views.py", 14, "path-traversal")}
+
+
+def test_stripping_all_but_name_characters_keeps_a_path_inside(tmp_path):
+    """changedetection.io (GHSA-9jj8-v89v-xjvw): re.sub(r'[^\\w.-]+', '', group) keeps "..", so a route could still
+    climb out of its folder; the fix's re.sub(r'[^a-z0-9_]+', '', group) leaves a single name."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\nimport re\n\nfrom flask import Flask\n\napp = Flask(__name__)\nROOT = '/srv/data'\n\n\n"
+        "@app.route('/old/<string:group>')\n"
+        "def old(group):\n"
+        "    group = re.sub(r'[^\\w.-]+', '', group.lower())\n"
+        "    return open(os.path.join(ROOT, group, 'data.json')).read()\n\n\n"
+        "@app.route('/new/<string:group>')\n"
+        "def new(group):\n"
+        "    group = re.sub(r'[^a-z0-9_]+', '', group.lower())\n"
+        "    other = re.sub(r'[^\\w-]', '_', group)\n"
+        "    return open(os.path.join(ROOT, group, other)).read()\n")})
+    assert found == {("app.py", 13, "path-traversal")}
+
+
+def test_a_route_parameter_reassigned_from_a_sanitizer_is_clean(tmp_path):
+    """`name = secure_filename(name)` replaces the URL's value; only the parameter as passed is request input
+    (found with changedetection.io's GHSA-9jj8-v89v-xjvw, which cleans its route parameters in place). A
+    reassignment that keeps the value, like .strip(), stays tainted."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\n\nfrom flask import Flask\nfrom werkzeug.utils import secure_filename\n\n"
+        "app = Flask(__name__)\nROOT = '/srv/data'\n\n\n"
+        "@app.route('/a/<name>')\n"
+        "def a(name):\n"
+        "    name = secure_filename(name)\n"
+        "    return open(os.path.join(ROOT, name)).read()\n\n\n"
+        "@app.route('/b/<name>')\n"
+        "def b(name):\n"
+        "    name = name.strip()\n"
+        "    return open(os.path.join(ROOT, name)).read()\n")})
+    assert found == {("app.py", 19, "path-traversal")}
+
+
+def test_fastapi_file_response_opens_its_path(tmp_path):
+    """Fides (GHSA-r25m-cr6v-p9hq): a catch-all route served FileResponse(ui_path(path)) for any path; the fix runs
+    the path through sanitise_url_path() first, a validator by its (British) name."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from pathlib import Path\n\nfrom fastapi import FastAPI, Request\nfrom fastapi.responses import FileResponse\n\n"
+        "app = FastAPI()\nROOT = Path('/srv/ui')\n\n\n"
+        "def ui_path(path: str = ''):\n"
+        "    return ROOT / 'admin' / path\n\n\n"
+        "def sanitise_url_path(path):\n"
+        "    if '..' in path:\n"
+        "        raise ValueError(path)\n"
+        "    return path\n\n\n"
+        "@app.get('/{catchall:path}')\n"
+        "def catchall(request: Request):\n"
+        "    path = request.path_params['catchall']\n"
+        "    return FileResponse(ui_path(path))\n\n\n"
+        "@app.get('/fixed/{catchall:path}')\n"
+        "def fixed(request: Request):\n"
+        "    path = sanitise_url_path(request.path_params['catchall'])\n"
+        "    return FileResponse(ui_path(path))\n")})
+    assert found == {("app.py", 23, "path-traversal")}
+
+
+def test_request_data_into_a_template_variable_printed_unescaped(tmp_path):
+    """Whoogle (GHSA-mxvc-fwgx-j778): render_template('error.html', error_message='Unable to resolve query: ' + q)
+    into a template that prints {{ error_message|safe }}. A variable the template escapes, sanitizes first or prints
+    as JSON isn't a sink, and neither is one of a template no view names. A Django form or bound field escapes its own
+    widgets (pygoat: {{ form.username|safe }}), and a template rendered with the request for context isn't request
+    data (djangoproject.com: instance.render_to_string(request=request) into {{ markdown|safe }}). An admin-only view
+    renders the administrator's own HTML (CTFd's page preview)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app/templates/error.html": "<p>{{ error_message|safe }}</p>\n<h1>{{ title }}</h1>\n",
+        "app/templates/list.html": (
+            "{% for item in items %}<li>{{ item.text|safe }}</li>{% endfor %}\n"
+            "{{ notes|sanitize_html|safe }}\n<script>var d = {{ data|tojson|safe }};</script>\n"),
+        "app/templates/core/page.html": "{% autoescape off %}{{ body }}{% endautoescape %}\n",
+        "app/templates/login.html": "{{ form.username|safe }}{{ form|safe }}<p>{{ note|safe }}</p>\n",
+        "app/routes.py": (
+            "from flask import Flask, render_template, request\n\napp = Flask(__name__)\n\n\n"
+            "@app.route('/search')\n"
+            "def search():\n"
+            "    q = request.args.get('q', '')\n"
+            "    if not q:\n"
+            "        return render_template('error.html', error_message='Unable to resolve query: ' + q)\n"
+            "    return render_template('error.html', error_message='No query', title=q)\n\n\n"
+            "@app.route('/list')\n"
+            "def listing():\n"
+            "    text = request.args['text']\n"
+            "    return render_template('list.html', items=[text], notes=text, data=text)\n\n\n"
+            "@app.route('/admin/preview', methods=['POST'])\n"
+            "@admins_only\n"
+            "def preview():\n"
+            "    return render_template('error.html', error_message=request.form['content'])\n"),
+        "app/views.py": (
+            "from django.shortcuts import render\n\n\n"
+            "def page(request):\n"
+            "    return render(request, 'core/page.html', {'body': request.GET['body'], 'title': 'x'})\n\n\n"
+            "def login(request):\n"
+            "    form = LoginForm(request.POST)\n"
+            "    note = request.user.profile.render_to_string(request=request)\n"
+            "    return render(request, 'login.html', {'form': form, 'note': note})\n"),
+    })
+    assert found == {("app/routes.py", 10, "xss"), ("app/routes.py", 17, "xss"), ("app/views.py", 5, "xss")}
+
+
+def test_a_record_looked_up_through_a_store_is_the_stored_record(tmp_path):
+    """MLflow (GHSA-wc6j-5g83-xfm6 at its fix): run = _get_tracking_store().get_run(run_id) is the stored run, and
+    the artifact repository built from it isn't request data; the path, checked by validate_path_is_safe, is."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, request, send_file\n\nfrom .store import _get_tracking_store\n\n"
+        "app = Flask(__name__)\n\n\n"
+        "@app.route('/artifact')\n"
+        "def artifact():\n"
+        "    run = _get_tracking_store().get_run(request.args['run_id'])\n"
+        "    return send_file(run.artifact_uri + '/model.bin')\n\n\n"
+        "@app.route('/raw')\n"
+        "def raw():\n"
+        "    item = request.get_data().get_path()\n"
+        "    return send_file(item)\n")})
+    assert found == {("app.py", 17, "path-traversal")}
+
+
+def test_a_session_key_with_a_fixed_prefix_is_not_a_trust_boundary(tmp_path):
+    """request.session[f"player_{code}"] = key can't overwrite another entry; request.session[name] = ... can."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"views.py": (
+        "import secrets\n\n\n"
+        "def join(request):\n"
+        "    code = request.GET['code']\n"
+        "    request.session[f'player_{code}'] = secrets.token_hex(8)\n"
+        "    request.session['seen_' + code] = True\n"
+        "    request.session[code] = True\n")})
+    assert found == {("views.py", 8, "trust-boundary")}
+
+
+def test_requests_given_the_url_by_keyword(tmp_path):
+    """Scout (GHSA-g53g-q539-93cv): requests.request(method=request.method, url=remote_url) proxied any URL."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import requests\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/remote/cors/<path:remote_url>')\n"
+        "def remote_cors(remote_url):\n"
+        "    requests.request(method=request.method, url=remote_url, timeout=5)\n"
+        "    return 'sent'\n\n\n"
+        "@app.route('/fixed')\n"
+        "def fixed():\n"
+        "    requests.get(url='https://example.com/', params={'q': request.args['q']}, timeout=5)\n"
+        "    return 'sent'\n")})
+    assert found == {("app.py", 9, "ssrf")}
