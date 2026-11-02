@@ -860,7 +860,7 @@
       "language": "python-web",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "CVE fix pairs in the templates and front-end JavaScript of Python web apps (Django, Flask, FastAPI): the fix changes a template or a script the app ships. Chosen and scored like cve-pairs-python, with templates (.html, Jinja) and JS/TS counted as source. Not held out: may be used to adjust rules (say so here when that happens). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 GHSA-mxvc-fwgx-j778 (Whoogle) was used to add request data passed to a template variable printed with |safe as an XSS sink.",
+      "about": "CVE fix pairs in the templates and front-end JavaScript of Python web apps (Django, Flask, FastAPI): the fix changes a template or a script the app ships. Chosen and scored like cve-pairs-python, with templates (.html, Jinja) and JS/TS counted as source. Not held out: may be used to adjust rules (say so here when that happens). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 GHSA-mxvc-fwgx-j778 (Whoogle) was used to add request data passed to a template variable printed with |safe as an XSS sink. On 2026-11-02 (second batch, a cloud session) 21 more cases were added from the same advisories, widened to all years, to fixes over three files or 120 lines when every change is the same weakness, and to advisories whose extra commits are backports of one fix (the main-branch commit is used); none used for rules yet. Decisions and reasons: PLAN.md step 22.",
       "cases": [
         {
           "id": "GHSA-2rrx-pphc-qfv9",
@@ -874,6 +874,34 @@
           "summary": "pgAdmin 4 Vulnerable to Cross-Site Scripting (XSS) via Query Result Rendering",
           "scope": [
             "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-3c5x-4hvx-qrrr",
+          "cve": "CVE-2022-4728",
+          "repo": "https://github.com/graphite-project/graphite-web.git",
+          "fix": "2f178f490e10efc03cd1d27c72f64ecab224eb23",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Graphite Web Cross-site Scripting vulnerability",
+          "scope": [
+            "webapp"
+          ]
+        },
+        {
+          "id": "GHSA-52gm-qmg3-r4qp",
+          "cve": "CVE-2024-32077",
+          "repo": "https://github.com/apache/airflow.git",
+          "fix": "87acf61f574daf47ce9e03a986e352a2c727f4ce",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Apache Airflow: XSS vulnerability in Task Instance Log/Log Details",
+          "scope": [
+            "airflow"
           ]
         },
         {
@@ -891,6 +919,91 @@
           ]
         },
         {
+          "id": "GHSA-6hcj-qrw3-m66q",
+          "cve": "CVE-2022-2589",
+          "repo": "https://github.com/beancount/fava.git",
+          "fix": "68bbb6e39319deb35ab9f18d0b6aa9fa70472539",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Fava vulnerable to reflected cross-site scripting",
+          "scope": [
+            "frontend/src"
+          ]
+        },
+        {
+          "id": "GHSA-6wxc-8mgq-w26m",
+          "cve": "CVE-2026-45106",
+          "repo": "https://github.com/WeblateOrg/weblate.git",
+          "fix": "8b0adf1d0b43dfc0d09da4b878857b2288b84f2d",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Weblate: Stored HTML injection in editor search preview",
+          "scope": [
+            "weblate"
+          ]
+        },
+        {
+          "id": "GHSA-c467-5c2g-jp86",
+          "cve": "CVE-2023-0470",
+          "repo": "https://github.com/modoboa/modoboa.git",
+          "fix": "354ab6884019009249097a7f3a1881d81ecd2fd2",
+          "cwe": [
+            79
+          ],
+          "license": "ISC",
+          "summary": "Cross-site Scripting in modoboa",
+          "scope": [
+            "modoboa"
+          ]
+        },
+        {
+          "id": "GHSA-crvm-xjhm-9h29",
+          "cve": "CVE-2025-64187",
+          "repo": "https://github.com/OctoPrint/OctoPrint.git",
+          "fix": "9112e07b1085f4c1ee9eefc67985809251057a44",
+          "cwe": [
+            79,
+            80
+          ],
+          "license": "AGPL-3.0",
+          "summary": "OctoPrint vulnerable to XSS in Action Commands Notification and Prompt",
+          "scope": [
+            "src/octoprint"
+          ]
+        },
+        {
+          "id": "GHSA-fh64-r2vc-xvhr",
+          "cve": "CVE-2026-33865",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "aca4dd0ec88a12f7655155c224371280e9b45dda",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "MLflow is vulnerable to Stored Cross-Site Scripting (XSS) caused by unsafe parsing of YAML-based MLmodel artifacts in its web interface",
+          "scope": [
+            "mlflow/server/js"
+          ]
+        },
+        {
+          "id": "GHSA-fmqq-25x9-c6hm",
+          "cve": "CVE-2023-37901",
+          "repo": "https://github.com/indico/indico.git",
+          "fix": "2ee636d318653fb1ab193803dafbfe3e371d4130",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Indico vulnerable to Cross-Site-Scripting via confirmation prompts",
+          "scope": [
+            "indico"
+          ]
+        },
+        {
           "id": "GHSA-h56g-v4vp-q9q6",
           "cve": "CVE-2022-0352",
           "repo": "https://github.com/janeczku/calibre-web.git",
@@ -902,6 +1015,20 @@
           "summary": "Cross-site Scripting in calibreweb",
           "scope": [
             "cps"
+          ]
+        },
+        {
+          "id": "GHSA-j772-hpmw-32rm",
+          "cve": "CVE-2012-2094",
+          "repo": "https://github.com/openstack/horizon.git",
+          "fix": "7f8c788aa70db98ac904f37fa4197fcabb802942",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "OpenStack Horizon Cross-site scripting (XSS) vulnerability",
+          "scope": [
+            "horizon"
           ]
         },
         {
@@ -919,6 +1046,62 @@
           ]
         },
         {
+          "id": "GHSA-jxgr-gcj5-cqqg",
+          "cve": "CVE-2024-32979",
+          "repo": "https://github.com/nautobot/nautobot.git",
+          "fix": "42440ebd9b381534ad89d62420ebea00d703d64e",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "nautobot has reflected Cross-site Scripting potential in all object list views",
+          "scope": [
+            "nautobot"
+          ]
+        },
+        {
+          "id": "GHSA-mfv8-q39f-mgfg",
+          "cve": "CVE-2019-1020005",
+          "repo": "https://github.com/inveniosoftware/invenio-communities.git",
+          "fix": "505da72c5acd7dfbd4148f884c73c9c3372b76f4",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Cross-site Scripting in invenio-communities",
+          "scope": [
+            "invenio_communities"
+          ]
+        },
+        {
+          "id": "GHSA-mgmm-cmhj-2h5f",
+          "cve": "CVE-2023-0949",
+          "repo": "https://github.com/modoboa/modoboa.git",
+          "fix": "aa74e9a4a870162eea169e0a6a2eab841f8811b7",
+          "cwe": [
+            79
+          ],
+          "license": "ISC",
+          "summary": "modoboa Cross-site Scripting vulnerability",
+          "scope": [
+            "modoboa"
+          ]
+        },
+        {
+          "id": "GHSA-mqwh-r366-4224",
+          "cve": "CVE-2020-7734",
+          "repo": "https://github.com/arachnys/cabot.git",
+          "fix": "eb0b3544f8c8ab2dee4643df191da346a941734f",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Cabot Cross Site Scripting (XSS) vulnerability via Endpoint column",
+          "scope": [
+            "cabot"
+          ]
+        },
+        {
           "id": "GHSA-mxvc-fwgx-j778",
           "cve": "CVE-2022-25303",
           "repo": "https://github.com/benbusby/whoogle-search.git",
@@ -933,6 +1116,34 @@
           ]
         },
         {
+          "id": "GHSA-pjx4-3f3p-29v3",
+          "cve": "CVE-2016-15010",
+          "repo": "https://github.com/uisdevops/django-ucamlookup.git",
+          "fix": "5e25e4765637ea4b9e0bf5fcd5e9a922abee7eb3",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "django-ucamlookup Cross-site Scripting vulnerability",
+          "scope": [
+            "ucamlookup"
+          ]
+        },
+        {
+          "id": "GHSA-pwgc-w4x9-gw67",
+          "cve": "CVE-2024-34061",
+          "repo": "https://github.com/dgtlmoon/changedetection.io.git",
+          "fix": "c0f000b1d1ce03733460805dbbedde445fe2c762",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "changedetection.io Cross-site Scripting vulnerability",
+          "scope": [
+            "changedetectionio"
+          ]
+        },
+        {
           "id": "GHSA-rwcv-whm8-fmxm",
           "cve": "CVE-2024-27091",
           "repo": "https://github.com/GeoNode/geonode.git",
@@ -944,6 +1155,90 @@
           "summary": "GeoNode: Stored XSS to full account takeover",
           "scope": [
             "geonode"
+          ]
+        },
+        {
+          "id": "GHSA-wcm6-wv95-7jw6",
+          "cve": "CVE-2023-0488",
+          "repo": "https://github.com/pyload/pyload.git",
+          "fix": "46d75a3087f3237d06530d55998938e2e2bda6bd",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross-site Scripting in pyload-ng",
+          "scope": [
+            "src/pyload"
+          ]
+        },
+        {
+          "id": "GHSA-wrp6-9w7f-3wxg",
+          "cve": "CVE-2021-4170",
+          "repo": "https://github.com/janeczku/calibre-web.git",
+          "fix": "7ad419dc8c12180e842a82118f4866ac3d074bc5",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "calibre-web is vulnerable to Cross-site Scripting",
+          "scope": [
+            "cps"
+          ]
+        },
+        {
+          "id": "GHSA-x7mf-wrh9-r76c",
+          "cve": "CVE-2024-28237",
+          "repo": "https://github.com/OctoPrint/OctoPrint.git",
+          "fix": "779894c1bc6478332d14bc9ed1006df1354eb517",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "XSS via the \"Snapshot Test\" feature in Classic Webcam plugin settings",
+          "scope": [
+            "src/octoprint"
+          ]
+        },
+        {
+          "id": "GHSA-xrf4-39fm-j5f2",
+          "cve": "CVE-2022-2514",
+          "repo": "https://github.com/beancount/fava.git",
+          "fix": "ca9e3882c7b5fbf5273ba52340b9fea6a99f3711",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Fava time and filter parameters vulnerable to reflected Cross-site Scripting",
+          "scope": [
+            "src/fava"
+          ]
+        },
+        {
+          "id": "GHSA-xv64-8p4r-94gq",
+          "cve": "CVE-2024-4216",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "e384c9665ae2e72376be7cefa8e652efcee93767",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "pgAdmin Cross-site Scripting vulnerability in /settings/store API response json payload",
+          "scope": [
+            "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-xvxq-g8hw-fx4g",
+          "cve": "CVE-2024-49377",
+          "repo": "https://github.com/OctoPrint/OctoPrint.git",
+          "fix": "b8a6b0a75202edac3bb142a8e4f9041a0b6825bf",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "OctoPrint Vulnerable to Reflected XSS in Jinja2 Templates",
+          "scope": [
+            "src/octoprint"
           ]
         }
       ]
@@ -1190,6 +1485,143 @@
           "summary": "lightrag-hku: Stored Cross-Site Scripting (XSS) in the LightRAG WebUI chat/answer renderer via ingested content",
           "scope": [
             "lightrag_webui"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-frontend-2",
+      "language": "python-web",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Second blind set of template and front-end JavaScript CVE fix pairs from Python web apps, split from the second batch of 2026-11-02 candidates before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-3m3h-v9hv-9j4h",
+          "cve": "CVE-2021-25986",
+          "repo": "https://github.com/django-wiki/django-wiki.git",
+          "fix": "9eaccc7519e4206a4d2f22640882f0737b2da9c5",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Cross-site Scripting in django-wiki",
+          "scope": [
+            "src/wiki"
+          ]
+        },
+        {
+          "id": "GHSA-5jc6-h9w7-jm3p",
+          "cve": "CVE-2024-53999",
+          "repo": "https://github.com/MobSF/Mobile-Security-Framework-MobSF.git",
+          "fix": "27d165872847f5ae7417caf09f37edeeba741e1e",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Mobile Security Framework (MobSF) Stored Cross-Site Scripting Vulnerability in \"Diff or Compare\" Functionality",
+          "scope": [
+            "mobsf"
+          ]
+        },
+        {
+          "id": "GHSA-6g7x-4c7m-g63m",
+          "cve": "CVE-2013-2209",
+          "repo": "https://github.com/reviewboard/reviewboard.git",
+          "fix": "4aaacbb1e628a80803ba1a55703db38fccdf7dbf",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Review Board Cross-site scripting (XSS) vulnerability in the reviews dropdown",
+          "scope": [
+            "reviewboard"
+          ]
+        },
+        {
+          "id": "GHSA-8vwv-2v7v-jmgr",
+          "cve": "CVE-2014-3473",
+          "repo": "https://github.com/openstack/horizon.git",
+          "fix": "c844bd692894353c60b320005b804970605e910f",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Horizon-Orchestration Cross-site scripting (XSS) vulnerability through resource name",
+          "scope": [
+            "horizon",
+            "openstack_dashboard"
+          ]
+        },
+        {
+          "id": "GHSA-9wj3-cfq8-wpvj",
+          "cve": "CVE-2023-5689",
+          "repo": "https://github.com/modoboa/modoboa.git",
+          "fix": "d33d3cd2d11dbfebd8162c46e2c2a9873919a967",
+          "cwe": [
+            79
+          ],
+          "license": "ISC",
+          "summary": "modoboa Cross-site Scripting vulnerability",
+          "scope": [
+            "modoboa"
+          ]
+        },
+        {
+          "id": "GHSA-h8pc-j334-jjhm",
+          "cve": "CVE-2022-1432",
+          "repo": "https://github.com/OctoPrint/OctoPrint.git",
+          "fix": "6d259d7e6f5b0de9a1c762831537a386e53978d3",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Cross-site Scripting in OctoPrint",
+          "scope": [
+            "src/octoprint"
+          ]
+        },
+        {
+          "id": "GHSA-rffm-9q57-q649",
+          "cve": "CVE-2026-70480",
+          "repo": "https://github.com/open-webui/open-webui.git",
+          "fix": "5278eb906ebecefc6538a19bc86df09d997e43e6",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open WebUI: Client-side SSRF via unrestricted external resource loading in Vega/Vega-Lite chart rendering",
+          "scope": [
+            "src/lib"
+          ]
+        },
+        {
+          "id": "GHSA-vx6v-xg64-pmr8",
+          "cve": "CVE-2021-3945",
+          "repo": "https://github.com/django-helpdesk/django-helpdesk.git",
+          "fix": "2c7065e0c4296e0c692fb4a7ee19c7357583af30",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "Cross-site Scripting in django-helpdesk",
+          "scope": [
+            "helpdesk"
+          ]
+        },
+        {
+          "id": "GHSA-wpvx-26f7-65q3",
+          "cve": "CVE-2014-3840",
+          "repo": "https://github.com/mayan-edms/mayan-edms.git",
+          "fix": "398c480c10416d76e7c1dcb607e726e8fc988e72",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Mayan EDMS multiple cross-site scripting (XSS) vulnerabilities",
+          "scope": [
+            "apps"
           ]
         }
       ]
