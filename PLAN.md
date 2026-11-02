@@ -98,8 +98,8 @@ Next, in order:
 4. The Python miss still in reach: pyLoad's SSRF through its own pycurl wrapper (`get_url`); the rest (stored
    data, settings flags, template-built SQL, `g`-stored state) are recorded as out of reach.
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the three blind CVE suites
-   (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-3`, `cve-pairs-blind-python-frontend`), each scanned
-   once, measurement only.
+   (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-3`, `cve-pairs-blind-python-4`,
+   `cve-pairs-blind-python-frontend`), each scanned once, measurement only.
 6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
 7. Other languages and frameworks (Node/Express first), as local rule work. Cloud sessions (CLAUDE.md) gather
    their ground truth and do self-contained engineering. The first cloud PR (#1, Express sinks) showed that rule
@@ -765,6 +765,37 @@ rule):
      flows into a store class (MLflow FileStore, Dagster log manager), an upload into `ZipFile.extractall`
      (Gramps), `cursor.execute` with `str.format` behind Flask-RESTful (postgraas), and code reaching `exec`/`eval`
      (Langflow, pgAdmin).
+
+24. **More Python ground truth, third batch, widened rule** (2026-11-02, cloud session; no rules changed). Step 23's
+   pool ran out at 22, so the rule was widened, each widening recorded here:
+   - Weaknesses: CWE 23, 36 and 73 (path variants), 77, 90 (LDAP), 113 (header injection), 643 (XPath), 943
+     (NoSQL) and 1333 (ReDoS from request data), still request input reaching a sink in the app's own code.
+   - Fix size: up to five non-test source files and 200 changed lines, when the vulnerable flow is still clear
+     from the diff (step 22: three and 120).
+   - Frameworks: Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps count as Flask/FastAPI (step 23 already
+     did this); Tornado, aiohttp, Gradio and Streamlit stay excluded.
+   - Pre-2021 advisories in Django/Flask/FastAPI apps, read the same way.
+   Method as in step 23 (OSV's PyPI export of GitHub's reviewed advisories, fixes sized with a blobless fetch),
+   with one change from CLAUDE.md: candidates whose fix commit is already in any suite, blind ones included, were
+   dropped before reading (6). Only candidates a widening newly admits were considered; ones step 22 or 23's rule
+   already covered were not re-read (step 23's two size rejections were reconsidered: GHSA-j74f was read and
+   rejected). 1,103 candidates, 228 within the widened size rule and newly admitted, about 60 of them in web apps
+   and read one by one (59 lines in `benchmarks/cve-candidates-2026-11-02-batch3.tsv`); the rest are libraries,
+   CLIs and other servers, set aside by repository. Eleven LoLLMS advisories and a few others couldn't be
+   fetched (their commits are gone or their ids are short), so they weren't read.
+   - Accepted 11, not the 30 aimed for: the widened pool is mostly libraries and validator changes too. Split by
+     the sha256 rule: 4 joined `cve-pairs-python` (now 53), 7 form `cve-pairs-blind-python-4` (an uneven split
+     for so few cases; reasons withheld in the TSV). By widening: 7 through the new CWEs, 4 through the size limit,
+     pre-2021 none (the nine pre-2021 app advisories read were frameworks, libraries or stored data).
+   - Open cases: django-wiki's search keyword into `re.compile` (CWE 1333, through a template tag), MLflow's model
+     name into the model-registry FileStore path (36), MobSF's `next` behind `startswith("/")` (601), pgAdmin's
+     backup/import file name into the storage path (22, five files).
+   - Probed with `devtools.py cases` (two allowed): django-wiki found in review mode only (`regex-injection` at
+     the `re.compile`), quiet at the fix; MobSF found in verdict mode, but still flagged at the fix, at saml2.py:146,
+     `redirect(auth.login(return_to=redirect_url))`: the target is the identity provider's URL from python3-saml,
+     so that's a false-alarm shape (a library call's result treated as the request value). Separately, the fix's
+     `sanitize_redirect` still accepts `/\host`, which browsers read as `//host`, so a finding on the login view
+     at the fix would be an incomplete fix, not a false alarm. The nightly run measures `cve-pairs-python`.
 
 25. **Express/Node sinks** (PR #1, 2026-11-02, the first cloud session; rules finished after local review). New sinks
    in `javascript-taint.yml` for module shapes the rules missed: `node:` specifiers, fs-extra/graceful-fs,
