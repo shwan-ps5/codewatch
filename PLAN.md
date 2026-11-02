@@ -95,8 +95,9 @@ Next, in order:
    verdict detection for front-end JS (request data into innerHTML or jQuery HTML).
 4. The Python miss still in reach: pyLoad's SSRF through its own pycurl wrapper (`get_url`); the rest (stored
    data, settings flags, template-built SQL, `g`-stored state) are recorded as out of reach.
-5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the two blind CVE suites
-   (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-frontend`), each scanned once, measurement only.
+5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the three blind CVE suites
+   (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-3`, `cve-pairs-blind-python-frontend`), each scanned
+   once, measurement only.
 6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
 7. Other languages and frameworks (Node/Express first), from cloud sessions as pull requests, one topic each,
    following CLAUDE.md's "Cloud sessions" section; merged only after local verification and a nightly run.
@@ -730,6 +731,36 @@ rule):
    nightly (`benchmarks/nightly.sh` from a systemd user timer at 01:30, the app list in
    `~/.config/codewatch/nightly-apps.txt`, a dated report in `~/.cache/codewatch/nightly/`) and is read the next
    morning.
+
+23. **More Python ground truth, second batch** (2026-11-02, cloud session; no rules changed). The same rule as
+   step 22, aiming for about 30 more cases. GitHub's advisory API isn't reachable from a cloud session, so the
+   candidates came from OSV's PyPI export (`osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip`), which
+   carries GitHub's reviewed advisories with their CWEs and references: reviewed, published since 2021, CWE 22,
+   78, 79, 89, 94, 502, 601, 611, 918 or 1336, exactly one fix-commit link, not already in a suite: 960 (step 22
+   had 1,003 from the API). Each fix was fetched (`git fetch --depth=2 --filter=blob:none`) and sized: at most
+   three non-test source files (`.py`, templates, scripts) and 120 changed lines: 627. Of those, the ~500 in
+   libraries, frameworks, CLIs, ML toolkits and servers that aren't Django/Flask/FastAPI (aiohttp, Tornado,
+   CherryPy, Twisted, http.server, gRPC, Gradio, Streamlit, NiceGUI, Mesop...) were set aside by repository
+   without reading the diff; the 120 in web applications were read one by one, plus 9 of the 46 pre-2021
+   advisories (the only ones in applications), 129 in all. Every decision and reason is in
+   `benchmarks/cve-candidates-2026-11-02.tsv`.
+   - Accepted 22 (3 of them pre-2021: xmpp-http-upload, graphite-web, Superset). Split before any scan by the
+     sha256 rule: 16 joined `cve-pairs-python` (now 49), 6 form the new `cve-pairs-blind-python-3` (their reasons
+     are withheld in the TSV). Only 22, not 30: the pool under this rule ran out; the rest were rejected for the
+     step 22 reasons (validator and allowlist changes, stored data, missing authentication or authorization,
+     settings flags, library code, mixed or refactoring commits), plus several advisories sharing one fix commit
+     (one case per commit) and a few fixes over the size rule once short commit ids were resolved.
+   - GHSA-q97g-c29h-x2p7 (Whoogle) was accepted, then dropped: its fix commit, 3a2e0b262e, is already the blind
+     case GHSA-hh2q-qv66-jcqg in `cve-pairs-blind-python-2` (two more advisories, GHSA-3q6g and GHSA-phg6, share
+     it too). The diff of that blind case was read in this session before the overlap was noticed; nothing was
+     done with it, but say so if that case is ever discussed. Later batches should drop candidates whose fix
+     commit is in any suite before reading them.
+   - Scopes are the app's package folder, or the two folders a flow crosses (Dagster webserver and log manager,
+     Langflow API and `lfx/custom`). Nothing was scanned in the session; the nightly run measures
+     `cve-pairs-python`. Shapes likely to matter there (open cases only): Quart's Flask-like `request` (AstrBot),
+     flows into a store class (MLflow FileStore, Dagster log manager), an upload into `ZipFile.extractall`
+     (Gramps), `cursor.execute` with `str.format` behind Flask-RESTful (postgraas), and code reaching `exec`/`eval`
+     (Langflow, pgAdmin).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
