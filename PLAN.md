@@ -92,8 +92,8 @@ Next, in order:
 1. Read the first nightly report (2026-11-03): the round-one changes of step 22 on every suite and app, and
    learning set 5 for the first time.
 2. Learning set 5 (netbox, label-studio, lemur: Python apps with JS front ends), case by case.
-3. The front end (step 22): score a template-only fix against the views that render the template; Whoogle's
-   `'http' in q` passing as a guard (the fix exposed paperless-ngx false alarms, so understand that flow first);
+3. The front end (step 22): template-only fixes are now scored at the views that render the template (step 26);
+   Whoogle's `'http' in q` passing as a guard, which is now the only thing between GHSA-mxvc and a verdict find (the fix exposed paperless-ngx false alarms, so understand that flow first);
    verdict detection for front-end JS (request data into innerHTML or jQuery HTML).
 4. The Python miss still in reach: pyLoad's SSRF through its own pycurl wrapper (`get_url`); the rest (stored
    data, settings flags, template-built SQL, `g`-stored state) are recorded as out of reach.
@@ -811,6 +811,34 @@ rule):
    reason rule work now stays local. Verified locally: quick suites, 30 apps and cve-pairs-javascript unchanged;
    learning set 4 down from 27 to 24. Open question from the session: a one-line
    `require('fs').createReadStream(req.query.f).pipe(res)` was missed in one probe file but not another.
+
+26. **Template-only fixes scored at the rendering call** (2026-11-02, cloud session; no rules changed). A CVE pair was
+   scored only on findings in the files its fix changed, and Semgrep's per-file pass was narrowed to them. When the
+   fix changes only a template (Whoogle GHSA-mxvc drops `|safe` from `app/templates/error.html`), the finding is at
+   the Python call that renders it, `render_template('error.html', error_message=...)` (rule
+   `codewatch.python.web.template.xss`), in an unchanged file, so the pair could only count as missed. Now, in
+   `core/benchmark.py`, for Python suites (`python`, `python-web`):
+   - each non-test template the fix changes is named as a view names it (`template_sinks.template_name`), and the
+     Python files in the checkout that render it by that name are found with `ast` (`render_template` /
+     `render_to_string` first argument, Django `render` / `TemplateResponse` second, or `template_name` keyword);
+   - those files join the scan focus and are kept in the scored findings on each side, but only for findings of the
+     template rule inside a call that names a changed template (`spots["renders"]`): an unrelated finding in a
+     rendering file, or the template rule on another template, isn't counted;
+   - a finding that survives the fix still counts as still flagged, as before.
+   It also turned out the template rule could never be scored at all: it's built at scan time, has no catalogue
+   entry, and so carried no CWE. The scorer now gives it the XSS rule's CWEs (`DERIVED_RULES`). Its catalogue gap
+   (no title or CWE on the finding page) is left for a local session. Tests: `tests/test_benchmark.py` builds a
+   Whoogle-like pair in a temporary git repository (found at the render call, quiet after the fix; another
+   template's `|safe` and a direct echo in the same file not counted), and `semgrep_vulnerabilities(...,
+   full_ids=True)` in `tests/test_detection.py` keeps the whole rule id where the last part is ambiguous (`.xss`).
+   - Probe, `devtools.py cases GHSA-mxvc` (cve-pairs-python-frontend): still missed in verdict mode, quiet at the fix;
+     review mode finds `codewatch.templates.unescaped-output` in error.html, as before. The scorer now looks in the
+     right place: it finds the four `render_template('error.html', ...)` calls in `app/routes.py`, but the template
+     rule fires on none of them at the vulnerable commit. The vulnerable call (routes.py:446) is in the `else` of
+     `if len(q) > 0 and 'http' in q: return redirect(q)`, which passes as a guard (next step 3, rule work); the
+     others pass `session['error_message']`, a translation string, and an exception message.
+   - May change other pairs' scores: any Python pair whose fix touches a template now also counts the template rule
+     at that template's render calls. The nightly run measures it.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

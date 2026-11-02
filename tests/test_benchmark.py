@@ -194,3 +194,101 @@ def test_a_python_web_apps_templates_and_scripts_count_as_its_source():
     web = benchmark.SOURCE_EXTENSIONS["python-web"]
     assert benchmark.fix_spots(diff, web)["after"] == {"app/templates/item.html": [(3, 3)], "app/static/js/list.js": [(7, 7)]}
     assert benchmark.fix_spots(diff, benchmark.SOURCE_EXTENSIONS["python"])["after"] == {}
+
+
+TEMPLATE_DIFF = (
+    "diff --git a/app/templates/error.html b/app/templates/error.html\n"
+    "--- a/app/templates/error.html\n+++ b/app/templates/error.html\n"
+    "@@ -1 +1 @@\n-<p>{{ error_message|safe }}</p>\n+<p>{{ error_message }}</p>\n"
+    "diff --git a/tests/templates/fixture.html b/tests/templates/fixture.html\n"
+    "--- a/tests/templates/fixture.html\n+++ b/tests/templates/fixture.html\n"
+    "@@ -1 +1 @@\n-a\n+b\n")
+
+
+def test_changed_templates_are_named_as_views_name_them():
+    assert benchmark.changed_templates(TEMPLATE_DIFF) == {"error.html"}
+
+
+def test_render_spans_find_the_calls_that_name_a_template():
+    text = ("def a():\n    return render_template('error.html',\n        error_message=q)\n\n\n"
+            "def b(request):\n    return render(request, 'error.html', {'x': 1})\n\n\n"
+            "def c():\n    return render_template('other.html', error_message=q)\n\n\n"
+            "def d():\n    return flask.render_template(template_name_or_list='error.html', x=1)\n")
+    assert benchmark.render_spans(text, {"error.html"}) == [(2, 3), (7, 7), (15, 15)]
+    assert benchmark.render_spans("x = 'error.html'\n", {"error.html"}) == []
+
+
+# A Whoogle-like pair (GHSA-mxvc-fwgx-j778): the fix drops |safe from error.html and changes no Python file. The view
+# also renders another template unescaped and echoes a parameter directly: XSS findings in the rendering file that
+# the fix has nothing to do with.
+ROUTES = (
+    "from flask import Flask, render_template, request\n\napp = Flask(__name__)\n\n\n"
+    "@app.route('/search')\n"
+    "def search():\n"
+    "    q = request.args.get('q', '')\n"
+    "    return render_template('error.html', error_message='Unable to resolve query: ' + q)\n\n\n"
+    "@app.route('/note')\n"
+    "def note():\n"
+    "    return render_template('other.html', note=request.args['n'])\n\n\n"
+    "@app.route('/echo')\n"
+    "def echo():\n"
+    "    return request.args['x']\n")
+TEMPLATE_RULE = "codewatch.python.web.template.xss"
+
+
+@pytest.fixture(scope="module")
+def template_pair(tmp_path_factory):
+    from core.analyzers.multi_tools import Semgrep
+
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    base = tmp_path_factory.mktemp("template_pair")
+    repo = base / "repo"
+    (repo / "app" / "templates").mkdir(parents=True)
+
+    def sh(*args):
+        return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+
+    sh("init", "-q")
+    sh("config", "user.email", "t@example.com")
+    sh("config", "user.name", "t")
+    (repo / "app" / "routes.py").write_text(ROUTES)
+    (repo / "app" / "templates" / "error.html").write_text("<p>{{ error_message|safe }}</p>\n")
+    (repo / "app" / "templates" / "other.html").write_text("<p>{{ note|safe }}</p>\n")
+    sh("add", ".")
+    sh("commit", "-q", "-m", "vulnerable")
+    (repo / "app" / "templates" / "error.html").write_text("<p>{{ error_message }}</p>\n")
+    sh("commit", "-q", "-am", "fix: escape the error message")
+    case = {"id": "GHSA-test", "repo": f"file://{repo}", "fix": sh("rev-parse", "HEAD"), "cwe": [79]}
+    suite = {"name": "fake-frontend", "language": "python-web"}
+    patch = pytest.MonkeyPatch()
+    patch.setattr(benchmark, "CACHE", base / "cache")
+    try:
+        spots, sides = benchmark.scan_pair(suite, case, lambda *a: None)
+    finally:
+        patch.undo()
+    parents = benchmark.catalog.load()[1].get("cwe_parents", {})
+    return spots, sides, benchmark.score_pair(case, spots, sides, benchmark.MODES["verdict"], parents)
+
+
+def test_a_template_only_fix_is_found_at_the_rendering_call_and_quiet_after(template_pair):
+    spots, sides, result = template_pair
+    assert spots["renders"] == {"before": {"app/routes.py": [(9, 9)]}, "after": {"app/routes.py": [(9, 9)]}}
+    assert result["detected"] and result["by"] == [f"codewatch:{TEMPLATE_RULE}@9"]
+    assert not result["still_flagged"] and sides["after"] == []
+
+
+def test_the_template_rule_is_scored_with_the_xss_rules_cwes():
+    """codewatch.python.web.template.xss is built at scan time from the XSS rule and has no catalogue entry."""
+    assert benchmark.catalog.lookup("codewatch", TEMPLATE_RULE) is None
+    assert benchmark.issue_cwes(issue("app/routes.py", TEMPLATE_RULE)) == {79}
+
+
+def test_an_unrelated_finding_in_the_rendering_file_is_not_counted(template_pair):
+    """routes.py also renders other.html unescaped (line 14) and echoes a parameter (line 19): neither concerns the
+    changed template, so neither is scored, on either side of the fix. (error.html's own |safe hotspot is in the changed
+    file, so it stays, as for any fix.)"""
+    _, sides, result = template_pair
+    in_routes = {(i["line"], i["rule"]) for side in ("before", "after") for i in sides[side] if i["path"] == "app/routes.py"}
+    assert in_routes == {(9, TEMPLATE_RULE)}
+    assert result["still_by"] == []

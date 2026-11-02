@@ -3,6 +3,7 @@
 Suites are listed in benchmarks/suites.json, fetched at a pinned commit into the cache directory, scanned
 (never executed) and scored. Results go to benchmarks/results/<suite>.json and .md.
 """
+import ast
 import csv
 import json
 import multiprocessing
@@ -17,6 +18,7 @@ from pathlib import Path
 import yaml
 
 from . import catalog
+from .analyzers.template_sinks import TEMPLATE_EXTENSIONS, TEMPLATE_RULE, XSS_RULE, template_name
 from .collect import ScanConfig, ScanInput, collect
 
 ROOT = Path(__file__).resolve().parents[1] / "benchmarks"
@@ -60,12 +62,16 @@ def related(a, b, parents):
     return a == b or a in catalog.ancestors(b, parents) or b in catalog.ancestors(a, parents)
 
 
+# Rules built at scan time, which have no catalogue entry of their own: scored with the CWEs of the rule they copy.
+DERIVED_RULES = {TEMPLATE_RULE: XSS_RULE}
+
+
 def issue_cwes(issue):
     """CWEs of the rule, and of every other rule that reported the same finding before it was merged."""
     cwes = set()
     for tool, rule in [(issue["tool"], issue["rule"]),
                        *(s.split(":", 1) for s in issue.get("also_reported_by") or [] if ":" in s)]:
-        entry = catalog.lookup(tool, rule)
+        entry = catalog.lookup(tool, DERIVED_RULES.get(rule, rule))
         cwes.update(entry["cwe"] if entry else [])
     return cwes
 
@@ -308,6 +314,63 @@ def fix_spots(diff, extensions):
     return {side: dict(paths) for side, paths in spots.items()}
 
 
+# The calls that render a template by name, as template_sinks' patterns see them: the template is the first argument
+# of render_template/render_to_string and the second of Django's render/TemplateResponse (after the request).
+RENDER_CALLS = {"render_template": 0, "render_to_string": 0, "render": 1, "TemplateResponse": 1}
+
+
+def changed_templates(diff):
+    """Names (as a view gives them, template_sinks.template_name) of the non-test templates a fix changed."""
+    names = set()
+    for line in diff.splitlines():
+        if line.startswith(("--- a/", "+++ b/")):
+            path = line[6:]
+            if path.endswith(tuple(TEMPLATE_EXTENSIONS)) and not TEST_PATH_RE.search(path):
+                names.add(template_name(path))
+    return names
+
+
+def render_spans(text, names):
+    """[(first, last)] lines of the calls in a Python file's text that render one of the named templates."""
+    if not any(name in text for name in names):
+        return []
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return []
+    spans = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", None)
+        if func not in RENDER_CALLS:
+            continue
+        index = RENDER_CALLS[func]
+        arg = node.args[index] if len(node.args) > index else next(
+            (k.value for k in node.keywords if k.arg in ("template_name", "template_name_or_list")), None)
+        if isinstance(arg, ast.Constant) and arg.value in names:
+            spans.append((node.lineno, node.end_lineno or node.lineno))
+    return sorted(spans)
+
+
+def template_renderers(root, paths, names):
+    """{python file: [render call spans]} for the files in the checkout that render a changed template by name."""
+    if not names:
+        return {}
+    found = {}
+    for path in git("ls-files", "-z", "--", *paths, cwd=root).split("\0"):
+        if (path.endswith(".py") and not TEST_PATH_RE.search(path) and (root / path).is_file()
+                and (spans := render_spans((root / path).read_text(errors="replace"), names))):
+            found[path] = spans
+    return found
+
+
+def at_render(issue, renders):
+    """A finding of the template rule inside a call that renders a changed template."""
+    return issue["rule"] == TEMPLATE_RULE and any(
+        first <= (issue["line"] or 0) <= last for first, last in renders.get(issue["path"], ()))
+
+
 def with_code(root, issues):
     """Each finding with its stripped source line, so the same finding can be recognised on both sides of a fix."""
     lines = {}
@@ -322,15 +385,21 @@ def with_code(root, issues):
 
 def scan_pair(suite, case, log):
     root, parent = fetch_pair(suite, case)
-    spots = fix_spots(git("diff", "-U0", "--no-renames", parent, case["fix"], cwd=root),
-                      SOURCE_EXTENSIONS[suite["language"]])
+    diff = git("diff", "-U0", "--no-renames", parent, case["fix"], cwd=root)
+    spots = fix_spots(diff, SOURCE_EXTENSIONS[suite["language"]])
+    # A fix in a template (dropping |safe) leaves the finding at the Python call that renders it, in a file the
+    # fix didn't change: those calls are scored too, for the template rule only.
+    templates = changed_templates(diff) if suite["language"].startswith("python") else set()
+    spots["renders"] = {}
     sides = {}
     for side, commit in (("before", parent), ("after", case["fix"])):
         git("checkout", "-q", "--force", commit, cwd=root)
-        # Only findings in the changed files are scored, so Semgrep's per-file pass looks only at them.
-        found = [i for i in scan(root, log, case.get("scope", []), focus=sorted(spots[side]))
+        renders = spots["renders"][side] = template_renderers(root, case.get("scope", []), templates)
+        # Only findings in the changed files (and those render calls) are scored, so Semgrep's per-file pass looks
+        # only at those files.
+        found = [i for i in scan(root, log, case.get("scope", []), focus=sorted({*spots[side], *renders}))
                  if i["type"] in SECURITY_TYPES]
-        sides[side] = with_code(root, [i for i in found if i["path"] in spots[side]])
+        sides[side] = with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)])
     return spots, sides
 
 
@@ -348,11 +417,14 @@ def score_pair(case, spots, sides, types, parents):
     def key(i):
         return i["path"], i["rule"], i["code"]
 
+    def at_spot(i, side):
+        return near(i, spots[side].get(i["path"], ())) or at_render(i, spots.get("renders", {}).get(side, {}))
+
     before, after = relevant("before"), relevant("after")
     after_keys = {key(i) for i in after}
-    hits = [i for i in before if near(i, spots["before"][i["path"]]) or key(i) not in after_keys]
+    hits = [i for i in before if at_spot(i, "before") or key(i) not in after_keys]
     hit_keys = {key(i) for i in hits}
-    still = [i for i in after if key(i) in hit_keys or near(i, spots["after"][i["path"]])]
+    still = [i for i in after if key(i) in hit_keys or at_spot(i, "after")]
     return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], "detected": bool(hits),
             "still_flagged": bool(still), "by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in hits}),
             "still_by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in still})}
