@@ -64,7 +64,9 @@ False alarms on ordinary apps (verdict mode):
 - Learning sets 1-3 (14 apps): 18 findings left, each classified in steps 13 and 18 (real: recipes api.py:2960,
   outline's four TLS settings; little impact: CTFd's three session writes; the rest need models codewatch
   doesn't have, such as an OAuth manager built from session state).
-- Learning set 4 (wiki.js, actual, habitica): 27 findings, all false alarms, grouped by shape in step 19.
+- Learning set 4 (wiki.js, actual, habitica): 24 findings, all false alarms, grouped by shape in step 19 (27
+  until PR #1, 2026-11-02: a JS helper named like a loader, `loadIdea(req, reply)`, returns the record it looked
+  up, not request data, which removed wiki.js feedback.ts:754 (twice) and comments.ts:670).
 - Learning set 5 (netbox, label-studio, lemur): first scanned by the first nightly run (2026-11-03).
 - Blind sets: 1 had false alarms in 2 of 4 apps (12), 2 in 2 of 4 (34), 3 in 4 of 4 (24, 13 in one Express app).
   Python is close (3 false alarms in two apps in set 3); JavaScript isn't. Set 4 is pinned and unscanned.
@@ -763,6 +765,17 @@ rule):
      flows into a store class (MLflow FileStore, Dagster log manager), an upload into `ZipFile.extractall`
      (Gramps), `cursor.execute` with `str.format` behind Flask-RESTful (postgraas), and code reaching `exec`/`eval`
      (Langflow, pgAdmin).
+
+25. **Express/Node sinks** (PR #1, 2026-11-02, the first cloud session; rules finished after local review). New sinks
+   in `javascript-taint.yml` for module shapes the rules missed: `node:` specifiers, fs-extra/graceful-fs,
+   `fs/promises`, inline `require('fs').x`, move/copy destinations, `res.sendFile` without `root`, promisified
+   `exec`, execa with a shell, superagent/needle/ky/undici. Creating a directory isn't a path-traversal sink.
+   multer's generated `req.file.path`/`filename` aren't request data (`originalname` is). `summaries.py`'s returner
+   pass gained `JS_LOOKUP_SANITIZER`, the JS twin of Python's lookup-result. Driven by probes of common shapes, not
+   benchmark cases; the first version added three false alarms in wiki.js that the cloud session couldn't see, the
+   reason rule work now stays local. Verified locally: quick suites, 30 apps and cve-pairs-javascript unchanged;
+   learning set 4 down from 27 to 24. Open question from the session: a one-line
+   `require('fs').createReadStream(req.query.f).pipe(res)` was missed in one probe file but not another.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
