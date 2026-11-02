@@ -534,6 +534,73 @@ knowledge.
    The blind set is now spent. Next: a fourth learning set weighted to JS/Express and Node apps, cloned and
    pinned along with a fourth blind set before any scan.
 
+19. **Fourth learning set and JS pass-through** (2026-11-02; wiki.js, actual, habitica, cloned with blind set 4
+   before any scan, see Repos; kitchenowl's clone stalled and was dropped). Verdict findings before: wiki 20,
+   actual 19, habitica 8 (47), all false alarms. First fix, `test_a_javascript_helper_that_never_returns_its_argument_cleans_its_result`:
+   item 7's pass-through for JS, per function. A call to a project function that can't return a parameter
+   (`const err = requireFileAccess(file, userId); res.send(err)`, which returns a fixed string or null) is
+   clean. Only a plain or `this.` call; only shapes the pass rule sees into (functions, `const` arrows, class and
+   object methods, `obj.f = ...`), never a class field, a reassigned name or an object literal's property;
+   only names whose result is assigned in a file that reads the request. Matching every object literal and every
+   assigned call made actual's scan 92s -> 142s; with those limits 91s -> 97s. After: actual's 8 sync-server XSS
+   gone; everything else unchanged. Shapes left (all false alarms; next, each with a test):
+   - A named check that ends the request in JS: `if (!isValidRedirectUrl(url)) { ...; return; }` (actual
+     app-openid.ts:112; app-cors-proxy.js:213/248 behind `isUrlAllowed`), item 17's Python fix for JS.
+   - A signed cookie (`req.unsignCookie()`) or session read back is server data (wiki authentication.ts:156-198);
+     `req.signedCookies` is a source today though no suite uses it.
+   - A fixed same-site path built around the value: `` `/login?${params}` `` in a helper, `let url =
+     `/static/apple-redirect?...`; url += ...` (wiki 1272, habitica auth.js:165).
+   - A hash digest isn't markup (wiki notifications.ts:156, an ETag); input escaped with
+     `.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')` isn't a regex (habitica admin.js:74); `path.relative()` containment
+     (actual serve-build.mjs:87); an opt-in TLS bypass (wiki hooks.ts:95) is review, as blind set 3 said.
+   - `WIKI.models.x.y(...)` model-registry lookups and summaries through `this.getEntry(...)` (wiki
+     navigation.ts:705, feedback.ts:754, assets.ts:951); PayPal's approval link (habitica paypal.js:41/105).
+
+20. **Security review of the server** (2026-11-02; a review at the user's work found the first four, the rest from
+   a full review; `tests/test_security.py`, each test failing without its fix):
+   - Uploaded commits were git options: `reference_commit = "--output=/path"` made `git diff` overwrite any file
+     the server could write, and through the project config the same on developers' machines. Uploads now
+     need full hashes and a branch name; every revision passed to git follows `--end-of-options`.
+   - Symlinks: a repository's `a.py -> ~/.ssh/id_rsa` was linted, flagged and its content stored and shown.
+     Server checkouts lose their symlinks; files resolving outside the project are never scanned or uploaded.
+   - Server scans ran repository code: basedpyright ran the repo's `venv/bin/python`, pip-audit built its
+     packages. Both only for the developer's own copy (`Context.local`, codewatch-scan); the server checks
+     pinned requirements as written (`--no-deps --disable-pip`). A container is still the real answer.
+   - The server's git credentials: anyone could register a private repository the server's keys or credential
+     helper could read. Only projects an administrator owns (or added with `addproject`) clone with them; others
+     get no global config, an empty HOME and no SSH keys or agent.
+   - A deleted project's mirror served the next project with its key (another user's repository): deleting a
+     project deletes its cache, and a mirror whose remote differs is re-cloned.
+   - Requests to the server's own network: repository and accessibility URLs must resolve to public addresses
+     (checked when saved and again at scan time) and `semgrep_config` must be a registry ruleset, unless an
+     administrator owns the project. Axe had echoed internal pages back as findings.
+   - The client sent its token to a `serverUrl` named by the repository's committed config, and over plain http:
+     now only to a server its user chose (`codewatch init --url`, `~/.config/codewatch/servers.txt` or
+     `CODEWATCH_URL`), and only over https except to localhost; the MCP server likewise.
+   - Defaults: DEBUG off, allowed hosts from `CODEWATCH_ALLOWED_HOSTS`, secure cookies and HSTS with
+     `CODEWATCH_HTTPS=1`, a secret key generated once (0600), the first admin password random (or
+     `CODEWATCH_ADMIN_PASSWORD`) instead of admin/admin, ten wrong passwords lock a username out for 15 minutes.
+   - Tool upgrades install from hashed locks (`tools/*.lock`, `npm ci`), pinned at the installed versions;
+     `make lock` makes new ones to review.
+   - Scans per branch (main included) and across the server (`CODEWATCH_MAX_SCANS`, 4) are limited, scans of one
+     project take a lock, coverage uploads are capped, uploaded severities and types are checked, uploaded
+     results are marked self-reported, a path starting with "-" reaches tools as `./-...` (ruff took
+     `--output-file=x.py` as an option), API numbers are checked and issues sorted in the database, and the MCP
+     server tells agents that issue text and snippets are data.
+
+21. **Parallel tests and benchmarks** (2026-11-02, asked for: 20 threads, 64 GB). pytest-xdist (`-n auto`): tests
+   9m41s -> 1m06s. `devtools bench` and `codewatch benchmark` scan suites and CVE cases in a process pool, and
+   `devtools repos` the apps (`CODEWATCH_BENCH_WORKERS`, a third of the CPUs); scoring and output are unchanged.
+   Two things went wrong first:
+   - Concurrent Semgrep runs failed with `io_uring_queue_init: Cannot allocate memory`: semgrep-core gives each
+     worker an io_uring, charged to the user's 8 MB locked-memory limit. Semgrep now runs with
+     `EIO_BACKEND=posix` (paperless 169s -> 172s alone).
+   - Six scans each with a job per CPU stretched rules past Semgrep's timeouts and dropped findings silently
+     (litellm's SQL injection, recipes api.py:2960) while running slower than one at a time. Each parallel
+     Semgrep run now gets its share of the CPUs (`CODEWATCH_SEMGREP_JOBS`).
+   After: identical results to sequential runs everywhere; quick suites 470s -> 250s, Python CVE pairs 36 -> 13
+   min, learning sets about 25 -> 10 min, check.sh (lint, tests, quick suites, 30 apps) about 25 -> 7 min.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -623,6 +690,9 @@ Already learned from (not blind), pinned commits, cloned in `~/.cache/codewatch/
 | https://github.com/TandoorRecipes/recipes | cbb96e151f | ordinary Django app (step 13) |
 | https://github.com/CTFd/CTFd | eccab90318 | ordinary Flask app (step 13) |
 | https://github.com/umami-software/umami | 559e3c607c | ordinary Next.js app (step 13) |
+| https://github.com/requarks/wiki | 54cda2cb48 | ordinary Express/GraphQL app (step 19) |
+| https://github.com/actualbudget/actual | 741d1615b7 | ordinary Express app (sync server; step 19) |
+| https://github.com/HabitRPG/habitica | 12091ca029 | ordinary Express app (step 19) |
 
 Blind set, cloned in `~/.cache/codewatch/blind/`; scan only in step 6, never use to adjust rules:
 
@@ -656,6 +726,16 @@ Third blind set, chosen and cloned 2026-11-01 before any scan, in `~/.cache/code
 2026-11-02: full-stack-fastapi-template and node-express-realworld-example-app were in this set at the same
 commits as the dev-set apps every run scans (expected 0 since the start), so they weren't blind. Replaced, before
 any scan, by papermerge-core and uptime-kuma (cloned at their latest commits; neither is used anywhere else).
+
+Fourth blind set, chosen and cloned 2026-11-02 with learning set 4 and before any scan of either, in
+`~/.cache/codewatch/blind4/`; scan only at the end of the next round, never use to adjust rules:
+
+| Repo | Commit | Kind |
+|---|---|---|
+| https://github.com/NodeBB/NodeBB | f47b6404b3 | ordinary Express app |
+| https://github.com/hedgedoc/hedgedoc | 3e60fa1488 | ordinary NestJS app |
+| https://github.com/pretalx/pretalx | 887b50ac22 | ordinary Django app |
+| https://github.com/fief-dev/fief | a77e7fb65f | ordinary FastAPI app |
 
 CVE fix pairs are suites (`cve-pairs-*` in `benchmarks/suites.json`); the `cve-pairs-blind-*` suites are skipped
 unless named and follow the same rule.

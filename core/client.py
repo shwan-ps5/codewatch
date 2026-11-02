@@ -3,6 +3,7 @@
 The repository never leaves the machine; only issues, metrics and the source of files with issues are sent.
 """
 import argparse
+import contextlib
 import gzip
 import json
 import os
@@ -12,6 +13,7 @@ import stat
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,9 +35,32 @@ def log(message):
     print(message, file=sys.stderr, flush=True)
 
 
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+# Servers this user has said they trust. The repository's codewatch-project.json may name one, but it is part of
+# the repository: a branch could point it anywhere and collect the token and the code.
+TRUSTED_SERVERS_FILE = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "codewatch" / "servers.txt"
+
+
+def trusted_servers():
+    listed = os.environ.get("CODEWATCH_TRUSTED_URLS", "").split(",")
+    with contextlib.suppress(OSError):
+        listed += TRUSTED_SERVERS_FILE.read_text().split()
+    return {url.strip().rstrip("/") for url in listed if url.strip()}
+
+
+def trust_server(url):
+    if url.rstrip("/") not in trusted_servers():
+        TRUSTED_SERVERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with TRUSTED_SERVERS_FILE.open("a") as out:
+            out.write(url.rstrip("/") + "\n")
+
+
 def request(url, token, data=None, timeout=600):
-    if not url.startswith(("http://", "https://")):
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https"):
         raise ClientError(f"codewatch server URL must be http(s): {url}")
+    if parts.scheme == "http" and parts.hostname not in LOCAL_HOSTS:
+        raise ClientError(f"Not sending the token to {parts.hostname} over plain http; use https")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     if data is not None:
         data = gzip.compress(json.dumps(data).encode())
@@ -99,7 +124,14 @@ class ScanTarget:
 
 
 def scan_target(args, repo, conf):
-    url = first(args.url, os.environ.get("CODEWATCH_URL"), conf.get("serverUrl")).rstrip("/")
+    url = first(args.url, os.environ.get("CODEWATCH_URL"))
+    named = conf.get("serverUrl")
+    if not url and named:
+        if named.rstrip("/") not in trusted_servers():
+            raise ClientError(f"{CONFIG_FILE} names the server {named}, which you haven't trusted. It is part of the "
+                              f"repository, so check it, then add it to {TRUSTED_SERVERS_FILE} (or set CODEWATCH_URL)")
+        url = named
+    url = (url or "").rstrip("/")
     token = first(args.token, os.environ.get("CODEWATCH_TOKEN"))
     key = first(args.project, os.environ.get("CODEWATCH_PROJECT"), conf.get("projectKey"), default_key(repo.root))
     branch = first(args.branch, repo.branch())
@@ -160,7 +192,7 @@ def cmd_scan(args):
     if coverage:
         log(f"Using coverage report {coverage}")
     changed = repo.changed_lines(ref) if ref else None
-    payload = collect(cfg, ScanInput(repo.root, repo.files(), branch, changed, coverage, repo.root), log)
+    payload = collect(cfg, ScanInput(repo.root, repo.files(), branch, changed, coverage, repo.root, local=True), log)
     payload.update(
         branch=branch, commit=head, dirty=repo.dirty(), reference_commit=ref,
         reference_analysis_commit=ref_analysis, main_branch=cfg.main_branch,
@@ -264,6 +296,8 @@ def cmd_init(args):
     conf.setdefault("mainBranch", detect_main_branch(repo))
     if args.url or os.environ.get("CODEWATCH_URL"):
         conf.setdefault("serverUrl", (args.url or os.environ["CODEWATCH_URL"]).rstrip("/"))
+        # This user chose it.
+        trust_server(args.url or os.environ["CODEWATCH_URL"])
     path.write_text(json.dumps(conf, indent=2) + "\n")
     log(f"Wrote {path} (commit it; keep the token in CODEWATCH_TOKEN, never in this file)")
     if args.hook != "none":
@@ -306,9 +340,10 @@ def build_parser():
 
 
 def cmd_benchmark(args):
+    from .benchmark import WORKERS
     from .benchmark import run as run_benchmarks
 
-    for name, result in run_benchmarks(args.suites or None, log=log).items():
+    for name, result in run_benchmarks(args.suites or None, log=log, workers=WORKERS).items():
         log(f"{name}: {json.dumps(result['overall'])}")
     return 0
 

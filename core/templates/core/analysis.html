@@ -17,7 +17,8 @@
 </div></section>
 <section class="card" aria-labelledby="gate-h"><h2 id="gate-h">Quality gate: {% include "core/gate_badge.html" %}</h2>
 <p class="muted">{% if analysis.reference_commit %}New code = changes since <code>{{ analysis.reference_commit|slice:":8" }}</code> on {{ analysis.reference_branch }}.{% else %}No reference yet, so there is no new code on this analysis.{% endif %}
-{% if analysis.dirty %} Scanned with uncommitted local changes.{% endif %}</p>
+{% if analysis.dirty %} Scanned with uncommitted local changes.{% endif %}
+{% if analysis.origin == "client" %} Uploaded by codewatch-scan{% if analysis.scanned_by %} from {{ analysis.scanned_by.username }}'s working copy{% endif %}: the server didn't run this scan, so its results and gate are as reported.{% endif %}</p>
 <table><caption class="sr-only">Quality gate conditions</caption>
 <thead><tr><th scope="col">Metric</th><th scope="col">Fails when</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>
 {% for d in analysis.gate_details %}<tr><th scope="row">{{ d.metric|label }}</th><td>{% if d.op == "gt" %}greater than{% else %}less than{% endif %} {{ d.threshold|num }}</td><td>{{ d.value|num }}</td>

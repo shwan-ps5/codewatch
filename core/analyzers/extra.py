@@ -113,8 +113,9 @@ class TypeCheck(Analyzer):
             "reportMissingModuleSource": "none",
             "reportAttributeAccessIssue": "warning",
         }
+        # basedpyright runs the venv's python to find its packages: only in the developer's own copy.
         venv = next((ctx.root / v for v in ("venv", ".venv") if (ctx.root / v / "bin" / "python").exists()), None)
-        if venv:
+        if venv and ctx.local:
             config.update(venvPath=str(venv.parent), venv=venv.name)
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "pyrightconfig.json"

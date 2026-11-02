@@ -13,11 +13,7 @@ from ..analyzers.base import TOOLS_DIR
 from . import RUNTIME_DIR, imported_dir, read_json, reload
 from .build import build
 
-PYTHON_ANALYZERS = ["ruff", "bandit", "radon", "lizard", "pip-audit", "complexipy", "basedpyright",
-                    "detect-secrets"]
 ISOLATED_ANALYZERS = ["semgrep", "checkov"]
-# Held at a major version because a dependent plugin doesn't support the next one yet.
-NODE_MAJOR_PINS = {"eslint": "9", "@eslint/js": "9"}
 STATUS_FILE = RUNTIME_DIR / "status.json"
 STALE_RUN = timedelta(hours=2)
 
@@ -43,24 +39,22 @@ def run_step(args, log, cwd=None):
     return proc.returncode == 0
 
 
-def pip_upgrade(pip, packages, log):
-    return run_step([*pip, "install", "-q", "-U", *packages], log)
+def pip_install_locked(pip, lock, log):
+    return run_step([*pip, "install", "-q", "--require-hashes", "-r", str(lock)], log)
 
 
 def upgrade_tools(log):
-    ok = pip_upgrade([sys.executable, "-m", "pip"], PYTHON_ANALYZERS, log)
+    """Install the analyzers at the versions and hashes in tools/*.lock and tools/package-lock.json. New versions
+    come from regenerating those (make lock) and committing them, never from whatever an index serves today."""
+    ok = pip_install_locked([sys.executable, "-m", "pip"], TOOLS_DIR / "analyzers.lock", log)
     for name in ISOLATED_ANALYZERS:
         pip = TOOLS_DIR / f"{name}-venv" / "bin" / "pip"
         if pip.exists():
-            ok &= pip_upgrade([str(pip)], [name], log)
-    package = TOOLS_DIR / "package.json"
-    if package.exists():
-        deps = json.loads(package.read_text()).get("dependencies", {})
-        specs = [f"{name}@{NODE_MAJOR_PINS.get(name, 'latest')}" for name in deps]
-        npm_install = ["npm", "install", "--save-exact", "--no-fund", "--no-audit"]
-        ok &= run_step([*npm_install, *specs], log, cwd=TOOLS_DIR)
+            ok &= pip_install_locked([str(pip)], TOOLS_DIR / f"{name}.lock", log)
+    if (TOOLS_DIR / "package-lock.json").exists():
+        ok &= run_step(["npm", "ci", "--no-fund", "--no-audit"], log, cwd=TOOLS_DIR)
         playwright = str(TOOLS_DIR / "node_modules/.bin/playwright")
-        ok &= run_step([playwright, npm_install[1], "--only-shell", "chromium"], log)
+        ok &= run_step([playwright, "install", "--only-shell", "chromium"], log)
     return ok
 
 

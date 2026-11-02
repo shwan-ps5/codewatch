@@ -22,13 +22,40 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("CODEWATCH_SECRET_KEY") or get_random_secret_key()
+CODEWATCH_CACHE = Path(os.environ.get("CODEWATCH_CACHE", Path.home() / ".cache" / "codewatch"))
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("CODEWATCH_DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = []
+def stored_secret_key():
+    """CODEWATCH_SECRET_KEY, else one generated once and kept where only this account can read it: a new key on
+    every start signed everyone out, and differed between worker processes."""
+    path = CODEWATCH_CACHE / "secret_key"
+    try:
+        return path.read_text().strip()
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        key = get_random_secret_key()
+        try:
+            with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:
+                out.write(key)
+        except FileExistsError:  # another process started at the same moment and wrote one
+            return path.read_text().strip()
+        return key
+
+
+SECRET_KEY = os.environ.get("CODEWATCH_SECRET_KEY") or stored_secret_key()
+
+# Off unless asked for: debug pages show settings and code to anyone who can trigger an error.
+DEBUG = os.environ.get("CODEWATCH_DEBUG") == "1"
+
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]",
+                 *(h.strip() for h in os.environ.get("CODEWATCH_ALLOWED_HOSTS", "").split(",") if h.strip())]
+
+# Behind HTTPS (CODEWATCH_HTTPS=1): cookies only over HTTPS, and browsers told to stay on it.
+HTTPS = os.environ.get("CODEWATCH_HTTPS") == "1"
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = HTTPS
+SECURE_HSTS_SECONDS = 31536000 if HTTPS else 0
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if HTTPS else None
+X_FRAME_OPTIONS = "DENY"
 
 
 # Application definition
@@ -126,8 +153,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-CODEWATCH_CACHE = Path(os.environ.get("CODEWATCH_CACHE", Path.home() / ".cache" / "codewatch"))
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "index"

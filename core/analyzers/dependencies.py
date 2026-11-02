@@ -62,6 +62,12 @@ class PipAudit(Analyzer):
         for this Python, a private index), the packages installed in the project's own venv are audited instead;
         None if neither works."""
         args = [str(Path(manifest).parent)] if manifest.endswith(".toml") else ["-r", manifest]
+        if not ctx.local:
+            # Resolving installs the requirements, and building a project or a package from source runs its code:
+            # on the server only pinned requirements are checked, as written.
+            if manifest.endswith(".toml"):
+                return None
+            args += ["--no-deps", "--disable-pip"]
         for attempt in ([*args], *(["--path", str(p)] for p in project_site_packages(ctx.root))):
             try:
                 out = self.exec([*attempt, "--format", "json", "--progress-spinner", "off"], ctx, ok_codes=(0, 1))

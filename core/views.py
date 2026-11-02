@@ -1,10 +1,12 @@
+import re
 from collections import Counter
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import SetPasswordForm, UserCreationForm
-from django.contrib.auth.views import PasswordChangeView
+from django.contrib.auth.views import LoginView, PasswordChangeView
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.forms import modelformset_factory
@@ -19,7 +21,7 @@ from .analyzers import ANALYZERS
 from .catalog import update as catalog_update
 from .collect import parse_period
 from .git import GitError, Mirror, validate_repo_url
-from .jobs import launch_scan
+from .jobs import launch_scan, scan_refusal
 from .models import (
     DEFAULT_GATE,
     ISSUE_TYPES,
@@ -32,8 +34,10 @@ from .models import (
     Project,
     ProjectMember,
 )
+from .network import check_public, trusted_owner
 
 User = get_user_model()
+SEMGREP_REGISTRY_RE = re.compile(r"^(p|r)/[\w.-]+(/[\w.-]+)*$")
 PROJECT_PAGE = "project"
 
 
@@ -101,8 +105,12 @@ def new_project(request):
     form = NewProjectForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
         project = create_project(request.user, **form.cleaned_data)
-        launch_scan(project)
-        messages.success(request, f"Created {project.key}; the first scan of the main branch has started.")
+        refusal = scan_refusal(project)
+        if refusal:
+            messages.info(request, f"Created {project.key}. {refusal}")
+        else:
+            launch_scan(project)
+            messages.success(request, f"Created {project.key}; the first scan of the main branch has started.")
         return redirect(PROJECT_PAGE, key=project.key)
     return render(request, "core/new_project.html", {"form": form})
 
@@ -132,9 +140,11 @@ def start_scan(request, key):
     project = get_project(request, key)
     require(project.can_scan(request.user))
     branch = request.POST.get("branch") or None
-    if launch_scan(project, branch) is None:
-        messages.info(request, f"{branch} is already being analysed.")
+    refusal = scan_refusal(project, branch)
+    if refusal:
+        messages.info(request, refusal)
     else:
+        launch_scan(project, branch)
         messages.success(request, f"Scan of {branch or 'the main branch'} started.")
     return redirect(PROJECT_PAGE, key=key)
 
@@ -307,7 +317,21 @@ class ProjectSettingsForm(forms.ModelForm):
         bad = [u for u in urls if not u.startswith(("http://", "https://"))]
         if bad:
             raise forms.ValidationError(f"Not an http(s) URL: {', '.join(bad)}")
+        if not trusted_owner(self.instance):
+            try:
+                for url in urls:
+                    check_public(url.replace("{branch}", "main"))
+            except ValueError as exc:
+                raise forms.ValidationError(str(exc)) from exc
         return urls
+
+    def clean_semgrep_config(self):
+        """A registry ruleset (p/default, r/python.flask...) unless an administrator owns the project: Semgrep also
+        reads a URL or a file on the server, and its errors would show what it found there."""
+        value = self.cleaned_data["semgrep_config"].strip()
+        if value and not trusted_owner(self.instance) and not SEMGREP_REGISTRY_RE.match(value):
+            raise forms.ValidationError("Use a Semgrep registry ruleset such as p/default")
+        return value
 
 
 GateFormSet = modelformset_factory(GateCondition, fields=["metric", "op", "threshold"], extra=1, can_delete=True)
@@ -371,9 +395,34 @@ def delete_project(request, key):
     if request.POST.get("confirm") != project.key:
         messages.error(request, "Type the project key to confirm deletion.")
         return redirect("settings", key=key)
+    Mirror(project).delete()
     project.delete()
     messages.success(request, f"Deleted {key}.")
     return redirect("index")
+
+
+LOGIN_FAILURES_ALLOWED = 10
+LOGIN_LOCKOUT_SECONDS = 15 * 60
+
+
+class ThrottledLoginView(LoginView):
+    """Django's login, refusing a username from an address after LOGIN_FAILURES_ALLOWED wrong passwords in a row
+    (for LOGIN_LOCKOUT_SECONDS): otherwise passwords could be guessed as fast as requests can be sent."""
+
+    template_name = "core/login.html"
+
+    def post(self, request, *args, **kwargs):
+        key = f"login-failures:{request.META.get('REMOTE_ADDR', '')}:{request.POST.get('username', '')[:150]}"
+        if cache.get(key, 0) >= LOGIN_FAILURES_ALLOWED:
+            form = self.get_form()
+            form.add_error(None, "Too many failed attempts; try again in 15 minutes.")
+            return self.render_to_response(self.get_context_data(form=form), status=429)
+        response = super().post(request, *args, **kwargs)
+        if request.user.is_authenticated:
+            cache.delete(key)
+        else:
+            cache.set(key, cache.get(key, 0) + 1, LOGIN_LOCKOUT_SECONDS)
+        return response
 
 
 class ChangePasswordView(PasswordChangeView):

@@ -16,16 +16,18 @@ venv/bin/python manage.py migrate
 make run                        # http://127.0.0.1:8100
 ```
 
-Log in as **admin / admin**; you'll be asked to change the password straight away. Add users under **Users**. Optional: `cppcheck` (apt) for C/C++.
+Log in as **admin**: `migrate` prints where its first password is (`~/.cache/codewatch/admin-password.txt`, readable only by you), or set `CODEWATCH_ADMIN_PASSWORD` before the first `migrate`. You'll be asked to change it straight away. Add users under **Users**. Optional: `cppcheck` (apt) for C/C++.
 
-For anything beyond localhost set `CODEWATCH_SECRET_KEY`, `CODEWATCH_DEBUG=0` and `ALLOWED_HOSTS`, and put it behind HTTPS. Only give accounts to people you trust: server-side scans run analyzers (and pip-audit's dependency resolution) over repository content.
+For anything beyond localhost, put it behind HTTPS and set `CODEWATCH_ALLOWED_HOSTS` (comma-separated host names) and `CODEWATCH_HTTPS=1` (secure cookies, HSTS). The secret key is generated once into `~/.cache/codewatch/secret_key` unless `CODEWATCH_SECRET_KEY` is set; `CODEWATCH_DEBUG=1` turns on Django's debug pages, never on a shared server. Ten wrong passwords in a row lock a username out for 15 minutes.
+
+What the server does on users' behalf is limited to what they could do themselves: their projects clone with none of the server's git credentials, reach only public addresses (repository, accessibility pages) and use only Semgrep registry rulesets; checkouts lose their symlinks, and a repository's own virtualenv and package builds are never run (pip-audit checks pinned requirements as written). Projects an administrator owns, or added with `manage.py addproject`, may use the server's credentials, its local network and local paths. Analyzers still read repository content, so for untrusted code run the server in a container.
 
 ## Scanning from your working copy
 
 Each developer installs the client (same checkout, `pip install -e .` plus `make tools`) and creates a token on their **Account** page.
 
 ```bash
-export CODEWATCH_URL=http://codewatch.example:8100
+export CODEWATCH_URL=https://codewatch.example
 export CODEWATCH_TOKEN=cw_...            # scan-scope token; never commit it
 
 cd ~/dev/my-app
@@ -43,14 +45,14 @@ codewatch scan                           # analyse and upload; creates the proje
   "projectKey": "my-app",
   "projectName": "My App",
   "mainBranch": "main",
-  "serverUrl": "http://codewatch.example:8100",
+  "serverUrl": "https://codewatch.example",
   "testCommand": "venv/bin/pytest --cov --cov-report=xml",
   "coverageReport": "coverage.xml",
   "disabledAnalyzers": ["semgrep"]
 }
 ```
 
-All keys are optional. Without `testCommand`, `codewatch coverage` runs `coverage run -m pytest` with the project's `venv/`/`.venv/` Python, or `npm test` under c8 for Node projects.
+All keys are optional. `serverUrl` is used only if you trust it: `codewatch init --url` records the server you give it in `~/.config/codewatch/servers.txt` (add others there, or set `CODEWATCH_URL`). The file is part of the repository, so a branch could otherwise send your token and code anywhere. The token only goes over HTTPS, except to localhost. Without `testCommand`, `codewatch coverage` runs `coverage run -m pytest` with the project's `venv/`/`.venv/` Python, or `npm test` under c8 for Node projects.
 
 ### Git hook
 

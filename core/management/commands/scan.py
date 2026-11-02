@@ -3,6 +3,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from core.git import Mirror, git
+from core.jobs import project_lock
 from core.models import Project
 from core.runner import ensure_main_branch, scan
 
@@ -52,11 +53,13 @@ class Command(BaseCommand):
         except Project.DoesNotExist as exc:
             raise CommandError(f"Unknown project {key}") from exc
         mirror = Mirror(proj)
-        mirror.sync()
-        ensure_main_branch(proj, mirror)
-        branches = mirror.branches() if options["all_branches"] else (options["branch"] or [proj.main_branch])
-        # Main first, so branches compare against a fresh baseline.
-        branches.sort(key=lambda b: b != proj.main_branch)
-        results = [self.scan_branch(proj, mirror, b, options["coverage"], options["coverage_base"]) for b in branches]
+        with project_lock(proj):
+            mirror.sync()
+            ensure_main_branch(proj, mirror)
+            branches = mirror.branches() if options["all_branches"] else (options["branch"] or [proj.main_branch])
+            # Main first, so branches compare against a fresh baseline.
+            branches.sort(key=lambda b: b != proj.main_branch)
+            results = [self.scan_branch(proj, mirror, b, options["coverage"], options["coverage_base"])
+                       for b in branches]
         if options["fail_on_gate"] and not all(results):
             raise SystemExit(1)

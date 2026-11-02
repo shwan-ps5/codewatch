@@ -1,18 +1,21 @@
 import gzip
 import json
+import re
 import zlib
 from functools import wraps
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
 from django.db import IntegrityError
+from django.db.models import Case, F, Value, When
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from . import catalog
 from .git import validate_repo_url
-from .jobs import launch_scan, save_coverage_upload
-from .models import Analysis, ApiToken, Issue, Project
+from .jobs import BRANCH_RE, launch_scan, save_coverage_upload, scan_refusal
+from .models import SEVERITIES, Analysis, ApiToken, Issue, Project
 from .runner import create_uploaded_analysis, ingest
 from .views import create_project, filter_issues, set_resolution, source_text
 
@@ -51,6 +54,17 @@ def api(scope=ApiToken.READ, methods=("GET",)):
                 return JsonResponse({"error": str(exc)}, status=exc.status)
         return wrapper
     return decorator
+
+
+def int_param(request, name, default, low, high):
+    """A whole-number query parameter within [low, high] (high None: no limit); 400 otherwise."""
+    try:
+        value = int(request.GET.get(name, default))
+    except ValueError as exc:
+        raise ApiError(400, f"{name} must be a whole number") from exc
+    if value < low:
+        raise ApiError(400, f"{name} must be at least {low}")
+    return value if high is None else min(value, high)
 
 
 def visible_project(request, key):
@@ -156,11 +170,12 @@ def issues(request, key):
     p = visible_project(request, key)
     a = latest_analysis(p, request.GET.get(BRANCH))
     qs, resolutions, _ = filter_issues(a, request.GET)
-    severity_rank = {"blocker": 0, "critical": 1, "major": 2, "minor": 3, "info": 4}
-    limit = min(int(request.GET.get("limit", 100)), MAX_PAGE)
-    offset = int(request.GET.get("offset", 0))
+    limit = int_param(request, "limit", 100, 1, MAX_PAGE)
+    offset = int_param(request, "offset", 0, 0, None)
     total = qs.count()
-    rows = sorted(qs, key=lambda i: (severity_rank[i.severity], i.path, i.line or 0))[offset:offset + limit]
+    # Most severe first, in the database: sorting every issue in Python loaded them all for one page.
+    rank = Case(*(When(severity=s, then=Value(n)) for n, s in enumerate(SEVERITIES)), default=Value(len(SEVERITIES)))
+    rows = qs.order_by(rank, "path", F("line").asc(nulls_first=True))[offset:offset + limit]
     return JsonResponse({
         "analysis": analysis_json(request, a),
         "total": total,
@@ -191,7 +206,7 @@ def issue_detail(request, pk):
     data = issue_json(issue, resolution)
     data["project"] = issue.analysis.project.key
     data["analysis"] = analysis_json(request, issue.analysis)
-    data["snippet"] = snippet(issue, min(int(request.GET.get("context", 5)), 50))
+    data["snippet"] = snippet(issue, int_param(request, "context", 5, 0, 50))
     entry = catalog.lookup(issue.tool, issue.rule)
     data["rule"] = rule_json(entry, full=False) if entry else None
     return JsonResponse(data)
@@ -260,13 +275,28 @@ def project_for_scan(request, key, create_fields):
     return project
 
 
+COMMIT_RE = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
+
+
+def check_upload(payload):
+    """400 unless the commits are hashes and the branch a branch name: they reach git on the server, and on every
+    developer's machine through the project's config (`--output=/path` as a commit wrote a file)."""
+    for field in (BRANCH, "commit", "issues", "metrics"):
+        if field not in payload:
+            raise ApiError(400, f"Missing {field}")
+    if not isinstance(payload[BRANCH], str) or not BRANCH_RE.match(payload[BRANCH]):
+        raise ApiError(400, "branch must be a branch name")
+    for field in ("commit", "reference_commit", "reference_analysis_commit"):
+        value = payload.get(field)
+        if (value or field == "commit") and not (isinstance(value, str) and COMMIT_RE.match(value)):
+            raise ApiError(400, f"{field} must be a full commit hash")
+
+
 @api(scope=ApiToken.SCAN, methods=("POST",))
 def upload(request, key):
     """Results from codewatch-scan run against a local working copy."""
     payload = json_body(request)
-    for field in (BRANCH, "commit", "issues", "metrics"):
-        if field not in payload:
-            raise ApiError(400, f"Missing {field}")
+    check_upload(payload)
     project = project_for_scan(request, key, {
         "name": payload.get("project_name") or key, "repo_url": "", MAIN_BRANCH: payload.get(MAIN_BRANCH, ""),
     })
@@ -303,10 +333,16 @@ def server_scan(request, key):
     project = project_for_scan(request, key, new_server_project_fields(request, key, body))
     if not project.repo_url:
         raise ApiError(400, "This project has no repository URL; upload results with codewatch-scan instead")
-    coverage = request.FILES.get("coverage")
-    path = save_coverage_upload(project, coverage) if coverage else None
     branch = body.get(BRANCH) or None
-    if launch_scan(project, branch, coverage=path) is None:
-        raise ApiError(409, f"{branch} is already being analysed")
+    if branch is not None and not (isinstance(branch, str) and BRANCH_RE.match(branch)):
+        raise ApiError(400, "branch must be a branch name")
+    refusal = scan_refusal(project, branch)
+    if refusal:
+        raise ApiError(409, refusal)
+    coverage = request.FILES.get("coverage")
+    if coverage and coverage.size > settings.CODEWATCH_MAX_COVERAGE_UPLOAD:
+        raise ApiError(413, f"Coverage reports are limited to {settings.CODEWATCH_MAX_COVERAGE_UPLOAD // 2**20} MB")
+    path = save_coverage_upload(project, coverage) if coverage else None
+    launch_scan(project, branch, coverage=path)
     return JsonResponse({"project": project.key, BRANCH: branch or project.main_branch or None,
                          "status": "queued"}, status=202)

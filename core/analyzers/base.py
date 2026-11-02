@@ -60,6 +60,9 @@ class Context:
     # Files whose findings are wanted, when not all of them are (a benchmark scores only the lines a fix
     # changed). Analyses that look across files still read every file; only per-file passes are narrowed.
     focus: list[str] | None = None
+    # The developer's own working copy (codewatch-scan): its virtualenv may be run and its packages built. Never
+    # for a server-side scan, where the repository is anyone's: both run the repository's code.
+    local: bool = False
 
     def files_with(self, extensions):
         return [f for f in self.files if Path(f).suffix.lower() in extensions]

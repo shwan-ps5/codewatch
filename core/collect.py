@@ -63,6 +63,11 @@ class GitError(RuntimeError):
     pass
 
 
+# Before every revision passed to git: a value from an upload or the server's config ("--output=/path") is then
+# a bad revision, not an option that writes a file.
+END_OF_OPTIONS = "--end-of-options"
+
+
 def run_git(*args, cwd=None, check=True, env=None):
     proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False, env=env)
     if check and proc.returncode != 0:
@@ -114,17 +119,18 @@ class LocalRepo:
 
     def has_commit(self, commit):
         return bool(commit) and subprocess.run(
-            ["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=self.root, capture_output=True, check=False
+            ["git", "cat-file", "-e", END_OF_OPTIONS, f"{commit}^{{commit}}"], cwd=self.root, capture_output=True, check=False
         ).returncode == 0
 
     def is_ancestor(self, a, b):
-        return subprocess.run(["git", "merge-base", "--is-ancestor", a, b], cwd=self.root, check=False).returncode == 0
+        return subprocess.run(["git", "merge-base", "--is-ancestor", END_OF_OPTIONS, a, b], cwd=self.root, check=False).returncode == 0
 
     def merge_base(self, a, b):
-        return self.git("merge-base", a, b, check=False).strip() or None
+        return self.git("merge-base", END_OF_OPTIONS, a, b, check=False).strip() or None
 
     def resolve_commit(self, ref):
-        return self.git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}", check=False).strip() or None
+        return self.git("rev-parse", "--verify", "--quiet", END_OF_OPTIONS, f"{ref}^{{commit}}",
+                        check=False).strip() or None
 
     def resolve_main(self, main_branch):
         """Prefer the remote-tracking ref: a local main is often stale."""
@@ -135,7 +141,7 @@ class LocalRepo:
         return None
 
     def changed_lines(self, base):
-        changed = parse_diff(self.git("diff", "-U0", "--no-renames", "--no-color", base))
+        changed = parse_diff(self.git("diff", "-U0", "--no-renames", "--no-color", END_OF_OPTIONS, base))
         for f in self.untracked():
             try:
                 count = len((self.root / f).read_text(errors="replace").splitlines())
@@ -326,7 +332,8 @@ def analyzer_skip_reason(analyzer, cfg, ctx):
 
 def run_analyzers(cfg, ctx, log):
     """Run every applicable analyzer, merging their results; one tool failing doesn't fail the analysis."""
-    tracked = set(ctx.files)
+    # Tools report a "./"-prefixed path (collect) by its plain name.
+    tracked = set(ctx.files) | {f.removeprefix("./") for f in ctx.files}
     combined, tools = Result(), {}
     for analyzer in ANALYZERS:
         skip = analyzer_skip_reason(analyzer, cfg, ctx)
@@ -390,11 +397,24 @@ def new_code_metrics(new_code, covered, coverable, duplicated):
     return metrics
 
 
+def inside(root, path):
+    """A file of the project itself, not a link out of it: a repository can commit `a.py -> ~/.ssh/id_rsa`, which
+    an analyzer would read and flag and the scan would then upload as that file's source."""
+    try:
+        full = Path(root) / path
+        # A link the server checkout deleted (git still lists it) isn't there either.
+        return full.exists() and full.resolve().is_relative_to(Path(root).resolve())
+    except (OSError, RuntimeError):  # RuntimeError: a symlink loop
+        return False
+
+
 def read_sources(root, paths):
     """Contents of files that have issues, so the server can show code without access to the repository."""
     sources, total = {}, 0
     for path in sorted(paths):
         p = root / path
+        if not inside(root, path):
+            continue
         try:
             size = p.stat().st_size
         except OSError:
@@ -417,6 +437,7 @@ class ScanInput:
     coverage_report: Path | None = None
     coverage_base: Path | None = None
     focus: list[str] | None = None
+    local: bool = False
 
 
 def make_context(cfg, scan, files):
@@ -433,6 +454,7 @@ def make_context(cfg, scan, files):
         coverage_report=Path(scan.coverage_report) if scan.coverage_report else None,
         coverage_base=Path(scan.coverage_base) if scan.coverage_base else None,
         focus=scan.focus,
+        local=scan.local,
     )
 
 
@@ -442,7 +464,9 @@ def code_only(changed, tracked):
 
 def collect(cfg, scan, log=print):
     """Analyse a ScanInput with the project's ScanConfig; returns the upload payload."""
-    files = [f for f in scan.files if not excluded(f, cfg.exclusions)]
+    # A path starting with "-" would reach each tool's command line as an option ("--output-file=x.py").
+    files = [f"./{f}" if f.startswith("-") else f
+             for f in scan.files if not excluded(f, cfg.exclusions) and inside(scan.root, f)]
     files = without_third_party(Path(scan.root), files, log)
     changed = scan.changed
     ctx = make_context(cfg, scan, files)

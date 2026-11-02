@@ -1,3 +1,8 @@
+import os
+
+# The administrator the first migration creates; outside tests its password is random (core/migrations/0003).
+os.environ.setdefault("CODEWATCH_ADMIN_PASSWORD", "admin")
+
 import subprocess
 
 import pytest
@@ -43,3 +48,13 @@ def token_for(user, scope=ApiToken.SCAN):
 
 def auth(raw):
     return {"Authorization": f"Bearer {raw}"}
+
+
+@pytest.fixture(autouse=True)
+def trusted_servers_file(tmp_path, monkeypatch):
+    """codewatch init records the server it was given; never in the real ~/.config."""
+    from core import client
+
+    path = tmp_path / "trusted" / "servers.txt"
+    monkeypatch.setattr(client, "TRUSTED_SERVERS_FILE", path)
+    return path

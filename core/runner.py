@@ -8,7 +8,18 @@ from . import gate
 from .collect import ScanConfig, ScanInput, choose_reference, collect
 from .duplicates import dedupe
 from .git import Mirror
-from .models import Analysis, AnalysisSource, Issue, Metric, SourceBlob
+from .models import ISSUE_TYPES, SEVERITIES, Analysis, AnalysisSource, Issue, Metric, SourceBlob
+from .network import check_public, trusted_owner
+
+
+def public_url(url):
+    """Checked again at scan time: a name that resolved to a public address when saved may not now."""
+    try:
+        check_public(url)
+    except ValueError:
+        return False
+    return True
+
 
 ISSUE_FIELDS = ("tool", "rule", "severity", "type", "message", "path", "line", "end_line", "fingerprint",
                 "also_reported_by")
@@ -29,6 +40,8 @@ def scan(project, branch, coverage_report=None, coverage_base=None, log=print):
     branch = branch or project.main_branch
     commit = mirror.rev_parse(branch)
     cfg = ScanConfig.from_dict(project.scan_config())
+    if not trusted_owner(project):
+        cfg.a11y_urls = [u for u in cfg.a11y_urls if public_url(u.replace("{branch}", branch))]
     ref, ref_analysis = choose_reference(branch, commit, cfg, mirror)
     analysis = Analysis.objects.create(
         project=project, branch=branch, commit=commit, reference_branch=project.main_branch,
@@ -70,6 +83,10 @@ def ingest(analysis, payload):
     ref_fps = reference_fingerprints(analysis.project, payload.get("reference_analysis_commit"))
     changed = {p: set(lines) for p, lines in (payload.get("changed_lines") or {}).items()}
     issues = dedupe([{k: i.get(k) for k in ISSUE_FIELDS} for i in payload["issues"]])
+    for i in issues:
+        # Pages and the API index by these: one unknown value made every view of the analysis fail.
+        if i["severity"] not in SEVERITIES or i["type"] not in ISSUE_TYPES:
+            raise ValueError(f"Unknown severity or type: {i['severity']!r}, {i['type']!r}")
     metrics = dict(payload["metrics"])
     fixed = fixed_issue_count(analysis, {i["fingerprint"] for i in issues})
     if fixed is not None:
