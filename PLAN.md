@@ -480,6 +480,18 @@ knowledge.
    (utils/skey.py:11/16/25, never recorded as real; an S/KEY chain relies on preimage resistance) moved to
    review; nothing else changed.
 
+16. **Four learning-set false alarms by shape** (2026-11-02; learning sets only, each with a test):
+   - Prompt templates aren't HTML (`test_prompt_templates_are_not_html`, paperless paperless_ai/prompts/render.py:29):
+     an `Environment(autoescape=False)` whose loader names prompts, SQL, queries, plain text, Markdown, YAML or
+     code generation renders no page.
+   - A value checked for quotes isn't SQL value formatting (`test_a_value_checked_for_quotes_is_not_sql_value_formatting`,
+     CTFd utils/exports/__init__.py:416): `if "'" not in name:` guards the formatted string.
+   - A regex with a timeout isn't regex injection (`test_a_regex_with_a_timeout_is_not_regex_injection`, recipes
+     helper/automation_helper.py:221/222): the `regex` module's `timeout=` bounds the ReDoS.
+   - A path's name or extension isn't a file opened (`test_a_path_name_or_extension_is_not_a_file_opened`,
+     paperless documents/views.py:4226): `Path(x).suffix`/`.suffixes`/`.stem`/`.name`/`.parts` read the string only.
+   After: those 5 gone; quick suites, both CVE-pair suites, the 30 apps and the other learning-set findings unchanged.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the

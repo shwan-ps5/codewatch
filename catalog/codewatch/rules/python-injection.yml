@@ -36,6 +36,10 @@ rules:
       - pattern-not-inside: |
           def run_migrations_offline(...):
             ...
+      # A value checked to hold no quote can't close the one around it (CTFd: `if "'" not in table_name`).
+      - pattern-not-inside: |
+          if <... "'" not in $CHECKED ...>:
+            ...
       - pattern-either:
         - patterns:
             - pattern-either:

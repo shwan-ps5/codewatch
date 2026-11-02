@@ -688,6 +688,12 @@ rules:
               - pattern: flask.send_file($PATH, ...)
               - pattern: send_file($PATH, ...)
               - pattern: django.http.FileResponse(open($PATH, ...), ...)
+          # A path's name or extension is a string, not a file opened (paperless-ngx: Path(str(doc.filename)).suffix).
+          - pattern-not-inside: pathlib.Path(...).suffix
+          - pattern-not-inside: pathlib.Path(...).suffixes
+          - pattern-not-inside: pathlib.Path(...).stem
+          - pattern-not-inside: pathlib.Path(...).name
+          - pattern-not-inside: pathlib.Path(...).parts
           - focus-metavariable: $PATH
 
   - id: codewatch.python.web.xss
@@ -1336,6 +1342,11 @@ rules:
               pattern-either:
                 - pattern: jinja2.PackageLoader(...)
                 - pattern: jinja2.FileSystemLoader(...)
+          # Templates kept in a folder named for prompts, SQL or plain text aren't HTML (paperless-ngx: LLM prompts
+          # from PackageLoader("paperless_ai", "prompts")).
+          - metavariable-regex:
+              metavariable: $LOADER
+              regex: '^(?![^)]*(?i:prompt|sql|quer(y|ies)|txt|plain|markdown|yaml|codegen))'
 
   - id: codewatch.python.web.ssrf
     mode: taint
@@ -1422,6 +1433,9 @@ rules:
           - pattern-either:
               - pattern: re.$FUNC($PATTERN, ...)
               - pattern: regex.$FUNC($PATTERN, ...)
+          # The regex module's timeout bounds a slow pattern: a user's own pattern taken on purpose (recipes'
+          # automations, regex.sub(rule[1], ..., timeout=REGEX_TIMEOUT)).
+          - pattern-not: regex.$FUNC(..., timeout=$TIMEOUT, ...)
           - metavariable-regex: {metavariable: $FUNC, regex: ^(compile|search|match|fullmatch|findall|finditer|sub|subn|split)$}
           - focus-metavariable: $PATTERN
 

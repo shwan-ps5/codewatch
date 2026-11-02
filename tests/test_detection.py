@@ -2411,3 +2411,58 @@ def test_a_weak_hash_of_a_secret_is_not_a_password_hash():
     for text in ("def store(password): hashlib.md5(password)", "def verify_signature(data, sig)",
                  "certificate_matches(certificate, known_hash)", "hashed = md5(salt + pw)"):
         assert SECURITY_PURPOSE_RE.search(text), text
+
+
+def test_prompt_templates_are_not_html(tmp_path):
+    """paperless-ngx: LLM prompts rendered by a Jinja environment with autoescape off, loaded from a "prompts"
+    folder. A templates folder still counts."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"render.py": (
+        "from jinja2 import Environment, FileSystemLoader, PackageLoader\n\n"
+        "prompts = Environment(loader=PackageLoader('paperless_ai', 'prompts'), autoescape=False)\n"
+        "queries = Environment(loader=FileSystemLoader('sql_templates'), autoescape=False)\n"
+        "pages = Environment(loader=PackageLoader('site', 'templates'), autoescape=False)\n")})
+    assert found == {("render.py", 5, "template-autoescape-disabled")}
+
+
+def test_a_value_checked_for_quotes_is_not_sql_value_formatting(tmp_path):
+    """CTFd: a table name formatted between quotes only after `if '"' not in name and "'" not in name`."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"exports.py": (
+        "def reset(db, table_name):\n"
+        "    if '\"' not in table_name and \"'\" not in table_name:\n"
+        "        db.execute(\"SELECT setval('{t}', 1) FROM x\".format(t=table_name))\n"
+        "    db.execute(\"SELECT setval('{t}', 1) FROM x\".format(t=table_name))\n")})
+    assert found == {("exports.py", 4, "sql-value-formatting")}
+
+
+def test_a_regex_with_a_timeout_is_not_regex_injection(tmp_path):
+    """recipes: users' own automation patterns, matched with the regex module's timeout, which bounds ReDoS."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import re\nimport regex\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/replace')\n"
+        "def replace():\n"
+        "    pattern = request.args['p']\n"
+        "    text = regex.sub(pattern, '', request.args['t'], timeout=1)\n"
+        "    counts = [regex.sub(pattern, '', text), re.sub(pattern, '', text)]\n"
+        "    return str(len(counts))\n")})
+    assert found == {("app.py", 12, "regex-injection")}
+
+
+def test_a_path_name_or_extension_is_not_a_file_opened(tmp_path):
+    """paperless-ngx: Path(str(document.filename)).suffix reads the extension; nothing is opened."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from pathlib import Path\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/ext')\n"
+        "def ext():\n"
+        "    name = request.args['f']\n"
+        "    kind = Path(name).suffix + Path(name).stem\n"
+        "    Path(name).stat()\n"
+        "    return 'ok' if kind else 'no'\n")})
+    assert found == {("app.py", 11, "path-traversal")}
