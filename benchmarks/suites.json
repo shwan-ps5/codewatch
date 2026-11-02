@@ -115,7 +115,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url).",
+      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22.",
       "cases": [
         {
           "id": "GHSA-f2mf-q878-gh58",
@@ -294,6 +294,276 @@
           "summary": "Open WebUI  allows limited stored XSS vila uploaded html file",
           "scope": [
             "backend/open_webui"
+          ]
+        },
+        {
+          "id": "GHSA-25g8-2mcf-fcx9",
+          "cve": "CVE-2026-29065",
+          "repo": "https://github.com/dgtlmoon/changedetection.io.git",
+          "fix": "1d7d812eb0faab37042246e2fbce04f29bb1b3aa",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "changedetection.io has Zip Slip vulnerability in the backup restore functionality",
+          "scope": [
+            "changedetectionio"
+          ]
+        },
+        {
+          "id": "GHSA-2g5w-29q9-w6hx",
+          "cve": "CVE-2023-30620",
+          "repo": "https://github.com/mindsdb/mindsdb.git",
+          "fix": "4419b0f0019c000db390b54d8b9d06e1d3670039",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "mindsdb arbitrary file write when extracting a remotely retrieved Tarball",
+          "scope": [
+            "mindsdb"
+          ]
+        },
+        {
+          "id": "GHSA-2wvg-62qm-gj33",
+          "cve": "CVE-2026-35187",
+          "repo": "https://github.com/pyload/pyload.git",
+          "fix": "4032e57d61d8f864e39f4dcfdb567527a50a9e1f",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "pyLoad: SSRF in parse_urls API endpoint via unvalidated URL parameter",
+          "scope": [
+            "src/pyload"
+          ]
+        },
+        {
+          "id": "GHSA-48rp-jc79-2264",
+          "cve": "CVE-2025-54802",
+          "repo": "https://github.com/pyload/pyload.git",
+          "fix": "70a44fe02c03bce92337b5d370d2a45caa4de3d4",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "pyLoad CNL Blueprint allows Path Traversal through `dlc_path` which leads to Remote Code Execution (RCE)",
+          "scope": [
+            "src/pyload"
+          ]
+        },
+        {
+          "id": "GHSA-527m-2xhr-j27g",
+          "cve": "CVE-2025-61784",
+          "repo": "https://github.com/hiyouga/LLaMAFactory.git",
+          "fix": "95b7188090a1018935c9dc072bfc97f24f1c96e9",
+          "cwe": [
+            22,
+            918
+          ],
+          "license": "Apache-2.0",
+          "summary": "LLaMA Factory's Chat API Contains Critical SSRF and LFI Vulnerabilities",
+          "scope": [
+            "src/llamafactory"
+          ]
+        },
+        {
+          "id": "GHSA-9jj8-v89v-xjvw",
+          "cve": "CVE-2026-25527",
+          "repo": "https://github.com/dgtlmoon/changedetection.io.git",
+          "fix": "9d38b4517364831889b5b0d7b3465fd060403fd4",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "changedetection.io is vulnerable to unauthenticated static path traversal",
+          "scope": [
+            "changedetectionio"
+          ]
+        },
+        {
+          "id": "GHSA-9mq4-9556-6qxq",
+          "cve": "CVE-2021-4315",
+          "repo": "https://github.com/NYUCCL/psiTurk.git",
+          "fix": "47787e15cecd66f2aa87687bf852ae0194a4335f",
+          "cwe": [
+            94,
+            1336
+          ],
+          "license": "MIT",
+          "summary": "NYUCCL psiTurk IS vulnerable to Improper Neutralization of Special Elements",
+          "scope": [
+            "psiturk"
+          ]
+        },
+        {
+          "id": "GHSA-fqvv-jvhr-g5jc",
+          "cve": "CVE-2026-42864",
+          "repo": "https://github.com/ManoManoTech/firefighter-incident.git",
+          "fix": "2586679e6f32c12d223668b73e98f4c4de7b771f",
+          "cwe": [
+            306,
+            918
+          ],
+          "license": "MIT",
+          "summary": "FireFighter has unauthenticated SSRF in its Raid jira_bot endpoint that allows IAM credential theft",
+          "scope": [
+            "src/firefighter"
+          ]
+        },
+        {
+          "id": "GHSA-g53g-q539-93cv",
+          "cve": "CVE-2022-1592",
+          "repo": "https://github.com/clinical-genomics/scout.git",
+          "fix": "b0ef15f4737d0c801154c1991b52ff5cab4f5c83",
+          "cwe": [
+            918
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "Server-Side Request Forgery in scout-browser",
+          "scope": [
+            "scout"
+          ]
+        },
+        {
+          "id": "GHSA-h454-rq3m-89rc",
+          "cve": "CVE-2021-46897",
+          "repo": "https://github.com/coderedcorp/coderedcms.git",
+          "fix": "06006cec23a723bc7d76df75ce2c2d795a447902",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Wagtail CRX CodeRed Extensions vulnerable to Path Traversal",
+          "scope": [
+            "coderedcms"
+          ]
+        },
+        {
+          "id": "GHSA-hp84-p2gq-6fvr",
+          "cve": "CVE-2026-7815",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "cf53953d9ad66c182a08e662c1ba29c5831b486b",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQL injection vulnerability in pgAdmin 4 Maintenance Tool",
+          "scope": [
+            "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-j9g7-mqhh-9hxf",
+          "cve": "CVE-2024-10833",
+          "repo": "https://github.com/eosphoros-ai/DB-GPT.git",
+          "fix": "780ce803e325b87f4ddfbe5824451e379aeee56c",
+          "cwe": [
+            22,
+            36
+          ],
+          "license": "MIT",
+          "summary": "DB-GPT Absolute Path Traversal in knowledge/{space_name}/document/upload",
+          "scope": [
+            "dbgpt"
+          ]
+        },
+        {
+          "id": "GHSA-pc6f-259w-w3j6",
+          "cve": "CVE-2022-36551",
+          "repo": "https://github.com/heartexlabs/label-studio.git",
+          "fix": "501142cb815ac964b0c600c491885b67386870c2",
+          "cwe": [
+            918
+          ],
+          "license": "Apache-2.0",
+          "summary": "Heartex - Label Studio Community Edition vulnerable to SSRF in the Data Import module",
+          "scope": [
+            "label_studio"
+          ]
+        },
+        {
+          "id": "GHSA-r25m-cr6v-p9hq",
+          "cve": "CVE-2023-36827",
+          "repo": "https://github.com/ethyca/fides.git",
+          "fix": "f526d9ffb176006d701493c9d0eff6b4884e811f",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "ethyca-fides Webserver API Path Traversal vulnerability",
+          "scope": [
+            "src/fides"
+          ]
+        },
+        {
+          "id": "GHSA-rrgf-hcr9-jq6h",
+          "cve": "CVE-2025-55149",
+          "repo": "https://github.com/ulab-uiuc/tiny-scientist.git",
+          "fix": "7fd42873603012acb8c55a4fc3eaac9ab18e6559",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "TinyScientist has Path Traversal Vulnerability in PDF Review Function (CWE-22)",
+          "scope": [
+            "backend"
+          ]
+        },
+        {
+          "id": "GHSA-vwhf-3v6x-wff8",
+          "cve": "CVE-2023-6568",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "28ff3f94994941e038f2172c6484b65dc4db6ca1",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Cross-site Scripting (XSS) in MLflow",
+          "scope": [
+            "mlflow"
+          ]
+        },
+        {
+          "id": "GHSA-wc6j-5g83-xfm6",
+          "cve": "CVE-2023-30172",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "ac4b697bb0bb8a331944dca63f4235b4bf602ab8",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "mflow vulnerable to directory traversal",
+          "scope": [
+            "mlflow"
+          ]
+        },
+        {
+          "id": "GHSA-x7r7-wmj8-vv5g",
+          "cve": "CVE-2022-1430",
+          "repo": "https://github.com/octoprint/octoprint.git",
+          "fix": "8087528e4a7ddd15c7d95ff662deb5ef7de90045",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Cross-site Scripting in OctoPrint",
+          "scope": [
+            "src/octoprint"
+          ]
+        },
+        {
+          "id": "GHSA-xqpg-92fq-grfg",
+          "cve": "CVE-2025-54140",
+          "repo": "https://github.com/pyload/pyload.git",
+          "fix": "fc4b136e9c4e7dcbb8e467ae802cb2c3f70a71b0",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "`pyLoad` has Path Traversal Vulnerability in `json/upload` Endpoint that allows Arbitrary File Write",
+          "scope": [
+            "src/pyload"
           ]
         }
       ]
@@ -581,6 +851,345 @@
           "summary": "Directus has open redirect in SAML",
           "scope": [
             "api/src"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-python-frontend",
+      "language": "python-web",
+      "kind": "cve-pairs",
+      "held_out": false,
+      "about": "CVE fix pairs in the templates and front-end JavaScript of Python web apps (Django, Flask, FastAPI): the fix changes a template or a script the app ships. Chosen and scored like cve-pairs-python, with templates (.html, Jinja) and JS/TS counted as source. Not held out: may be used to adjust rules (say so here when that happens). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22.",
+      "cases": [
+        {
+          "id": "GHSA-2rrx-pphc-qfv9",
+          "cve": "CVE-2025-2946",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "1305d9910beefd0d6b4c7eb4f111f86edb1d356b",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "pgAdmin 4 Vulnerable to Cross-Site Scripting (XSS) via Query Result Rendering",
+          "scope": [
+            "web/pgadmin"
+          ]
+        },
+        {
+          "id": "GHSA-65xw-pcqw-hjrh",
+          "cve": "CVE-2021-45229",
+          "repo": "https://github.com/apache/airflow.git",
+          "fix": "628aa1f99c865d97d0b1c7c76e630e43a7b8d319",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Apache Airflow Cross-site Scripting Vulnerability",
+          "scope": [
+            "airflow"
+          ]
+        },
+        {
+          "id": "GHSA-h56g-v4vp-q9q6",
+          "cve": "CVE-2022-0352",
+          "repo": "https://github.com/janeczku/calibre-web.git",
+          "fix": "6bf07539788004513c3692c074ebc7ba4ce005e1",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Cross-site Scripting in calibreweb",
+          "scope": [
+            "cps"
+          ]
+        },
+        {
+          "id": "GHSA-jm3m-wr3p-hjrq",
+          "cve": "CVE-2023-0519",
+          "repo": "https://github.com/modoboa/modoboa.git",
+          "fix": "eef9ab72b5305578a3ad7a7463bd284aa645e98b",
+          "cwe": [
+            79
+          ],
+          "license": "ISC",
+          "summary": "Cross-site Scripting in modoboa",
+          "scope": [
+            "modoboa"
+          ]
+        },
+        {
+          "id": "GHSA-mxvc-fwgx-j778",
+          "cve": "CVE-2022-25303",
+          "repo": "https://github.com/benbusby/whoogle-search.git",
+          "fix": "abc30d7da3b5c67be7ce84d4699f327442d44606",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Whoogle Search Cross-site Scripting via string parameter",
+          "scope": [
+            "app"
+          ]
+        },
+        {
+          "id": "GHSA-rwcv-whm8-fmxm",
+          "cve": "CVE-2024-27091",
+          "repo": "https://github.com/GeoNode/geonode.git",
+          "fix": "e53bdeff331f4b577918927d60477d4b50cca02f",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "GeoNode: Stored XSS to full account takeover",
+          "scope": [
+            "geonode"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-2",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Second blind set of Python CVE fix pairs, split from the 2026-11-02 candidates before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-55v6-g8pm-pw4c",
+          "cve": "",
+          "repo": "https://github.com/danielgatis/rembg.git",
+          "fix": "07ad0d493057bddf821dcc3e2410eb7e065257c0",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "rembg server is vulnerable to Server-Side Request Forgery (SSRF) and a weak default CORS configuration",
+          "scope": [
+            "rembg"
+          ]
+        },
+        {
+          "id": "GHSA-5j8p-5rrj-8wjg",
+          "cve": "CVE-2026-10108",
+          "repo": "https://github.com/hanxi/xiaomusic.git",
+          "fix": "88404da7a283f2c0a796a4cd16bbb6e6aa1f4722",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "xiaomusic contains an unauthenticated path traversal vulnerability",
+          "scope": [
+            "xiaomusic"
+          ]
+        },
+        {
+          "id": "GHSA-7488-6x3r-23w5",
+          "cve": "CVE-2022-31507",
+          "repo": "https://github.com/ganga-devs/ganga.git",
+          "fix": "730e7aba192407d35eb37dd7938d49071124be8c",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Ganga allows absolute path traversal",
+          "scope": [
+            "ganga"
+          ]
+        },
+        {
+          "id": "GHSA-8jhr-wpcm-hh4h",
+          "cve": "CVE-2025-47783",
+          "repo": "https://github.com/HumanSignal/label-studio.git",
+          "fix": "97db9e7b16783e1f6052eb432a6f014f80ef268d",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "label-studio vulnerable to Cross-Site Scripting (Reflected) via the label_config parameter.",
+          "scope": [
+            "label_studio"
+          ]
+        },
+        {
+          "id": "GHSA-8phj-f9w2-cjcc",
+          "cve": "CVE-2021-43775",
+          "repo": "https://github.com/aimhubio/aim.git",
+          "fix": "b9e53df5e32d14bbd3a2c738e2db7187fb531e93",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Arbitrary file reading vulnerability in Aim",
+          "scope": [
+            "aim"
+          ]
+        },
+        {
+          "id": "GHSA-9w7f-m4j4-j3xw",
+          "cve": "CVE-2021-43857",
+          "repo": "https://github.com/Gerapy/Gerapy.git",
+          "fix": "49bcb19be5e0320e7e1535f34fe00f16a3cf3b28",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Gerapy may cause remote code execution",
+          "scope": [
+            "gerapy"
+          ]
+        },
+        {
+          "id": "GHSA-c4cc-w454-4634",
+          "cve": "CVE-2024-8537",
+          "repo": "https://github.com/modelscope/agentscope.git",
+          "fix": "7d285e862f86fa1d96ed04c4cd40a5f1b8f9189a",
+          "cwe": [
+            22,
+            29
+          ],
+          "license": "Apache-2.0",
+          "summary": "AgentScope path traversal vulnerability",
+          "scope": [
+            "src/agentscope"
+          ]
+        },
+        {
+          "id": "GHSA-hh2q-qv66-jcqg",
+          "cve": "CVE-2024-22204",
+          "repo": "https://github.com/benbusby/whoogle-search.git",
+          "fix": "3a2e0b262e4a076a20416b45e6b6f23fd265aeda",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Whoogle Search Path Traversal vulnerability",
+          "scope": [
+            "app"
+          ]
+        },
+        {
+          "id": "GHSA-r8j9-5cj7-cv39",
+          "cve": "CVE-2023-49277",
+          "repo": "https://github.com/DarrenOfficial/dpaste.git",
+          "fix": "44a666a79b3b29ed4f340600bfcf55113bfb7086",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Reflected XSS Vulnerability in dpaste",
+          "scope": [
+            "dpaste"
+          ]
+        },
+        {
+          "id": "GHSA-v5gf-r78h-55q6",
+          "cve": "CVE-2024-37301",
+          "repo": "https://github.com/adfinis/document-merge-service.git",
+          "fix": "a1edd39d33d1bdf75c31ea01c317547be90ca074",
+          "cwe": [
+            1336
+          ],
+          "license": "GPL-3.0",
+          "summary": "document-merge-service vulnerable to Remote Code Execution via Server-Side Template Injection",
+          "scope": [
+            "document_merge_service"
+          ]
+        },
+        {
+          "id": "GHSA-w832-gg5g-x44m",
+          "cve": "CVE-2025-64481",
+          "repo": "https://github.com/simonw/datasette.git",
+          "fix": "f257ca6edb64848c3b04b54d41e347c54fe57c05",
+          "cwe": [
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "Open redirect endpoint in Datasette",
+          "scope": [
+            "datasette"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-frontend",
+      "language": "python-web",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind template and front-end JavaScript CVE fix pairs from Python web apps, split from the 2026-11-02 candidates before any scan the same way. Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-287q-jfcp-9vhv",
+          "cve": "CVE-2022-4526",
+          "repo": "https://github.com/richardbarran/django-photologue.git",
+          "fix": "960cb060ce5e2964e6d716ff787c72fc18a371e7",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "django-photologue vulnerable to Cross-site Scripting",
+          "scope": [
+            "photologue"
+          ]
+        },
+        {
+          "id": "GHSA-2mq9-hm29-8qch",
+          "cve": "CVE-2026-22033",
+          "repo": "https://github.com/HumanSignal/label-studio.git",
+          "fix": "ea2462bf042bbf370b79445d02a205fbe547b505",
+          "cwe": [
+            79,
+            285
+          ],
+          "license": "Apache-2.0",
+          "summary": "Label Studio is vulnerable to full account takeover by chaining Stored XSS + IDOR in User Profile via custom_hotkeys field",
+          "scope": [
+            "label_studio"
+          ]
+        },
+        {
+          "id": "GHSA-8q2h-4mq6-396j",
+          "cve": "CVE-2020-25449",
+          "repo": "https://github.com/arachnys/cabot.git",
+          "fix": "18708572cb0ed143842409419eada91160413973",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Cabot Cross Site Scripting (XSS) vulnerability via Address column",
+          "scope": [
+            "cabot"
+          ]
+        },
+        {
+          "id": "GHSA-hwpg-x5hw-vpv9",
+          "cve": "CVE-2025-52558",
+          "repo": "https://github.com/dgtlmoon/changedetection.io.git",
+          "fix": "3d5a544ea674cfce517adcd498877a8d760d0931",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "ChangeDetection.io XSS in watch overview",
+          "scope": [
+            "changedetectionio"
+          ]
+        },
+        {
+          "id": "GHSA-xpjq-3w4w-w5wr",
+          "cve": "CVE-2026-86062",
+          "repo": "https://github.com/HKUDS/LightRAG.git",
+          "fix": "8bf032a5200f293b482dd945d436e25cd08bd953",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "lightrag-hku: Stored Cross-Site Scripting (XSS) in the LightRAG WebUI chat/answer renderer via ingested content",
+          "scope": [
+            "lightrag_webui"
           ]
         }
       ]

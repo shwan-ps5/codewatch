@@ -265,6 +265,9 @@ def score_labelled(root, suite, issues):
 
 
 SOURCE_EXTENSIONS = {"python": (".py",), "javascript": (".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx")}
+# A Python web app's own templates and front-end scripts (cve-pairs-python-frontend).
+SOURCE_EXTENSIONS["python-web"] = (*SOURCE_EXTENSIONS["python"], *SOURCE_EXTENSIONS["javascript"],
+                                   ".vue", ".html", ".htm", ".jinja", ".jinja2", ".j2")
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|spec|e2e)/|(^|/)(test_[^/]*|[^/]*_test\.py|tests?\.py)$"
                           r"|\.(test|spec)\.[cm]?[jt]sx?$|\.d\.ts$")
 HUNK_RE = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")

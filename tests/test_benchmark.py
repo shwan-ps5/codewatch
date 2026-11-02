@@ -182,3 +182,15 @@ def test_run_skips_blind_suites_unless_named(tmp_path, monkeypatch):
     benchmark.run(log=lambda *a: None)
     benchmark.run(["blind"], log=lambda *a: None)
     assert ran == ["open", "blind"]
+
+
+def test_a_python_web_apps_templates_and_scripts_count_as_its_source():
+    diff = ("diff --git a/app/templates/item.html b/app/templates/item.html\n"
+            "--- a/app/templates/item.html\n+++ b/app/templates/item.html\n"
+            "@@ -3 +3 @@\n-<p>{{ item.caption|safe }}</p>\n+<p>{{ item.caption }}</p>\n"
+            "diff --git a/app/static/js/list.js b/app/static/js/list.js\n"
+            "--- a/app/static/js/list.js\n+++ b/app/static/js/list.js\n"
+            "@@ -7 +7 @@\n-el.innerHTML = v;\n+el.textContent = v;\n")
+    web = benchmark.SOURCE_EXTENSIONS["python-web"]
+    assert benchmark.fix_spots(diff, web)["after"] == {"app/templates/item.html": [(3, 3)], "app/static/js/list.js": [(7, 7)]}
+    assert benchmark.fix_spots(diff, benchmark.SOURCE_EXTENSIONS["python"])["after"] == {}

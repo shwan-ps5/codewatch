@@ -53,7 +53,8 @@ Detection, measured at this commit (verdict mode first; review mode adds hotspot
 | Juice Shop (35 challenges) | 15 | 17 |
 | Vulnerable-Code-Snippets JS (22, held out) | 11 | 13 |
 | vulnerable-node seeds (12 + 2 clean) | 92%, false alarms 0% | 100%, false alarms 50% |
-| CVE fix pairs, Python (14) | 5 found, 1 still flagged after the fix | 6 found, 1 still flagged |
+| CVE fix pairs, Python (33; 14 until step 22) | 14 found, 7 still flagged after the fix | 16 found, 8 still flagged |
+| CVE fix pairs, Python front end (6, step 22) | 0 found | 4 found, 2 still flagged |
 | CVE fix pairs, JS/TS (10) | 2 found, 0 still flagged | 4 found, 3 still flagged |
 
 False alarms on ordinary apps (verdict mode):
@@ -659,6 +660,26 @@ rule):
      Semgrep run now gets its share of the CPUs (`CODEWATCH_SEMGREP_JOBS`).
    After: identical results to sequential runs everywhere; quick suites 470s -> 250s, Python CVE pairs 36 -> 13
    min, learning sets about 25 -> 10 min, check.sh (lint, tests, quick suites, 30 apps) about 25 -> 7 min.
+
+22. **More Python ground truth** (2026-11-02, the focus on Python web apps). From GitHub's reviewed pip advisories
+   since 2021 with CWE 22, 79, 89, 94, 502, 601, 611, 78, 918 or 1336 (2,321), those with exactly one fix commit
+   (1,019, 1,003 fetched), at most three non-test source files and 120 changed lines touching web code (189),
+   each fix read by hand: 41 accepted, the rest rejected for being library or framework code (Authlib, aiohttp,
+   urllib3, Django's own ORM...), Tornado apps, stored data with no request path, validator bypasses no rule can
+   see, settings flags, missing authentication, or a fix mixing unrelated changes. Excluded too: InvenTree's
+   advisory (InvenTree is in blind set 4). The 41 were split before any scan by a fixed rule (blind when
+   `int(sha256(id), 16) % 3 == 0`): 19 joined `cve-pairs-python` (now 33), 6 template and front-end JS cases form
+   `cve-pairs-python-frontend` (new `python-web` language: templates and scripts count as source), and 11 + 5
+   form `cve-pairs-blind-python-2` and `cve-pairs-blind-python-frontend` (scanned once, at the end of a round).
+   The old blind CVE suites were spent in step 6.
+   Baseline at this commit (none of the new cases used for rules yet):
+   - cve-pairs-python: verdict 14/33 found, 7 still flagged after the fix (was 5/14, 1); review 16/33, 8.
+     New finds: DB-GPT, TinyScientist and pyLoad upload path traversal, and six that stay flagged at their fix
+     (MindsDB zip slip, pyLoad CNL, LLaMA Factory, label-studio file:// import, MLflow XSS and path traversal),
+     each to be read: an unrecognised guard shape is a false alarm to fix, an incomplete fix is a real finding.
+   - cve-pairs-python-frontend: verdict 0/6; review 4/6 (template `|safe`, jQuery HTML), 2 still flagged.
+   Next: the six still-flagged fixes, then the misses whose flow is visible (changedetection.io's filter that
+   keeps ".", Fides and CodeRed paths, Scout and pyLoad SSRF, Gerapy's shell commands), then the front end.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
