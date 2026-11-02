@@ -146,8 +146,8 @@ rule):
    cases (GHSA-7mfx, -9ghw) are flawed checks in front of Express's static/proxy middleware, gitlab-mcp (GHSA-cv3r)
    is missing authentication and its path comes from MCP tool arguments, and fastify-static (GHSA-83w8) is the
    library itself. Mockoon (GHSA-8wqc) is a prefix-only containment check (`resolved.startsWith(base)`), now the
-   `path-prefix-check` hotspot for JS. It also flags `own-app-5/packages/server/src/main.ts:57` in the user's own
-   repo. A Python version was tried and removed: the OWASP Benchmark for Python labels exactly this check
+   `path-prefix-check` hotspot for JS. It also flags one real prefix-only check in the user's own projects.
+   A Python version was tried and removed: the OWASP Benchmark for Python labels exactly this check
    (`str((base / name).resolve()).startswith(str(base))`) safe in 29 path traversal cases, review false alarms
    went from 2% to 30%, and no Python case needed it.
 3. Done (2026-10-31). Python taint sources were only `request`: Flask route parameters and FastAPI parameters
@@ -181,15 +181,15 @@ rule):
    `decode*`/`get_current_user*`), route handlers (a GET view returning the POST view's response gave 5 OWASP
    XSS verdict false alarms), and handler-named methods (`get`, `post`, `dispatch`...: a Django class-based
    view's `get` made pygoat's `requests.get(settings URL)` an SSRF). Effect: ordinary apps still 0; on the user's
-   repos one new finding, `own-app-5/packages/client/src/game.ts:338` (XSS), a real flow from `?server=` through
-   `defaultServer()`/`loadOnline()` into innerHTML, but inside a double-quoted attribute with `"` stripped, so not
-   exploitable; a rule can't see attribute context, left as is. On the held-out vulnerable-snippets-js, "any
+   own projects one new XSS finding, a real flow from a query parameter through two helpers into innerHTML, but
+   inside a double-quoted attribute with `"` stripped, so not exploitable; a rule can't see attribute context,
+   left as is. On the held-out vulnerable-snippets-js, "any
    security" went from 50% to 55% only because `PostMessage Security/challenge1.js` gets an open-redirect for
    `get_domain()` (the page's own origin) in a query string: noise on a sample vulnerable for another reason,
-   not a detection, and not tuned on. Cost: the first version made own-app-5 14 s -> 153 s and dvpwa 42 s -> 117 s.
-   The JS sink `class $C { ... $FUNC(...) { ... } ... }` was 42 of 45 s per pass on own-app-5 (now
+   not a detection, and not tuned on. Cost: the first version made one of the user's TypeScript projects 14 s -> 153 s and dvpwa 42 s -> 117 s.
+   The JS sink `class $C { ... $FUNC(...) { ... } ... }` was 42 of 45 s per pass on that project (now
    `$FUNC(...) { ... }`, same results, 4 s), and vendored unminified libraries (dvpwa's 366 KB materialize.js)
-   took 23 s per pass (pass 3 now skips JS files over 200 KB). Now own-app-5 27 s, dvpwa 47 s.
+   took 23 s per pass (pass 3 now skips JS files over 200 KB). Now 27 s and 47 s.
 3. **Framework sources**: FastAPI text parameters (including `Query()`/`Path()`/`Header()` defaults) done with
    item 3 above. Pydantic/SQLModel body models done (2026-10-31, `core/analyzers/body_models.py`): the project's
    own model classes are read with ast, and a route parameter typed with one has its text fields as sources
@@ -224,7 +224,7 @@ rule):
    Next (after the blind run): a pass-through summary (params as sources, `return` as sink; calls to project
    functions that don't pass a parameter through become sanitizers), a positive-guard sanitizer
    (`if is_safe_url(x): ...`), and `request.url_root`/`host_url` as open-redirect sanitizers. The same
-   pass-through gap is behind own-app-10 app.py:793.
+   pass-through gap is behind a known false alarm in one of the user's own projects.
 
    Blind repos at fe33054 (first and only scan, 2026-10-31; not to be used to adjust rules), verdict findings:
    - Django-Styleguide-Example: 3, all real at code level: `CORS_ALLOW_ALL_ORIGINS` with credentials
@@ -381,7 +381,7 @@ rule):
    found returning request data still counts. `test_what_a_javascript_helper_looks_up_is_stored_data`. outline
    7 (6 real). Left: passkeys.ts:266, a call inline in the sink to a helper that returns a fixed string; JS
    pass-through would not reach it either (Python's cleans only assigned results, because cleaning the call hid
-   own-app-1's real path traversal), so one case doesn't justify it.
+   a real path traversal in one of the user's own projects), so one case doesn't justify it.
    Quick suites unchanged; CVE pairs unchanged (Python verdict 5/14, 1; review 6/14, 1; JavaScript verdict 2/10,
    0; review 4/10, 3); the 30 apps lose only the seven dvna/vulnerable-node redirects above.
 
@@ -479,7 +479,7 @@ rule):
      not source.
    After: CTFd 7, paperless-ngx 9, recipes 3, umami 0 (19 of 48). Quick suites and CVE pairs unchanged; the 30
    apps lose two trust-boundary findings that store a user's database id after login or sign-up (dvpwa
-   sqli/views.py:42, pygoat insecure_design_lab app.py:80) and own-app-5 game.ts:338 (a known false alarm);
+   sqli/views.py:42, pygoat insecure_design_lab app.py:80) and a known XSS false alarm in one of the user's projects;
    learning sets 1 and 2 unchanged. Left:
    - Real: recipes api.py:2960 (`traceback.format_exc()` in the response). CTFd git.py:132/150/169 store a route
      parameter in the session: the rule's shape, little impact.
@@ -648,22 +648,21 @@ rule):
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
-`test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
+`test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the
 response; `lookup-result` sanitizer for the variable assigned from a bare call to a `get_X`/`fetch_X`/`load_X`/
 `find_X` helper, also inside `try:` (not `get_json`/`get_param`-style names; the returner pass's variants drop it
 so a real `get_cmd()` returner still counts). It cleans the variable, not the call: a first version cleaned the
-call and hid own-app-1's path traversal inside `load_css(...)`, a via-sink among its arguments; `Response(..., mimetype="video/...")` and other media/JSON types aren't XSS, nor is
+call and hid a real path traversal inside a `load_X(...)` call, a via-sink among its arguments; `Response(..., mimetype="video/...")` and other media/JSON types aren't XSS, nor is
 `return Response(...)` built inline; command injection: `secure_filename()` output and a literal
 `https://host/...` argv element are clean; weak-random-token's `$SESSION[...] =` sink needs a session-named
 target (any dict matched; pygoat's OTP stored in a plain dict is still flagged by bandit's B311 as a
 secret-purpose random); and `cache_key`/`sort_key`-style names no longer make a function security-related for
-weak-hash. Real findings (measurement only; fixing those apps is not part of this plan): own-app-10 `/proxy/media?url=` (app.py:815, open proxy: SSRF), own-app-1
-app.py:32/39 (path traversal), own-app-11 accounts/views.py:38 (open redirect). Known false alarms left:
-own-app-10 app.py:793 (gif_id reaches a helper's Response through Semgrep's call-result propagation) and
-own-app-5 game.ts:338 (attribute value with `"` stripped).
+weak-hash. Real findings in those projects (an open proxy, a path traversal, an open
+redirect) are measurement only: fixing them is not part of this plan. Two known false alarms are left: an id
+reaching a helper's Response through Semgrep's call-result propagation, and an attribute value with `"` stripped.
 
-Also 2026-10-31: `**/site-packages/**` joined the default exclusions (a committed virtualenv made the user's
-own-app-12 9,910 files and timed out the final scan; existing projects keep their saved list).
+Also 2026-10-31: `**/site-packages/**` joined the default exclusions (a committed virtualenv made one of the user's
+projects 9,910 files and timed out the final scan; existing projects keep their saved list).
 `devtools.py repos` also scans directories that aren't git working copies, and prints as it goes. A tool
 timeout used to kill only semgrep's Python wrapper: semgrep-core kept running (1.6 GB, 30 min) and the next
 scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec` now kills the process group.
@@ -790,6 +789,5 @@ Fourth blind set, chosen and cloned 2026-11-02 with learning set 4 and before an
 CVE fix pairs are suites (`cve-pairs-*` in `benchmarks/suites.json`); the `cve-pairs-blind-*` suites are skipped
 unless named and follow the same rule.
 
-The user's own repos in `~/dev` (own-app-1, own-app-2, own-app-3, own-app-4, own-app-5, own-app-6,
-own-app-7, own-app-8, own-app-9) are useful false-alarm checks; known real findings: own-app-1
-`load_css` path traversal, own-app-3 `random.choices` session keys, own-app-8 and own-app-9's FTP and unfiltered tar.
+The user's own projects in `~/Dev` (the set differs per machine; they are private and not named here) are useful
+false-alarm checks. Their known findings are tracked locally, not in this repository.

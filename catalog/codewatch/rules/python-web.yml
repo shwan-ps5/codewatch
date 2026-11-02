@@ -479,7 +479,7 @@ rules:
                   def $VIEW(...):
                     ...
               - metavariable-regex: {metavariable: $ROUTE, regex: '^[^<]*$'}
-      # A helper that looks something up by the request value returns that thing, not the value: get_gif(gif_id),
+      # A helper that looks something up by the request value returns that thing, not the value: get_clip(clip_id),
       # fetch_order(order_no). Only bare calls (project helpers, not request.get_json()), and not names that say
       # they return request data (get_param, get_json). A helper that does return it is found by the returner pass.
       - &lookup-result

@@ -1568,9 +1568,9 @@ def test_request_body_models(tmp_path):
     }
 
 
-def test_false_alarms_from_the_maintainers_projects(tmp_path):
-    """Shapes from the maintainer's own projects that were flagged once route parameters became sources: a function
-    nested in a view, a record fetched by the id (get_gif), a video Response, a URL argv element for mpv, a
+def test_false_alarms_from_small_flask_apps(tmp_path):
+    """Shapes from small Flask apps that were flagged once route parameters became sources: a function
+    nested in a view, a record fetched by the id (get_clip), a video Response, a URL argv element for mpv, a
     secure_filename() path for ffmpeg, md5 for a seed beside a cache_key, and random values put in a dict that isn't
     the session. The real ones beside them stay flagged."""
     if not Semgrep().available():
@@ -1596,12 +1596,12 @@ def test_false_alarms_from_the_maintainers_projects(tmp_path):
             '    return jsonify(fetch_all())\n'
             '\n'
             '\n'
-            '@app.route("/thumb/<gif_id>")\n'
-            'def thumb(gif_id):\n'
-            '    gif = get_gif(gif_id)\n'
-            '    requests.get(gif.urls.poster, timeout=10)\n'
+            '@app.route("/thumb/<clip_id>")\n'
+            'def thumb(clip_id):\n'
+            '    clip = get_clip(clip_id)\n'
+            '    requests.get(clip.urls.poster, timeout=10)\n'
             '    requests.get(request.args["url"], timeout=10)\n'
-            '    return Response(stream(gif_id), mimetype="video/mp4")\n'
+            '    return Response(stream(clip_id), mimetype="video/mp4")\n'
             '\n'
             '\n'
             '@app.route("/page/<name>")\n'
@@ -1628,13 +1628,13 @@ def test_false_alarms_from_the_maintainers_projects(tmp_path):
             '    session["token"] = random.random()\n'
             '\n'
             '\n'
-            '@app.route("/video/<gif_id>")\n'
-            'def video(gif_id):\n'
+            '@app.route("/video/<clip_id>")\n'
+            'def video(clip_id):\n'
             '    try:\n'
-            '        gif = get_gif(gif_id)\n'
+            '        clip = get_clip(clip_id)\n'
             '    except KeyError:\n'
             '        return "missing"\n'
-            '    requests.get(gif.urls.hd, timeout=10)\n'
+            '    requests.get(clip.urls.hd, timeout=10)\n'
             '    page = fetch_page(requests.get(request.args["next"], timeout=10).text)\n'
             '    return "ok"\n')})
     # A sink among a lookup's arguments still counts (line 59).
