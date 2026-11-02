@@ -501,6 +501,39 @@ knowledge.
    in the older guards: their `if <... check(x) ...>: ... return` form also clears the branch body, so
    `if not url_has_allowed_host_and_scheme(x): return redirect(x)` is missed.
 
+18. **Third blind run** (2026-11-02, at 293fdba; first and only scan of blind set 3, not to be used to adjust
+   rules). Verdict findings (first scan; 26):
+   - babybuddy (Django): 2, both false alarms. The Home Assistant ingress middleware prefixes a redirect's path
+     with the `X-Ingress-Path` header (`"/" + x.lstrip("/")`, host kept: open-redirect) and writes it into HTML
+     (xss); the header is set by the proxy in front, which a victim's browser can't send cross-site.
+   - papermerge-core (FastAPI): 2. Real: `allow_origins=["*"]` with `allow_credentials=True` (app.py:20;
+     Starlette then echoes any Origin). False alarm: sql-injection via `create_document()`, whose helpers only
+     build SQLAlchemy `select(...).where(col == value)` statements for `session.execute(stmt)`.
+   - uptime-kuma (Express): 13, all false alarms. 4 xss of SVG badges from `makeBadge()` (badge-maker escapes
+     its text); 2 xss through status-page helpers whose slug is only a parameterised lookup key; ssrf and xss of
+     an RSS feed (the `feed` library builds XML; the request's Host is only a link in it; nothing is fetched);
+     a response cache's stored body (looked up by a key built from the request); 2 tls-verification-disabled
+     behind a per-notification opt-in (`if (notification.teltonikaUnsafeTls)`); DES-ECB in a vendored
+     `server/modules/axios-ntlm` (with its own LICENSE; NTLM requires it).
+   - postiz-app (NestJS): 9. Real: ssrf, `fetch(query.url)` in an authenticated webhook test endpoint
+     (webhooks.controller.ts:59). False alarms: 5 cookie-without-secure where `secure: true` is spread in unless
+     `process.env.NOT_SECURED`; ssrf and path traversal of an AI image result's URL (`generateImage()`); ssrf of
+     a URL read from Redis by a key from the request.
+   So 4 of 4 apps have verdict false alarms (24, 13 in one Express app), worse than blind sets 1 and 2 (2 of 4
+   each). Python is now close (3 false alarms in two apps); JavaScript isn't. Also: a second scan of uptime-kuma
+   gave two more badge findings (api-router.js:744/827), so a scan isn't fully deterministic on large files
+   (suspect per-file timeouts; check on non-blind apps). Lessons (to act on only with non-blind cases):
+   - A value looked up by a key from the request (Redis, Map, cache stores) is stored data, as Python's
+     lookup-result already says.
+   - A JS cookie's `secure` from config or env, including a conditional spread, isn't a missing flag (Python has
+     this since item 13).
+   - An opt-in TLS bypass behind a per-record or per-config flag is the user's choice: review, not verdict.
+   - SQLAlchemy Core/ORM statements built with `select()/where()` passed to `execute()` bind their values.
+   - Vendored modules inside the app tree (`server/modules/<lib>` with a LICENSE) aren't app code.
+   - Libraries that escape what they render (SVG badges, RSS/XML feeds) need to be known as sanitizers.
+   The blind set is now spent. Next: a fourth learning set weighted to JS/Express and Node apps, cloned and
+   pinned along with a fourth blind set before any scan.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_the_maintainers_projects`): a return inside a function nested in a view isn't the
@@ -610,8 +643,8 @@ scanned once at 81ce0e3 (step 12) and now spent, never use to adjust rules:
 | https://github.com/w3tecch/express-typescript-boilerplate | 17727010f7 | ordinary Express app |
 | https://github.com/ghostfolio/ghostfolio | 841ff112c4 | ordinary NestJS app |
 
-Third blind set, chosen and cloned 2026-11-01 before any scan, in `~/.cache/codewatch/blind3/`; scan only at the
-end of the next round, never use to adjust rules:
+Third blind set, chosen and cloned 2026-11-01 before any scan, in `~/.cache/codewatch/blind3/`; scanned once at
+293fdba (step 18) and now spent, never use to adjust rules:
 
 | Repo | Commit | Kind |
 |---|---|---|
