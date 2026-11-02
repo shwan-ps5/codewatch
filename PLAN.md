@@ -98,8 +98,10 @@ Next, in order:
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the two blind CVE suites
    (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-frontend`), each scanned once, measurement only.
 6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
-7. Other languages and frameworks (Node/Express first), from cloud sessions as pull requests, one topic each,
-   following CLAUDE.md's "Cloud sessions" section; merged only after local verification and a nightly run.
+7. Other languages and frameworks (Node/Express first), as local rule work. Cloud sessions (CLAUDE.md) gather
+   their ground truth and do self-contained engineering. The first cloud PR (#1, Express sinks) showed that rule
+   changes need the local app sets to judge false alarms: it added three false alarms in wiki.js the session
+   couldn't see.
 
 Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
 knowledge.
