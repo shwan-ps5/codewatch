@@ -58,14 +58,24 @@ same commands can go in the cloud environment's setup script so each session sta
 For the maintainer: push `detection-gaps` (and with it this file and PLAN.md) before starting a cloud session. A
 session clones what GitHub has when it starts and never sees later pushes unless it rebases.
 
+What cloud sessions are for (2026-11-02, after the first one): work that its own tests and a quick check can
+judge, and that doesn't need the maintainer's app sets:
+- ground-truth research: finding advisories, reading each fix, accepting or rejecting it with a reason, and the
+  blind split (PLAN.md step 22). No rule changes in the same pull request.
+- self-contained engineering: the benchmark scorer, test helpers, the server-side scan container, tooling.
+
+Not rule changes (new or changed sources, sinks, sanitizers or rules). Whether a rule is good is decided by its
+false alarms on the learning-set apps and the maintainer's own projects, which exist only on the maintainer's
+machine, so rule work is done in local sessions. A cloud session given a rule topic should say so and stop, or
+limit itself to collecting cases and probe files for the local session to use.
+
 Working rules for a cloud session:
 - Branch from `detection-gaps` (the session's own branch name, such as `claude/<topic>-<id>`, is fine) and open the
   pull request against `detection-gaps`. Never push to `main` or `detection-gaps` directly.
 - Priorities, in order: Python (Django, Flask, FastAPI) and the JavaScript those apps ship; then Node and other JS
   frameworks; then PHP, Ruby, Rust, C/C++ and C#. Always detection of real issues with false alarms as close to
   zero as possible.
-- One topic per session, for example "Express/Node injection rules", "FastAPI-specific sources", or "more Python
-  front-end CVE pairs".
+- One topic per session, for example "more Python front-end CVE pairs" or "score template-only fixes".
 - New sinks, sources or sanitizers for a weakness that already has a rule go into that rule, in its existing file
   (e.g. more Node file APIs into `javascript-taint.yml`'s `codewatch.js.path-traversal`): no copied sources, no
   line reported by two rules, and no extra rule for the summary passes to multiply. A new file,
