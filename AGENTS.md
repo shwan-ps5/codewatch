@@ -113,7 +113,8 @@ Accept only when **all** of these hold:
 
 Reject, and say which reason applies:
 - library or framework code; fix too large; several fix commits; the fix mixes in unrelated changes
-- stored data with no request path in sight (rendered later from the database)
+- stored data with no request path in sight: rendered later from the database, or taken from a job, workflow or
+  run context, even when a user first sent it through the API (e.g. Skyvern GHSA-57gg)
 - a validator, denylist or regex made stricter: a gap no scanner rule can see
 - a settings flag or default changed (e.g. turning raw HTML off in a Markdown renderer)
 - missing authentication or authorization (CWE-862/863/639)
@@ -127,7 +128,7 @@ accept only if it passes every other rule, and set the suite to `cve-pairs-javas
 `cve-pairs-python-nonhttp`). Never put these in the web suites.
 
 Proposed suite for accepted open cases: `cve-pairs-python` (Python views/handlers), `cve-pairs-python-frontend`
-(the templates and front-end JS of a Python web app), `cve-pairs-javascript` (Node/JS web apps), or the
+(the templates and front-end JS of a Python web app: use it whenever the fix changes only templates or JS files), `cve-pairs-javascript` (Node/JS web apps), or the
 `-nonhttp` ones above.
 
 ## 4. Blind split

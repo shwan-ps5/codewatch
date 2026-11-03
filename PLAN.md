@@ -102,7 +102,7 @@ Next, in order:
    result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
    in the nightly run.
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites
-   (`cve-pairs-blind-python-2` to `-5`, `cve-pairs-blind-python-frontend`, `-frontend-2`, and from step 29
+   (`cve-pairs-blind-python-2` to `-6`, `cve-pairs-blind-python-frontend`, `-frontend-2`, and from step 29
    `cve-pairs-blind-javascript-2` to `-5`), each scanned once, measurement only. The fixes in `-python-5` and the
    JavaScript ones were never sized (steps 27 and 29), so report them with that caveat. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
    (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
@@ -897,6 +897,16 @@ rule):
     weren't checked against the limits (that would mean reading their fix commits), so the blind suites may hold
     cases the same review would drop; when scored, report them with that caveat. Decisions and reasons are in
     `benchmarks/cve-candidates-2026-11-03-*.tsv`. The first nightly run after this step gives the baseline.
+30. **Python ground truth from unreviewed advisories** (2026-11-03; research by a separate agent following
+    `AGENTS.md`, topic 1, reviewed here; no rules changed). Python web apps that aren't on PyPI get advisories GitHub
+    never reviews, so steps 22-27 never saw them. Source: `advisories/unreviewed` in github/advisory-database, since
+    2021, with one GitHub fix commit and a CWE from the list, in Django/Flask/FastAPI repositories. The agent read 65
+    and accepted 13 (8 open, 5 blind). At review, Skyvern GHSA-57gg was rejected: its values come from stored
+    workflow-run context, with no request in sight. Formspree GHSA-2wvm, a fix to one template, went to
+    `cve-pairs-python-frontend`. Added: 6 to `cve-pairs-python` (pgAdmin GHSA-7r93 and -v395, LoLLMS GHSA-8wv4 and
+    -hq38, AIL GHSA-mcpq, OpenResolve GHSA-h3h4), 1 to the front-end suite, and the 5 blind ones as
+    `cve-pairs-blind-python-6`. Their sizes come from `reviewed.py size`. The topic isn't finished: the next batch
+    carries on, and `reviewed.py` skips what this one read.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
