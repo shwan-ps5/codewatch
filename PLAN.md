@@ -737,8 +737,9 @@ rule):
    Flask-AppBuilder, NiceGUI, Dash, Bleach), apps on other servers (Jupyter and WebSSH on Tornado, CherryMusic,
    Maloja, Roundup, Synapse, copyparty), fixes only in Python, and fixes only in `.svelte` files (Open WebUI five
    times, Fava): `.svelte` isn't in `SOURCE_EXTENSIONS["python-web"]`, so such a pair can't be scored; adding it is
-   a scorer change for a later session. Baseline of the 21 new non-blind cases at this commit: see the pull request
-   (`devtools.py cases` in the cloud session); the full suite runs nightly.
+   a scorer change for a later session. Baseline: not measured in the cloud session (`devtools.py cases` over the
+   20 large-repository pairs hit the session's two-hour limit; only cabot GHSA-mqwh-r366-4224 finished: verdict
+   missed, review found by `codewatch.templates.unescaped-output`, quiet after the fix). The nightly run measures it.
    Faster loop from here (the user's call): during the day, each change is checked in isolation (its tests, a
    probe on the case's files, `devtools.py cases ID...` for the CVE pairs it targets); the full verification runs
    nightly (`benchmarks/nightly.sh` from a systemd user timer at 01:30, the app list in
