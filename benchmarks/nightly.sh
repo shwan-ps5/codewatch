@@ -6,7 +6,7 @@
 #   benchmarks/nightly.sh [BRANCH]        (default: the branch checked out in this repository)
 #
 # Writes ~/.cache/codewatch/nightly/YYYY-MM-DD/: summary.txt (what changed since the previous report), suites.txt,
-# apps.txt (one finding per line), results/ (the suites' result files) and log.txt. Blind suites are never run.
+# apps.txt (one finding per line), triage.md (Ollama drafts of the new findings), results/ (the suites' result files) and log.txt. Blind suites are never run.
 set -u
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 BRANCH=${1:-$(git -C "$REPO" rev-parse --abbrev-ref HEAD)}
@@ -55,11 +55,17 @@ if [ -f "$APPS" ]; then
         | LC_ALL=C sort -u > "$OUT/apps.txt"
     echo "apps: $(( ($(date +%s) - start) / 60 )) min, $(wc -l < "$OUT/apps.txt") findings"
     grep -q "Traceback" "$OUT/apps-raw.txt" && echo "WARNING: a scan crashed, see apps-raw.txt"
+    # First-pass drafts of the new findings by Ollama cloud models (triage.md); a Claude session confirms them.
+    # Optional: a failure here leaves the report as it is.
+    start=$(date +%s)
+    triage=$(python3 -I benchmarks/triage.py "$OUT" 2>&1 | tail -1)
+    echo "${triage:-triage: no output} ($(( ($(date +%s) - start) / 60 )) min)"
 fi
 
 {
     echo "commit $(git rev-parse --short HEAD) ($BRANCH), $(date '+%F %T')"
     cat "$OUT/lint.txt" | tail -1; tail -1 "$OUT/tests.txt"
+    grep '^triage:' "$OUT/log.txt" 2>/dev/null
     echo; echo "== suites"; grep -v '^ ' "$OUT/suites.txt"
     if [ -n "$PREV" ]; then
         echo; echo "== compared with $(basename "$PREV")"
