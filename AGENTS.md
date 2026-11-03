@@ -1,0 +1,153 @@
+# codewatch: instructions for research agents
+
+This file is for AI agents (opencode, Ollama-hosted models and the like) asked to do **research** in this repository:
+finding CVE fix pairs that codewatch, a security scanner, can be measured against. Everything you need is here.
+Don't ask the maintainer about the rules below. Follow them, and when a case is truly unclear, record it as
+`unsure` with your question in the reason column. A later review session answers it.
+
+## What you do and don't do
+
+Do: find advisories, read each fix commit, accept or reject it with a reason, and write the results as candidate
+files (below). Then commit them.
+
+Don't:
+- edit `benchmarks/suites.json`, `PLAN.md`, `CLAUDE.md`, rules (`catalog/`), analyzers (`core/`) or tests. A review
+  session on the maintainer's desktop checks your candidates and adds the accepted ones to the suites.
+- run scans, benchmarks or the test suite. This machine is too slow for that, and the desktop runs them overnight.
+- read anything about a blind case after it's split (see "Blind split").
+- name the maintainer's private projects or anything from them. This repository is public.
+
+## Setup
+
+```
+git checkout detection-gaps && git pull
+git config user.name "Shwan"
+git config user.email "344055753+shwan-ps5@users.noreply.github.com"
+```
+
+Commit only with that identity, never another name or email. You need `gh` (logged in) and `python3`; nothing else.
+
+## 1. Skip what's already been looked at
+
+Before reading any candidate's diff, check it:
+
+```
+python3 -I benchmarks/reviewed.py GHSA-xxxx-xxxx-xxxx [more ids or fix commit SHAs]
+```
+
+It prints `new` for unseen ids and exits 1 if any is already known (in a suite, accepted, rejected or unsure).
+Skip anything known, including when only its fix commit matches. `python3 -I benchmarks/reviewed.py` with no
+arguments lists everything known. Load it once at the start of a batch and filter your candidate list with it.
+
+## 2. What to look for
+
+Priorities, in order:
+1. Python web apps (Django, Flask, FastAPI) and the JavaScript/templates those apps ship.
+2. Node and other JavaScript frameworks (Express, Next, Nest, Koa, Fastify, Vue/React front ends).
+3. PHP, Ruby, Rust, C/C++, C#.
+
+Weaknesses (CWE): 22 path traversal, 78/77 command injection, 79 XSS, 89 SQL injection, 94 code injection,
+502 deserialization, 601 open redirect, 611 XXE, 918 SSRF, 1336 template injection, 73 external file path.
+
+Sources: GitHub's reviewed advisories, for example
+`gh api -X GET advisories -f ecosystem=pip -f type=reviewed -f cwes=79,89 -f per_page=100`,
+or OSV exports. Use only advisories that link a fix commit.
+
+## 3. Accept or reject: the rules (PLAN.md step 22)
+
+Accept only when **all** of these hold:
+- **Exactly one fix commit** is linked, and it fixes this advisory (not a different one).
+- **Small**: at most **3 changed source files** and **120 changed lines**, not counting tests, docs, changelogs,
+  lockfiles, `package.json` and similar manifests. Measure it rather than guess:
+  ```
+  gh api repos/OWNER/REPO/commits/SHA --jq '.parents|length, (.files[]|"\(.changes)\t\(.filename)")'
+  ```
+  It should have one parent. If it's a merge commit (2), say so in the reason.
+- **Application code**: the bug is in the project's own app code, not in a library or framework it ships or is
+  (Django's ORM, urllib3, a sanitizer package, a UI component library).
+- **A visible flow**: data from an HTTP request (query, body, path, headers, cookies, uploaded file names) reaches
+  a dangerous call (file open/delete, shell, SQL string, `eval`, HTML output, redirect, outbound fetch...) in the
+  code the fix touches, and the fix changes that flow (escaping, parameterising, validating, using an argument
+  list...).
+
+Reject, and say which reason applies:
+- library or framework code; fix too large; several fix commits; the fix mixes in unrelated changes
+- stored data with no request path in sight (rendered later from the database)
+- a validator, denylist or regex made stricter: a gap no scanner rule can see
+- a settings flag or default changed (e.g. turning raw HTML off in a Markdown renderer)
+- missing authentication or authorization (CWE-862/863/639)
+- races: DNS rebinding, TOCTOU
+- Tornado apps, test-only fixes, CLI-only tools
+- the advisory's fix commit doesn't match its description
+
+**Not an HTTP request** (repository config read by a bot, desktop/Electron IPC, chat-protocol ids, files on disk):
+accept only if it passes every other rule, and set the suite to `cve-pairs-javascript-nonhttp` (or
+`cve-pairs-python-nonhttp`). Never put these in the web suites.
+
+Proposed suite for accepted open cases: `cve-pairs-python` (Python views/handlers), `cve-pairs-python-frontend`
+(the templates and front-end JS of a Python web app), `cve-pairs-javascript` (Node/JS web apps), or the
+`-nonhttp` ones above.
+
+## 4. Blind split
+
+Decide accept/reject first. Then, for each accepted case, run the split **before writing anything about it**:
+
+```
+python3 -I benchmarks/reviewed.py --split GHSA-xxxx-xxxx-xxxx
+```
+
+- `open`: write the flow in the reason column, as in the examples below.
+- `blind`: the reason is exactly `accepted; reason withheld so the case stays blind`. Don't describe its flow,
+  files or fix anywhere: not in the reason, the JSON, the commit message or your chat summary. Its suite is
+  `cve-pairs-blind-<language>-N`. Use the next unused N; `python3 -I benchmarks/reviewed.py | grep blind` shows the
+  ones in use.
+
+Rejected cases are never split. Write their reasons in full.
+
+## 5. Output
+
+Two files per batch, named `benchmarks/cve-candidates-YYYY-MM-DD-<topic>.tsv` and `.json`.
+
+The TSV has one row per advisory you read, rejections included (that's how the next agent knows to skip it).
+Tab-separated, two `#` comment lines, then a header:
+
+```
+# <what this batch is>, YYYY-MM-DD. One line per advisory read. Research only: not reviewed or scanned yet.
+# Accepted cases are split by int(sha256(id), 16) % 3 == 0 (blind); blind reasons are withheld.
+repo	id	cwe	decision	suite	reason
+archesproject/arches	GHSA-gmpq-xrxj-xh8m	89	accept	cve-pairs-python	Arches (Django): a request GET parameter reaches string-formatted SQL in get_child_edges; the fix parameterizes the query.
+airbnb/knowledge-repo	GHSA-xmw7-848p-p95w	79	reject		escapes at storage; the XSS is rendered later from the database
+```
+
+`decision` is `accept`, `reject` or `unsure`. `repo` is `owner/name`. Several CWEs are comma-separated.
+
+The JSON holds the suite entries for accepted cases (blind ones too, because the review session needs them), in
+the shape `benchmarks/suites.json` uses:
+
+```json
+{"batch": "...", "status": "research only: not reviewed or scanned",
+ "accepted": [{"id": "GHSA-...", "suite": "cve-pairs-python",
+               "entry": {"id": "GHSA-...", "cve": "CVE-...", "repo": "https://github.com/owner/name.git",
+                         "fix": "<full 40-char sha>", "cwe": [89], "license": "MIT",
+                         "summary": "<the advisory's title>", "scope": ["path/of/the/changed/dir"]},
+               "flow": "<open cases only: request source -> sink -> what the fix changed>",
+               "fix_size": "<files and lines you measured>"}]}
+```
+
+For blind cases, leave out `flow` and `fix_size`. `scope` is the directory or directories holding the changed
+source files.
+
+## 6. GitHub API manners
+
+At most two requests at a time, with a second or two between them. Bursts have tripped rate limits before. If you
+get a 403 or a 429, wait a few minutes; don't retry in a loop.
+
+## 7. Commit
+
+```
+git add benchmarks/cve-candidates-YYYY-MM-DD-<topic>.*
+git commit -m "Research: <topic> CVE candidates (N read, A accepted: O open, B blind)"
+```
+
+Commit to `detection-gaps` (never `main`). Push only when the maintainer says so. Your summary to the maintainer
+gives the counts and lists open cases by id, plus any `unsure` questions; blind cases appear as a count only.
