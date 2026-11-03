@@ -20,7 +20,9 @@ real name, and never add one to commit messages, files or pull requests.
 - Research-only agents (opencode or Ollama models on the laptop) follow `AGENTS.md`. They write candidate files
   only. A Claude session reviews those candidates before adding them to `suites.json`: check each open fix commit
   on GitHub against step 22's limits, and record every decision in PLAN.md. `python3 -I benchmarks/reviewed.py
-  ID|SHA...` says whether an advisory or fix commit has already been read.
+  ID|SHA...` says whether an advisory or fix commit has already been read. `tools/research-batch.sh` runs
+  batches unattended on the laptop (pushed only after `reviewed.py guard` passes); `reviewed.py pending` lists
+  the batches waiting for review. A reviewed batch's JSON status must stop starting with "research only".
 - Blind sets (`~/.cache/codewatch/blind*`, the `cve-pairs-blind-*` suites) are scanned once, at the end of a round,
   and never used to adjust rules. Held-out suites (SecurityEval Copilot/InCoder, Vulnerable-Code-Snippets JS) are
   measured, never tuned on.

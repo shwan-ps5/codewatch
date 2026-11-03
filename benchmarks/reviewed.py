@@ -9,6 +9,9 @@ cve-pairs suite in benchmarks/suites.json, blind ones included. Standard library
     python3 -I benchmarks/reviewed.py --split GHSA-...   blind or open under PLAN.md step 22's rule
     python3 -I benchmarks/reviewed.py size OWNER/REPO SHA [--python]
                                                          a fix commit's size as the review counts it (needs gh)
+    python3 -I benchmarks/reviewed.py guard BASE [HEAD]  checks a research agent's commits since BASE before they
+                                                         are pushed (tools/research-batch.sh); exits 1 on a problem
+    python3 -I benchmarks/reviewed.py pending            how many candidate batches are waiting for review
 
 A status is "suite:<name>" (in that suite), "rejected", "accepted" (accepted but not in a suite yet) or "unsure".
 Blind cases show only their suite name: their reasons are never written down.
@@ -97,6 +100,63 @@ def size(repo, sha, python=False):
     return 0 if within and parents == 1 else 1
 
 
+ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|AGENTS\.md)$")
+IDENTITY = "Shwan <344055753+shwan-ps5@users.noreply.github.com>"
+WITHHELD = "accepted; reason withheld so the case stays blind"
+UNREVIEWED = "research only"
+
+
+def _git(*args, cwd):
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
+
+
+def guard(base, head="HEAD", repo=HERE.parent):
+    """Problems with the commits since base, which an unattended research run made: only candidate files (and
+    AGENTS.md) touched, the maintainer's noreply identity, and blind cases described by nothing but their entry."""
+    problems = []
+    for line in _git("log", "--format=%an <%ae>|%cn <%ce>|%h", f"{base}..{head}", cwd=repo).splitlines():
+        author, committer, commit = line.split("|")
+        if author != IDENTITY or committer != IDENTITY:
+            problems.append(f"{commit}: committed as {author} / {committer}")
+    changed = [f for f in _git("diff", "--name-only", "--diff-filter=AM", f"{base}..{head}", cwd=repo).splitlines() if f]
+    problems += [f"{name}: not a file research may change" for name in changed if not ALLOWED.match(name)]
+    for name in changed:
+        if not ALLOWED.match(name) or name == "AGENTS.md":
+            continue
+        text = _git("show", f"{head}:{name}", cwd=repo)
+        if name.endswith(".tsv"):
+            for row in csv.reader((x for x in text.splitlines() if x.strip() and not x.startswith("#")), delimiter="\t"):
+                if len(row) >= 6 and row[3] == "accept" and is_blind(row[1]) and row[5] != WITHHELD:
+                    problems.append(f"{name}: blind case {row[1]} has a reason")
+        else:
+            try:
+                batch = json.loads(text)
+            except ValueError as error:
+                problems.append(f"{name}: not JSON ({error})")
+                continue
+            for case in batch.get("accepted", []):
+                extra = set(case) - {"id", "suite", "entry", "reason_withheld"}
+                if is_blind(case.get("id", "")) and extra:
+                    problems.append(f"{name}: blind case {case['id']} has {sorted(extra)}")
+                blind_suite = "blind" in str(case.get("suite", ""))
+                if blind_suite != is_blind(case.get("id", "")):
+                    problems.append(f"{name}: {case.get('id')} is in the wrong half ({case.get('suite')})")
+    return problems
+
+
+def pending(root=HERE):
+    """Candidate batches a review session hasn't looked at yet."""
+    waiting = []
+    for path in sorted(root.glob("cve-candidates-*.json")):
+        try:
+            status = str(json.loads(path.read_text()).get("status", ""))
+        except ValueError:
+            continue
+        if status.startswith(UNREVIEWED):
+            waiting.append(path.name)
+    return waiting
+
+
 def lookup(key, seen, fixes):
     if key in seen:
         return key, *seen[key]
@@ -110,6 +170,14 @@ def lookup(key, seen, fixes):
 def main(argv, root=HERE):
     if argv[:1] == ["size"]:
         return size(argv[1], argv[2], python="--python" in argv)
+    if argv[:1] == ["guard"]:
+        problems = guard(*argv[1:3])
+        print("\n".join(problems) or "ok")
+        return 1 if problems else 0
+    if argv[:1] == ["pending"]:
+        waiting = pending(root)
+        print(len(waiting), *waiting, sep="\n")
+        return 0
     if argv[:1] == ["--split"]:
         for advisory in argv[1:]:
             print(advisory, "blind" if is_blind(advisory) else "open")
