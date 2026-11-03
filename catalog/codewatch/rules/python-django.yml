@@ -106,3 +106,30 @@ rules:
     pattern-either:
       - pattern-regex: '\{\{[^{}\n]{0,200}\|\s{0,5}safe\b'
       - pattern-regex: '\{%-?\s{0,5}autoescape\s{1,5}(off|false)\b'
+
+  - id: codewatch.templates.not-autoescaped
+    languages: [generic]
+    severity: WARNING
+    message: >-
+      Flask chooses autoescaping by extension: only .html, .htm, .xml, .xhtml and .svg templates are escaped, so a
+      .jinja, .jinja2 or .j2 template prints every value raw. If this app is Flask, HTML in a value here is rendered
+      as markup. Rename it to .html, or escape each value (|e) or sanitize it. Django's Jinja backend does
+      autoescape these extensions, so this is a hotspot for review rather than a definite flaw.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Template extension Flask does not autoescape
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://flask.palletsprojects.com/en/stable/config/#TEMPLATES_AUTO_RELOAD
+        - https://flask.palletsprojects.com/en/stable/api/#flask.Flask.select_jinja_autoescape
+        - https://jinja.palletsprojects.com/en/stable/templates/#html-escaping
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+    paths:
+      include: ["*.jinja", "*.jinja2", "*.j2"]
+    # {{ name }}, but not a literal, a form field or a server value, and not an expression a filter escapes (|e,
+    # |escape, |tojson, |sanitize...); |safe is reported by codewatch.templates.unescaped-output.
+    pattern-regex: >-
+      \{\{-?\s{0,5}(?!(form|url_for|get_flashed_messages|config|loop|super|self|caller|csrf_token)\b)[A-Za-z_][\w.]*(?![^{}\n]{0,200}\|\s{0,5}(e|escape|safe|tojson|sanitize\w*|clean\w*|bleach\w*|striptags|int|float|length|count|urlencode|filesizeformat)\b)

@@ -855,6 +855,19 @@ rule):
    - May change other pairs' scores: any Python pair whose fix touches a template now also counts the template rule
      at that template's render calls. The nightly run measures it.
 
+28. **Flask's extension-based autoescape** (2026-11-03; from the front-end inventory, driven by
+    GHSA-pwgc-w4x9-gw67 (changedetection.io) in `cve-pairs-python-frontend`). Flask only autoescapes
+    `.html/.htm/.xml/.xhtml/.svg`, so a `.jinja/.jinja2/.j2` template prints every `{{ }}` raw. The template analyzer
+    treated those extensions as autoescaping, and the Semgrep analyzer never scanned them at all (its targets ended
+    at `.html`), so both the `|safe`/autoescape-off hotspot and the generated template rule missed them. Now:
+    `.jinja/.jinja2/.j2/.djhtml` are Semgrep targets (the last was already in the hotspot's paths but unscanned);
+    the generated template rule treats every variable in a Flask-raw extension as a sink for
+    `render_template`/`flask.render_template` only, so Django's `render` calls stay safe (its Jinja backend
+    autoescapes); and a new hotspot, `codewatch.templates.not-autoescaped`, reports the raw variable in those
+    extensions for stored data (review, since Django's Jinja backend autoescapes them too). Test:
+    `test_flask_jinja_templates_are_not_autoescaped` (the hotspot, the taint rule at the Flask render call, and
+    `|e`/`.html`/Django render quiet). The suite is not held out; the nightly run measures GHSA-pwgc.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the

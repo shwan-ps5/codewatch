@@ -492,6 +492,37 @@ def test_semgrep_vulnerabilities_keeps_the_full_rule_id_when_asked(tmp_path):
     assert semgrep_vulnerabilities(tmp_path, files) == {("app/routes.py", 8, "xss"), ("app/routes.py", 13, "xss")}
 
 
+def test_flask_jinja_templates_are_not_autoescaped(tmp_path):
+    """Flask only autoescapes .html/.htm/.xml/.xhtml/.svg; .jinja is raw. The static hotspot reports the raw
+    variable, the generated taint rule reports request data passed to it, and |e/.html/Django's render stay quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    files = {
+        "app/templates/page.jinja": "<p>{{ name }}</p>\n<p>{{ name|e }}</p>\n",
+        "app/templates/page.html": "<p>{{ name }}</p>\n",
+        "app/templates/django.jinja": "<p>{{ name }}</p>\n",
+        "app/routes.py": (
+            "from flask import Flask, render_template, request\n\napp = Flask(__name__)\n\n\n"
+            "@app.route('/')\n"
+            "def index():\n"
+            "    return render_template('page.jinja', name=request.args['name'])\n"),
+        "app/django_routes.py": (
+            "from django.shortcuts import render\n\n\ndef index(request):\n"
+            "    return render(request, 'django.jinja', {'name': request.GET['name']})\n"),
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    ctx = Context(root=tmp_path, files=list(files), semgrep_config="", custom_rules=catalog.custom_semgrep_rules())
+    found = {(f.path, f.line, f.rule, f.type) for f in Semgrep().run(ctx).findings}
+    assert ("app/templates/page.jinja", 1, "codewatch.templates.not-autoescaped", "security_hotspot") in found
+    assert ("app/routes.py", 8, "codewatch.python.web.template.xss", "vulnerability") in found
+    assert not any(path == "app/templates/page.jinja" and line == 2 for path, line, *_ in found), "|e escapes it"
+    assert not any(path == "app/templates/page.html" for path, *_ in found), ".html is autoescaped"
+    assert not any(path == "app/django_routes.py" and rule == "codewatch.python.web.template.xss"
+                   and type_ == "vulnerability" for path, _, rule, type_ in found), "Django autoescapes its Jinja"
+
+
 def test_taint_follows_one_call_into_a_helper(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")

@@ -88,7 +88,9 @@ class Lizard(Analyzer):
 
 class Semgrep(Analyzer):
     name = executable = "semgrep"
-    extensions = CODE | {".yml", ".yaml", ".html"}
+    # Templates are scanned as text by the generic template rules (|safe/autoescape off and Flask's non-autoescaped
+    # extensions); the Python render calls are scanned by the generated taint rule.
+    extensions = CODE | {".yml", ".yaml"} | TEMPLATE_EXTENSIONS
 
     def __init__(self):
         self.timeouts = set()
