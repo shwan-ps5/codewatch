@@ -83,7 +83,7 @@ repository you may write to; ~/advisory-database/ is readable too). Commit only 
 (and AGENTS.md if you mark a topic done), with the identity AGENTS.md gives. Don't push, pull or switch branches:
 the script that started you does that. If no topic in the queue is left unfinished, stop without committing and
 say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
-refused: run one command at a time (git -C DIR rather than cd DIR && git), and use python3 for anything else.
+refused: if one is, use python3 for it instead.
 End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
 say "opencode exited $?"
 

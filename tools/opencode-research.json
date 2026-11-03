@@ -22,7 +22,28 @@
       "date*": "allow",
       "sleep *": "allow",
       "curl *": "allow",
-      "unzip *": "allow"
+      "unzip *": "allow",
+      "echo *": "allow",
+      "printf *": "allow",
+      "cut *": "allow",
+      "tr *": "allow",
+      "uniq *": "allow",
+      "sed *": "allow",
+      "awk *": "allow",
+      "diff *": "allow",
+      "comm *": "allow",
+      "basename *": "allow",
+      "dirname *": "allow",
+      "pwd": "allow",
+      "cd *": "allow",
+      "test *": "allow",
+      "true": "allow",
+      "xargs *": "allow",
+      "sha256sum *": "allow",
+      "stat *": "allow",
+      "du *": "allow",
+      "tee *": "allow",
+      "echo": "allow"
     }
   }
 }
