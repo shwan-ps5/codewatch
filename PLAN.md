@@ -101,9 +101,10 @@ Next, in order:
    python3-saml's login() returns the identity provider's URL with x only as RelayState, a library call's
    result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
    in the nightly run.
-5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the five blind CVE suites
-   (`cve-pairs-blind-python-2`, `-3`, `-4`, `cve-pairs-blind-python-frontend`, `-frontend-2`), each scanned
-   once, measurement only. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
+5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites
+   (`cve-pairs-blind-python-2` to `-5`, `cve-pairs-blind-python-frontend`, `-frontend-2`, and from step 29
+   `cve-pairs-blind-javascript-2` to `-5`), each scanned once, measurement only. The fixes in `-python-5` and the
+   JavaScript ones were never sized (steps 27 and 29), so report them with that caveat. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
    (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
 6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
 7. Other languages and frameworks (Node/Express first), as local rule work. Cloud sessions (CLAUDE.md) gather
