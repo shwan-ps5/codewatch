@@ -855,6 +855,19 @@ rule):
    - May change other pairs' scores: any Python pair whose fix touches a template now also counts the template rule
      at that template's render calls. The nightly run measures it.
 
+27. **More Python ground truth, fourth batch** (2026-11-03, research session; no rules changed). Step 24's rule,
+    read from OSV's PyPI export of GitHub's reviewed advisories (published since 2021, one fix commit, not already
+    in a suite or read before). Most candidates were libraries, frameworks, CLIs and servers, set aside by repository
+    without reading. 74 read, 5 accepted: 2 open and 3 blind. The pool under step 24's rule is nearly used up. The
+    research session didn't add them to the suites. That happened at review the same evening, after checking the
+    open fix commits on GitHub:
+    - Arches GHSA-gmpq joined `cve-pairs-python`. It's 244 changed lines, but most are re-indented SQL: 147
+      ignoring whitespace, in 2 files, so within step 24's limits.
+    - Modoboa GHSA-wwv8 was rejected: its fix touches 10 source files.
+    - The three blind cases form `cve-pairs-blind-python-5`. Their fixes weren't sized (that would mean reading
+      them).
+
+    Decisions are in `benchmarks/cve-candidates-2026-11-03.tsv`.
 28. **Flask's extension-based autoescape** (2026-11-03; from the front-end inventory, driven by
     GHSA-pwgc-w4x9-gw67 (changedetection.io) in `cve-pairs-python-frontend`). Flask only autoescapes
     `.html/.htm/.xml/.xhtml/.svg`, so a `.jinja/.jinja2/.j2` template prints every `{{ }}` raw. The template analyzer
