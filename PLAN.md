@@ -867,6 +867,22 @@ rule):
     extensions for stored data (review, since Django's Jinja backend autoescapes them too). Test:
     `test_flask_jinja_templates_are_not_autoescaped` (the hotspot, the taint rule at the Flask render call, and
     `|e`/`.html`/Django render quiet). The suite is not held out; the nightly run measures GHSA-pwgc.
+29. **JavaScript ground truth from npm** (2026-11-03; candidates gathered in a separate local research session,
+    then reviewed here; no rules changed). Four batches from OSV's npm export (first batch, Next/React/Vue and DOM
+    XSS, long tail, non-HTTP sources), each fix read and split by step 22's rule before any scan: 49 accepted,
+    32 open and 17 blind (`cve-pairs-blind-javascript-2` to `-5`). Reviewed the same day, still before any scan,
+    by checking each open fix commit on GitHub against step 22's limits. Ten were dropped: six fix commits over
+    the limits (Tutanota GHSA-24v3, RSSHub GHSA-2wqw, lobe-chat GHSA-2xcc, claudecodeui GHSA-7fv4, NocoBase
+    GHSA-p853, tts-api GHSA-jx6q), three sanitizer-denylist or renderer-setting fixes in Joplin (GHSA-cgc7, -mrmf,
+    -m6mf) and a DNS-rebinding race (9router GHSA-cmhj). Four whose input isn't an HTTP request (Renovate
+    GHSA-rqgv and -xjr7, Electerm GHSA-v5ff, matrix-appservice-irc GHSA-ffwf) went to a new suite,
+    `cve-pairs-javascript-nonhttp`, so they don't weigh on the web-app numbers. That leaves `cve-pairs-javascript`
+    with 28 cases (10 + 18). Three of the 18 are stored data rendered into the DOM with no request path
+    (Dependency-Track GHSA-7xvh, Outerbase GHSA-wwf9, NocoDB GHSA-h6r4). Step 22 rejected the Python
+    equivalents; they're kept here for the front-end DOM work and may be dropped on review. The blind halves
+    weren't checked against the limits (that would mean reading their fix commits), so the blind suites may hold
+    cases the same review would drop; when scored, report them with that caveat. Decisions and reasons are in
+    `benchmarks/cve-candidates-2026-11-03-*.tsv`. The first nightly run after this step gives the baseline.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

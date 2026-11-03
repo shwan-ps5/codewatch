@@ -854,7 +854,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -1078,20 +1078,6 @@
           ]
         },
         {
-          "id": "GHSA-2wqw-hr4f-xrhh",
-          "cve": "CVE-2024-27926",
-          "repo": "https://github.com/diygod/rsshub.git",
-          "fix": "4d3e5d79c1c17837e931b4cd253d2013b487aa87",
-          "cwe": [
-            79
-          ],
-          "license": "AGPL-3.0",
-          "summary": "RSSHub Cross-site Scripting vulnerability caused by internal media proxy",
-          "scope": [
-            "lib"
-          ]
-        },
-        {
           "id": "GHSA-43f3-h63w-p6f6",
           "cve": "CVE-2024-47818",
           "repo": "https://github.com/saltcorn/saltcorn.git",
@@ -1134,20 +1120,6 @@
           ]
         },
         {
-          "id": "GHSA-7fv4-fmmc-86g2",
-          "cve": "CVE-2026-31861",
-          "repo": "https://github.com/siteboon/claudecodeui.git",
-          "fix": "86c33c1c0cb34176725a38f46960213714fc3e04",
-          "cwe": [
-            94
-          ],
-          "license": "AGPL-3.0",
-          "summary": "@siteboon/claude-code-ui is Vulnerable to Shell Command Injection in Git Routes",
-          "scope": [
-            "server"
-          ]
-        },
-        {
           "id": "GHSA-7c4h-vh2m-743m",
           "cve": "CVE-2026-21893",
           "repo": "https://github.com/n8n-io/n8n.git",
@@ -1160,20 +1132,6 @@
           "summary": "n8n Vulnerable to Command Injection in Community Package Installation",
           "scope": [
             "packages/cli/src/modules/community-packages"
-          ]
-        },
-        {
-          "id": "GHSA-2xcc-vm3f-m8rw",
-          "cve": "CVE-2024-32965",
-          "repo": "https://github.com/lobehub/lobe-chat.git",
-          "fix": "e960a23b0c69a5762eb27d776d33dac443058faf",
-          "cwe": [
-            918
-          ],
-          "license": "NOASSERTION",
-          "summary": "@lobehub/chat Server Side Request Forgery vulnerability",
-          "scope": [
-            "src"
           ]
         },
         {
@@ -1219,20 +1177,6 @@
           ]
         },
         {
-          "id": "GHSA-p853-83gj-wjj3",
-          "cve": "CVE-2026-55410",
-          "repo": "https://github.com/nocobase/nocobase.git",
-          "fix": "0e1aba1b7b112ffc841588963f7343c00edd9806",
-          "cwe": [
-            78
-          ],
-          "license": "NOASSERTION",
-          "summary": "NocoBase backup restore schema name allows command injection",
-          "scope": [
-            "packages/plugins/@nocobase/plugin-backups/src/server"
-          ]
-        },
-        {
           "id": "GHSA-c42q-qvc3-j6vg",
           "cve": "CVE-2026-108260",
           "repo": "https://github.com/tinacms/tinacms.git",
@@ -1244,33 +1188,6 @@
           "summary": "@tinacms/web-components: `tina-markdown` writes rich-text link URLs into `href` without scheme validation, allowing stored XSS",
           "scope": [
             "packages/@tinacms/web-components/src"
-          ]
-        },
-        {
-          "id": "GHSA-24v3-254g-jv85",
-          "repo": "https://github.com/tutao/tutanota.git",
-          "fix": "e28345f5f78f628f9d5c04e785f79543f01dca8b",
-          "cwe": [
-            79
-          ],
-          "license": "GPL-3.0",
-          "summary": "Tuta Mail has DOM attribute and CSS injection in its Contact Viewer feature",
-          "scope": [
-            "src/mail-app/contacts"
-          ]
-        },
-        {
-          "id": "GHSA-cmhj-wh2f-9cgx",
-          "cve": "CVE-2026-56676",
-          "repo": "https://github.com/decolua/9router.git",
-          "fix": "c7d07448c58bec1200741de0b73305b860416b82",
-          "cwe": [
-            918
-          ],
-          "license": "MIT",
-          "summary": "9router: Image prefetch DNS rebinding allows SSRF to internal services",
-          "scope": [
-            "open-sse/translator/concerns"
           ]
         },
         {
@@ -1327,18 +1244,16 @@
           "scope": [
             "src"
           ]
-        },
-        {
-          "id": "GHSA-jx6q-fq9h-6g7q",
-          "cve": "CVE-2019-25158",
-          "repo": "https://github.com/pedroetb/tts-api.git",
-          "fix": "29d9c25415911ea2f8b6de247cb5c4607d13d434",
-          "cwe": [
-            78
-          ],
-          "license": "MIT",
-          "summary": "Pedroetb TTS-API OS Command Injection"
-        },
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-javascript-nonhttp",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": false,
+      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet.",
+      "cases": [
         {
           "id": "GHSA-ffwf-47x2-jpr8",
           "cve": "CVE-2022-3971",
@@ -1379,48 +1294,6 @@
           "summary": "Renovate vulnerable to arbitrary command injection via gleam manager and malicious gleam.toml file",
           "scope": [
             "lib/modules/manager/gleam"
-          ]
-        },
-        {
-          "id": "GHSA-cgc7-mwp4-3ccx",
-          "cve": "CVE-2020-15930",
-          "repo": "https://github.com/laurent22/joplin.git",
-          "fix": "57d750bc9aeb0f98d53ed4b924458b54984c15ff",
-          "cwe": [
-            79
-          ],
-          "license": "NOASSERTION",
-          "summary": "Cross-site Scripting in Joplin",
-          "scope": [
-            "ReactNativeClient/lib/joplin-renderer"
-          ]
-        },
-        {
-          "id": "GHSA-mrmf-755g-w2vw",
-          "cve": "CVE-2021-37916",
-          "repo": "https://github.com/laurent22/joplin.git",
-          "fix": "feaecf765368f2c273bea3a9fa641ff0da7e6b26",
-          "cwe": [
-            79
-          ],
-          "license": "NOASSERTION",
-          "summary": "Joplin vulnerable to Cross-site Scripting in notes",
-          "scope": [
-            "packages/renderer"
-          ]
-        },
-        {
-          "id": "GHSA-m6mf-hmrh-ph4j",
-          "cve": "CVE-2018-1000534",
-          "repo": "https://github.com/laurent22/joplin.git",
-          "fix": "494e235e18659574f836f84fcf9f4d4fcdcfcf89",
-          "cwe": [
-            79
-          ],
-          "license": "NOASSERTION",
-          "summary": "Joplin Vulnerable to Cross-site Scripting in Note Content ",
-          "scope": [
-            "ReactNativeClient/lib"
           ]
         },
         {
