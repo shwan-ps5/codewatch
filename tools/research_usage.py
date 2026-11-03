@@ -12,12 +12,17 @@ input, cached re-reads of the conversation, output and reasoning. Standard libra
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
 def _opencode(*args, cwd=None):
-    """opencode's JSON output (sessions are listed per project, so run it in the session's folder)."""
-    out = subprocess.run(["opencode", *args], check=True, capture_output=True, text=True, cwd=cwd).stdout
+    """opencode's JSON output (sessions are listed per project, so run it in the session's folder). Written to a
+    file, not a pipe: through a pipe, large exports come back cut short."""
+    with tempfile.TemporaryFile("w+") as out_file:
+        subprocess.run(["opencode", *args], check=True, stdout=out_file, stderr=subprocess.DEVNULL, cwd=cwd)
+        out_file.seek(0)
+        out = out_file.read()
     starts = [i for i in (out.find("{"), out.find("[")) if i >= 0]
     return json.loads(out[min(starts):]) if starts else []
 
