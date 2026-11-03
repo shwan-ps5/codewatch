@@ -914,6 +914,9 @@ rule):
     3 + 1 blind as `cve-pairs-blind-python-7` and `cve-pairs-blind-python-frontend-3`. Rejected: Dify GHSA-hw83.
     Its query reaches the SQL only through the retrieval service and the vector factory. The batch also had it in
     the JSON but not the TSV, so `reviewed.py guard` now checks that the two agree.
+    Third batch, the first unattended run (`tools/research-batch.sh`): 60 read, 2 accepted, both blind (added to
+    `cve-pairs-blind-python-7`). The rejections are sound, mostly library code and oversized fixes; 150 Python
+    candidates are left in the topic, mostly library code by the look of this batch.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

@@ -122,7 +122,9 @@ Reject, and say which reason applies:
 - library or framework code; fix too large; several fix commits; the fix mixes in unrelated changes
 - stored data with no request path in sight: rendered later from the database, or taken from a job, workflow or
   run context, even when a user first sent it through the API (e.g. Skyvern GHSA-57gg)
-- a validator, denylist or regex made stricter: a gap no scanner rule can see
+- an existing validator, denylist or regex made stricter: a gap no scanner rule can see. But a check *added*
+  where the code had none (a same-origin test before a redirect, a containment check before open(), escaping
+  before output) is the fix scanners look for: that passes this rule
 - a settings flag or default changed (e.g. turning raw HTML off in a Markdown renderer)
 - missing authentication or authorization (CWE-862/863/639)
 - races: DNS rebinding, TOCTOU

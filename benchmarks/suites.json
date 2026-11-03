@@ -2828,7 +2828,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Seventh blind set of Python CVE fix pairs, split from the second 2026-11-03 batch of unreviewed advisories (PLAN.md step 30) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "about": "Seventh blind set of Python CVE fix pairs, split from the second 2026-11-03 batch of unreviewed advisories (PLAN.md step 30) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Two more added the same evening from the third batch (no open cases in that batch).",
       "cases": [
         {
           "id": "GHSA-cqj6-j4f4-mcpp",
@@ -2870,6 +2870,34 @@
           "summary": "SQL injection in vinylmap search",
           "scope": [
             "recordstoreapp"
+          ]
+        },
+        {
+          "id": "GHSA-h98p-724m-phfr",
+          "cve": "CVE-2026-113613",
+          "repo": "https://github.com/Flexget/Flexget.git",
+          "fix": "38fa748461e20befee942f5c79d8a098edea5c1f",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Path traversal in Flexget archive extraction",
+          "scope": [
+            "flexget/components/archives"
+          ]
+        },
+        {
+          "id": "GHSA-g437-q4fp-pq2g",
+          "cve": "CVE-2026-88069",
+          "repo": "https://github.com/pandora-analysis/pandora.git",
+          "fix": "d86ac5b260fb9a41e07f1da1bbd326cdcfc188a7",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Path traversal in Pandora archive extraction",
+          "scope": [
+            "pandora"
           ]
         }
       ]
