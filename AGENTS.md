@@ -62,7 +62,8 @@ listed. If you have an idea for a new one, write it at the end as `(proposed)` a
 Already mined, don't repeat: GitHub-reviewed PyPI advisories since 2021 (PLAN.md steps 22-27) and GitHub-reviewed
 npm advisories (step 29). Those pools are nearly used up.
 
-1. **Python web apps not published on PyPI.** Apps like these get advisories that GitHub never reviews, so they
+1. **Python web apps not published on PyPI.** (done 2026-11-03 after 4 batches, 255 read; the last two yielded 2 and
+   2, and what's left is mostly library code.) Apps like these get advisories that GitHub never reviews, so they
    aren't in the PyPI pool. Source: GitHub's advisory database as a git repository, filtered locally with no API
    calls:
    ```
@@ -124,7 +125,9 @@ Reject, and say which reason applies:
   run context, even when a user first sent it through the API (e.g. Skyvern GHSA-57gg)
 - an existing validator, denylist or regex made stricter: a gap no scanner rule can see. But a check *added*
   where the code had none (a same-origin test before a redirect, a containment check before open(), escaping
-  before output) is the fix scanners look for: that passes this rule
+  before output) is the fix scanners look for: that passes this rule. Example: CowAgent GHSA-2xj7 added the first
+  host check before an agent tool fetched a URL. That is an added check, so it passes; the source is a tool
+  argument, so it goes in the `-nonhttp` suite.
 - a settings flag or default changed (e.g. turning raw HTML off in a Markdown renderer)
 - missing authentication or authorization (CWE-862/863/639)
 - races: DNS rebinding, TOCTOU

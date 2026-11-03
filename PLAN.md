@@ -102,7 +102,7 @@ Next, in order:
    result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
    in the nightly run.
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites
-   (`cve-pairs-blind-python-2` to `-7`, `cve-pairs-blind-python-frontend`, `-frontend-2`, `-frontend-3`, and from step 29
+   (`cve-pairs-blind-python-2` to `-7`, `-python-nonhttp`, `cve-pairs-blind-python-frontend`, `-frontend-2`, `-frontend-3`, and from step 29
    `cve-pairs-blind-javascript-2` to `-5`), each scanned once, measurement only. The fixes in `-python-5` and the
    JavaScript ones were never sized (steps 27 and 29), so report them with that caveat. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
    (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
@@ -917,6 +917,11 @@ rule):
     Third batch, the first unattended run (`tools/research-batch.sh`): 60 read, 2 accepted, both blind (added to
     `cve-pairs-blind-python-7`). The rejections are sound, mostly library code and oversized fixes; 150 Python
     candidates are left in the topic, mostly library code by the look of this batch.
+    Fourth batch, the first run on the desktop timer (10 min, about $0.07): 60 read, 0 accepted. Two rejections were
+    overturned at review: CowAgent's fixes add the first host check on URLs that agent tools fetch (an added check,
+    which passes). GHSA-2xj7 went to `cve-pairs-python-nonhttp`, and the blind one to a new
+    `cve-pairs-blind-python-nonhttp`. Topic 1 is closed: accepted cases fell from 13 to 10, 2 and 2, and the 92 left
+    are mostly libraries. Research moves to topic 2 (Node web apps not on npm).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

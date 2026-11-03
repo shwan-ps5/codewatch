@@ -2280,7 +2280,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet.",
+      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet. CowAgent GHSA-2xj7 added 2026-11-03 at review of the fourth unreviewed batch (the batch rejected it as an invisible validator, but the fix adds the first check on a URL the agent's vision tool fetches).",
       "cases": [
         {
           "id": "GHSA-xq87-v97r-jw5g",
@@ -2308,6 +2308,20 @@
           "summary": "Path traversal in Vibe-Trading swarm run IDs",
           "scope": [
             "agent"
+          ]
+        },
+        {
+          "id": "GHSA-2xj7-6vvg-p9hp",
+          "cve": "CVE-2026-15330",
+          "repo": "https://github.com/zhayujie/CowAgent.git",
+          "fix": "e85290cddcbb5ffc9c235927f4c92e5b4c3ec264",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was determined in zhayujie CowAgent up to 2.1.1. Impacted is the function _build_ima",
+          "scope": [
+            "agent/tools/vision"
           ]
         }
       ]
@@ -3140,6 +3154,30 @@
           "summary": "XSS in NCPA log tailing",
           "scope": [
             "agent/listener/templates"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-nonhttp",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind Python CVE fix pairs whose input isn't an HTTP request, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0); first case from the review of the fourth unreviewed batch, 2026-11-03 (PLAN.md step 30). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-wcfc-xp4r-c7rv",
+          "cve": "CVE-2026-16194",
+          "repo": "https://github.com/zhayujie/CowAgent.git",
+          "fix": "ea47f3097eed4f8295c4cb3d76ecb97e0f43d632",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was determined in zhayujie CowAgent up to 2.1.1. This affects the function WebFetch.",
+          "scope": [
+            "agent/tools"
           ]
         }
       ]
