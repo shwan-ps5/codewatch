@@ -13,7 +13,24 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+# Ollama Cloud prices, USD per million tokens (input, cached input, output), from https://ollama.com/pricing on
+# 2026-11-03. Off-peak (outside 12:00-18:00 UTC on weekdays, and weekends) is half. Unknown models cost None.
+PRICES = {"deepseek-v4.1-flash:cloud": (0.30, 0.006, 1.20), "kimi-k3:cloud": (3.00, 0.30, 15.00)}
+
+
+def cost(model, tokens, started_ms):
+    price = PRICES.get(model)
+    if price is None:
+        return None
+    when = time.gmtime(started_ms / 1000)
+    peak = when.tm_wday < 5 and 12 <= when.tm_hour < 18
+    fresh, cached, out = price
+    total = (tokens["input"] * fresh + tokens["cache_read"] * cached
+             + (tokens["output"] + tokens["reasoning"]) * out) / 1e6
+    return round(total if peak else total / 2, 3)
 
 
 def _opencode(*args, cwd=None):
@@ -58,14 +75,16 @@ def usage(session_id, cwd=None):
     info = data["info"]
     created, updated = info.get("time", {}).get("created", 0), info.get("time", {}).get("updated", 0)
     return {"session": session_id, "model": model, "minutes": round((updated - created) / 60000),
-            "turns": turns, "tool_calls": calls, "tool_errors": refused, "chars_read": read, "tokens": tokens}
+            "turns": turns, "tool_calls": calls, "tool_errors": refused, "chars_read": read, "tokens": tokens,
+            "usd": cost(model, tokens, created)}
 
 
 def line(u):
     t = u["tokens"]
     return (f"{u['session']} {u['model']}: {u['minutes']} min, {u['turns']} turns, {u['tool_calls']} tool calls "
             f"({u['tool_errors']} failed), {u['chars_read']:,} chars read; tokens {t['input']:,} in + "
-            f"{t['cache_read']:,} cached + {t['output'] + t['reasoning']:,} out")
+            f"{t['cache_read']:,} cached + {t['output'] + t['reasoning']:,} out"
+            + (f"; ~${u['usd']:.2f}" if u.get("usd") is not None else ""))
 
 
 def main(argv):
