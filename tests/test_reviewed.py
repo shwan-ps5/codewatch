@@ -69,12 +69,16 @@ def test_guard_accepts_clean_batch_and_catches_leaks(tmp_path):
     assert reviewed.guard("HEAD~1", repo=tmp_path) == []
 
     tsv.write_text(head + f"a/b\t{blind}\t79\taccept\tcve-pairs-blind-python-6\tthe flow, leaked\n")
+    (tmp_path / "benchmarks" / "cve-candidates-x.json").write_text(json.dumps({"status": "research only", "accepted": [
+        {"id": blind, "suite": "cve-pairs-blind-python-6", "entry": {}},
+        {"id": open_, "suite": "cve-pairs-python", "entry": {}, "flow": "f2"}]}))
     (tmp_path / "suites.json").write_text("{}")
     git("add", "-A")
     git("commit", "-qm", "leak")
     problems = reviewed.guard("HEAD~1", repo=tmp_path)
     assert any("suites.json" in p for p in problems)
     assert any(f"blind case {blind} has a reason" in p for p in problems)
+    assert any(f"{open_} is accepted here but has no accept row" in p for p in problems)
 
 
 def test_pending_counts_unreviewed_batches(tmp_path):

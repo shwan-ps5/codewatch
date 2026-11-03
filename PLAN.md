@@ -102,7 +102,7 @@ Next, in order:
    result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
    in the nightly run.
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites
-   (`cve-pairs-blind-python-2` to `-6`, `cve-pairs-blind-python-frontend`, `-frontend-2`, and from step 29
+   (`cve-pairs-blind-python-2` to `-7`, `cve-pairs-blind-python-frontend`, `-frontend-2`, `-frontend-3`, and from step 29
    `cve-pairs-blind-javascript-2` to `-5`), each scanned once, measurement only. The fixes in `-python-5` and the
    JavaScript ones were never sized (steps 27 and 29), so report them with that caveat. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
    (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
@@ -907,6 +907,13 @@ rule):
     -hq38, AIL GHSA-mcpq, OpenResolve GHSA-h3h4), 1 to the front-end suite, and the 5 blind ones as
     `cve-pairs-blind-python-6`. Their sizes come from `reviewed.py size`. The topic isn't finished: the next batch
     carries on, and `reviewed.py` skips what this one read.
+    Second batch, the same evening, from the laptop: 70 read, 10 accepted (6 open, 4 blind), 173 Python candidates
+    left in the topic. Added: agent-zero GHSA-8j45 and pyLoad GHSA-3mmf to `cve-pairs-python`; bird-lg GHSA-xjrp
+    (a template `|safe` on request data kept in the session) to the front end; hermes-agent GHSA-xq87 and
+    Vibe-Trading GHSA-mjrq to a new suite, `cve-pairs-python-nonhttp` (paths from LLM-agent and MCP tool arguments);
+    3 + 1 blind as `cve-pairs-blind-python-7` and `cve-pairs-blind-python-frontend-3`. Rejected: Dify GHSA-hw83.
+    Its query reaches the SQL only through the retrieval service and the vector factory. The batch also had it in
+    the JSON but not the TSV, so `reviewed.py guard` now checks that the two agree.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

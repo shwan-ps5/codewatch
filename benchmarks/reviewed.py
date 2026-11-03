@@ -134,7 +134,16 @@ def guard(base, head="HEAD", repo=HERE.parent):
             except ValueError as error:
                 problems.append(f"{name}: not JSON ({error})")
                 continue
+            stem = name[: -len(".json")]
+            try:
+                rows = _git("show", f"{head}:{stem}.tsv", cwd=repo).splitlines()
+            except subprocess.CalledProcessError:
+                rows = []
+            accepted_rows = {r[1] for r in csv.reader((x for x in rows if x.strip() and not x.startswith("#")),
+                                                       delimiter="\t") if len(r) >= 4 and r[3] == "accept"}
             for case in batch.get("accepted", []):
+                if case.get("id") not in accepted_rows:
+                    problems.append(f"{name}: {case.get('id')} is accepted here but has no accept row in {stem}.tsv")
                 extra = set(case) - {"id", "suite", "entry", "reason_withheld"}
                 if is_blind(case.get("id", "")) and extra:
                     problems.append(f"{name}: blind case {case['id']} has {sorted(extra)}")

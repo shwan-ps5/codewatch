@@ -115,7 +115,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-02 in a third batch (PLAN.md step 24) widen that rule: CWE 23, 36, 73, 77, 90, 113, 643, 943 and 1333 as well, fixes of up to five non-test source files and 200 lines when the flow is still clear, Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps counted as Flask/FastAPI, and pre-2021 advisories; decisions are in benchmarks/cve-candidates-2026-11-02-batch3.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-03 in a fourth batch (PLAN.md step 27) follow the third batch's rule, read from OSV's export of GitHub's reviewed PyPI advisories: one open case (Arches GHSA-gmpq, 147 changed lines ignoring re-indented SQL, within step 24's widened limits; Modoboa GHSA-wwv8 was rejected at review for touching 10 files) and three blind in cve-pairs-blind-python-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03.tsv. None used for rules yet. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 6 open, 5 blind in cve-pairs-blind-python-6 here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet.",
+      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-02 in a third batch (PLAN.md step 24) widen that rule: CWE 23, 36, 73, 77, 90, 113, 643, 943 and 1333 as well, fixes of up to five non-test source files and 200 lines when the flow is still clear, Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps counted as Flask/FastAPI, and pre-2021 advisories; decisions are in benchmarks/cve-candidates-2026-11-02-batch3.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-03 in a fourth batch (PLAN.md step 27) follow the third batch's rule, read from OSV's export of GitHub's reviewed PyPI advisories: one open case (Arches GHSA-gmpq, 147 changed lines ignoring re-indented SQL, within step 24's widened limits; Modoboa GHSA-wwv8 was rejected at review for touching 10 files) and three blind in cve-pairs-blind-python-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03.tsv. None used for rules yet. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 6 open, 5 blind in cve-pairs-blind-python-6 here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet. Cases added 2026-11-03 from the second batch of unreviewed advisories (PLAN.md step 30): agent-zero GHSA-8j45 and pyLoad GHSA-3mmf here, 3 blind in cve-pairs-blind-python-7; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed-2.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-f2mf-q878-gh58",
@@ -943,6 +943,35 @@
           "summary": "Reflected XSS in OpenResolve API error responses",
           "scope": [
             "resolverapi"
+          ]
+        },
+        {
+          "id": "GHSA-8j45-8v5h-63vj",
+          "cve": "CVE-2026-47118",
+          "repo": "https://github.com/3clyp50/agent-zero.git",
+          "fix": "1f2d5122265282d6b98bc36ee8f9d0f8ab76db9e",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Path traversal in Agent Zero image_get",
+          "scope": [
+            "api",
+            "helpers"
+          ]
+        },
+        {
+          "id": "GHSA-3mmf-29wp-jc9p",
+          "cve": "CVE-2024-1240",
+          "repo": "https://github.com/pyload/pyload.git",
+          "fix": "fe94451dcc2be90b3889e2fd9d07b483c8a6dccd",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open redirect in pyload login",
+          "scope": [
+            "src/pyload/webui/app"
           ]
         }
       ]
@@ -1835,7 +1864,7 @@
       "language": "python-web",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "CVE fix pairs in the templates and front-end JavaScript of Python web apps (Django, Flask, FastAPI): the fix changes a template or a script the app ships. Chosen and scored like cve-pairs-python, with templates (.html, Jinja) and JS/TS counted as source. Not held out: may be used to adjust rules (say so here when that happens). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 GHSA-mxvc-fwgx-j778 (Whoogle) was used to add request data passed to a template variable printed with |safe as an XSS sink. On 2026-11-02 (second batch, a cloud session) 21 more cases were added from the same advisories, widened to all years, to fixes over three files or 120 lines when every change is the same weakness, and to advisories whose extra commits are backports of one fix (the main-branch commit is used); none used for rules yet. Decisions and reasons: PLAN.md step 22. On 2026-11-03 the Flask extension-based autoescape model was added for GHSA-pwgc-w4x9-gw67 (changedetection.io): .jinja/.jinja2/.j2 templates are not autoescaped by Flask, so the template rule treats their variables as unescaped for render_template/flask.render_template calls, a new hotspot codewatch.templates.not-autoescaped reports them for stored data, and .jinja/.jinja2/.j2/.djhtml are now scanned as templates. Test: test_flask_jinja_templates_are_not_autoescaped. The nightly run measures the suite. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 1 (Formspree GHSA-2wvm, a template-only fix) here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet.",
+      "about": "CVE fix pairs in the templates and front-end JavaScript of Python web apps (Django, Flask, FastAPI): the fix changes a template or a script the app ships. Chosen and scored like cve-pairs-python, with templates (.html, Jinja) and JS/TS counted as source. Not held out: may be used to adjust rules (say so here when that happens). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 GHSA-mxvc-fwgx-j778 (Whoogle) was used to add request data passed to a template variable printed with |safe as an XSS sink. On 2026-11-02 (second batch, a cloud session) 21 more cases were added from the same advisories, widened to all years, to fixes over three files or 120 lines when every change is the same weakness, and to advisories whose extra commits are backports of one fix (the main-branch commit is used); none used for rules yet. Decisions and reasons: PLAN.md step 22. On 2026-11-03 the Flask extension-based autoescape model was added for GHSA-pwgc-w4x9-gw67 (changedetection.io): .jinja/.jinja2/.j2 templates are not autoescaped by Flask, so the template rule treats their variables as unescaped for render_template/flask.render_template calls, a new hotspot codewatch.templates.not-autoescaped reports them for stored data, and .jinja/.jinja2/.j2/.djhtml are now scanned as templates. Test: test_flask_jinja_templates_are_not_autoescaped. The nightly run measures the suite. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 1 (Formspree GHSA-2wvm, a template-only fix) here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet. Cases added 2026-11-03 from the second batch of unreviewed advisories (PLAN.md step 30): bird-lg GHSA-xjrp here, 1 blind in cve-pairs-blind-python-frontend-3; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed-2.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-2rrx-pphc-qfv9",
@@ -2228,6 +2257,57 @@
           "summary": "XSS via the _next parameter in Formspree thanks page",
           "scope": [
             "formspree/templates/forms"
+          ]
+        },
+        {
+          "id": "GHSA-xjrp-9qff-8prg",
+          "cve": "CVE-2021-4274",
+          "repo": "https://github.com/sileht/bird-lg.git",
+          "fix": "ef6b32c527478fefe7a4436e10b96ee28ed5b308",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "XSS via request_args in bird-lg templates",
+          "scope": [
+            "templates"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-python-nonhttp",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": false,
+      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-xq87-v97r-jw5g",
+          "cve": "CVE-2026-14783",
+          "repo": "https://github.com/NousResearch/hermes-agent.git",
+          "fix": "56f833efa427ccb444c0f9ad1759af1012f2124d",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Path traversal in hermes-agent skill_view",
+          "scope": [
+            "tools"
+          ]
+        },
+        {
+          "id": "GHSA-mjrq-xg2m-qg94",
+          "cve": "CVE-2026-58171",
+          "repo": "https://github.com/HKUDS/Vibe-Trading.git",
+          "fix": "f45fd85392f07b5e404e41d4fcb0ef0d6c2f87ab",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Path traversal in Vibe-Trading swarm run IDs",
+          "scope": [
+            "agent"
           ]
         }
       ]
@@ -2743,6 +2823,58 @@
       ]
     },
     {
+      "name": "cve-pairs-blind-python-7",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Seventh blind set of Python CVE fix pairs, split from the second 2026-11-03 batch of unreviewed advisories (PLAN.md step 30) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-cqj6-j4f4-mcpp",
+          "cve": "CVE-2026-3049",
+          "repo": "https://github.com/horilla-opensource/horilla-crm.git",
+          "fix": "730b5a44ff060916780c44a4bdbc8ced70a2cd27",
+          "cwe": [
+            601
+          ],
+          "license": "LGPL-2.1",
+          "summary": "Open redirect in Horilla global search",
+          "scope": [
+            "horilla_generics"
+          ]
+        },
+        {
+          "id": "GHSA-c5fj-m3vw-3xp6",
+          "cve": "CVE-2017-17713",
+          "repo": "https://github.com/boxug/trape.git",
+          "fix": "628149159ba25adbfc29a3ae1d4b10c7eb936dd3",
+          "cwe": [
+            89
+          ],
+          "license": "none",
+          "summary": "SQL injection in Trape statistics endpoints",
+          "scope": [
+            "core"
+          ]
+        },
+        {
+          "id": "GHSA-243r-cwrc-8j8h",
+          "cve": "CVE-2015-10056",
+          "repo": "https://github.com/2071174A/vinylmap.git",
+          "fix": "b07b79a1e92cc62574ba0492cce000ef4a7bd25f",
+          "cwe": [
+            89
+          ],
+          "license": "none",
+          "summary": "SQL injection in vinylmap search",
+          "scope": [
+            "recordstoreapp"
+          ]
+        }
+      ]
+    },
+    {
       "name": "cve-pairs-blind-python-frontend",
       "language": "python-web",
       "kind": "cve-pairs",
@@ -2956,6 +3088,30 @@
           "summary": "Mayan EDMS multiple cross-site scripting (XSS) vulnerabilities",
           "scope": [
             "apps"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-frontend-3",
+      "language": "python-web",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Third blind set of Python front-end CVE fix pairs, split from the second 2026-11-03 batch of unreviewed advisories (PLAN.md step 30) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-5899-hhfh-hw26",
+          "cve": "CVE-2021-4285",
+          "repo": "https://github.com/NagiosEnterprises/ncpa.git",
+          "fix": "5abbcd7aa26e0fc815e6b2b0ffe1c15ef3e8fab5",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "XSS in NCPA log tailing",
+          "scope": [
+            "agent/listener/templates"
           ]
         }
       ]

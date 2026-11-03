@@ -78,11 +78,13 @@ npm advisories (step 29). Those pools are nearly used up.
    isArchived } r1: ... }'`; a null result means the repository is gone or renamed, so skip it. Keep the Python ones, then confirm Django, Flask or FastAPI
    from `requirements*.txt`, `pyproject.toml` or `setup.py` at the fix commit. Many reports are from huntr.dev; that
    doesn't matter. Judge each by section 3. Proposed suites: `cve-pairs-python` (views and handlers) or
-   `cve-pairs-python-frontend` (templates and front-end JS); blind ones go in `cve-pairs-blind-python-6`. Files:
+   `cve-pairs-python-frontend` (templates and front-end JS); blind ones go in a new blind suite with the next unused
+   number (section 4). Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-unreviewed.{tsv,json}`.
 2. **Node web apps not published on npm.** Same source and method as topic 1, keeping JavaScript/TypeScript
    repositories with a web server (Express, Koa, Fastify, Nest, Next, Hapi) or a Vue/React front end. Suites:
-   `cve-pairs-javascript` or `cve-pairs-javascript-nonhttp`, blind `cve-pairs-blind-javascript-6`. Files:
+   `cve-pairs-javascript` or `cve-pairs-javascript-nonhttp`, blind ones in the next unused
+   `cve-pairs-blind-javascript-N`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
@@ -182,7 +184,8 @@ the shape `benchmarks/suites.json` uses:
                "fix_size": "<files and lines you measured>"}]}
 ```
 
-For blind cases, leave out `flow` and `fix_size`. `scope` is the directory or directories holding the changed
+For blind cases, leave out `flow` and `fix_size`. Every case in `accepted` must also have its `accept` row in the
+TSV; the push check refuses a batch where they disagree. `scope` is the directory or directories holding the changed
 source files.
 
 ## 6. GitHub API manners
