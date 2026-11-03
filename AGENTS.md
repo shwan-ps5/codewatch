@@ -48,17 +48,22 @@ Priorities, in order:
 
 Weaknesses (CWE): 22 path traversal, 78/77 command injection, 79 XSS, 89 SQL injection, 94 code injection,
 502 deserialization, 601 open redirect, 611 XXE, 918 SSRF, 1336 template injection, 73 external file path.
+For Python (PLAN.md step 24) also: 23 and 36 (path variants), 90 LDAP, 113 header injection, 643 XPath, 943 NoSQL,
+1333 ReDoS from request data.
 
 Sources: GitHub's reviewed advisories, for example
 `gh api -X GET advisories -f ecosystem=pip -f type=reviewed -f cwes=79,89 -f per_page=100`,
 or OSV exports. Use only advisories that link a fix commit.
 
-## 3. Accept or reject: the rules (PLAN.md step 22)
+## 3. Accept or reject: the rules (PLAN.md steps 22 and 24)
 
 Accept only when **all** of these hold:
 - **Exactly one fix commit** is linked, and it fixes this advisory (not a different one).
-- **Small**: at most **3 changed source files** and **120 changed lines**, not counting tests, docs, changelogs,
-  lockfiles, `package.json` and similar manifests. Measure it rather than guess:
+- **Small**, not counting tests, docs, changelogs, lockfiles, `package.json` and similar manifests:
+  - JavaScript and other languages: at most **3 changed source files** and **120 changed lines**.
+  - Python: the same, or up to **5 files and 200 lines** if the vulnerable flow is still clear from the diff
+    (step 24). Say in the reason when a case uses that wider limit.
+  Measure it rather than guess:
   ```
   gh api repos/OWNER/REPO/commits/SHA --jq '.parents|length, (.files[]|"\(.changes)\t\(.filename)")'
   ```
@@ -77,7 +82,8 @@ Reject, and say which reason applies:
 - a settings flag or default changed (e.g. turning raw HTML off in a Markdown renderer)
 - missing authentication or authorization (CWE-862/863/639)
 - races: DNS rebinding, TOCTOU
-- Tornado apps, test-only fixes, CLI-only tools
+- Tornado, aiohttp, Gradio and Streamlit apps (Quart, Starlette, Flask-RESTful and Flask-AppBuilder count as
+  Flask/FastAPI); test-only fixes; CLI-only tools
 - the advisory's fix commit doesn't match its description
 
 **Not an HTTP request** (repository config read by a bot, desktop/Electron IPC, chat-protocol ids, files on disk):
