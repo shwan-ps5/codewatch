@@ -54,7 +54,7 @@ Detection, measured at this commit (verdict mode first; review mode adds hotspot
 | Vulnerable-Code-Snippets JS (22, held out) | 11 | 13 |
 | vulnerable-node seeds (12 + 2 clean) | 92%, false alarms 0% | 100%, false alarms 50% |
 | CVE fix pairs, Python (33; 14 until step 22) | 18 found, 5 still flagged after the fix | 20 found, 7 still flagged |
-| CVE fix pairs, Python front end (6, step 22) | 0 found | 4 found, 2 still flagged |
+| CVE fix pairs, Python front end (6, step 22; 27 since the second batch, not yet measured here) | 0 found | 4 found, 2 still flagged |
 | CVE fix pairs, JS/TS (10) | 2 found, 0 still flagged | 4 found, 3 still flagged |
 
 False alarms on ordinary apps (verdict mode):
@@ -101,9 +101,10 @@ Next, in order:
    python3-saml's login() returns the identity provider's URL with x only as RelayState, a library call's
    result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
    in the nightly run.
-5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the three blind CVE suites
-   (`cve-pairs-blind-python-2`, `cve-pairs-blind-python-3`, `cve-pairs-blind-python-4`,
-   `cve-pairs-blind-python-frontend`), each scanned once, measurement only.
+5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the five blind CVE suites
+   (`cve-pairs-blind-python-2`, `-3`, `-4`, `cve-pairs-blind-python-frontend`, `-frontend-2`), each scanned
+   once, measurement only. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
+   (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
 6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
 7. Other languages and frameworks (Node/Express first), as local rule work. Cloud sessions (CLAUDE.md) gather
    their ground truth and do self-contained engineering. The first cloud PR (#1, Express sinks) showed that rule
@@ -734,6 +735,20 @@ rule):
      end unchanged at 0/6 verdict: Whoogle's flow needs the guard change above, and its fix changes only error.html,
      while a pair is scored only in the files its fix changed. Scoring a template fix against the views that render
      the template is next for the front-end suite.
+   Second batch of front-end cases (2026-11-02, a cloud session; no rules changed). The same advisory source, widened
+   to all years, to fixes over three files or 120 lines when every change is the same weakness (OctoPrint's Jinja2
+   escapes, Indico's confirmation prompts, changedetection.io renaming `.jinja` templates to `.html` so Flask
+   autoescapes them), and to advisories whose extra commits are backports of one fix (the main-branch commit is
+   used). 123 advisories read: 30 accepted, 93 rejected, each with its reason in
+   `benchmarks/reviews-python-frontend-2.md` (blind cases there only by app and file kind). Split before any scan by
+   the same sha256 rule: 21 joined `cve-pairs-python-frontend` (now 27), 9 form `cve-pairs-blind-python-frontend-2`
+   (scanned once, at the end of a round). Rejections were mostly frameworks and libraries (Django REST framework,
+   Flask-AppBuilder, NiceGUI, Dash, Bleach), apps on other servers (Jupyter and WebSSH on Tornado, CherryMusic,
+   Maloja, Roundup, Synapse, copyparty), fixes only in Python, and fixes only in `.svelte` files (Open WebUI five
+   times, Fava): `.svelte` isn't in `SOURCE_EXTENSIONS["python-web"]`, so such a pair can't be scored; adding it is
+   a scorer change for a later session. Baseline: not measured in the cloud session (`devtools.py cases` over the
+   20 large-repository pairs hit the session's two-hour limit; only cabot GHSA-mqwh-r366-4224 finished: verdict
+   missed, review found by `codewatch.templates.unescaped-output`, quiet after the fix). The nightly run measures it.
    Faster loop from here (the user's call): during the day, each change is checked in isolation (its tests, a
    probe on the case's files, `devtools.py cases ID...` for the CVE pairs it targets); the full verification runs
    nightly (`benchmarks/nightly.sh` from a systemd user timer at 01:30, the app list in
