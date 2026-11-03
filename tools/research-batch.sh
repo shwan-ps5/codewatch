@@ -17,6 +17,8 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${CODEWATCH_RESEARCH_MODEL:-ollama/deepseek-v4.1-flash:cloud}"
 MAX_PENDING="${CODEWATCH_RESEARCH_MAX_PENDING:-3}"
 BRANCH=detection-gaps
+# Unattended, nobody can answer a permission prompt: allow what research needs and refuse the rest at once.
+export OPENCODE_CONFIG="$REPO/tools/opencode-research.json"
 LOGS="$HOME/.cache/codewatch/research"
 mkdir -p "$LOGS"
 
@@ -53,7 +55,9 @@ timeout 3h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)
 'Carrying on a topic'. Keep any scripts and downloads outside this repository. Commit only your candidate files
 (and AGENTS.md if you mark a topic done), with the identity AGENTS.md gives. Don't push, pull or switch branches:
 the script that started you does that. If no topic in the queue is left unfinished, stop without committing and
-say so. End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
+say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
+refused: run one command at a time (git -C DIR rather than cd DIR && git), and use python3 for anything else.
+End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
 say "opencode exited $?"
 
 if [ -n "$(git status --porcelain)" ]; then
