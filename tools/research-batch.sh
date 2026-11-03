@@ -17,10 +17,22 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${CODEWATCH_RESEARCH_MODEL:-ollama/deepseek-v4.1-flash:cloud}"
 MAX_PENDING="${CODEWATCH_RESEARCH_MAX_PENDING:-3}"
 BRANCH=detection-gaps
-# Unattended, nobody can answer a permission prompt: allow what research needs and refuse the rest at once.
-export OPENCODE_CONFIG="$REPO/tools/opencode-research.json"
 LOGS="$HOME/.cache/codewatch/research"
 mkdir -p "$LOGS"
+# Unattended, nobody can answer a permission prompt: allow what research needs and refuse the rest at once
+# (tools/opencode-research.json). An ollama/ model is registered here too, so opencode finds it without
+# `ollama launch` having saved it; it only has to be pulled (`ollama pull NAME`) with the Ollama server running.
+export OPENCODE_CONFIG="$LOGS/opencode.json"
+python3 -I - "$REPO/tools/opencode-research.json" "$MODEL" "$OPENCODE_CONFIG" <<'PY' || exit 1
+import json, sys
+config = json.load(open(sys.argv[1]))
+provider, _, name = sys.argv[2].partition("/")
+if provider == "ollama":
+    config["provider"] = {"ollama": {"name": "Ollama", "npm": "@ai-sdk/openai-compatible",
+                                     "options": {"baseURL": "http://127.0.0.1:11434/v1"},
+                                     "models": {name: {"name": name}}}}
+json.dump(config, open(sys.argv[3], "w"), indent=2)
+PY
 
 exec 9>"$LOGS/lock"
 flock -n 9 || exit 0                        # a batch is still running
