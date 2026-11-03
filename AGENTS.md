@@ -72,8 +72,10 @@ npm advisories (step 29). Those pools are nearly used up.
    2021 with a CWE from the list above (`database_specific.cwe_ids`) whose `references` hold exactly one
    `https://github.com/OWNER/REPO/commit/SHA` URL. Write that filter as a small Python script outside the repository
    (in `~/`), not in it. Then drop anything `reviewed.py` already knows, by id or fix SHA. Group what's left by
-   repository and check each repository once (two calls at a time, with pauses):
-   `gh api repos/OWNER/REPO --jq '.language, .archived'`. Keep the Python ones, then confirm Django, Flask or FastAPI
+   repository and get each one's language with GraphQL, 100 repositories per query, one query at a time with two
+   seconds between them. Never send one call per repository in parallel: bursts get the account blocked.
+   `gh api graphql -f query='{ r0: repository(owner:"O", name:"N") { nameWithOwner primaryLanguage { name }
+   isArchived } r1: ... }'`; a null result means the repository is gone or renamed, so skip it. Keep the Python ones, then confirm Django, Flask or FastAPI
    from `requirements*.txt`, `pyproject.toml` or `setup.py` at the fix commit. Many reports are from huntr.dev; that
    doesn't matter. Judge each by section 3. Proposed suites: `cve-pairs-python` (views and handlers) or
    `cve-pairs-python-frontend` (templates and front-end JS); blind ones go in `cve-pairs-blind-python-6`. Files:
@@ -176,7 +178,8 @@ source files.
 
 ## 6. GitHub API manners
 
-At most two requests at a time, with a second or two between them. Bursts have tripped rate limits before. If you
+At most two requests at a time, with a second or two between them. Never send requests in parallel. To look up
+many repositories, batch them in GraphQL (100 per query; topic 1 shows how). Bursts have tripped rate limits before. If you
 get a 403 or a 429, wait a few minutes; don't retry in a loop.
 
 ## 7. Commit
