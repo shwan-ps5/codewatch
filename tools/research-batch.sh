@@ -24,8 +24,12 @@ mkdir -p "$LOGS"
 # `ollama launch` having saved it; it only has to be pulled (`ollama pull NAME`) with the Ollama server running.
 export OPENCODE_CONFIG="$LOGS/opencode.json"
 python3 -I - "$REPO/tools/opencode-research.json" "$MODEL" "$OPENCODE_CONFIG" <<'PY' || exit 1
-import json, sys
+import json, os, sys
 config = json.load(open(sys.argv[1]))
+# Outside the repository: a workspace for the model's scripts and downloads, and the advisory database. Nothing else.
+home = os.path.expanduser("~")
+config["permission"]["external_directory"] = {"*": "deny", f"{home}/codewatch-research/*": "allow",
+                                              f"{home}/advisory-database/*": "allow"}
 provider, _, name = sys.argv[2].partition("/")
 if provider == "ollama":
     config["provider"] = {"ollama": {"name": "Ollama", "npm": "@ai-sdk/openai-compatible",
@@ -60,11 +64,13 @@ if [ -d "$HOME/advisory-database/.git" ]; then
     git -C "$HOME/advisory-database" fetch -q --depth 1 origin main && git -C "$HOME/advisory-database" reset -q --hard FETCH_HEAD
 fi
 
+mkdir -p "$HOME/codewatch-research"
 base=$(git rev-parse HEAD)
 say "starting a batch with $MODEL at $base"
 timeout 3h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
 "Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
-'Carrying on a topic'. Keep any scripts and downloads outside this repository. Commit only your candidate files
+'Carrying on a topic'. Keep your scripts and downloads in ~/codewatch-research/ (the only folder outside this
+repository you may write to; ~/advisory-database/ is readable too). Commit only your candidate files
 (and AGENTS.md if you mark a topic done), with the identity AGENTS.md gives. Don't push, pull or switch branches:
 the script that started you does that. If no topic in the queue is left unfinished, stop without committing and
 say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are

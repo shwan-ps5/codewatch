@@ -70,8 +70,8 @@ npm advisories (step 29). Those pools are nearly used up.
    ```
    The files to look at are `advisories/unreviewed/**/GHSA-*.json` (OSV format). Keep the ones published since
    2021 with a CWE from the list above (`database_specific.cwe_ids`) whose `references` hold exactly one
-   `https://github.com/OWNER/REPO/commit/SHA` URL. Write that filter as a small Python script outside the repository
-   (in `~/`), not in it. Then drop anything `reviewed.py` already knows, by id or fix SHA. Group what's left by
+   `https://github.com/OWNER/REPO/commit/SHA` URL. Write that filter as a small Python script in
+   `~/codewatch-research/` (your workspace outside the repository), never in the repository. Then drop anything `reviewed.py` already knows, by id or fix SHA. Group what's left by
    repository and get each one's language with GraphQL, 100 repositories per query, one query at a time with two
    seconds between them. Never send one call per repository in parallel: bursts get the account blocked.
    `gh api graphql -f query='{ r0: repository(owner:"O", name:"N") { nameWithOwner primaryLanguage { name }
