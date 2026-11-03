@@ -854,7 +854,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -992,6 +992,175 @@
           ],
           "license": "MIT",
           "summary": "@fastify/static vulnerable to route guard bypass via path traversal"
+        },
+        {
+          "id": "GHSA-wf7x-fh6w-34r6",
+          "cve": "CVE-2023-32235",
+          "repo": "https://github.com/tryghost/ghost.git",
+          "fix": "378dd913aa8d0fd0da29b0ffced8884579598b0f",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Path Traversal in Ghost",
+          "scope": [
+            "ghost/core/core/frontend/web/middleware"
+          ]
+        },
+        {
+          "id": "GHSA-w52v-v783-gw97",
+          "cve": "CVE-2026-26980",
+          "repo": "https://github.com/tryghost/ghost.git",
+          "fix": "30868d632b2252b638bc8a4c8ebf73964592ed91",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Ghost has a SQL injection in Content API",
+          "scope": [
+            "ghost/core/core"
+          ]
+        },
+        {
+          "id": "GHSA-9fgx-q25h-jxrg",
+          "cve": "CVE-2021-29484",
+          "repo": "https://github.com/tryghost/ghost.git",
+          "fix": "14b3431de12e674a0bd562e9230e2891b6903ae2",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "DOM XSS in Theme Preview",
+          "scope": [
+            "core/server/web/admin"
+          ]
+        },
+        {
+          "id": "GHSA-pfj7-2qfw-vwgm",
+          "cve": "CVE-2021-43788",
+          "repo": "https://github.com/nodebb/nodebb.git",
+          "fix": "c8b2fc46dc698db687379106b3f01c71b80f495f",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "NodeBB vulnerable to path traversal in translator module",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-32gr-4cq6-5w5q",
+          "cve": "CVE-2023-26491",
+          "repo": "https://github.com/diygod/rsshub.git",
+          "fix": "c910c4d28717fb860fbe064736641f379fab2c91",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "rsshub vulnerable to Cross-site Scripting via unvalidated URL parameters",
+          "scope": [
+            "lib/middleware"
+          ]
+        },
+        {
+          "id": "GHSA-3p3p-cgj7-vgw3",
+          "cve": "CVE-2024-27927",
+          "repo": "https://github.com/diygod/rsshub.git",
+          "fix": "a42947231104a9ec3436fc52cedb31740c9a7069",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "RSSHub vulnerable to Server-Side Request Forgery",
+          "scope": [
+            "lib/routes"
+          ]
+        },
+        {
+          "id": "GHSA-2wqw-hr4f-xrhh",
+          "cve": "CVE-2024-27926",
+          "repo": "https://github.com/diygod/rsshub.git",
+          "fix": "4d3e5d79c1c17837e931b4cd253d2013b487aa87",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "RSSHub Cross-site Scripting vulnerability caused by internal media proxy",
+          "scope": [
+            "lib"
+          ]
+        },
+        {
+          "id": "GHSA-43f3-h63w-p6f6",
+          "cve": "CVE-2024-47818",
+          "repo": "https://github.com/saltcorn/saltcorn.git",
+          "fix": "3c551261d0e230635774798009951fa83a07cc3a",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Saltcorn Server allows logged-in users to delete arbitrary files because of a path traversal vulnerability",
+          "scope": [
+            "packages/server/routes"
+          ]
+        },
+        {
+          "id": "GHSA-mv33-9f6j-pfmc",
+          "cve": "CVE-2025-55746",
+          "repo": "https://github.com/directus/directus.git",
+          "fix": "d84dcc36f75fc5c858d43746b8f9c426c38d696b",
+          "cwe": [
+            73
+          ],
+          "license": "NOASSERTION",
+          "summary": "Directus allows unauthenticated file upload and file modification due to lacking input sanitization",
+          "scope": [
+            "api/src/services"
+          ]
+        },
+        {
+          "id": "GHSA-vrhw-v2hw-jffx",
+          "cve": "CVE-2026-25228",
+          "repo": "https://github.com/signalk/signalk-server.git",
+          "fix": "9bcf61c8fe2cb8a40998b913a02fb64dff9e86c7",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "SignalK Server has Path Traversal leading to information disclosure",
+          "scope": [
+            "src/interfaces"
+          ]
+        },
+        {
+          "id": "GHSA-7fv4-fmmc-86g2",
+          "cve": "CVE-2026-31861",
+          "repo": "https://github.com/siteboon/claudecodeui.git",
+          "fix": "86c33c1c0cb34176725a38f46960213714fc3e04",
+          "cwe": [
+            94
+          ],
+          "license": "AGPL-3.0",
+          "summary": "@siteboon/claude-code-ui is Vulnerable to Shell Command Injection in Git Routes",
+          "scope": [
+            "server"
+          ]
+        },
+        {
+          "id": "GHSA-7c4h-vh2m-743m",
+          "cve": "CVE-2026-21893",
+          "repo": "https://github.com/n8n-io/n8n.git",
+          "fix": "ae0669a736cc496beeb296e115267862727ae838",
+          "cwe": [
+            20,
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "n8n Vulnerable to Command Injection in Community Package Installation",
+          "scope": [
+            "packages/cli/src/modules/community-packages"
+          ]
         }
       ]
     },
@@ -1132,6 +1301,85 @@
           "summary": "Directus has open redirect in SAML",
           "scope": [
             "api/src"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-2",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Second blind set of JavaScript/Node CVE fix pairs, split from the first npm batch (2026-11-03) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-cj62-hvv2-2q5h",
+          "cve": "CVE-2026-70592",
+          "repo": "https://github.com/tryghost/ghost.git",
+          "fix": "f466c300191a609ed36c8d7c5d1e33ccd440786b",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Ghost: Database Backup Path Traversal",
+          "scope": [
+            "ghost/core/core/server"
+          ]
+        },
+        {
+          "id": "GHSA-277h-px4m-62q8",
+          "repo": "https://github.com/saltcorn/saltcorn.git",
+          "fix": "024f19a7e079913f62f4a2335ab04116ddb68192",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "@saltcorn/server arbitrary file zip read and download when downloading auto backups",
+          "scope": [
+            "packages"
+          ]
+        },
+        {
+          "id": "GHSA-m33v-338h-4v9f",
+          "cve": "CVE-2021-21298",
+          "repo": "https://github.com/node-red/node-red.git",
+          "fix": "74db3e17d075f23d9c95d7871586cf461524c456",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Path traversal in Node-Red",
+          "scope": [
+            "packages/node_modules/@node-red/runtime/lib/storage/localfilesystem/projects"
+          ]
+        },
+        {
+          "id": "GHSA-q7hx-mrv5-6mrp",
+          "cve": "CVE-2020-5840",
+          "repo": "https://github.com/hashbrowncms/hashbrown-cms.git",
+          "fix": "6b37b73944447bb29c6aaeb086b04196d80c692a",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "HashBrown CMS Directory Traversal",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-hfmv-hhh3-43f2",
+          "cve": "CVE-2025-52478",
+          "repo": "https://github.com/n8n-io/n8n.git",
+          "fix": "7940384a85041a1890b1203d69c092c887312500",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Stored XSS in n8n Form Trigger allows Account Takeover via injected iframe and video/source",
+          "scope": [
+            "packages/nodes-base"
           ]
         }
       ]
