@@ -51,9 +51,40 @@ Weaknesses (CWE): 22 path traversal, 78/77 command injection, 79 XSS, 89 SQL inj
 For Python (PLAN.md step 24) also: 23 and 36 (path variants), 90 LDAP, 113 header injection, 643 XPath, 943 NoSQL,
 1333 ReDoS from request data.
 
-Sources: GitHub's reviewed advisories, for example
-`gh api -X GET advisories -f ecosystem=pip -f type=reviewed -f cwes=79,89 -f per_page=100`,
-or OSV exports. Use only advisories that link a fix commit.
+Use only advisories that link a fix commit.
+
+### Topic queue
+
+If the maintainer just says "do the next topic", take the first one below not marked done. When you finish one,
+mark it `(done YYYY-MM-DD, file name)` in this list and commit that with your batch. Don't start a topic that isn't
+listed. If you have an idea for a new one, write it at the end as `(proposed)` and stop.
+
+Already mined, don't repeat: GitHub-reviewed PyPI advisories since 2021 (PLAN.md steps 22-27) and GitHub-reviewed
+npm advisories (step 29). Those pools are nearly used up.
+
+1. **Python web apps not published on PyPI.** Apps like these get advisories that GitHub never reviews, so they
+   aren't in the PyPI pool. Source: GitHub's advisory database as a git repository, filtered locally with no API
+   calls:
+   ```
+   git clone --depth 1 https://github.com/github/advisory-database ~/advisory-database
+   ```
+   The files to look at are `advisories/unreviewed/**/GHSA-*.json` (OSV format). Keep the ones published since
+   2021 with a CWE from the list above (`database_specific.cwe_ids`) whose `references` hold exactly one
+   `https://github.com/OWNER/REPO/commit/SHA` URL. Write that filter as a small Python script outside the repository
+   (in `~/`), not in it. Then drop anything `reviewed.py` already knows, by id or fix SHA. Group what's left by
+   repository and check each repository once (two calls at a time, with pauses):
+   `gh api repos/OWNER/REPO --jq '.language, .archived'`. Keep the Python ones, then confirm Django, Flask or FastAPI
+   from `requirements*.txt`, `pyproject.toml` or `setup.py` at the fix commit. Many reports are from huntr.dev; that
+   doesn't matter. Judge each by section 3. Proposed suites: `cve-pairs-python` (views and handlers) or
+   `cve-pairs-python-frontend` (templates and front-end JS); blind ones go in `cve-pairs-blind-python-6`. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-python-unreviewed.{tsv,json}`.
+2. **Node web apps not published on npm.** Same source and method as topic 1, keeping JavaScript/TypeScript
+   repositories with a web server (Express, Koa, Fastify, Nest, Next, Hapi) or a Vue/React front end. Suites:
+   `cve-pairs-javascript` or `cve-pairs-javascript-nonhttp`, blind `cve-pairs-blind-javascript-6`. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
+
+A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic. Say
+in the TSV's first comment line where you stopped, so the next batch carries on from there.
 
 ## 3. Accept or reject: the rules (PLAN.md steps 22 and 24)
 
