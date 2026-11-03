@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# One unattended research batch (AGENTS.md), for the laptop. opencode with a cheap cloud model reads advisories
+# One unattended research batch (AGENTS.md). opencode with a cheap cloud model reads advisories
 # and commits candidate files. This script checks those commits (benchmarks/reviewed.py guard) and pushes them to
 # detection-gaps only if they pass. A Claude session reviews the batches; the nightly run tests what's added.
 #
-# First, once: `ollama launch opencode --model deepseek-v4.1-flash:cloud` (registers the model with opencode),
-# and `gh auth login`. Run this by hand once and read the log before scheduling it, e.g. every two hours (cron):
-#   0 */2 * * * /path/to/codewatch/tools/research-batch.sh
+# Runs on the desktop from its own clone (~/codewatch-research/repo, so it never touches a working checkout),
+# from the systemd user timer codewatch-research.timer, off-peak. Needs: the model pulled (`ollama pull NAME`),
+# gh logged in, and the clone's credential helper set as in the main checkout. Run it by hand once after a change
+# to it, and read the log.
 # Settings: CODEWATCH_RESEARCH_MODEL (default ollama/deepseek-v4.1-flash:cloud),
 #           CODEWATCH_RESEARCH_MAX_PENDING (default 3: skip while that many batches wait for review).
 # Logs: ~/.cache/codewatch/research/; usage.log has one line per run (characters read, tokens used). Commits that
@@ -13,7 +14,14 @@
 
 set -uo pipefail
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
+export GIT_TERMINAL_PROMPT=0                  # fail at once on a credential problem instead of waiting
+REPO="${CODEWATCH_RESEARCH_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
+# Each run fast-forwards this checkout, which can rewrite this file while bash is still reading it: run a copy.
+if [ -z "${CODEWATCH_RESEARCH_COPY:-}" ]; then
+    mkdir -p "$HOME/.cache/codewatch/research"
+    copy="$HOME/.cache/codewatch/research/research-batch.running.sh"
+    cp "$0" "$copy" && CODEWATCH_RESEARCH_COPY=1 CODEWATCH_RESEARCH_REPO="$REPO" exec bash "$copy" "$@"
+fi
 MODEL="${CODEWATCH_RESEARCH_MODEL:-ollama/deepseek-v4.1-flash:cloud}"
 MAX_PENDING="${CODEWATCH_RESEARCH_MAX_PENDING:-3}"
 BRANCH=detection-gaps
