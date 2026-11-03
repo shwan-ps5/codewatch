@@ -975,6 +975,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
   the full suite run that writes `benchmarks/results/`. `bench`, `repos` and `codewatch benchmark` run in parallel
   (`CODEWATCH_BENCH_WORKERS`, default a third of the CPUs); `CODEWATCH_BENCH_WORKERS=1` for one at a time.
 - Suites are cached in `~/.cache/codewatch/benchmarks/`, extra repos in `~/.cache/codewatch/fresh/`.
+- `python3 -I benchmarks/restore_repos.py [FOLDER...]` re-clones the pinned repos listed under Repos (default
+  `fresh/` and `blind4/`). Needed on 2026-11-03, after a disk cleaner (BleachBit) emptied `~/.cache` at 16:08;
+  that also lost the 06:08 nightly report. Keep `~/.cache/codewatch` and `~/.cache/ms-playwright` on the
+  cleaner's whitelist.
 
 ## Repos
 
