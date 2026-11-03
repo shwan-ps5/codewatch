@@ -190,13 +190,22 @@ For blind cases, leave out `flow` and `fix_size`. Every case in `accepted` must 
 TSV; the push check refuses a batch where they disagree. `scope` is the directory or directories holding the changed
 source files.
 
-## 6. GitHub API manners
+## 6. Work in few, large steps
+
+Every turn sends the whole conversation to the model again, so a batch's cost grows with the number of turns.
+Measured on 2026-11-03: one long session re-read 107M tokens to take in 1.4M characters, while a fresh batch
+re-read 4.8M. So write one script in `~/codewatch-research/` that, for the next 5-10 candidates, fetches each
+advisory's summary and its fix commit's diff (source files only, each cut to about 300 lines), and prints them
+together. Judge them all from that one output instead of making one tool call per candidate. Keep the 2-second
+pause between API calls inside the script.
+
+## 7. GitHub API manners
 
 At most two requests at a time, with a second or two between them. Never send requests in parallel. To look up
 many repositories, batch them in GraphQL (100 per query; topic 1 shows how). Bursts have tripped rate limits before. If you
 get a 403 or a 429, wait a few minutes; don't retry in a loop.
 
-## 7. Commit
+## 8. Commit
 
 ```
 git add benchmarks/cve-candidates-YYYY-MM-DD-<topic>.*
