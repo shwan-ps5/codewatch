@@ -25,3 +25,15 @@ def test_split_rule_matches_plan():
     # PLAN.md step 22: blind when int(sha256(id), 16) % 3 == 0.
     assert reviewed.is_blind("GHSA-mxhq-xw3g-rphc")
     assert not reviewed.is_blind("GHSA-wf7x-fh6w-34r6")
+
+
+def test_measure_ignores_whitespace_tests_and_manifests():
+    lines = [
+        "diff --git a/app/views.py b/app/views.py", "--- a/app/views.py", "+++ b/app/views.py",
+        "-    sql = 'SELECT %s' % x", "+    cursor.execute('SELECT %s', [x])",
+        "-        WHERE a = 1", "+            WHERE a = 1", "+",
+        "diff --git a/tests/test_views.py b/tests/test_views.py", "+++ b/tests/test_views.py", "+assert 1",
+        "diff --git a/package.json b/package.json", "+++ b/package.json", '+"v": 2',
+        "diff --git a/src/same.js b/src/same.js", "-a = 1", "+a  =  1",
+    ]
+    assert reviewed.measure("\n".join(lines)) == {"app/views.py": 2}

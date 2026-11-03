@@ -96,11 +96,14 @@ Accept only when **all** of these hold:
   - JavaScript and other languages: at most **3 changed source files** and **120 changed lines**.
   - Python: the same, or up to **5 files and 200 lines** if the vulnerable flow is still clear from the diff
     (step 24). Say in the reason when a case uses that wider limit.
-  Measure it rather than guess:
+  Measure it with this command; don't estimate:
   ```
-  gh api repos/OWNER/REPO/commits/SHA --jq '.parents|length, (.files[]|"\(.changes)\t\(.filename)")'
+  python3 -I benchmarks/reviewed.py size OWNER/REPO SHA            # JavaScript and other languages
+  python3 -I benchmarks/reviewed.py size OWNER/REPO SHA --python   # Python's wider limit
   ```
-  It should have one parent. If it's a merge commit (2), say so in the reason.
+  It skips test, doc and manifest files and ignores whitespace-only changes (re-indented code), then says
+  `within` or `OVER`. Copy its last line into the reason. `OVER` means reject, and so does more than one parent
+  (a merge commit). Run it only for candidates that pass every other rule, so most never need the API call.
 - **Application code**: the bug is in the project's own app code, not in a library or framework it ships or is
   (Django's ORM, urllib3, a sanitizer package, a UI component library).
 - **A visible flow**: data from an HTTP request (query, body, path, headers, cookies, uploaded file names) reaches
