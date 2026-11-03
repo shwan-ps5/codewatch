@@ -8,8 +8,8 @@
 #   0 */2 * * * /path/to/codewatch/tools/research-batch.sh
 # Settings: CODEWATCH_RESEARCH_MODEL (default ollama/deepseek-v4.1-flash:cloud),
 #           CODEWATCH_RESEARCH_MAX_PENDING (default 3: skip while that many batches wait for review).
-# Logs: ~/.cache/codewatch/research/. Commits that fail the check are kept on a local research-rejected-* branch,
-# never pushed.
+# Logs: ~/.cache/codewatch/research/; usage.log has one line per run (characters read, tokens used). Commits that
+# fail the check are kept on a local research-rejected-* branch, never pushed.
 
 set -uo pipefail
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
@@ -66,6 +66,7 @@ fi
 
 mkdir -p "$HOME/codewatch-research"
 base=$(git rev-parse HEAD)
+started_ms=$(( $(date +%s) * 1000 - 5000 ))
 say "starting a batch with $MODEL at $base"
 timeout 3h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
 "Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
@@ -77,6 +78,18 @@ say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq a
 refused: run one command at a time (git -C DIR rather than cd DIR && git), and use python3 for anything else.
 End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
 say "opencode exited $?"
+
+# What the run read and spent (characters its tools returned, model tokens): one line in usage.log, and into the
+# batch's JSON (amending the batch commit) so the review sees it too.
+batch_json=$(git diff --name-only "$base..HEAD" -- 'benchmarks/cve-candidates-*.json' | tail -1)
+if [ -n "$batch_json" ] && [ -z "$(git status --porcelain)" ]; then
+    used=$(python3 -I tools/research_usage.py --dir "$REPO" --since "$started_ms" --into "$batch_json" 2>&1 | tail -1)
+    git add "$batch_json" && git commit -q --amend --no-edit
+else
+    used=$(python3 -I tools/research_usage.py --dir "$REPO" --since "$started_ms" 2>&1 | tail -1)
+fi
+say "usage: $used"
+echo "$(date '+%F %T') $used" >> "$LOGS/usage.log"
 
 if [ -n "$(git status --porcelain)" ]; then
     say "uncommitted changes left behind:"; git status --short
