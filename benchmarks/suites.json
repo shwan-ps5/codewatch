@@ -854,7 +854,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -1161,6 +1161,281 @@
           "scope": [
             "packages/cli/src/modules/community-packages"
           ]
+        },
+        {
+          "id": "GHSA-2xcc-vm3f-m8rw",
+          "cve": "CVE-2024-32965",
+          "repo": "https://github.com/lobehub/lobe-chat.git",
+          "fix": "e960a23b0c69a5762eb27d776d33dac443058faf",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "@lobehub/chat Server Side Request Forgery vulnerability",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-xph5-278p-26qx",
+          "cve": "CVE-2025-59426",
+          "repo": "https://github.com/lobehub/lobe-chat.git",
+          "fix": "70f52a3c1fadbd41a9db0e699d1e44d9965de445",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "lobe-chat has an Open Redirect",
+          "scope": [
+            "packages/utils/src/server"
+          ]
+        },
+        {
+          "id": "GHSA-wf6c-hrhf-86cw",
+          "cve": "CVE-2025-27506",
+          "repo": "https://github.com/nocodb/nocodb.git",
+          "fix": "ea821edb133e621e26183ae65c8ff9ee5d6f2723",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "NocoDB Vulnerable to Reflected Cross-Site Scripting on Reset Password Page",
+          "scope": [
+            "packages/nocodb/src/modules/auth"
+          ]
+        },
+        {
+          "id": "GHSA-h6r4-xvw6-jc5h",
+          "cve": "CVE-2023-49781",
+          "repo": "https://github.com/nocodb/nocodb.git",
+          "fix": "7f58ce3726dfec71537d8b80474a0f95a48a1574",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "NocoDB Vulnerable to Stored Cross-Site Scripting in Formula.vue",
+          "scope": [
+            "packages/nc-gui/utils"
+          ]
+        },
+        {
+          "id": "GHSA-p853-83gj-wjj3",
+          "cve": "CVE-2026-55410",
+          "repo": "https://github.com/nocobase/nocobase.git",
+          "fix": "0e1aba1b7b112ffc841588963f7343c00edd9806",
+          "cwe": [
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "NocoBase backup restore schema name allows command injection",
+          "scope": [
+            "packages/plugins/@nocobase/plugin-backups/src/server"
+          ]
+        },
+        {
+          "id": "GHSA-c42q-qvc3-j6vg",
+          "cve": "CVE-2026-108260",
+          "repo": "https://github.com/tinacms/tinacms.git",
+          "fix": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "@tinacms/web-components: `tina-markdown` writes rich-text link URLs into `href` without scheme validation, allowing stored XSS",
+          "scope": [
+            "packages/@tinacms/web-components/src"
+          ]
+        },
+        {
+          "id": "GHSA-24v3-254g-jv85",
+          "repo": "https://github.com/tutao/tutanota.git",
+          "fix": "e28345f5f78f628f9d5c04e785f79543f01dca8b",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Tuta Mail has DOM attribute and CSS injection in its Contact Viewer feature",
+          "scope": [
+            "src/mail-app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-cmhj-wh2f-9cgx",
+          "cve": "CVE-2026-56676",
+          "repo": "https://github.com/decolua/9router.git",
+          "fix": "c7d07448c58bec1200741de0b73305b860416b82",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "9router: Image prefetch DNS rebinding allows SSRF to internal services",
+          "scope": [
+            "open-sse/translator/concerns"
+          ]
+        },
+        {
+          "id": "GHSA-wwf9-7jrc-rv4q",
+          "cve": "CVE-2026-55650",
+          "repo": "https://github.com/outerbase/studio.git",
+          "fix": "b06fb85e5967440278d5a815721b360920566ab9",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Outerbase Studio: Stored XSS in Text Widget Leads to Authentication Token Exposure",
+          "scope": [
+            "src/components/chart"
+          ]
+        },
+        {
+          "id": "GHSA-7xvh-c266-cfr5",
+          "cve": "CVE-2025-64758",
+          "repo": "https://github.com/dependencytrack/frontend.git",
+          "fix": "8fd757be612eaf4f35eadbe4c334204d7bd711be",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "@dependencytrack/frontend vulnerable to Persistent Cross-Site-Scripting via welcome message",
+          "scope": [
+            "src/views"
+          ]
+        },
+        {
+          "id": "GHSA-hfj7-542q-8fvv",
+          "cve": "CVE-2025-54066",
+          "repo": "https://github.com/diracgrid/diracx-web.git",
+          "fix": "eba3b7bc4f9d394074215986e6d3c15b546b25d5",
+          "cwe": [
+            601
+          ],
+          "license": "GPL-3.0",
+          "summary": "DiracX-Web is vulnerable to attack through an Open Redirect on its login page",
+          "scope": [
+            "packages/diracx-web-components/src/components"
+          ]
+        },
+        {
+          "id": "GHSA-62gx-5q78-wrvx",
+          "repo": "https://github.com/coddingtonbear/obsidian-local-rest-api.git",
+          "fix": "fdc97f9e652e0d38cb43911d31f827a12b248fc8",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "obsidian-local-rest-api: Authenticated path traversal via URL-encoded %2F in /vault/{path} \u2014 arbitrary host file read/write/delete",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-jx6q-fq9h-6g7q",
+          "cve": "CVE-2019-25158",
+          "repo": "https://github.com/pedroetb/tts-api.git",
+          "fix": "29d9c25415911ea2f8b6de247cb5c4607d13d434",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Pedroetb TTS-API OS Command Injection"
+        },
+        {
+          "id": "GHSA-ffwf-47x2-jpr8",
+          "cve": "CVE-2022-3971",
+          "repo": "https://github.com/matrix-org/matrix-appservice-irc.git",
+          "fix": "179313a37f06b298150edba3e2b0e5a73c1415e7",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "Matrix-appservice-irc vulnerable to sql injection via roomIds argument",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-rqgv-292v-5qgr",
+          "cve": "CVE-2024-58376",
+          "repo": "https://github.com/renovatebot/renovate.git",
+          "fix": "1e941fd885c799f2d38f4084a6f4cb9438813c8f",
+          "cwe": [
+            78
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Renovate vulnerable to arbitrary command injection via helmv3 manager and registryAliases",
+          "scope": [
+            "lib/modules/manager/helmv3"
+          ]
+        },
+        {
+          "id": "GHSA-xjr7-3c3g-m763",
+          "cve": "CVE-2026-76233",
+          "repo": "https://github.com/renovatebot/renovate.git",
+          "fix": "d29698e0131231652970f02765312769975e4d38",
+          "cwe": [
+            77
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Renovate vulnerable to arbitrary command injection via gleam manager and malicious gleam.toml file",
+          "scope": [
+            "lib/modules/manager/gleam"
+          ]
+        },
+        {
+          "id": "GHSA-cgc7-mwp4-3ccx",
+          "cve": "CVE-2020-15930",
+          "repo": "https://github.com/laurent22/joplin.git",
+          "fix": "57d750bc9aeb0f98d53ed4b924458b54984c15ff",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross-site Scripting in Joplin",
+          "scope": [
+            "ReactNativeClient/lib/joplin-renderer"
+          ]
+        },
+        {
+          "id": "GHSA-mrmf-755g-w2vw",
+          "cve": "CVE-2021-37916",
+          "repo": "https://github.com/laurent22/joplin.git",
+          "fix": "feaecf765368f2c273bea3a9fa641ff0da7e6b26",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Joplin vulnerable to Cross-site Scripting in notes",
+          "scope": [
+            "packages/renderer"
+          ]
+        },
+        {
+          "id": "GHSA-m6mf-hmrh-ph4j",
+          "cve": "CVE-2018-1000534",
+          "repo": "https://github.com/laurent22/joplin.git",
+          "fix": "494e235e18659574f836f84fcf9f4d4fcdcfcf89",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Joplin Vulnerable to Cross-site Scripting in Note Content ",
+          "scope": [
+            "ReactNativeClient/lib"
+          ]
+        },
+        {
+          "id": "GHSA-v5ff-xmfp-p245",
+          "cve": "CVE-2026-49255",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "aa778818843b9c083bd711cd04644d102fcb5a42",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "electerm has Command Injection in File System Operations (rmrf, mv, cp)",
+          "scope": [
+            "src/app/lib"
+          ]
         }
       ]
     },
@@ -1380,6 +1655,206 @@
           "summary": "Stored XSS in n8n Form Trigger allows Account Takeover via injected iframe and video/source",
           "scope": [
             "packages/nodes-base"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-3",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Third blind set of JavaScript/Node CVE fix pairs, split from the second npm batch (2026-11-03) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-mxhq-xw3g-rphc",
+          "cve": "CVE-2024-32964",
+          "repo": "https://github.com/lobehub/lobe-chat.git",
+          "fix": "465665a735556669ee30446c7ea9049a20cc7c37",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "lobe-chat `/api/proxy` endpoint Server-Side Request Forgery vulnerability",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-4948-f92q-f432",
+          "cve": "CVE-2026-41640",
+          "repo": "https://github.com/nocobase/nocobase.git",
+          "fix": "202e2b8efe44ba90adbf1087f6f70881ff947604",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "@nocobase/database has SQL Injection via String Concatenation through Recursive Eager Loading",
+          "scope": [
+            "packages/core/database",
+            "packages/plugins/@nocobase/plugin-field-sort"
+          ]
+        },
+        {
+          "id": "GHSA-wrwh-c28m-9jjh",
+          "cve": "CVE-2026-41641",
+          "repo": "https://github.com/nocobase/nocobase.git",
+          "fix": "851aee543efa894142e0f7be03eb55d9cec06a91",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "@nocobase/plugin-collection-sql: SQL Validation Bypass Through Missing `checkSQL` Call",
+          "scope": [
+            "packages/plugins/@nocobase/plugin-collection-sql/src/server"
+          ]
+        },
+        {
+          "id": "GHSA-x34j-47hf-4xg7",
+          "cve": "CVE-2026-108261",
+          "repo": "https://github.com/tinacms/tinacms.git",
+          "fix": "b57dbf4b56201aef15cd92caa49fd12ab96bbecf",
+          "cwe": [
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "TinaCMS admin preview iframe loads an attacker-controlled origin from the URL fragment",
+          "scope": [
+            "packages/@tinacms/app/src"
+          ]
+        },
+        {
+          "id": "GHSA-6mwv-4mrm-5p3m",
+          "cve": "CVE-2026-56678",
+          "repo": "https://github.com/decolua/9router.git",
+          "fix": "126aa244c5b51b74ab8c7594e3418fcf4437bf6f",
+          "cwe": [
+            20,
+            918
+          ],
+          "license": "MIT",
+          "summary": "9router: Kiro region injection allows authenticated SSRF with Authorization header forwarding",
+          "scope": [
+            "src"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-4",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Fourth blind set of JavaScript/Node CVE fix pairs, split from the third npm batch (2026-11-03) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-3fr8-mwpp-8h9p",
+          "cve": "CVE-2020-15500",
+          "repo": "https://github.com/maptiler/tileserver-gl.git",
+          "fix": "10431d70d0f0d7b7950ae2c02aea0850c7566621",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross-site scripting in TileServer GL",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-5mvm-89c9-9gm5",
+          "cve": "CVE-2025-27146",
+          "repo": "https://github.com/matrix-org/matrix-appservice-irc.git",
+          "fix": "74f02c8e11f16ed1b355700092c1aa9c036a11bd",
+          "cwe": [
+            77
+          ],
+          "license": "Apache-2.0",
+          "summary": "Matrix IRC Bridge allows IRC command injection to own puppeted user",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-3pmj-jqqp-2mj3",
+          "cve": "CVE-2023-38690",
+          "repo": "https://github.com/matrix-org/matrix-appservice-irc.git",
+          "fix": "0afb064635d37e039067b5b3d6423448b93026d3",
+          "cwe": [
+            20
+          ],
+          "license": "Apache-2.0",
+          "summary": "matrix-appservice-irc IRC command injection via admin commands containing newlines ",
+          "scope": [
+            "src"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-5",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Fifth blind set of JavaScript/Node CVE fix pairs, split from the non-HTTP batch (2026-11-03) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-phj8-2p6x-hq5r",
+          "cve": "CVE-2021-33295",
+          "repo": "https://github.com/laurent22/joplin.git",
+          "fix": "9c20d5947d1fa4678a8b640792ff3d31224f0adf",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Joplin Cross Site Scripting Vulnerability via NOSCRIPT tags",
+          "scope": [
+            "packages/renderer"
+          ]
+        },
+        {
+          "id": "GHSA-38j7-23hf-9mhc",
+          "cve": "CVE-2026-49253",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "fde153d677a170c5816368f6586647f3af4ef284",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "electerm has Path Traversal in Zmodem and Trzsz Download Filename Handling",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-7p5m-v798-f8vv",
+          "cve": "CVE-2026-45353",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "0599e67069b00e376a2e962649aaad6096e63507",
+          "cwe": [
+            94
+          ],
+          "license": "MIT",
+          "summary": "Electerm Local code through electerm's single-instance socket",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-q4p8-8j9m-8hxj",
+          "cve": "CVE-2026-43943",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "24ce7103e264cffe6eb5476c0506a2379e6f8333",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Electerm Security Vulnerability: RCE via malicious SSH server filename in openFileWithEditor",
+          "scope": [
+            "src"
           ]
         }
       ]
