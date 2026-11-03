@@ -85,8 +85,13 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-javascript` or `cve-pairs-javascript-nonhttp`, blind `cve-pairs-blind-javascript-6`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
 
-A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic. Say
-in the TSV's first comment line where you stopped, so the next batch carries on from there.
+A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
+
+**Carrying on a topic** doesn't depend on anything an earlier session did. Rebuild the topic's candidate list from
+its source, drop everything `reviewed.py` already knows (by id or fix SHA), sort what's left by published date,
+newest first (then by id), and read from the top. That's always the next batch: there's no position to remember.
+Say in the JSON's `method` how many candidates were left after filtering, so the review can see how much of the
+topic remains.
 
 ## 3. Accept or reject: the rules (PLAN.md steps 22 and 24)
 
