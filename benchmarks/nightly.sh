@@ -24,15 +24,26 @@ else
     git -C "$REPO" worktree add -q --detach "$SRC" "$BRANCH" || exit 1
 fi
 cd "$SRC" || exit 1
+# The analyzers' own environments aren't in the repository: use this checkout's.
+for tool in "$REPO"/tools/*-venv "$REPO"/tools/node_modules; do
+    [ -e "$tool" ] && ln -sfn "$tool" "tools/$(basename "$tool")"
+done
 PY=$REPO/venv/bin/python
+if [ ! -x tools/semgrep-venv/bin/semgrep ]; then
+    echo "FAILED: no tools/semgrep-venv (run make tools in $REPO)"; exit 1
+fi
 echo "commit $(git rev-parse --short HEAD) ($BRANCH), started $(date '+%F %T')"
 
 "$REPO/venv/bin/ruff" check . > "$OUT/lint.txt" 2>&1; echo "lint: $(tail -1 "$OUT/lint.txt")"
 "$REPO/venv/bin/pytest" -q -n auto > "$OUT/tests.txt" 2>&1; echo "tests: $(tail -1 "$OUT/tests.txt")"
+# More than a couple of skips means an analyzer is missing and the run would measure nothing.
+skipped=$(tail -1 "$OUT/tests.txt" | grep -o '[0-9]* skipped' | cut -d' ' -f1)
+if [ "${skipped:-0}" -gt 5 ]; then echo "FAILED: $skipped tests skipped"; exit 1; fi
 
 start=$(date +%s)
 "$PY" benchmarks/devtools.py bench > "$OUT/suites.txt" 2>&1
 echo "suites: $(( ($(date +%s) - start) / 60 )) min"
+grep -q "Traceback" "$OUT/suites.txt" && echo "WARNING: a scan crashed, see suites.txt"
 mkdir -p "$OUT/results" && cp benchmarks/results/*.json benchmarks/results/*.md "$OUT/results/" 2>/dev/null
 git checkout -q -- benchmarks/results
 
@@ -43,6 +54,7 @@ if [ -f "$APPS" ]; then
     awk '/^== /{n=$2; sub(":","",n); next} /^-- /{next} NF>=3 {print n, $1, $2, $3}' "$OUT/apps-raw.txt" \
         | LC_ALL=C sort -u > "$OUT/apps.txt"
     echo "apps: $(( ($(date +%s) - start) / 60 )) min, $(wc -l < "$OUT/apps.txt") findings"
+    grep -q "Traceback" "$OUT/apps-raw.txt" && echo "WARNING: a scan crashed, see apps-raw.txt"
 fi
 
 {
