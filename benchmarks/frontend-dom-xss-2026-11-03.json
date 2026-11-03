@@ -1,0 +1,337 @@
+{
+  "batch": "Front-end / DOM-XSS inventory and pending template pairs (2026-11-03)",
+  "sources": [
+    "catalog/codewatch/rules/javascript-taint.yml (JS sources, XSS sinks, sanitizers)",
+    "catalog/codewatch/rules/javascript-web.yml (Angular bypass, JS template autoescape)",
+    "core/analyzers/template_sinks.py (Python template analyzer and TEMPLATE_EXTENSIONS)",
+    "core/benchmark.py (SOURCE_EXTENSIONS for python-web)",
+    "benchmarks/reviews-python-frontend-2.md (the 30 accepted / 93 rejected front-end batch)",
+    "OSV PyPI export: https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip",
+    "SecurityEval miss classification: benchmarks/securityeval-misses-2026-11-03.json (for the XSS/sink gaps it exposed)"
+  ],
+  "next_nightly": "read benchmarks/results/cve-pairs-python-frontend.md: the 27 cases' verdict/review rows, especially GHSA-pwgc (changedetection .jinja), GHSA-x7mf (OctoPrint jQuery), GHSA-fmqq (Indico dialog), GHSA-jxgr (Nautobot unquoted attributes), GHSA-xv64 (pgAdmin .js Jinja).",
+  "status": "research only; no rules or suites changed; no scans",
+  "headline": "The only pending template pairs are six .svelte-only fixes (five Open WebUI, one Fava); a fresh CWE search found no new in-scope pairs. The highest-value, evidence-backed gap is Flask's extension-based Jinja autoescape: .jinja/.jinja2/.j2 templates are not autoescaped by Flask, while the template analyzer assumes they are (GHSA-pwgc in the suite). A naive {@html}/v-html hotspot would false-alarm on the fixed Svelte code, which keeps the sink and adds DOMPurify; Svelte needs a sanitizer-aware rule, not a bare hotspot.",
+  "suite_status": {
+    "name": "cve-pairs-python-frontend",
+    "cases": 27,
+    "measured": "no; the 21 cases added 2026-11-02 have not been scored",
+    "old_baseline": "the committed results file is the first 6 cases: verdict 0/6, review 4/6, 2 still flagged",
+    "svelte_scoring": "SOURCE_EXTENSIONS['python-web'] has .vue but not .svelte; .vue is scored but no analyzer parses it",
+    "pending_cases": "six .svelte-only cases, all open by the sha256 split; not added to suites.json because the fix spots would be empty and no rule can score them yet"
+  },
+  "pending_pairs": [
+    {
+      "id": "GHSA-3xpf-xq7r-v8c5",
+      "cve": "CVE-2026-70486",
+      "repo": "https://github.com/open-webui/open-webui.git",
+      "fix": "65a5fad7b97db99d490d81f4e0860282c3a4543c",
+      "cwe": [
+        1021,
+        79
+      ],
+      "license": "NOASSERTION",
+      "summary": "Open WebUI: Same-origin XSS to account takeover via terminal file-preview iframe hardcoding allow-same-origin",
+      "scope": [
+        "src/lib/components/chat/FileNav"
+      ],
+      "sink": "iframe sandbox attribute with allow-same-origin (CWE-1021), not an {@html} sink",
+      "naive_rule": "would not catch it; needs an iframe-sandbox rule",
+      "recommend": "hold; not a DOM-XSS pair for a Svelte HTML rule"
+    },
+    {
+      "id": "GHSA-9f4f-jv96-8766",
+      "cve": "CVE-2025-46719",
+      "repo": "https://github.com/open-webui/open-webui.git",
+      "fix": "6fd082d55ffaf6eb226efdeebc7155e3693d2d01",
+      "cwe": [
+        79
+      ],
+      "license": "NOASSERTION",
+      "summary": "Open WebUI vulnerable to stored XSS via unescaped markdown token in MarkdownTokens.svelte leading to full account takeover and RCE via functions",
+      "scope": [
+        "src/lib/components/chat/Messages/Markdown"
+      ],
+      "sink": "{@html `${token.text}`} and {@html html} where html is not sanitized",
+      "naive_rule": "a bare {@html} hotspot also fires on the fixed file, which keeps {@html html} after DOMPurify.sanitize; a sanitizer-aware flow rule is needed",
+      "recommend": "hold until a Svelte rule can follow the sanitizer"
+    },
+    {
+      "id": "GHSA-jmc6-2wr8-h3wj",
+      "cve": "CVE-2026-87995",
+      "repo": "https://github.com/open-webui/open-webui.git",
+      "fix": "54d7a223707f03172efbb9e754db6e69709956d0",
+      "cwe": [
+        1021,
+        79
+      ],
+      "license": "NOASSERTION",
+      "summary": "Open WebUI: Same-origin XSS to account takeover via terminal port-preview iframe hardcoding allow-same-origin",
+      "scope": [
+        "src/lib/components"
+      ],
+      "sink": "iframe sandbox attribute with allow-same-origin (CWE-1021), not an {@html} sink",
+      "naive_rule": "would not catch it; needs an iframe-sandbox rule",
+      "recommend": "hold; not a DOM-XSS pair for a Svelte HTML rule"
+    },
+    {
+      "id": "GHSA-pwxh-7358-jq2x",
+      "cve": "CVE-2026-70492",
+      "repo": "https://github.com/open-webui/open-webui.git",
+      "fix": "bc600d3f085802c45aa8f38c30e6e8c986bde6cc",
+      "cwe": [
+        79
+      ],
+      "license": "NOASSERTION",
+      "summary": "Open WebUI: Stored XSS via unescaped KaTeX render-error fallback in rendered messages",
+      "scope": [
+        "src/lib/components/chat/Messages/Markdown"
+      ],
+      "sink": "{@html renderedHTML} left unchanged; the fix escapes the assignment that feeds it",
+      "naive_rule": "a bare {@html} hotspot fires on both sides; the fix does not remove the sink",
+      "recommend": "hold; needs dataflow from the assignment into the template"
+    },
+    {
+      "id": "GHSA-q8hg-3vqv-f8v3",
+      "cve": "CVE-2022-2523",
+      "repo": "https://github.com/beancount/fava.git",
+      "fix": "dccfb6a2f4567f35ce2e9a78e24f92ebf946bc9b",
+      "cwe": [
+        79
+      ],
+      "license": "MIT",
+      "summary": "Fava vulnerable to Reflected Cross-site Scripting",
+      "scope": [
+        "frontend/src"
+      ],
+      "sink": "{@html inventory.join(\"<br>\")} and {@html error}",
+      "naive_rule": "a bare {@html} hotspot also fires on the fixed file, which keeps {@html result.table}; still risky",
+      "recommend": "hold, but the closest to a simple rule: the vulnerable expressions are directly unsanitized"
+    },
+    {
+      "id": "GHSA-w7xj-8fx7-wfch",
+      "cve": "CVE-2025-64495",
+      "repo": "https://github.com/open-webui/open-webui.git",
+      "fix": "eb9c4c0e358c274aea35f21c2856c0a20051e5f1",
+      "cwe": [
+        79
+      ],
+      "license": "NOASSERTION",
+      "summary": "Open WebUI vulnerable to Stored DOM XSS via prompts when 'Insert Prompt as Rich Text' is enabled resulting in ATO/RCE",
+      "scope": [
+        "src/lib/components/common"
+      ],
+      "sink": "marked.parse output rendered as HTML; the fix wraps it in DOMPurify.sanitize",
+      "naive_rule": "a bare {@html} hotspot flags the sanitized fix too",
+      "recommend": "hold until a Svelte sanitizer-aware rule exists"
+    }
+  ],
+  "search": {
+    "method": "OSV PyPI export, GitHub-reviewed, published since 2021, exactly one fix commit, not in any suite or previous read set; CWEs 79, 80, 116, 1321, 1333, 601, 20, 113, 943; patches fetched and changed files filtered to .html/.htm/.jinja/.jinja2/.j2/.js/.mjs/.cjs/.jsx/.ts/.tsx/.vue/.svelte/.tmpl/.tpl/.hbs/.ejs/.pug, excluding tests and vendored bundles",
+    "candidates": 319,
+    "repos": 180,
+    "with_front_end_changed_files": 5,
+    "in_scope": 0,
+    "reviewed": [
+      {
+        "id": "GHSA-jqmf-mx4f-hfr6",
+        "repo": "hkuds/vibe-trading",
+        "why": "LLM trading app; the 30-file fix is a mixed command/code/SSRF change, not a template/front-end weakness in a Django/Flask/FastAPI app"
+      },
+      {
+        "id": "GHSA-wx4m-69m9-gx3m",
+        "repo": "home-assistant/frontend",
+        "why": "a front-end app (Lit components), not a Python app's front end; CWE-80 chart tooltip HTML"
+      },
+      {
+        "id": "GHSA-5293-mq8x-g3xj",
+        "repo": "openapi-generators/openapi-python-client",
+        "why": "code generator, 348 files, CWE-116 code generation"
+      },
+      {
+        "id": "GHSA-vqrg-773h-4wxc",
+        "repo": "stevereiner/flexible-graphrag",
+        "why": "library/app with an Angular front end; 94-file mixed Cypher/escaping change"
+      },
+      {
+        "id": "GHSA-v5mq-3xhg-98m9",
+        "repo": "unstructured-io/unstructured",
+        "why": "library HTML sanitization, not a web app"
+      }
+    ],
+    "conclusion": "No new in-scope template/front-end pairs beyond the six pending .svelte cases from the second batch. The pool under the current rule is exhausted; further pairs need a new rule/scoring scope (Svelte/Vue), not another CVE search."
+  },
+  "inventory": {
+    "covered": {
+      "js_dom_sinks": [
+        "$EL.innerHTML",
+        "$EL.outerHTML",
+        "$EL.insertAdjacentHTML",
+        "document.write",
+        "document.writeln",
+        "$($SEL).html",
+        "$($SEL).append"
+      ],
+      "js_dom_sources": [
+        "location.hash/search/href",
+        "document.URL/documentURI/referrer",
+        "window.name",
+        "window 'message' event data",
+        "URLSearchParams.get",
+        "Express/Koa/Nest request fields, getters, destructured request and Nest @Body/@Query/@Param/@Headers"
+      ],
+      "js_sanitizers": [
+        "DOMPurify.sanitize",
+        "escapeHtml/escape/he.encode",
+        "sanitizeHtml",
+        "xss",
+        "validator.escape",
+        "encodeURIComponent/encodeURI",
+        "textContent",
+        "named validate/sanitize/escape helpers"
+      ],
+      "python_templates": [
+        "Jinja/Django {{ x|safe }}",
+        "{% autoescape off %} blocks",
+        "render_template/render/render_to_string/TemplateResponse by template name",
+        "Jinja/Django form fields",
+        "escaping filters (e, sanitize, clean, bleach, json)"
+      ],
+      "python_xss_sinks": [
+        "response bodies and render calls",
+        "HttpResponse/Response",
+        "send_file (body is the file)"
+      ],
+      "js_template_engines": [
+        "pug/jade, ejs, handlebars/hbs, nunjucks, mustache, eta rendered from a fixed literal template",
+        "swig/nunjucks/handlebars autoescape disabled"
+      ]
+    },
+    "gaps": [
+      {
+        "id": "flask-jinja-autoescape",
+        "priority": "high",
+        "surface": "Python/Flask templates",
+        "evidence": "GHSA-pwgc-w4x9-gw67 (changedetection.io) is in cve-pairs-python-frontend: the fix renames .jinja templates to .html because Flask only autoescapes .html/.htm/.xml/.xhtml; the current template analyzer treats .jinja/.jinja2/.j2 as autoescaping and only collects |safe/autoescape-off variables.",
+        "proposal": "in core/analyzers/template_sinks.py, treat every {{ ... }} in a non-autoescaped extension (.jinja, .jinja2, .j2) as unescaped when the render call is Flask's render_template/render_template_string; keep the current |safe/autoescape-off model for Django's render/TemplateResponse, which autoescape their Jinja backend by default.",
+        "test": "Flask view renders templates/page.jinja with {{ name }} from request.args -> vulnerable at the render call; templates/page.html -> safe; page.jinja with {{ name|e }} -> safe; Django render of a .jinja template -> safe.",
+        "risk": "a framework-blind rule would false-alarm on Django's Jinja backend; the render call name must select the variant. Start as a review hotspot."
+      },
+      {
+        "id": "svelte-vue-html",
+        "priority": "high (future pairs)",
+        "surface": "Svelte/Vue templates",
+        "evidence": "Six .svelte-only fixes are pending (open-webui, fava); .vue is a scored extension but no analyzer parses it. The fixes often keep {@html} or v-html with DOMPurify.sanitize, so a bare hotspot flags the fixed code too.",
+        "proposal": "add .svelte to SOURCE_EXTENSIONS['python-web']; add a Svelte/Vue HTML rule that follows the expression back to a sanitizer (DOMPurify.sanitize, xss, escapeHtml) and treats v-html/{@html} of a literal as safe. Do not add a bare {@html} hotspot: the fixed Open WebUI files keep {@html html} after sanitizing.",
+        "test": "vulnerable: {@html error} / {@html `${token.text}`}; safe: {@html DOMPurify.sanitize(x)} / v-html=\"trustedConstant\". Score the six pending pairs only after this exists.",
+        "risk": "without dataflow this is noisy; .svelte is not native Semgrep, so this may need a generic/pattern pre-pass."
+      },
+      {
+        "id": "jquery-html-construction",
+        "priority": "medium",
+        "surface": "jQuery/DOM",
+        "evidence": "GHSA-x7mf-wrh9-r76c (OctoPrint) builds $(\"<p>...<img src=...>\") from a fetched value; GHSA-fmqq-25x9-c6hm (Indico) passes {html: message} to a jQuery dialog. The rule covers .html and .append only.",
+        "proposal": "add sinks for .prepend/.before/.after/.replaceWith/.wrap/.wrapInner/.appendTo/.prependTo/.insertAfter/.insertBefore/.replaceAll, for $('<...>' + $HTML) (taint in the argument), and for dialog({..., html: $HTML, ...}) in jQuery UI.",
+        "test": "vulnerable: $('#x').prepend(request.args.q); $('<p>'+location.hash+'</p>'); $('#d').dialog({html: msg}); safe: .text(...), createElement/createTextNode, quoted constants.",
+        "risk": "$() is used for selectors; only flag a tainted interpolation, not a plain selector string."
+      },
+      {
+        "id": "react-dangerouslySetInnerHTML",
+        "priority": "medium",
+        "surface": "React/JSX",
+        "evidence": "common React sink; no front-end suite case yet, but the existing rules handle Node templates and DOM but not this prop.",
+        "proposal": "add a sink for dangerouslySetInnerHTML={{__html: $HTML}} in the JS XSS rule; React's normal {value} escaping stays safe; DOMPurify.sanitize is already a sanitizer.",
+        "test": "vulnerable: <div dangerouslySetInnerHTML={{__html: location.hash}} />; safe: <div>{value}</div> and DOMPurify.sanitize(value).",
+        "risk": "low if limited to the explicit dangerous prop."
+      },
+      {
+        "id": "python-mark-safe",
+        "priority": "medium",
+        "surface": "Python/Django/Flask",
+        "evidence": "mark_safe/Markup is the Python equivalent of a raw-HTML sink and is not in the XSS rule's sinks; no front-end suite case yet, but it is common in apps.",
+        "proposal": "add mark_safe(...), markupsafe.Markup(...), django.utils.safestring.mark_safe(...) and flask.Markup(...) as sinks of codewatch.python.web.xss.",
+        "test": "vulnerable: return mark_safe(request.args['x']); safe: mark_safe('<b>fixed</b>') or mark_safe(escape(x)).",
+        "risk": "only tainted values; constants are common and stay safe."
+      },
+      {
+        "id": "unquoted-template-attributes",
+        "priority": "medium",
+        "surface": "Jinja/Django templates",
+        "evidence": "GHSA-jxgr-gcj5-cqqg (Nautobot): filter values from the query string printed into unquoted data-* attributes and rebuilt by JS; the template rule only looks for |safe/autoescape off.",
+        "proposal": "add a template hotspot for {{ ... }} inside an unquoted attribute (data-x={{ value }}); quoted attributes are already escaped by Jinja/Django.",
+        "test": "vulnerable: <div data-name={{ name }}>; safe: <div data-name=\"{{ name }}\"> (autoescaped) and constants.",
+        "risk": "unquoted attributes are legal and often safe with constants; require a template expression, not a literal."
+      },
+      {
+        "id": "jinja-in-js-templates",
+        "priority": "medium/low",
+        "surface": "Jinja templates with .js/.ts extension",
+        "evidence": "GHSA-xv64-8p4r-94gq (pgAdmin): '{{ layout }}' in a Jinja-rendered .js file; HTML autoescaping is not JS-string escaping, the fix uses |tojson. The template analyzer reads .html/.jinja but not .js.",
+        "proposal": "flag {{ ... }} inside a JS string in files known to be Jinja-rendered (under templates/, or named by a render_template call), suggesting |tojson; do not treat every .js {{ }} as Jinja (Vue/Angular/Handlebars use it too).",
+        "test": "vulnerable: var layout = '{{ layout }}'; safe: var layout = {{ layout|tojson }}; a Vue template with {{ msg }} is not a match.",
+        "risk": "knowing which .js files Jinja renders is the hard part; keep it a hotspot and only for templates/."
+      },
+      {
+        "id": "client-route-sources",
+        "priority": "low/speculative",
+        "surface": "front-end frameworks",
+        "evidence": "no non-blind front-end case yet; React Router/Next/Vue/Angular/Svelte route and query hooks are not sources, so a DOM XSS through useSearchParams()/useRoute().query is missed.",
+        "proposal": "after a non-blind case: add useSearchParams()[0].get, useParams(), useLocation().search/hash, next/navigation useSearchParams and the server searchParams prop, Vue useRoute().query/params/hash, Angular ActivatedRoute.snapshot.queryParams/params, Svelte $page.url.searchParams.",
+        "test": "a React page rendering useSearchParams().get('q') into innerHTML; safe: textContent or an escaping helper.",
+        "risk": "route params are often safe; taint only flags those reaching an HTML sink. Do not add without a case."
+      },
+      {
+        "id": "dom-api-sinks",
+        "priority": "low",
+        "surface": "modern DOM",
+        "evidence": "newer APIs are not in the sink list; no suite case yet.",
+        "proposal": "add setHTMLUnsafe, document.parseHTMLUnsafe, Range.createContextualFragment and iframe.srcdoc as sinks; setHTML is the sanitizing API and stays safe.",
+        "test": "vulnerable: el.setHTMLUnsafe(location.hash); safe: el.setHTML(sanitized) and textContent.",
+        "risk": "low; these APIs are still uncommon."
+      },
+      {
+        "id": "location-pathname-source",
+        "priority": "low",
+        "surface": "DOM",
+        "evidence": "the Python XSS rule treats request.path as a source; the JS rule stops at hash/search/href. A page that reflects location.pathname into HTML can be XSS.",
+        "proposal": "add location.pathname/window.location.pathname/document.location.pathname as sources, with the same caution as the Python request.path source.",
+        "test": "a page that writes location.pathname into innerHTML; safe: textContent.",
+        "risk": "self-reflected paths are often harmless; only a sink decides."
+      },
+      {
+        "id": "js-template-engines",
+        "priority": "low",
+        "surface": "server-side JS templates",
+        "evidence": "pug/ejs/handlebars/nunjucks/mustache/eta are treated as escaping only for fixed literal templates; doT, lodash/underscore templates, hogan, dust, marko and squirrelly are not modelled.",
+        "proposal": "research each engine's escaping semantics before adding: lodash/underscore <%= %> is raw while <%- %> escapes, unlike EJS; a wrong entry creates false negatives.",
+        "test": "per engine, a fixed template printing a request value, plus a raw-output variant.",
+        "risk": "engine-specific; do not add as a group."
+      },
+      {
+        "id": "template-rule-catalogue",
+        "priority": "medium (local)",
+        "surface": "catalogue",
+        "evidence": "the template rule is built at scan time and has no catalogue entry/CWE (PLAN step 26); the scorer derives the XSS CWEs, but the finding page has no title or CWE.",
+        "proposal": "give codewatch.python.web.template.xss and codewatch.templates.unescaped-output a catalogue entry with the XSS metadata.",
+        "test": "the catalogue lists the rule with CWE-79 and a title; the finding page shows it.",
+        "risk": "none; local metadata work."
+      }
+    ]
+  },
+  "recommended_order": [
+    "1. Read the first nightly's 27-pair per-case table before changing front-end rules.",
+    "2. Fix the Flask .jinja/.jinja2/.j2 autoescape model in template_sinks.py; it is evidence-backed by GHSA-pwgc and needs a framework-aware test.",
+    "3. Add the evidence-backed sinks: jQuery HTML construction/dialog options (GHSA-x7mf, GHSA-fmqq), then React dangerouslySetInnerHTML and Python mark_safe/Markup.",
+    "4. Consider the unquoted-attribute and .js-Jinja hotspots; both are real but need local app checks for false alarms.",
+    "5. Build a Svelte/Vue rule and add .svelte scoring only if the six pending pairs matter; do not add a bare {@html} hotspot.",
+    "6. Defer client-route sources and new engine entries until a non-blind case exists."
+  ],
+  "caveats": [
+    "No new in-scope pairs were found by the widened OSV search; the six .svelte cases are the only known pending set.",
+    "The .svelte fixes often keep {@html} with DOMPurify.sanitize, so a pattern hotspot would also fire on the fix and count as a false alarm; a dataflow/sanitizer-aware rule is required.",
+    "The two Open WebUI iframe cases are CWE-1021 (allow-same-origin), not HTML-injection sinks; a Svelte {@html} rule would not catch them.",
+    ".vue is in SOURCE_EXTENSIONS but no analyzer parses Vue templates; a future .vue-only pair would be scored as missed.",
+    "The Flask autoescape fix must distinguish Flask render_template calls from Django render calls: Django's Jinja backend autoescapes .jinja, Flask does not. A framework-blind rule would false-alarm on Django.",
+    "The front-end suite is not held out; the blind front-end suites must not be used to tune these rules."
+  ]
+}

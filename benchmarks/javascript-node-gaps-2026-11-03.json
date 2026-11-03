@@ -1,0 +1,200 @@
+{
+  "batch": "JavaScript/Node rule-gap inventory (2026-11-03)",
+  "status": "research only; no rules or suites changed; no scans (the detection-test subset for the separate Flask .jinja change is running in the background)",
+  "headline": "The JS rules are strongest on Express/Koa/Nest request fields into the classic sinks (SQL, shell, fs, redirect, SSRF, HTML). The measured weakness is not one missing sink: it is framework coverage (Hono/Elysia/tRPC/GraphQL/WebSocket/serverless), archive extraction, a few library-specific sinks (js-yaml, error messages, dynamic res.render), and the front-end DOM shapes already listed in frontend-dom-xss-2026-11-03.json. The JS CVE suite has only 10 cases and 2 finds; the next ground-truth batch matters more than another rule tweak.",
+  "method": [
+    "Read catalog/codewatch/rules/javascript-{taint,injection,web,crypto}.yml and extracted every taint source/sink and the pattern rules.",
+    "Read the JS CVE results (2/10 verdict, 4/10 review) and the blind-app notes in README.md/PLAN.md.",
+    "Cross-checked the front-end inventory (benchmarks/frontend-dom-xss-2026-11-03.json) for DOM/XSS gaps; no new scans."
+  ],
+  "covered": {
+    "sources": [
+      "req/request/ctx/ctx.request/context.req .body/query/params/cookies/headers/files/file",
+      "request getters (get/header/param/cookies/json/text/formData)",
+      "URLSearchParams.get and URL.searchParams.get",
+      "destructured request in Express/Koa handlers",
+      "NestJS @Body/@Query/@Param/@Headers (not parsed/number types)",
+      "ctx.action.params",
+      "browser URL/document/message sources (for XSS/open-redirect/code injection)"
+    ],
+    "sinks": {
+      "sql": [
+        "$DB.query/raw/execute/$queryRawUnsafe/$executeRawUnsafe",
+        "Sequelize.literal"
+      ],
+      "command": [
+        "exec/execSync",
+        "spawn/spawnSync with shell:true (including argument arrays)",
+        "execFile/execFileSync with shell:true",
+        "execa/execaCommand with shell",
+        "shelljs.exec",
+        "sh -c and friends"
+      ],
+      "path": [
+        "fs/fs.promises/fs-extra/graceful-fs file functions",
+        "res.sendFile/download",
+        "express-fileupload .mv",
+        "rename/copy/move/symlink destinations"
+      ],
+      "xss": [
+        "res.send/write/end",
+        "innerHTML/outerHTML/insertAdjacentHTML",
+        "document.write/writeln",
+        "jQuery .html/.append"
+      ],
+      "other": [
+        "eval/Function/vm/setTimeout string",
+        "fetch/axios/got/request/needle/superagent/http(s)/undici/ky",
+        "node-serialize/funcster unserialize",
+        "new RegExp",
+        "LDAP search filter/parseFilter",
+        "xpath select/evaluate/parse",
+        "template engines' render/compile/renderString/template",
+        "res.send/status(...).send/ctx.body with err.stack"
+      ]
+    },
+    "sanitizers": [
+      "parseInt/Number/Boolean/Math/typeof/.length",
+      "named validate/sanitize/escape/clean/safe helpers",
+      "allowlist ternary",
+      "startsWith/endsWith/includes/allowlist guards",
+      "signed cookies",
+      "lookup-result service/ORM calls",
+      "fixed-template engine renders",
+      "Host/X-Forwarded-* headers for XSS",
+      "DOMPurify/escape-html/he/xss/encodeURIComponent/textContent"
+    ]
+  },
+  "gaps": [
+    {
+      "id": "framework-sources",
+      "priority": "high",
+      "kind": "source",
+      "evidence": "the shared source set names req/request/ctx/ctx.request/context.req; no Hono c.req, Elysia body/query/params, tRPC input, GraphQL args, AWS Lambda/Vercel event.*, WebSocket/ws message data, or Fastify reply/request decorators beyond the bare names",
+      "proposal": "add one source anchor per framework (Hono c.req.query/param/json, Elysia handler destructuring, tRPC input, GraphQL resolver args, serverless event.body/queryStringParameters/pathParameters, ws/socket message handlers). Add only with a non-blind case or an ordinary-app check; each is a broad source and can raise false alarms.",
+      "test": "a Hono/Elysia/tRPC/Lambda/WebSocket handler passing its request value to innerHTML or fs; safe: a constant or a parsed/validated value",
+      "risk": "broad; start with the framework's explicit request accessor, not every function parameter"
+    },
+    {
+      "id": "archive-extraction",
+      "priority": "high",
+      "kind": "sink",
+      "evidence": "the path-traversal rule covers fs but no tar/zip library; an archive entry name can escape the extraction directory (zip slip) before any fs call. Python has a tar-extraction hotspot; JS does not.",
+      "proposal": "new hotspot codewatch.js.archive-extraction for tar.x/extract, adm-zip extractAllTo, unzipper, yauzl, extract-zip, node-stream-zip, decompress; flag extraction without a member-path check. Review-only: many libraries sanitize or the archive is trusted.",
+      "test": "a route extracting an uploaded zip with a '../' entry; safe: an entry-name containment check or a trusted archive",
+      "risk": "archive libraries differ; a pattern hotspot is safer than a taint rule"
+    },
+    {
+      "id": "js-yaml-load",
+      "priority": "high",
+      "kind": "sink",
+      "evidence": "GHSA-fh64-r2vc-xvhr (MLflow UI, .tsx) is in cve-pairs-python-frontend: js-yaml load() on an MLmodel artifact can execute custom JS types; the JS unsafe-deserialization rule only names node-serialize/funcster. The fix uses safeLoad.",
+      "proposal": "add yaml.load(...)/jsyaml.load(...)/safeLoad? safeLoad is safe; load is unsafe in js-yaml 3 with the default schema, while js-yaml 4 load is safe unless a schema/types option is passed. Add a review hotspot for yaml.load($DATA) (not safeLoad) with a version caveat, or a taint rule when the request value reaches load.",
+      "test": "a route parsing request text with yaml.load; safe: yaml.safeLoad or JSON.parse",
+      "risk": "js-yaml 4 makes load safe; a verdict rule would false-alarm on modern code. Keep it a hotspot/document the version."
+    },
+    {
+      "id": "error-message-response",
+      "priority": "medium",
+      "kind": "sink",
+      "evidence": "the JS stack-trace rule only catches $ERR.stack. err.message, err.toString(), res.json({error: err}) and a caught exception object sent to the client are not covered; Python has a broader exception-message hotspot (CWE-209).",
+      "proposal": "add $ERR.message/$ERR.toString() and an error object inside a JSON response as sinks of a new JS exception-message hotspot; do not flag a generic string from the server.",
+      "test": "catch (e) { res.status(500).json({error: e.message}) } vs res.status(500).json({error: 'failed'})",
+      "risk": "development handlers often include messages; that is the point of the hotspot"
+    },
+    {
+      "id": "express-dynamic-view",
+      "priority": "medium",
+      "kind": "sink",
+      "evidence": "res.render($VIEW) is not a sink; a request-controlled view name selects a template outside the intended directory (path traversal/LFI, and SSTI depending on the engine). The template-injection rule catches a request-controlled template string, not the view name.",
+      "proposal": "add a path-traversal sink for $RES.render($VIEW, ...) where $VIEW is request data; safe: a literal view name or an allowlisted map.",
+      "test": "res.render(req.query.view) vs res.render('index')/res.render(VIEWS[req.query.page])",
+      "risk": "view names are often constants; only tainted values"
+    },
+    {
+      "id": "sequelize-raw-methods",
+      "priority": "medium",
+      "kind": "sink",
+      "evidence": "SQL sinks cover $DB.query/raw/execute, $queryRawUnsafe/$executeRawUnsafe and Sequelize.literal; Sequelize whereRaw/orderByRaw/havingRaw/where(Sequelize.literal(...)) and Knex whereRaw/orderByRaw are not in the sink list (knex.raw matches $DB.raw).",
+      "proposal": "add $MODEL.whereRaw/orderByRaw/havingRaw and $QUERY.whereRaw/orderByRaw, and Knex whereRaw/orderByRaw, with the request value as the tainted argument.",
+      "test": "Model.findAll({where: sequelize.whereRaw('name = ' + req.query.name)}) and knex('t').whereRaw('x=' + req.query.x); safe: bound replacements",
+      "risk": "the raw method name is explicit; low ambiguity"
+    },
+    {
+      "id": "nosql-sources",
+      "priority": "medium",
+      "kind": "source",
+      "evidence": "codewatch.js.nosql-injection sources are only $REQ.body/$REQ.query; it misses req.params, destructured body fields, request getters and ctx.query/ctx.request.body in its narrow set (the shared js-sources already has them).",
+      "proposal": "give the NoSQL rule the shared *js-sources, or add the missing field names/destructuring; keep the MongoDB $where and collection-method sinks.",
+      "test": "const {filter}=req.body; db.collection.find(filter); safe: String(filter.q) or an allowlisted key",
+      "risk": "low; this is source consistency, not a new pattern"
+    },
+    {
+      "id": "react-dangerouslySetInnerHTML",
+      "priority": "medium",
+      "kind": "sink",
+      "evidence": "the JS XSS rule does not include React's dangerouslySetInnerHTML; JSX text/{value} is escaped by React and should stay quiet.",
+      "proposal": "add a sink for dangerouslySetInnerHTML={{__html: $HTML}}; DOMPurify.sanitize already sanitizes.",
+      "test": "<div dangerouslySetInnerHTML={{__html: location.hash}} /> vs <div>{value}</div> / DOMPurify.sanitize(value)",
+      "risk": "low if limited to the explicit dangerous prop"
+    },
+    {
+      "id": "jquery-html-methods",
+      "priority": "medium",
+      "kind": "sink",
+      "evidence": "the XSS rule covers .html and .append only. GHSA-x7mf (OctoPrint) builds $('<p>'+value+'</p>'); GHSA-fmqq (Indico) passes {html: message} to a jQuery dialog.",
+      "proposal": "add .prepend/.before/.after/.replaceWith/.wrap/.wrapInner/.appendTo/.prependTo/.insertAfter/.insertBefore/.replaceAll, tainted $('<...>' + value), and dialog({html: value}); .text/createElement stays safe.",
+      "test": "$('#x').prepend(location.hash); $('<p>'+location.hash+'</p>'); $('#d').dialog({html: msg}); safe: .text(...)",
+      "risk": "$() is also a selector; require a tainted interpolation, not a plain selector"
+    },
+    {
+      "id": "prototype-pollution-libraries",
+      "priority": "medium",
+      "kind": "sink",
+      "evidence": "codewatch.js.prototype-pollution-merge only matches a user-written recursive merge function. _.merge({}, req.body), deepmerge, Object.assign (covered as mass assignment, CWE-915), and object-path style setters are not CWE-1321 findings.",
+      "proposal": "add a hotspot for _.merge/deepmerge/merge/_.set with a request body as the source, or rely on mass-assignment; do not duplicate the Object.assign finding.",
+      "test": "_.merge(target, req.body) with a __proto__ key; safe: a key allowlist or Object.create(null)",
+      "risk": "many merges are intentional; review hotspot"
+    },
+    {
+      "id": "svelte-vue-dom",
+      "priority": "high (pending pairs)",
+      "kind": "rule/scorer",
+      "evidence": "six .svelte-only fixes are pending (five Open WebUI, one Fava); .vue is a scored extension but no analyzer parses it. A bare {@html}/v-html hotspot flags the fixed files that keep the sink and add DOMPurify.",
+      "proposal": "add .svelte to SOURCE_EXTENSIONS['python-web']; add a sanitizer-aware Svelte/Vue rule (see frontend-dom-xss-2026-11-03.json), not a bare hotspot.",
+      "test": "{@html error} vs {@html DOMPurify.sanitize(x)}; v-html=\"trusted\" vs a sanitized value",
+      "risk": "high false-alarm rate without dataflow"
+    },
+    {
+      "id": "serverless-websocket-sources",
+      "priority": "medium",
+      "kind": "source",
+      "evidence": "the source set is Express/Koa/Nest; AWS Lambda (event.body, event.queryStringParameters, event.pathParameters), Vercel/Next serverless, WebSocket (message/data on ws/socket/io) and Socket.IO handlers are not sources.",
+      "proposal": "add explicit event/message sources per framework after a non-blind case; keep them narrow to the handler's first argument/event fields.",
+      "test": "exports.handler = (event) => db.query(event.body.q); ws.on('message', data => el.innerHTML = data)",
+      "risk": "broad; add with a case and an ordinary-app check"
+    },
+    {
+      "id": "js-cve-ground-truth",
+      "priority": "high (research, not a rule)",
+      "kind": "measurement",
+      "evidence": "the JS CVE suite is 10 cases (2 found, 0 still flagged); the blind JS sets are spent and JS false alarms were the worst (13 in one Express app). The Python pool is exhausted under the current rule; the JS/npm pool is not.",
+      "proposal": "collect a JS/Node CVE batch from OSV's npm export with the same acceptance rule (GitHub-reviewed, one fix commit, app code, request-to-sink flow, small focused fix), read each diff, split blind by sha256, and hand back a JSON/TSV. Target Express/Koa/Fastify/Next/Nest app code, not framework/library internals.",
+      "test": "the new suite cases drive the next JS rules; the nightly measures them on the main PC.",
+      "risk": "the npm pool is large; the reading limit is the same as the Python batches."
+    }
+  ],
+  "next_research": [
+    "1. JavaScript/Node CVE ground truth (OSV npm export) is the highest-value next step; it feeds every gap above with evidence instead of hypotheses.",
+    "2. Add the evidence-backed sinks with existing cases: js-yaml (GHSA-fh64), jQuery/dialog/DOM shapes, dynamic res.render, error messages.",
+    "3. Add framework sources only after a non-blind case; Hono/Elysia/tRPC/GraphQL/serverless/WebSocket are broad and need app checks.",
+    "4. Keep the six .svelte pairs pending until a sanitizer-aware Svelte/Vue rule and .svelte scoring exist.",
+    "5. Measure any JS rule change on the main PC/nightly; do not tune on the blind JS sets."
+  ],
+  "caveats": [
+    "This is a rule-text and results review, not a scan: the gap list is a research hypothesis list, not measured false alarms.",
+    "The JS rules were tuned on OWASP/NodeGoat/vulnerable-node and the 30 apps; the blind sets are spent and the held-out JS snippets are measured, never tuned on.",
+    "The current background run is only the tests/test_detection.py subset for the separate Flask .jinja change; it says nothing about JS.",
+    "The front-end DOM/XSS inventory (benchmarks/frontend-dom-xss-2026-11-03.json) covers React/jQuery/Svelte/Vue in more detail and should be read with this file."
+  ]
+}

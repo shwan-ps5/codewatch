@@ -1,0 +1,1143 @@
+{
+  "headline": "Of 70 SecurityEval misses, 27 have no finding at all. Most are not detection gaps: 29 are out of scope (design/logic/no request source), 14 are found in review by bandit/semgrep/detect-secrets, 8 have a codewatch finding of a different CWE, and 7 already fire codewatch review hotspots. Only five point at new codewatch work, two of them optional.",
+  "top_actions": [
+    {
+      "rank": 1,
+      "cluster": "nosql-dynamodb",
+      "why": "Python has no NoSQL injection rule (JS does); the request-to-DynamoDB-expression flow is real and no analyzer reports it.",
+      "work": "add a Python NoSQL taint rule with DynamoDB scan/query/update expression sinks; test with a Flask view.",
+      "confidence": "high"
+    },
+    {
+      "rank": 2,
+      "cluster": "header-injection",
+      "why": "Two samples set a response header from request data; no analyzer reports them.",
+      "work": "a response-header sink rule; start as a hotspot and verify Werkzeug's CRLF handling on a test app before a verdict rule.",
+      "confidence": "medium, framework-dependent"
+    },
+    {
+      "rank": 3,
+      "cluster": "fast-password-hash",
+      "why": "hashlib.sha256(password+ salt) is a fast password hash; codewatch's weak-hash rule calls SHA-256 strong and no analyzer reports the KDF choice.",
+      "work": "a review hotspot, not a verdict; require a password/credential context.",
+      "confidence": "medium"
+    },
+    {
+      "rank": 4,
+      "cluster": "lxml-parser-default",
+      "why": "lxml.etree.XMLParser() with no explicit entity settings; no analyzer reports it.",
+      "work": "extend the existing XML hotspot, but lxml 5.0 changed the default, so it needs a version caveat or should stay a documented limitation.",
+      "confidence": "low, version-dependent"
+    },
+    {
+      "rank": 5,
+      "cluster": "guard-shape",
+      "why": "A substring `in` guard is deliberately trusted, so the open redirect is missed; semgrep finds it in review.",
+      "work": "revisit with the paperless-ngx flow that blocked the stricter guard; not a standalone rule change.",
+      "confidence": "known trade-off"
+    },
+    {
+      "rank": 6,
+      "cluster": "deprecated-api / identity-comparison",
+      "why": "time.clock() and `is` on values are cheap pattern rules.",
+      "work": "optional; low security value, noisy.",
+      "confidence": "low"
+    }
+  ],
+  "batch": "SecurityEval miss classification (2026-11-03)",
+  "status": "research only; no rules or suites changed; a single SecurityEval re-scan on the 16 GB machine, no other suites",
+  "commit": "216f907",
+  "suite": {
+    "name": "securityeval",
+    "kind": "cwe-folders",
+    "held_out": false,
+    "about": "SecurityEval is not held out: its misses were used for codewatch's crypto/TLS, SSRF, regex and log injection rules. The held-out Copilot/InCoder answers were not scanned or read here."
+  },
+  "scan": {
+    "verdict": {
+      "found": 51,
+      "total": 121,
+      "recall": 0.421,
+      "any_security": 0.529
+    },
+    "review": {
+      "found": 77,
+      "total": 121,
+      "recall": 0.636
+    },
+    "command": "core.benchmark.score_cwe_folders on the existing suite; no results files written"
+  },
+  "taxonomy_legend": {
+    "verdict_gap": "codewatch could detect a real request-to-sink flow and does not (addressable).",
+    "review_gap": "codewatch could add a review hotspot; no analyzer currently reports it.",
+    "low_value_pattern_gap": "a cheap pattern rule is possible but the signal is weak or not security-relevant.",
+    "guard_tradeoff": "codewatch deliberately treats the guard shape as safe; another tool finds it in review.",
+    "label_mismatch": "a codewatch finding exists, but the benchmark's CWE differs; not a detection gap.",
+    "review_only_existing": "a codewatch rule/hotspot already fires in review; verdict mode excludes it by design.",
+    "covered_elsewhere": "bandit, semgrep or detect-secrets report it in review; codewatch has no matching rule.",
+    "sample_questionable": "the snippet does not clearly show the labelled flaw or the label is wrong.",
+    "out_of_scope": "design/logic/business-logic flaw, no request source, or a CLI/config source web taint does not model."
+  },
+  "clusters": [
+    {
+      "id": "header-injection",
+      "kind": "verdict_gap",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-113/sonar_1.py",
+        "Testcases_Insecure_Code/CWE-113/sonar_2.py"
+      ],
+      "proposed": {
+        "rule": "codewatch.python.web.header-injection (or a hotspot first)",
+        "sources": "the existing web sources (*web-sources)",
+        "sinks": "$RESP.headers[$NAME] = $VALUE; $RESP.headers.add($NAME, $VALUE)/set(); $HEADERS.add($NAME, $VALUE); Response(..., headers={..., $NAME: $VALUE}, ...)",
+        "avoid": "Location (open-redirect already reports it) and Set-Cookie (the cookie rule); skip constant/escaped values and values from config",
+        "test_shape": "Flask view: `ct = request.args['Content-Type']; resp.headers['Content-Type'] = ct` vulnerable; `resp.headers['Content-Type'] = 'application/json'` safe",
+        "risk": "Werkzeug may reject CRLF in header values; confirm before making it a verdict rule. Otherwise it is a review hotspot."
+      }
+    },
+    {
+      "id": "nosql-dynamodb",
+      "kind": "verdict_gap",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-943/sonar_1.py"
+      ],
+      "proposed": {
+        "rule": "codewatch.python.web.nosql-injection (new; Python has none today, unlike JS)",
+        "sources": "the existing web sources",
+        "sinks": "boto3 DynamoDB scan/query/update_item with FilterExpression/KeyConditionExpression/UpdateExpression/ConditionExpression built from a value; MongoDB pymongo find/find_one/update with a request-built filter (including $where); other NoSQL clients only if the shape is clear",
+        "test_shape": "Flask view: `client.scan(FilterExpression=request.args['u'] + ' = :u', ...)` vulnerable; a dict filter or a parameterized expression safe",
+        "risk": "a request value inside a DynamoDB expression is real injection; keep it to the expression arguments, not table names or fixed strings"
+      }
+    },
+    {
+      "id": "fast-password-hash",
+      "kind": "review_gap",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-327/codeql_4.py"
+      ],
+      "proposed": {
+        "rule": "extend codewatch.python.weak-hash or add codewatch.python.fast-password-hash as a hotspot",
+        "shape": "hashlib.sha256/sha512 (and maybe pbkdf2_hmac with a tiny iteration count) on a password-shaped value; the existing weak-hash rule only covers MD5/SHA-1 and calls SHA-256 strong",
+        "test_shape": "`hashlib.sha256(password + salt).hexdigest()` in a password-hashing function vulnerable; `hashlib.sha256(file_bytes)` or a checksum safe",
+        "risk": "SHA-256 is not weak in general; require a password/credential context and keep it review-only"
+      }
+    },
+    {
+      "id": "lxml-parser-default",
+      "kind": "review_gap",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-827/sonar_1.py"
+      ],
+      "proposed": {
+        "rule": "extend codewatch.python.xml-external-entities to lxml.etree.XMLParser() with no resolve_entities=... / no_network=...",
+        "caveat": "lxml before 5.0 resolved entities by default; from 5.0 the default is safer. A version-blind hotspot would false-alarm on modern code. Document the version or leave it out until it can be gated.",
+        "test_shape": "`etree.XMLParser()` parsing request data; safe with `XMLParser(resolve_entities=False, no_network=True)` or defusedxml"
+      }
+    },
+    {
+      "id": "hardcoded-credentials",
+      "kind": "covered_elsewhere",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-259/author_1.py",
+        "Testcases_Insecure_Code/CWE-259/author_2.py",
+        "Testcases_Insecure_Code/CWE-321/author_1.py",
+        "Testcases_Insecure_Code/CWE-321/author_2.py",
+        "Testcases_Insecure_Code/CWE-454/author_1.py",
+        "Testcases_Insecure_Code/CWE-521/sonar_2.py",
+        "Testcases_Insecure_Code/CWE-522/author_1.py",
+        "Testcases_Insecure_Code/CWE-798/author_1.py",
+        "Testcases_Insecure_Code/CWE-798/codeql_1.py"
+      ],
+      "proposed": {
+        "note": "bandit B105/B106 and detect-secrets find these in review. A codewatch verdict rule would duplicate them and risk test fixtures; leave unless promoting secrets from review to verdict is a goal."
+      }
+    },
+    {
+      "id": "debug-mode",
+      "kind": "covered_elsewhere",
+      "note": "bandit B201 and semgrep debug-enabled cover it.",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-215/codeql_1.py"
+      ]
+    },
+    {
+      "id": "weak-tls-default",
+      "kind": "covered_elsewhere",
+      "note": "bandit B504 and semgrep ssl-wrap-socket-is-deprecated cover it.",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-327/codeql_2.py"
+      ]
+    },
+    {
+      "id": "deprecated-api",
+      "kind": "low_value_pattern_gap",
+      "note": "time.clock() -> a one-line rule, but an obsolete-API smell, not a security flow.",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-477/author_1.py"
+      ]
+    },
+    {
+      "id": "identity-comparison",
+      "kind": "low_value_pattern_gap",
+      "note": "`is` on values -> a pattern rule, but weak and noisy.",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-595/author_1.py"
+      ]
+    },
+    {
+      "id": "guard-shape",
+      "kind": "guard_tradeoff",
+      "note": "substring `in` guards are deliberately trusted; semgrep finds the sample in review. Revisit with the paperless-ngx flow.",
+      "cases": [
+        "Testcases_Insecure_Code/CWE-020/codeql_4.py"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "path": "Testcases_Insecure_Code/CWE-020/author_1.py",
+      "cwe": 20,
+      "cwe_name": "Improper Input Validation",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B506:yaml_load",
+        "codewatch:codewatch.python.web.path-traversal",
+        "codewatch:codewatch.python.web.unsafe-deserialization"
+      ],
+      "note": "No request source: a function parameter. Review already has bandit B506 and codewatch unsafe-deserialization/path-traversal. yaml.load(BaseLoader) is also not a code-execution sink."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-020/author_2.py",
+      "cwe": 20,
+      "cwe_name": "Improper Input Validation",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B314:blacklist",
+        "bandit:B405:blacklist"
+      ],
+      "note": "No request source: a function parameter. Review already has bandit B314/B405; ElementTree does not resolve external entities, so the label is questionable too."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-020/codeql_1.py",
+      "cwe": 20,
+      "cwe_name": "Improper Input Validation",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.xss"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.xss"
+      ],
+      "note": "codewatch XSS fired; the sample is labelled CWE-20 but is reflected XSS (CWE-79)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-020/codeql_2.py",
+      "cwe": 20,
+      "cwe_name": "Improper Input Validation",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.unsafe-deserialization",
+        "codewatch:codewatch.python.web.xss"
+      ],
+      "review_by": [
+        "bandit:B403:blacklist",
+        "codewatch:codewatch.python.web.unsafe-deserialization",
+        "codewatch:codewatch.python.web.xss"
+      ],
+      "note": "codewatch unsafe-deserialization and XSS fired; the sample is labelled CWE-20 but is pickle deserialization (CWE-502)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-020/codeql_3.py",
+      "cwe": 20,
+      "cwe_name": "Improper Input Validation",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.open-redirect",
+        "codewatch:codewatch.python.web.regex-injection"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.open-redirect",
+        "codewatch:codewatch.python.web.regex-injection",
+        "semgrep:python.flask.security.open-redirect.open-redirect"
+      ],
+      "note": "codewatch open-redirect and regex-injection fired; the sample is labelled CWE-20 but is an insufficient redirect regex (CWE-601/1333)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-020/codeql_4.py",
+      "cwe": 20,
+      "cwe_name": "Improper Input Validation",
+      "category": "guard_tradeoff",
+      "cluster": "guard-shape",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [
+        "semgrep:python.flask.security.open-redirect.open-redirect"
+      ],
+      "note": "A substring guard (`if \"example.com\" in target`) is deliberately treated as a sanitizer; semgrep finds it in review. Revisit only together with the paperless-ngx flow that blocked the stricter guard (PLAN step 22/3)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-022/author_2.py",
+      "cwe": 22,
+      "cwe_name": "Improper Limitation of a Pathname to a Restricted Directory",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B310:blacklist",
+        "codewatch:codewatch.python.web.ssrf",
+        "semgrep:python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected"
+      ],
+      "note": "No request source: a URL parameter. Review already has codewatch SSRF, bandit B310 and semgrep; the CWE-22 label is questionable (it is SSRF, CWE-918)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-078/author_1.py",
+      "cwe": 78,
+      "cwe_name": "Improper Neutralization of Special Elements used in an OS Command",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B602:subprocess_popen_with_shell_equals_true"
+      ],
+      "note": "The only source is `input()` (CLI), which web taint does not model; bandit B602 finds it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-095/author_1.py",
+      "cwe": 95,
+      "cwe_name": "Improper Neutralization of Directives in Dynamically Evaluated Code",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B307:blacklist",
+        "codewatch:codewatch.python.web.code-injection"
+      ],
+      "note": "No request source: `eval` of a parameter. Review already has codewatch code-injection and bandit B307 (uncalled function, so review-only by design)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-099/sonar_1.py",
+      "cwe": 99,
+      "cwe_name": "Improper Control of Resource Identifiers",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "note": "codewatch path-traversal fired; CWE-99 (resource injection) is the same file-serving flow as path traversal."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-113/sonar_1.py",
+      "cwe": 113,
+      "cwe_name": "Improper Neutralization of CRLF Sequences in HTTP Headers",
+      "category": "verdict_gap",
+      "cluster": "header-injection",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Request data becomes a response header through `Headers().add(\"Content-Type\", value)`. No analyzer reports it."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-113/sonar_2.py",
+      "cwe": 113,
+      "cwe_name": "Improper Neutralization of CRLF Sequences in HTTP Headers",
+      "category": "verdict_gap",
+      "cluster": "header-injection",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Request data becomes a response header through `response.headers[\"content-type\"] = value`. No analyzer reports it."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-116/author_1.py",
+      "cwe": 116,
+      "cwe_name": "Improper Encoding or Escaping of Output",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.command-injection"
+      ],
+      "review_by": [
+        "bandit:B108:hardcoded_tmp_directory",
+        "codewatch:codewatch.python.web.command-injection",
+        "semgrep:python.django.security.injection.command.command-injection-os-system.command-injection-os-system"
+      ],
+      "note": "codewatch command-injection fired; the sample is labelled CWE-116 (output encoding) but is OS command injection (CWE-78)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-116/codeql_1.py",
+      "cwe": 116,
+      "cwe_name": "Improper Encoding or Escaping of Output",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:regex-backtracking"
+      ],
+      "review_by": [
+        "codewatch:regex-backtracking"
+      ],
+      "note": "A sanitizer helper with no request source; codewatch regex-backtracking fired in review. The label is about output encoding, not a data flow."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-117/author_1.py",
+      "cwe": 117,
+      "cwe_name": "Improper Output Neutralization for Logs",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "The only source is `input()` (CLI); log injection is a review hotspot by design and no request is present."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-117/codeql_1.py",
+      "cwe": 117,
+      "cwe_name": "Improper Output Neutralization for Logs",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "codewatch:codewatch.python.web.log-injection"
+      ],
+      "note": "codewatch log-injection hotspot fired in review; the project deliberately keeps log injection out of verdict mode."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-117/sonar_1.py",
+      "cwe": 117,
+      "cwe_name": "Improper Output Neutralization for Logs",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "codewatch:codewatch.python.web.log-injection"
+      ],
+      "note": "codewatch log-injection hotspot fired in review; review-only by design."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-193/author_1.py",
+      "cwe": 193,
+      "cwe_name": "Off-by-one Error",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Off-by-one loop (design/logic flaw), no request source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-200/author_1.py",
+      "cwe": 200,
+      "cwe_name": "Exposure of Sensitive Information to an Unauthorized Actor",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B608:hardcoded_sql_expressions",
+        "semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query"
+      ],
+      "note": "No request source: a userId parameter. Bandit/semgrep flag the SQL in review. CWE-200 is information exposure; the SQL is also out of reach without a source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-215/codeql_1.py",
+      "cwe": 215,
+      "cwe_name": "Insertion of Sensitive Information Into Debugging Code",
+      "category": "covered_elsewhere",
+      "cluster": "debug-mode",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B201:flask_debug_true",
+        "semgrep:python.flask.security.audit.app-run-security-config.avoid_using_app_run_directly",
+        "semgrep:python.flask.security.audit.debug-enabled.debug-enabled"
+      ],
+      "note": "Bandit B201 and semgrep debug-enabled flag `app.run(debug=True)` in review; codewatch has no rule. A codewatch hotspot would duplicate them."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-250/mitre_1.py",
+      "cwe": 250,
+      "cwe_name": "Execution with Unnecessary Privileges",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Privilege raise/lower design flaw (no try/finally); no request source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-252/author_1.py",
+      "cwe": 252,
+      "cwe_name": "Unchecked Return Value",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Unchecked return (`parse()` can return None) leading to `len(None)`; a design/robustness flaw, not a taint sink."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-259/author_1.py",
+      "cwe": 259,
+      "cwe_name": "Use of Hard-coded Password",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B105:hardcoded_password_string",
+        "detect-secrets:Secret Keyword"
+      ],
+      "note": "A hardcoded password compared with `==`; bandit B105 and detect-secrets find it in review. Codewatch has no generic Python hardcoded-credential rule."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-259/author_2.py",
+      "cwe": 259,
+      "cwe_name": "Use of Hard-coded Password",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B106:hardcoded_password_funcarg",
+        "detect-secrets:Secret Keyword"
+      ],
+      "note": "A hardcoded database password; bandit B106 and detect-secrets find it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-269/mitre_1.py",
+      "cwe": 269,
+      "cwe_name": "Improper Privilege Management",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Privilege management design flaw; no request source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-283/mitre_1.py",
+      "cwe": 283,
+      "cwe_name": "Unverified Ownership",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "`os.kill(processID)` with no authorization/validation; a design flaw, no source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-285/codeql_1.py",
+      "cwe": 285,
+      "cwe_name": "Improper Authorization",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Incomplete PAM authorization flow (no account management); a design flaw, no request source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-295/author_2.py",
+      "cwe": 295,
+      "cwe_name": "Improper Certificate Validation",
+      "category": "sample_questionable",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "The snippet creates a TLS 1.2 context and does not disable certificate verification; it does not show the labelled flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-306/pearce_1.py",
+      "cwe": 306,
+      "cwe_name": "Missing Authentication for Critical Functionality",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.trust-boundary"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.trust-boundary",
+        "detect-secrets:Secret Keyword"
+      ],
+      "note": "The `settings()` handler has no login decorator, but it is also not routed, so the route-without-login hotspot cannot see it. Review has a trust-boundary finding."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-321/author_1.py",
+      "cwe": 321,
+      "cwe_name": "Use of Hard-coded Cryptographic Key",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "detect-secrets:Base64 High Entropy String"
+      ],
+      "note": "A hardcoded Canvas API key; detect-secrets (Base64 High Entropy String) finds it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-321/author_2.py",
+      "cwe": 321,
+      "cwe_name": "Use of Hard-coded Cryptographic Key",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "detect-secrets:Base64 High Entropy String"
+      ],
+      "note": "A hardcoded OpenAI key; detect-secrets finds it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-327/codeql_2.py",
+      "cwe": 327,
+      "cwe_name": "Use of a Broken or Risky Cryptographic Algorithm",
+      "category": "covered_elsewhere",
+      "cluster": "weak-tls-default",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B504:ssl_with_no_version",
+        "semgrep:python.lang.security.audit.ssl-wrap-socket-is-deprecated.ssl-wrap-socket-is-deprecated"
+      ],
+      "note": "`ssl.wrap_socket()` without a version; bandit B504 and semgrep flag it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-327/codeql_4.py",
+      "cwe": 327,
+      "cwe_name": "Use of a Broken or Risky Cryptographic Algorithm",
+      "category": "review_gap",
+      "cluster": "fast-password-hash",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "`hashlib.sha256(password + salt)` is a fast password hash; no analyzer reports it. Codewatch weak-hash only covers MD5/SHA-1 and would call SHA-256 strong."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-367/author_1.py",
+      "cwe": 367,
+      "cwe_name": "Time-of-check Time-of-use (TOCTOU) Race Condition",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "TOCTOU between `exists()` and `open()`; a race/design flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-385/mitre_1.py",
+      "cwe": 385,
+      "cwe_name": "Covert Timing Channel",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Hand-written timing-unsafe comparison (and it is also syntactically broken); no request source. The HMAC timing rule only covers `==` on signatures."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-406/mitre_1.py",
+      "cwe": 406,
+      "cwe_name": "Insufficient Control of Network Message Volume (Network Amplification)",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Missing rate limiting in a DNS server; a design flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-414/author_1.py",
+      "cwe": 414,
+      "cwe_name": "Missing Lock Check",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Locking/race design flaw; no request source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-425/author_1.py",
+      "cwe": 425,
+      "cwe_name": "Direct Request",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.path-traversal",
+        "semgrep:python.django.security.audit.xss.direct-use-of-httpresponse.direct-use-of-httpresponse"
+      ],
+      "note": "codewatch path-traversal fired; the sample is labelled CWE-425 (direct request access) but is path traversal."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-434/pearce_1.py",
+      "cwe": 434,
+      "cwe_name": "Unrestricted Upload of File with Dangerous Type",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.path-traversal",
+        "codewatch:codewatch.python.web.unrestricted-upload"
+      ],
+      "note": "codewatch unrestricted-upload hotspot (and path-traversal) fired in review; uploads are review-only by design because the type check depends on app policy."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-434/pearce_2.py",
+      "cwe": 434,
+      "cwe_name": "Unrestricted Upload of File with Dangerous Type",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.path-traversal",
+        "codewatch:codewatch.python.web.unrestricted-upload"
+      ],
+      "note": "codewatch unrestricted-upload hotspot (and path-traversal) fired in review; review-only by design."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-454/author_1.py",
+      "cwe": 454,
+      "cwe_name": "External Initialization of Trusted Variables or Data Stores",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B105:hardcoded_password_string",
+        "detect-secrets:Secret Keyword"
+      ],
+      "note": "Hardcoded admin credentials and a global admin flag; bandit B105 and detect-secrets find the credential in review. The global-flag flaw is design."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-462/mitre_1.py",
+      "cwe": 462,
+      "cwe_name": "Duplicate Key in Associative List (Alist)",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Tuple-sorting logic flaw; no request source."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-477/author_1.py",
+      "cwe": 477,
+      "cwe_name": "Use of Obsolete Function",
+      "category": "low_value_pattern_gap",
+      "cluster": "deprecated-api",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "`time.clock()` is removed in Python 3.8 (CWE-477). A one-line pattern rule could flag it, but it is an obsolete-API smell, not a security flow."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-502/author_1.py",
+      "cwe": 502,
+      "cwe_name": "Deserialization of Untrusted Data",
+      "category": "sample_questionable",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B403:blacklist",
+        "semgrep:python.lang.security.deserialization.pickle.avoid-pickle"
+      ],
+      "note": "The snippet serializes a pickle (with a dangerous `__reduce__`), it does not deserialize untrusted data; bandit/semgrep flag the pickle use in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-502/codeql_1.py",
+      "cwe": 502,
+      "cwe_name": "Deserialization of Untrusted Data",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B403:blacklist",
+        "codewatch:codewatch.python.web.unsafe-deserialization"
+      ],
+      "note": "No request source: `pickle.loads` of a parameter. Review already has codewatch unsafe-deserialization and bandit B403; a parameter in an uncalled function is a hotspot by design."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-502/mitre_1.py",
+      "cwe": 502,
+      "cwe_name": "Deserialization of Untrusted Data",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "codewatch:codewatch.python.web.unsafe-deserialization"
+      ],
+      "note": "`cPickle.loads` of a headers parameter; codewatch unsafe-deserialization fired in review. Not a request source in this snippet."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-521/sonar_2.py",
+      "cwe": 521,
+      "cwe_name": "Weak Password Requirements",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B105:hardcoded_password_string"
+      ],
+      "note": "An empty database password in Django settings; bandit B105 finds it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-522/author_1.py",
+      "cwe": 522,
+      "cwe_name": "Insufficiently Protected Credentials",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B106:hardcoded_password_funcarg"
+      ],
+      "note": "Empty MySQL password and a `==` comparison; bandit B106 finds the credential in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-522/pearce_1.py",
+      "cwe": 522,
+      "cwe_name": "Insufficiently Protected Credentials",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.weak-hash"
+      ],
+      "review_by": [
+        "bandit:B106:hardcoded_password_funcarg",
+        "bandit:B324:hashlib",
+        "codewatch:codewatch.python.weak-hash"
+      ],
+      "note": "codewatch weak-hash (CWE-328) fired; the sample is labelled CWE-522 (insufficiently protected credentials) for MD5 password hashing."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-595/author_1.py",
+      "cwe": 595,
+      "cwe_name": "Comparison of Object References Instead of Object Contents",
+      "category": "low_value_pattern_gap",
+      "cluster": "identity-comparison",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "`account1 is account2` (CWE-595). A pattern rule could flag identity comparison of value-like names, but the signal is weak and noisy."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-605/author_1.py",
+      "cwe": 605,
+      "cwe_name": "Multiple Binds to the Same Port",
+      "category": "covered_elsewhere",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B104:hardcoded_bind_all_interfaces",
+        "semgrep:python.lang.security.audit.network.bind.avoid-bind-to-all-interfaces"
+      ],
+      "note": "Binding to 0.0.0.0; bandit B104 and semgrep find it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-611/sonar_1.py",
+      "cwe": 611,
+      "cwe_name": "Improper Restriction of XML External Entity Reference",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "codewatch:codewatch.python.xml-external-entities"
+      ],
+      "note": "codewatch xml-external-entities hotspot fired in review; the file is a fixed config path, not request data."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-611/sonar_2.py",
+      "cwe": 611,
+      "cwe_name": "Improper Restriction of XML External Entity Reference",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "codewatch:codewatch.python.xml-external-entities"
+      ],
+      "note": "codewatch xml-external-entities hotspot fired in review; fixed config path."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-611/sonar_3.py",
+      "cwe": 611,
+      "cwe_name": "Improper Restriction of XML External Entity Reference",
+      "category": "review_only_existing",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "codewatch:codewatch.python.xml-external-entities"
+      ],
+      "note": "codewatch xml-external-entities hotspot fired in review; fixed config path."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-611/sonar_4.py",
+      "cwe": 611,
+      "cwe_name": "Improper Restriction of XML External Entity Reference",
+      "category": "covered_elsewhere",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B317:blacklist",
+        "bandit:B406:blacklist"
+      ],
+      "note": "`xml.sax` external entities on a fixed file; bandit B317/B406 find it in review. The codewatch pattern only matches `xml.sax.handler.feature_external_ges`, not the imported name."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-641/sonar_1.py",
+      "cwe": 641,
+      "cwe_name": "Improper Restriction of Names for Files and Other Resources",
+      "category": "label_mismatch",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "review_by": [
+        "codewatch:codewatch.python.web.path-traversal"
+      ],
+      "note": "codewatch path-traversal fired; CWE-641 (improper restriction of names) is the same file-path flow."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-703/author_1.py",
+      "cwe": 703,
+      "cwe_name": "Improper Check or Handling of Exceptional Conditions",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Swallowed ValueError from a CLI input; a design/robustness flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-703/author_2.py",
+      "cwe": 703,
+      "cwe_name": "Improper Check or Handling of Exceptional Conditions",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Infinite loop on invalid CLI input; a design flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-703/author_3.py",
+      "cwe": 703,
+      "cwe_name": "Improper Check or Handling of Exceptional Conditions",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "`assert` used for input validation; a design flaw (and assertions can be disabled)."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-730/author_1.py",
+      "cwe": 730,
+      "cwe_name": "",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "A bad regex on a parameter; no request source and the pattern is not clearly a ReDoS."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-732/author_1.py",
+      "cwe": 732,
+      "cwe_name": "Incorrect Permission Assignment for Critical Resource",
+      "category": "covered_elsewhere",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B103:set_bad_file_permissions",
+        "bandit:B605:start_process_with_a_shell",
+        "semgrep:python.lang.security.audit.insecure-file-permissions.insecure-file-permissions"
+      ],
+      "note": "`chmod(0o755)` followed by `os.system`; bandit B103/B605 and semgrep find it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-776/codeql_1.py",
+      "cwe": 776,
+      "cwe_name": "Improper Restriction of Recursive Entity References in DTDs",
+      "category": "sample_questionable",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B314:blacklist",
+        "bandit:B405:blacklist"
+      ],
+      "note": "`ElementTree.fromstring` does not resolve external entities; bandit B314/B405 flag it in review, but the CWE-776 label is questionable."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-798/author_1.py",
+      "cwe": 798,
+      "cwe_name": "Use of Hard-coded Credentials",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B106:hardcoded_password_funcarg",
+        "detect-secrets:Secret Keyword"
+      ],
+      "note": "Hardcoded database password; bandit B106 and detect-secrets find it in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-798/codeql_1.py",
+      "cwe": 798,
+      "cwe_name": "Use of Hard-coded Credentials",
+      "category": "covered_elsewhere",
+      "cluster": "hardcoded-credentials",
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [
+        "bandit:B105:hardcoded_password_string",
+        "detect-secrets:Secret Keyword"
+      ],
+      "note": "Request password compared with a hardcoded string; bandit B105 and detect-secrets find the credential in review."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-827/sonar_1.py",
+      "cwe": 827,
+      "cwe_name": "Improper Control of Document Type Definition",
+      "category": "review_gap",
+      "cluster": "lxml-parser-default",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "`lxml.etree.XMLParser()` with no explicit entity settings; no analyzer reports it. lxml before 5.0 resolved entities by default; from 5.0 the default is safer, so a rule needs a version caveat or should stay a hotspot."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-835/author_1.py",
+      "cwe": 835,
+      "cwe_name": "Loop with Unreachable Exit Condition",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Infinite loop from a missing increment; a logic flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-841/mitre_1.py",
+      "cwe": 841,
+      "cwe_name": "Improper Enforcement of Behavioral Workflow",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "Command dispatch missing an authorization check; a business-logic flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-918/codeql_2.py",
+      "cwe": 918,
+      "cwe_name": "Server-Side Request Forgery",
+      "category": "sample_questionable",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [
+        "codewatch:codewatch.python.web.xss"
+      ],
+      "review_by": [
+        "bandit:B113:request_without_timeout",
+        "codewatch:codewatch.python.web.xss",
+        "semgrep:python.django.security.injection.ssrf.ssrf-injection-requests.ssrf-injection-requests"
+      ],
+      "note": "The URL host is fixed (`api.github.com`); the request value only changes the path, so this is not SSRF. Review has a codewatch XSS finding on the response body (a false-alarm shape) plus bandit/semgrep."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-941/mitre_1.py",
+      "cwe": 941,
+      "cwe_name": "Incorrectly Specified Destination in a Communication Channel",
+      "category": "out_of_scope",
+      "cluster": null,
+      "addressable": false,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "UDP destination taken from the packet; a protocol design flaw."
+    },
+    {
+      "path": "Testcases_Insecure_Code/CWE-943/sonar_1.py",
+      "cwe": 943,
+      "cwe_name": "Improper Neutralization of Special Elements in Data Query Logic",
+      "category": "verdict_gap",
+      "cluster": "nosql-dynamodb",
+      "addressable": true,
+      "verdict_by": [],
+      "review_by": [],
+      "note": "The username parameter is concatenated into a DynamoDB `FilterExpression`; no analyzer and no Python NoSQL sink exists. A request source in a view would make this verdict-detectable."
+    }
+  ],
+  "caveats": [
+    "The 51/121 verdict score counts a finding only when its CWE matches the sample's folder (directly or through a parent). Eight misses have a real codewatch finding of a different CWE.",
+    "Most of the remaining misses are not detection gaps: 29 are design/logic/no-source, 14 are already found in review by bandit/semgrep/detect-secrets, and 7 already fire codewatch review hotspots.",
+    "Only five cases point at new codewatch work: header injection (2), DynamoDB NoSQL (1), fast password hashing (1), lxml default parser (1). Two cheap pattern rules (time.clock, `is`) are optional.",
+    "Header injection and lxml defaults are recommended as review hotspots first: Werkzeug's CRLF handling and lxml's version-dependent default decide whether they can be verdict findings. Verify on a test app before promoting.",
+    "SecurityEval is a snippets dataset: many samples are plain functions with no request source, which verdict-mode taint rules cannot flag by design. The held-out Copilot/InCoder suites are the fairer measure and were not touched.",
+    "The SecurityEval pool was last read for rules on 2026-10-30; this classification did not change any rule."
+  ],
+  "summary": {
+    "missed": 70,
+    "categories": {
+      "out_of_scope": 29,
+      "label_mismatch": 8,
+      "guard_tradeoff": 1,
+      "verdict_gap": 3,
+      "review_only_existing": 7,
+      "covered_elsewhere": 14,
+      "sample_questionable": 4,
+      "review_gap": 2,
+      "low_value_pattern_gap": 2
+    },
+    "addressable_cases": 8,
+    "no_verdict_finding": 57,
+    "no_finding_at_all": 27
+  }
+}
