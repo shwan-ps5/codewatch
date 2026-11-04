@@ -1188,6 +1188,30 @@ def test_dom_xss_in_a_templates_inline_script(tmp_path):
     assert found == {("templates/page.html", 4, "xss"), ("templates/page.html", 5, "xss")}
 
 
+def test_mcp_tool_arguments_are_untrusted_input(tmp_path):
+    """An MCP server's tool arguments are chosen by a model that any text it reads can steer (Vibe-Trading
+    GHSA-mjrq-xg2m-qg94: a run id from @mcp.tool joined into a path). Text-typed parameters only; a checked one and
+    a function that isn't a tool stay quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"server.py": (
+        "import os\n\nfrom fastmcp import FastMCP\n\nmcp = FastMCP('x')\nRUNS = '/srv/runs'\n\n\n"
+        "@mcp.tool\n"
+        "def get_run_result(run_id: str) -> str:\n"
+        "    return open(os.path.join(RUNS, run_id, 'result.json')).read()\n\n\n"
+        "@mcp.tool()\n"
+        "async def run_swarm(preset: str, wait_seconds: int = 0) -> str:\n"
+        "    return open(os.path.join(RUNS, str(wait_seconds))).read()\n\n\n"
+        "@mcp.tool\n"
+        "def checked(run_id: str) -> str:\n"
+        "    if not run_id.isalnum():\n"
+        "        raise ValueError('bad id')\n"
+        "    return open(os.path.join(RUNS, run_id)).read()\n\n\n"
+        "def helper(run_id: str) -> str:\n"
+        "    return open(os.path.join(RUNS, run_id)).read()\n")})
+    assert found == {("server.py", 11, "path-traversal")}
+
+
 def test_error_details_in_responses(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")

@@ -77,6 +77,47 @@ rules:
           - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
           - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
           - focus-metavariable: $PARAM
+      # An MCP server's tool arguments (FastMCP, mcp.server.fastmcp: @mcp.tool / @mcp.tool()): the model chooses
+      # them, and whatever text it reads can steer it, so they're as untrusted as a request's. Text-typed only, as
+      # for routes. Vibe-Trading GHSA-mjrq-xg2m-qg94 (a run id joined into a path).
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @$MCP.tool
+                  def $TOOL(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool
+                  async def $TOOL(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool(...)
+                  def $TOOL(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool(...)
+                  async def $TOOL(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool
+                  def $TOOL(..., $PARAM: $TYPE = $DEFAULT, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool
+                  async def $TOOL(..., $PARAM: $TYPE = $DEFAULT, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool(...)
+                  def $TOOL(..., $PARAM: $TYPE = $DEFAULT, ...):
+                    ...
+              - pattern-inside: |
+                  @$MCP.tool(...)
+                  async def $TOOL(..., $PARAM: $TYPE = $DEFAULT, ...):
+                    ...
+          - metavariable-regex:
+              metavariable: $TYPE
+              regex: '^((typing\.)?(Optional|List|Annotated)\[str\b.*|(list|set)\[str\]|str( \| None)?|Any)$'
+          - focus-metavariable: $PARAM
       # A FastAPI route's uploaded files: the name the client sent (file: UploadFile, files: List[UploadFile]),
       # not the file object, whose contents aren't a path or markup. libre-chat GHSA-3864-rp2m-2qfj, LightRAG
       # GHSA-v9w6-9hq9-33ch (both: open(os.path.join(folder, file.filename), "wb")).

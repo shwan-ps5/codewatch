@@ -2649,7 +2649,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet. CowAgent GHSA-2xj7 added 2026-11-03 at review of the fourth unreviewed batch (the batch rejected it as an invisible validator, but the fix adds the first check on a URL the agent's vision tool fetches).",
+      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet. CowAgent GHSA-2xj7 added 2026-11-03 at review of the fourth unreviewed batch (the batch rejected it as an invisible validator, but the fix adds the first check on a URL the agent's vision tool fetches). GHSA-mjrq-xg2m-qg94 (Vibe-Trading) was used on 2026-11-04 to make FastMCP tool parameters a source (still missed: the sink is behind a method in another file).",
       "cases": [
         {
           "id": "GHSA-xq87-v97r-jw5g",

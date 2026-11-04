@@ -1018,6 +1018,11 @@ rule):
     and an argv list with a fixed program and no shell is still a command sink; lines 290/292 carry a real path
     either way), Scout GHSA-g53g (as read in step 24), arches GHSA-gmpq (`sql-value-formatting` on a stored id: a
     pattern finding, not taint).
+36. **MCP tool arguments** (2026-11-04): FastMCP's `@mcp.tool` / `@mcp.tool()` parameters typed as text are a source
+    (a model chooses them, and text it reads can steer it), in the shared Python sources. Driven by Vibe-Trading
+    GHSA-mjrq (`cve-pairs-python-nonhttp`), which stays missed: its sink is in another file, behind
+    `store.load_run(run_id)` on a store object. No learning app or ~/Dev project is an MCP server, so the nightly
+    apps can't show false alarms from it; hermes-agent and CowAgent register tools through their own registries.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
