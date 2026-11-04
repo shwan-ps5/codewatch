@@ -1,6 +1,7 @@
 import ast
 import json
 import re
+import tempfile
 from pathlib import Path
 
 from .base import (
@@ -17,6 +18,7 @@ from .base import (
     Analyzer,
     Finding,
     Result,
+    ToolError,
     by_prefix,
     is_test_file,
 )
@@ -73,11 +75,17 @@ class Ruff(Analyzer):
 
     def run(self, ctx):
         files = ctx.files_with(PY)
-        out = self.exec(
-            ["check", "--output-format", "json", "--exit-zero", "--no-cache",
-             "--extend-select", ",".join(RUFF_EXTEND_SELECT), "--extend-ignore", ",".join(RUFF_EXTEND_IGNORE),
-             *files], ctx
-        )
+        args = ["check", "--output-format", "json", "--exit-zero", "--no-cache",
+                "--extend-select", ",".join(RUFF_EXTEND_SELECT), "--extend-ignore", ",".join(RUFF_EXTEND_IGNORE),
+                *files]
+        try:
+            out = self.exec(args, ctx)
+        except ToolError as e:
+            # A repository pinning another ruff (langflow: required-version) stops ruff altogether; its other
+            # settings are then ignored rather than losing every finding.
+            if "Required version" not in str(e):
+                raise
+            out = self.exec(["--isolated", *args], ctx)
         result = Result()
         for item in json.loads(out or "[]"):
             code = item.get("code")
@@ -285,14 +293,19 @@ class Radon(Analyzer):
     extensions = PY
 
     def run(self, ctx):
-        files = ctx.files_with(PY)
+        files = [str(ctx.root / f) for f in ctx.files_with(PY)]
         threshold = ctx.complexity_threshold
         result = Result()
-        functions = radon_functions(json.loads(self.exec(["cc", "-j", *files], ctx)))
+        # Run outside the repository: radon loads its pyproject.toml's whole [tool] table into configparser, which
+        # fails on any value with a "%" (langflow's pytest log format).
+        with tempfile.TemporaryDirectory() as cwd:
+            cc = self.exec(["cc", "-j", *files], ctx, cwd=cwd)
+            mi_out = self.exec(["mi", "-j", *files], ctx, cwd=cwd)
+        functions = radon_functions(json.loads(cc))
         result.findings = [radon_finding(ctx, path, b, threshold) for path, b in functions
                            if b["complexity"] > threshold]
         result.metrics["complexity_python"] = sum(b["complexity"] for _, b in functions)
-        mi = [v["mi"] for v in json.loads(self.exec(["mi", "-j", *files], ctx)).values() if "mi" in v]
+        mi = [v["mi"] for v in json.loads(mi_out).values() if "mi" in v]
         if mi:
             result.metrics["maintainability_index"] = round(sum(mi) / len(mi), 1)
         return result
