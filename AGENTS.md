@@ -55,8 +55,10 @@ Use only advisories that link a fix commit.
 
 ### Topic queue
 
-If the maintainer just says "do the next topic", take the first one below not marked done. When you finish one,
-mark it `(done YYYY-MM-DD, file name)` in this list and commit that with your batch. Don't start a topic that isn't
+If the maintainer just says "do the next topic", take the first one below not marked done. A topic is finished
+when its candidate list, rebuilt and filtered, is empty (one batch is not a topic; topic 3 was marked done on
+2026-11-04 with 324 candidates left). Only then mark it `(done YYYY-MM-DD, file name)` in this list and commit that
+with your batch. Don't start a topic that isn't
 listed. If you have an idea for a new one, write it at the end as `(proposed)` and stop.
 
 Already mined, don't repeat: GitHub-reviewed PyPI advisories since 2021 (PLAN.md steps 22-27) and GitHub-reviewed
@@ -89,7 +91,7 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-blind-javascript-N` (one suite for the whole batch, not one per case) or, for non-HTTP input,
    `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
-3. **JavaScript/TypeScript apps without a listed web framework.** (done 2026-11-04, cve-candidates-2026-11-04-javascript-noframework.{tsv,json}) Same source and filter as topic 2, but keep the
+3. **JavaScript/TypeScript apps without a listed web framework.** Same source and filter as topic 2, but keep the
    non-archived JavaScript/TypeScript repositories that topic 2 skipped because their `package.json` (at the fix
    commit) declares none of its frameworks, or that have no `package.json` at the root (about 380 advisories in
    about 210 repositories on 2026-11-04). Expect Electron and Tauri apps, browser extensions, plain-Node servers
