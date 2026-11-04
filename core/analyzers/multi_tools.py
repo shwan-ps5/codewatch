@@ -31,6 +31,7 @@ from .base import (
 from .body_models import with_model_sources
 from .constant_branches import blank_dead_branches
 from .containers import track_slots
+from .inline_scripts import inline_scripts
 from .match_statements import match_as_if
 from .python_tools import LineCache, complexity_severity, security_purpose
 from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
@@ -455,6 +456,8 @@ def analysis_copies(ctx, files, copies):
                 rewritten = analysis_copy((ctx.root / rel).read_text(), url_views)
             except (OSError, UnicodeDecodeError):
                 rewritten = None
+        if Path(rel).suffix.lower() in TEMPLATE_EXTENSIONS:
+            add_inline_scripts(ctx, rel, copies, targets, originals)
         if rewritten is None:
             targets.append(rel)
             continue
@@ -464,6 +467,19 @@ def analysis_copies(ctx, files, copies):
         targets.append(str(copy))
         originals[str(copy)] = rel
     return targets, originals
+
+
+def add_inline_scripts(ctx, rel, copies, targets, originals):
+    """A template's inline scripts as a .js copy beside it (inline_scripts.py), mapped back to the template."""
+    text = read_source(ctx.root / rel)
+    script = inline_scripts(text) if text else None
+    if script is None:
+        return
+    copy = copies / f"{rel}.inline.js"
+    copy.parent.mkdir(parents=True, exist_ok=True)
+    copy.write_text(script)
+    targets.append(str(copy))
+    originals[str(copy)] = rel
 
 
 def semgrep_type(check_id, metadata):

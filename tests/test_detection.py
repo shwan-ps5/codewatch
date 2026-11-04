@@ -1158,6 +1158,36 @@ def test_a_commonpath_containment_check_clears_the_path(tmp_path):
     assert found == {("app.py", 11, "path-traversal")}
 
 
+def test_inline_scripts_keep_their_lines_and_drop_markup_and_template_tags():
+    from core.analyzers.inline_scripts import inline_scripts
+
+    source = ("<p>{{ x }}</p>\n<script src='/a.js'></script>\n<script type='text/template'>{{ y }}</script>\n"
+              "<script>\n  var d = {{ items|tojson }};\n  {% if a %}go(d);{% endif %}\n</script>\n")
+    lines = inline_scripts(source).split("\n")
+    assert len(lines) == len(source.split("\n"))
+    assert lines[4] == "  var d = 0                 ;"
+    assert lines[5].strip() == "go(d);"
+    assert not "".join(lines[:4]).strip()
+    assert inline_scripts("<script src='/a.js'></script><p>{{ x }}</p>") is None
+
+
+def test_dom_xss_in_a_templates_inline_script(tmp_path):
+    """Python apps keep much of their JavaScript in <script> blocks of their templates, which the JavaScript rules
+    never scanned. The DOM sources (location, a message event) reaching innerHTML or document.write there are now
+    found on the template's own lines; textContent stays quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"templates/page.html": (
+        "{% extends 'base.html' %}\n"
+        "<script>\n"
+        "  var data = {{ items|tojson }};\n"
+        "  document.getElementById('out').innerHTML = decodeURIComponent(location.hash.slice(1));\n"
+        "  window.addEventListener('message', (e) => { document.write(e.data); });\n"
+        "  document.getElementById('out').textContent = location.hash;\n"
+        "</script>\n")})
+    assert found == {("templates/page.html", 4, "xss"), ("templates/page.html", 5, "xss")}
+
+
 def test_error_details_in_responses(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
