@@ -100,6 +100,14 @@ npm advisories (step 29). Those pools are nearly used up.
    messages, MCP tool arguments, remote content rendered in a client → `cve-pairs-javascript-nonhttp`. Blind ones:
    one new `cve-pairs-blind-javascript-N` per batch (next unused N) or `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-noframework.{tsv,json}`.
+4. **PHP web apps.** Same source and filter as topics 1-3, keeping non-archived repositories whose primary language
+   is PHP: applications and CMSs (Laravel, Symfony, CodeIgniter, Yii, Slim, WordPress/Drupal/Joomla themes and
+   plugins, plain PHP apps), about 1,100 candidates on 2026-11-04. Reject libraries (Composer packages whose
+   advisory is in library code), and fixes in vendored code. Request input is `$_GET`, `$_POST`, `$_REQUEST`,
+   `$_COOKIE`, `$_FILES`, `$_SERVER` and the frameworks' request objects. Suites (new; create them as the first
+   batch needs them): `cve-pairs-php` for request input, blind ones in `cve-pairs-blind-php-N` (one per batch).
+   Templates (Blade, Twig, Smarty) count as source. codewatch has no PHP rules yet, so this is ground truth for
+   later work: no scans. Files: `benchmarks/cve-candidates-YYYY-MM-DD-php-unreviewed.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 

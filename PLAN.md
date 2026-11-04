@@ -1006,6 +1006,18 @@ rule):
     (cve-pairs-javascript, 25) sorted like step 32: 8 logic/authorization, 6 path checks that look safe, 4 stored
     data, 3 missing sinks (a Koa error message, Ghost's postMessage preview in an HTML file, an EJS value in a
     script), 1 cross-package (Openpanel). No cheap rule there yet.
+35. **Python fixes still flagged** (2026-11-04, the 11 of the nightly run; Ollama drafts, the doubtful ones read
+    by hand). Real, the fix incomplete or another flow left open: MindsDB GHSA-2g5w (`data["file"]` still reaches
+    `os.remove`), LLaMA Factory GHSA-527m (`check_lfi_path` compares without `os.sep`), MobSF GHSA-8m9j (`/\\host`
+    passes `sanitize_redirect`), Parsl GHSA-f2mf (two query helpers left unparameterised), AIL GHSA-mcpq (the same
+    raw error string in another view), label-studio GHSA-pc6f (as read in step 24: SSRF protection is a setting).
+    False alarms whose shapes aren't worth a rule yet: agent-zero GHSA-8j45 (a helper that resolves, checks
+    `relative_to()` and raises, flagged at the call because `Path(value)` is itself a sink), pgAdmin GHSA-9crj
+    (`check_access_permission` checks containment, but by name it's an authorization check, which step 24 chose
+    not to trust), LoLLMS GHSA-8wv4 (a FastAPI body parameter named `request` makes its int fields request data,
+    and an argv list with a fixed program and no shell is still a command sink; lines 290/292 carry a real path
+    either way), Scout GHSA-g53g (as read in step 24), arches GHSA-gmpq (`sql-value-formatting` on a stored id: a
+    pattern finding, not taint).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
