@@ -89,7 +89,7 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-blind-javascript-N` (one suite for the whole batch, not one per case) or, for non-HTTP input,
    `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
-3. **JavaScript/TypeScript apps without a listed web framework.** Same source and filter as topic 2, but keep the
+3. **JavaScript/TypeScript apps without a listed web framework.** (done 2026-11-04, cve-candidates-2026-11-04-javascript-noframework.{tsv,json}) Same source and filter as topic 2, but keep the
    non-archived JavaScript/TypeScript repositories that topic 2 skipped because their `package.json` (at the fix
    commit) declares none of its frameworks, or that have no `package.json` at the root (about 380 advisories in
    about 210 repositories on 2026-11-04). Expect Electron and Tauri apps, browser extensions, plain-Node servers
