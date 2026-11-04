@@ -997,6 +997,15 @@ rule):
     cg GHSA-w228 (a redirect back to the Referer is not treated as open; only the linking site chose it) and
     OpenResolve GHSA-h3h4 (request values in a JSON error message are not XSS). Whoogle GHSA-2689 is a cross-file
     flow (a cookie reaching pickle.loads inside a model class).
+34. **Inline scripts in templates** (2026-11-04): the JavaScript rules never saw `<script>` blocks in .html/.jinja
+    templates, where Python apps keep much of their front end. `inline_scripts.py` writes a `.js` copy of each
+    template with only its inline code, on the same lines (markup, `src` scripts and non-JS script types blanked,
+    `{{ x }}` made a number, `{% %}` blanked), and findings map back to the template. Measured: no front-end case
+    changes (their data comes from fetch responses and stored values, not DOM sources) and the 32 Python apps give
+    the same findings, so it adds coverage for DOM sources with no new false alarms there. JavaScript misses
+    (cve-pairs-javascript, 25) sorted like step 32: 8 logic/authorization, 6 path checks that look safe, 4 stored
+    data, 3 missing sinks (a Koa error message, Ghost's postMessage preview in an HTML file, an EJS value in a
+    script), 1 cross-package (Openpanel). No cheap rule there yet.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

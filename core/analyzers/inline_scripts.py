@@ -12,8 +12,8 @@ SCRIPT_RE = re.compile(r"<script\b([^>]*)>(.*?)</script\s*>", re.IGNORECASE | re
 JS_TYPES = {"", "text/javascript", "application/javascript", "module", "text/ecmascript", "application/ecmascript"}
 TYPE_RE = re.compile(r"""\btype\s*=\s*["']?([^"'\s>]*)""", re.IGNORECASE)
 SRC_RE = re.compile(r"\bsrc\s*=", re.IGNORECASE)
-# {{ value }} becomes a number (valid JavaScript wherever a value goes, plain text inside a string); {% tag %} and
-# {# comment #} become spaces. Newlines inside a tag are kept so lines don't move.
+# A template expression becomes a number (valid JavaScript wherever a value goes, plain text inside a string);
+# statement tags and template comments become spaces. Newlines inside a tag are kept so lines don't move.
 EXPRESSION_RE = re.compile(r"\{\{.*?\}\}", re.DOTALL)
 STATEMENT_RE = re.compile(r"\{%.*?%\}|\{#.*?#\}", re.DOTALL)
 
