@@ -963,6 +963,22 @@ rule):
     the rewrite skipped them, and the unrewritten `match` lost the route's finding further down the file. The six
     learning apps with uploads or `match` statements (paperless-ngx, recipes, wger, dispatch, immich, netbox)
     gave the same findings as the nightly run.
+    (2)-(4), same day: pgAdmin's driver methods (`conn.execute_scalar/_dict/_2darray/_void`) are SQL sinks
+    (GHSA-v395); `req.form/.args/.values/.files/.get_json()` is request data unless `req` was assigned from a call
+    (GHSA-cr8c, the file manager's `add(self, req)`); a `Path` built only for `.relative_to()` isn't a path sink,
+    and `try: Path(os.path.abspath(...)).relative_to(base) except ValueError: return` (or `.resolve()` first)
+    clears the value, the lexical `Path(name).relative_to(base)` the fix replaced doesn't (GHSA-cr8c);
+    `if ... or not _is_safe_redirect_url(x): x = url_for(...)` clears x unless an `and` can skip the check, and
+    Flask-Login's `login_url()` is an internal URL (GHSA-7r93). All five targets now found and quiet at their fixes.
+    Found on the way: psiturk GHSA-9mq4 was lost because `if not ('hitId' in request.args and ...): raise` matched
+    the forbidden-character guard (`if "'" in name: raise`) with `request.args` as the checked value, which cleared
+    every request value after it; the request's own mappings are now excluded from that guard. That one can add
+    findings on ordinary apps (a key-presence check before reading the value is common), so the nightly run should
+    be read for new findings after such checks. Not done: a hotspot for template values in event handlers,
+    unquoted attributes and script strings (5 hotspots on the learning apps for 2 review-mode cases).
+    (5), part: `codewatch.templates.request-in-url-attribute`, a vulnerability for `request.args/GET/form/...`
+    printed at the start of an href/src/action or inside an event handler (Formspree GHSA-2wvm, now found and
+    quiet at its fix); no match in any learning app or ~/Dev project.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

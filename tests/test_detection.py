@@ -1029,6 +1029,115 @@ def test_fastapi_upload_file_names_are_request_data(tmp_path):
     assert found == {("app.py", 14, "path-traversal"), ("app.py", 20, "path-traversal")}
 
 
+def test_project_sql_driver_methods_and_a_request_passed_as_req(tmp_path):
+    """pgAdmin GHSA-v395-x24j-4r3g: conn.execute_scalar() runs the string it gets, like cursor.execute(). pgAdmin
+    GHSA-cr8c-972v-rmp3: the file manager's add(self, req) reads req.form, the request under a short name. A
+    parameterised call, an execute_void() on a fixed string and an HTTP client's reply named req stay quiet, and so
+    does the Path built only for a relative_to() check (it opens nothing; the open() after it is the sink). That
+    check clears the path once the path is normalised first (abspath), as GHSA-cr8c's fix does; the lexical one
+    it replaced doesn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\nimport pathlib\n\nimport requests\nfrom flask import request\n\n\n"
+        "def restore(conn):\n"
+        "    name = request.form['value']\n"
+        "    conn.execute_scalar(\"SELECT pg_create_restore_point('{0}');\".format(name))\n"
+        "    conn.execute_scalar('SELECT pg_create_restore_point(%s);', (name,))\n"
+        "    conn.execute_void('SELECT 1')\n\n\n"
+        "class FileManager:\n"
+        "    def add(self, req=None):\n"
+        "        path = req.form.get('currentpath')\n"
+        "        try:\n"
+        "            pathlib.Path('/data' + path).relative_to('/data')\n"
+        "        except ValueError:\n"
+        "            return None\n"
+        "        with open('/data' + path, 'wb') as f:\n"
+        "            f.write(b'')\n\n"
+        "    def add_fixed(self, req=None):\n"
+        "        path = req.form.get('currentpath')\n"
+        "        try:\n"
+        "            if SERVER_MODE:\n"
+        "                pathlib.Path(os.path.abspath(os.path.join('/data', path))).relative_to('/data')\n"
+        "        except ValueError:\n"
+        "            return None\n"
+        "        with open('/data' + path, 'wb') as f:\n"
+        "            f.write(b'')\n\n"
+        "    def fetch(self):\n"
+        "        req = requests.get('https://api.example.com/x')\n"
+        "        with open('/data' + req.json()['name'], 'wb') as f:\n"
+        "            f.write(b'')\n")})
+    assert found == {("app.py", 10, "sql-injection"), ("app.py", 22, "path-traversal")}
+
+
+def test_a_named_check_that_replaces_a_redirect_target(tmp_path):
+    """pgAdmin GHSA-7r93-vp6c-cw5m's fix: `if nxt is None or not _is_safe_redirect_url(nxt): nxt = url_for(...)`
+    leaves nxt safe for the redirect below; a check that only logs doesn't. Flask-Login's login_url() links to the
+    app's own login view, whatever goes in its next parameter."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, redirect, request, url_for\nfrom flask_login.utils import login_url\n\n"
+        "app = Flask(__name__)\n\n\n"
+        "@app.route('/v')\n"
+        "def validate():\n"
+        "    nxt = request.args.get('next', None)\n"
+        "    if nxt is None or nxt == url_for('a') or \\\n"
+        "            not _is_safe_redirect_url(nxt):\n"
+        "        nxt = url_for('index')\n"
+        "    if done():\n"
+        "        return redirect(nxt)\n"
+        "    return redirect(login_url('mfa.validate', next_url=request.args.get('next')))\n\n\n"
+        "@app.route('/w')\n"
+        "def logged():\n"
+        "    nxt = request.args.get('next')\n"
+        "    if not is_safe_url(nxt):\n"
+        "        log(nxt)\n"
+        "    return redirect(nxt)\n")})
+    assert found == {("app.py", 23, "open-redirect")}
+
+
+def test_a_key_presence_check_does_not_clear_the_whole_request(tmp_path):
+    """psiturk GHSA-9mq4-9556-6qxq: `if not ('hitId' in request.args and ...): raise` matched the forbidden-
+    character guard (`if "'" in name: raise`) with request.args as the checked value, so every request value
+    read after it was clean, and mode reached render_template_string() unreported. A real character check on
+    a value still clears that value."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, render_template_string, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/ad')\n"
+        "def ad():\n"
+        "    if not ('hitId' in request.args and 'assignmentId' in request.args):\n"
+        "        raise ValueError('missing')\n"
+        "    mode = request.args['mode']\n"
+        "    return render_template_string('<p>' + mode + '</p>')\n\n\n"
+        "@app.route('/b')\n"
+        "def b():\n"
+        "    name = request.args['name']\n"
+        "    if '{' in name:\n"
+        "        raise ValueError('no')\n"
+        "    return render_template_string('<p>' + name + '</p>')\n")}, full_ids=True)
+    assert {(line, rule.rsplit(".", 1)[1]) for _, line, rule in found} == {(11, "template-injection"), (11, "xss")}
+
+
+def test_request_values_printed_into_a_link_or_an_event_handler(tmp_path):
+    """Formspree GHSA-2wvm-9j4x-757c: <a href="{{ request.args.get('next') }}">. Autoescaping keeps the value
+    inside the attribute but doesn't stop a javascript: URL, and in an onclick the escaped quote is decoded back
+    before the script runs. A link with a fixed start, a query string value and plain text stay quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"templates/thanks.html": (
+        "{% if request.args.get('next') %}\n"
+        "  <a href=\"{{ request.args.get('next') }}\" class=\"button\">Back</a>\n"
+        "{% endif %}\n"
+        "<button onclick=\"go('{{ request.GET.page }}')\">Go</button>\n"
+        "<a href=\"/search?q={{ request.args.q }}\">Again</a>\n"
+        "<a href=\"{{ url_for('index') }}\">Home</a>\n"
+        "<p>{{ request.args.q }}</p>\n")})
+    assert {(path, line) for path, line, _ in found} == {("templates/thanks.html", 2), ("templates/thanks.html", 4)}
+
+
 def test_error_details_in_responses(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")

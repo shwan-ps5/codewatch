@@ -107,6 +107,33 @@ rules:
       - pattern-regex: '\{\{[^{}\n]{0,200}\|\s{0,5}safe\b'
       - pattern-regex: '\{%-?\s{0,5}autoescape\s{1,5}(off|false)\b'
 
+  - id: codewatch.templates.request-in-url-attribute
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      A value from the request's query or form is printed at the start of a link (href, src, action) or inside an
+      event handler. Autoescaping keeps it inside the attribute, but a "javascript:" URL still runs, and in an
+      onclick the escaped quotes are decoded before the script runs. Build the link on the server and check it
+      (url_for, or an allowlist of hosts and schemes), and pass handler values through data attributes.
+    # Formspree GHSA-2wvm-9j4x-757c: <a href="{{ request.args.get('next') }}">. A link with a fixed start
+    # (href="/search?q={{ ... }}") can't change scheme, so only the start of the value counts.
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data as a template's link or event handler
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+        - https://jinja.palletsprojects.com/en/stable/templates/#html-escaping
+    paths:
+      include: ["*.html", "*.htm", "*.jinja", "*.jinja2", "*.j2", "*.djhtml"]
+    pattern-either:
+      - pattern-regex: '(?i)\b(href|src|action|formaction|xlink:href)\s{0,5}=\s{0,5}["'']?\s{0,5}\{\{-?\s{0,5}request\.(args|GET|values|query_params|form|POST)\b'
+      - pattern-regex: '(?i)\bon[a-z]{3,20}\s{0,5}=\s{0,5}"[^"<>]{0,200}\{\{-?\s{0,5}request\.(args|GET|values|query_params|form|POST)\b'
+      - pattern-regex: '(?i)\bon[a-z]{3,20}\s{0,5}=\s{0,5}''[^''<>]{0,200}\{\{-?\s{0,5}request\.(args|GET|values|query_params|form|POST)\b'
+
   - id: codewatch.templates.not-autoescaped
     languages: [generic]
     severity: WARNING

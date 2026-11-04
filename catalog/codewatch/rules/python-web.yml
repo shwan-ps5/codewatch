@@ -28,6 +28,19 @@ rules:
               request = $MAKE(...)
               ...
       - pattern: starlette.requests.Request
+      # The request passed on to a helper under a short name: pgAdmin's file manager, add(self, req) reading
+      # req.form.get('currentpath') (GHSA-cr8c-972v-rmp3). Only the parts a Flask/Werkzeug request has and an
+      # HTTP client's response doesn't (`req = requests.get(url); req.json()` is the server's reply).
+      - patterns:
+          - pattern-either:
+              - pattern: req.form
+              - pattern: req.args
+              - pattern: req.values
+              - pattern: req.files
+              - pattern: req.get_json(...)
+          - pattern-not-inside: |
+              req = $MAKE(...)
+              ...
       # Class-based views (Django, DRF, Tornado) keep the request on self, and Django's the URL captures in
       # self.kwargs/self.args.
       - patterns:
@@ -461,6 +474,36 @@ rules:
                         ...
                         raise ...
                       ...
+                  # The same check as a relative_to() that raises, on a normalised path: pgAdmin GHSA-cr8c-972v-rmp3's
+                  # fix, `try: Path(os.path.abspath(os.path.join(base, name))).relative_to(base) except ValueError:
+                  # return`. Not the lexical one it replaced (Path(name).relative_to(base) lets "a/../../x" through).
+                  - pattern-inside: |
+                      try:
+                        ...
+                        pathlib.Path(<... os.path.abspath(<... $X ...>) ...>).relative_to(...)
+                        ...
+                      except ValueError:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      try:
+                        ...
+                        pathlib.Path(<... os.path.realpath(<... $X ...>) ...>).relative_to(...)
+                        ...
+                      except ValueError:
+                        ...
+                        return ...
+                      ...
+                  - pattern-inside: |
+                      try:
+                        ...
+                        pathlib.Path(..., <... $X ...>, ...).resolve().relative_to(...)
+                        ...
+                      except ValueError:
+                        ...
+                        return ...
+                      ...
                   # A failed check that replaces the value: if urlsplit(next).netloc != "": next = url_for("index")
                   - pattern-inside: |
                       if <... urllib.parse.urlsplit($X).$PART ...>:
@@ -472,6 +515,28 @@ rules:
                         ...
                         $X = $SAFE
                       ...
+                  # ...or a named check that said no replaces it: `if nxt is None or not _is_safe_redirect_url(nxt):
+                  # nxt = url_for("index")` (pgAdmin GHSA-7r93-vp6c-cw5m's fix). Not when an `and` can skip the check.
+                  - patterns:
+                      - pattern-inside: |
+                          if <... not $CHECK(..., $X, ...) ...>:
+                            ...
+                            $X = $SAFE
+                          ...
+                      - pattern-not-inside: |
+                          if $A and <... not $CHECK(..., $X, ...) ...>:
+                            ...
+                          ...
+                      - pattern-not-inside: |
+                          if <... not $CHECK(..., $X, ...) ...> and $B:
+                            ...
+                          ...
+                      - pattern-not-inside: |
+                          if <... not $CHECK(..., $X, ...) ...>:
+                            ...
+                      - metavariable-regex:
+                          metavariable: $CHECK
+                          regex: '(?i)^(.*\.)?_?(is_?|check_?)?(safe|valid|allowed|permitted|trusted|whitelisted|allowlisted)\w{0,40}$'
                   # ...or used only inside the branch where an allowlist check passed.
                   - pattern-inside: |
                       if <... url_has_allowed_host_and_scheme($X, ...) ...>:
@@ -494,6 +559,11 @@ rules:
                       if <... $X in $ALLOWED ...>:
                         ...
               - pattern: $X
+              # Never the request's own mappings: `if not ("hitId" in request.args): raise` checks that a key is
+              # there and says nothing about the values (psiturk GHSA-9mq4-9556-6qxq lost every finding below it).
+              - metavariable-regex:
+                  metavariable: $X
+                  regex: '^(?!((flask\.)?request|self\.request|req)\.(args|form|values|GET|POST|files|FILES|cookies|COOKIES|headers|META|data|query_params|json)$)'
           - patterns:
               - pattern-either:
                   # A value that must equal a known one, or the request ends: if path != s.mac + ".png": abort(404)
@@ -575,6 +645,10 @@ rules:
           - pattern: len(...)
           - pattern: flask.url_for(...)
           - pattern: url_for(...)
+          # Flask-Login's link to the app's own login view, the request's URL only in its `next` parameter
+          # (pgAdmin: redirect(login_url("mfa.validate", next_url=next_url))).
+          - pattern: flask_login.login_url(...)
+          - pattern: flask_login.utils.login_url(...)
           # Django's equivalents: a URL for one of this app's routes, or a model's own page (wger).
           - pattern: django.urls.reverse(...)
           - pattern: reverse(...)
@@ -780,6 +854,11 @@ rules:
               - pattern: $DB.query_first(query=$SQL, ...)
               - pattern: $DB.execute_raw($SQL, ...)
               - pattern: $DB.execute_raw(query=$SQL, ...)
+              # pgAdmin's driver runs the string it's given: conn.execute_scalar(sql), execute_dict, execute_2darray,
+              # execute_void (GHSA-v395-x24j-4r3g: a restore point's name formatted into the SQL).
+              - patterns:
+                  - pattern: $CONN.$EXEC($SQL, ...)
+                  - metavariable-regex: {metavariable: $EXEC, regex: '^execute_(scalar|dict|2darray|void|async)$'}
           - focus-metavariable: $SQL
 
   - id: codewatch.python.web.path-traversal
@@ -884,6 +963,10 @@ rules:
           - pattern-not-inside: pathlib.Path(...).stem
           - pattern-not-inside: pathlib.Path(...).name
           - pattern-not-inside: pathlib.Path(...).parts
+          # A containment check opens nothing (pgAdmin GHSA-cr8c-972v-rmp3: Path(new_name).relative_to(the_dir) in a
+          # try, before the open() that is the sink).
+          - pattern-not-inside: pathlib.Path(...).relative_to(...)
+          - pattern-not-inside: pathlib.Path(...).is_relative_to(...)
           - focus-metavariable: $PATH
 
   - id: codewatch.python.web.xss
