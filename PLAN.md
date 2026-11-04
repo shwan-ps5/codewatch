@@ -987,7 +987,7 @@ rule):
     filePath joined to the upload folder) to `cve-pairs-python`, and Openpanel GHSA-wfxj (a WebSocket route's
     projectId in a ClickHouse query) to `cve-pairs-javascript`. Their split was checked after their diffs were read
     (both open, so no harm, but the order is split first). Every earlier "too large" rejection whose case would be
-    open is being re-sized with the corrected tool.
+    open (99 rejections across the batches) was re-sized with the corrected tool: none other fits the limits.
     Measured the same day: servor found (still flagged after its fix, `path.normalize()` plus stripping leading
     `../` isn't recognised), Openpanel missed (the projectId crosses packages). SQLBot was only a hotspot because
     its request model sat outside the case's scope, and widening the scope did nothing: `fetch_pair` set the
