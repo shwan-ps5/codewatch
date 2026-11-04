@@ -154,7 +154,24 @@ def guard(base, head="HEAD", repo=HERE.parent):
                 blind_suite = "blind" in str(case.get("suite", ""))
                 if blind_suite != is_blind(case.get("id", "")):
                     problems.append(f"{name}: {case.get('id')} is in the wrong half ({case.get('suite')})")
+            # Scanning an open case scans its fix commit: one shared with a blind case would expose that case
+            # (NginxProxyManager GHSA-mhxx and -5rqg shared 99cce7e with a blind advisory, 2026-11-04).
+            blind_fixes = _blind_fixes(head, repo) | {c.get("entry", {}).get("fix") for c in batch.get("accepted", [])
+                                                      if is_blind(c.get("id", ""))}
+            for case in batch.get("accepted", []):
+                fix = case.get("entry", {}).get("fix")
+                if fix and not is_blind(case.get("id", "")) and fix in blind_fixes:
+                    problems.append(f"{name}: open case {case.get('id')} has a blind case's fix commit; reject it")
     return problems
+
+
+def _blind_fixes(head, repo):
+    """Fix commits of the blind suites in suites.json at head."""
+    try:
+        suites = json.loads(_git("show", f"{head}:benchmarks/suites.json", cwd=repo)).get("suites", [])
+    except (subprocess.CalledProcessError, ValueError):
+        return set()
+    return {c.get("fix") for s in suites if s.get("blind") for c in s.get("cases", []) if isinstance(c, dict)}
 
 
 def pending(root=HERE):

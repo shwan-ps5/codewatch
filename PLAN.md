@@ -1023,6 +1023,24 @@ rule):
     GHSA-mjrq (`cve-pairs-python-nonhttp`), which stays missed: its sink is in another file, behind
     `store.load_run(run_id)` on a store object. No learning app or ~/Dev project is an MCP server, so the nightly
     apps can't show false alarms from it; hermes-agent and CowAgent register tools through their own registries.
+37. **Topic 3, batches 2-4** (2026-11-04; desktop agent, reviewed here; no rules changed): 180 read, 26 accepted
+    (16 open, 10 blind). Every open fix commit was sized (`reviewed.py size`, all within the limits, one parent)
+    and read on GitHub. Seven dropped: open-notebook GHSA-wr7p (the route validates the URL, but the fetch is in a
+    background command outside the changed file) and Omnivore GHSA-w562 (a webhook URL stored and fetched later
+    by a job), both like PeerTube GHSA-xpfq; DatoCMS GHSA-x8p2 (the path only becomes the redirect parameter of the
+    customer's draft-mode URL; the redirect happens on their site); sim GHSA-23hh (upload allowlist and served
+    content-type hardening mixed into a `..`-stripping fix); AnythingLLM GHSA-xcfw (`dumpENV` writes values read
+    from process.env, with a character denylist); and NginxProxyManager GHSA-mhxx and -5rqg, whose fix commit is
+    also a blind case's fix: they were left unread and only the blind one is kept. **New check for the review:
+    an open case whose fix commit is also a blind case's is dropped unread** (the agent split by advisory id, and
+    three advisories shared one commit). Added: 5 to `cve-pairs-javascript` (Omnivore GHSA-w9wc scanFeeds URL to
+    axios.get; openstatus GHSA-952x callbackURL to router.push; double-take GHSA-q9xj a request header in an
+    inline script; AnythingLLM GHSA-f6rh a body sessionId object in a Prisma where, and GHSA-866h multer upload
+    names to disk), 3 to `cve-pairs-javascript-nonhttp` (SiYuan GHSA-358r clipboard HTML, Netron GHSA-wfq7 model
+    names to innerHTML, la-forge-mcp GHSA-h7vv an MCP tool argument to writeFileSync), 1 to
+    `cve-pairs-python-frontend` (cti-transmute GHSA-fq55, ECharts tooltip HTML). Blind: 2 in
+    `cve-pairs-blind-javascript-7`, 5 in `-8`, 2 in `cve-pairs-blind-python-frontend-4`, 1 in
+    `cve-pairs-blind-javascript-nonhttp`; their fixes weren't sized. 147 topic-3 candidates remain.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

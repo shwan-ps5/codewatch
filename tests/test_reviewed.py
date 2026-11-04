@@ -85,6 +85,21 @@ def test_guard_accepts_clean_batch_and_catches_leaks(tmp_path):
     assert any(f"{open_} is accepted here but has no accept row" in p for p in problems)
 
 
+def test_guard_rejects_open_case_sharing_a_blind_fix(tmp_path):
+    git = _repo(tmp_path)
+    blind, open_, fix = "GHSA-mxhq-xw3g-rphc", "GHSA-wf7x-fh6w-34r6", "ab" * 20
+    (tmp_path / "benchmarks" / "cve-candidates-x.tsv").write_text(
+        "repo\tid\tcwe\tdecision\tsuite\treason\n"
+        f"a/b\t{blind}\t78\taccept\tcve-pairs-blind-javascript-8\t{reviewed.WITHHELD}\n"
+        f"a/b\t{open_}\t77\taccept\tcve-pairs-javascript\tflow\n")
+    (tmp_path / "benchmarks" / "cve-candidates-x.json").write_text(json.dumps({"status": "research only", "accepted": [
+        {"id": blind, "suite": "cve-pairs-blind-javascript-8", "entry": {"fix": fix}},
+        {"id": open_, "suite": "cve-pairs-javascript", "entry": {"fix": fix}, "flow": "f"}]}))
+    git("add", "-A")
+    git("commit", "-qm", "batch")
+    assert any(f"open case {open_} has a blind case's fix" in p for p in reviewed.guard("HEAD~1", repo=tmp_path))
+
+
 def test_pending_counts_unreviewed_batches(tmp_path):
     (tmp_path / "cve-candidates-a.json").write_text(json.dumps({"status": "research only: not reviewed"}))
     (tmp_path / "cve-candidates-b.json").write_text(json.dumps({"status": "reviewed 2026-11-03"}))

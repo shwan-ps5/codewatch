@@ -182,6 +182,10 @@ python3 -I benchmarks/reviewed.py --split GHSA-xxxx-xxxx-xxxx
 
 Rejected cases are never split. Write their reasons in full.
 
+When several accepted advisories share one fix commit and any of them is blind, reject the open ones with the
+reason `same fix commit as a blind case`: scanning an open case scans its fix, which would expose the blind
+one. The push check refuses a batch that keeps them.
+
 ## 5. Output
 
 Two files per batch, named `benchmarks/cve-candidates-YYYY-MM-DD-<topic>.tsv` and `.json`.
