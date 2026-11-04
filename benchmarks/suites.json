@@ -973,6 +973,20 @@
           "scope": [
             "src/pyload/webui/app"
           ]
+        },
+        {
+          "id": "GHSA-fghj-qqgj-7rxf",
+          "cve": "CVE-2026-121453",
+          "repo": "https://github.com/dataease/SQLBot.git",
+          "fix": "3d15c67b4de6ed9420daa9a34e4dc371ebbf4765",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQLBot through 1.10.3 contains a path traversal vulnerability in the importToDb endpoint (filePath)",
+          "scope": [
+            "backend/apps/datasource/api"
+          ]
         }
       ]
     },
@@ -1486,6 +1500,35 @@
           "scope": [
             "server",
             "server/modules/api"
+          ]
+        },
+        {
+          "id": "GHSA-pcvv-rm69-6cv3",
+          "cve": "CVE-2021-48011",
+          "repo": "https://github.com/lukejacksonn/servor.git",
+          "fix": "ec7d824ea6903c0fb97a452045bbb8335198cbab",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Servor 1.0.0 through 4.0.2 contains a path traversal vulnerability that allows unauthenticated remote attackers to escape the served root by sending URL-encoded dot segments. Attackers can send %2e%2e/ sequences, which decodeURI() decodes before path.join() in serveStaticFile and serveDirectoryListi",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-wfxj-g749-hqjv",
+          "cve": "CVE-2026-116818",
+          "repo": "https://github.com/Openpanel-dev/openpanel.git",
+          "fix": "35ddc8ebbcd4ed0767933de61f014f153d68442a",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "OpenPanel before 3.0.0: ClickHouse SQL injection via the projectId of the /live/visitors/:projectId WebSocket",
+          "scope": [
+            "packages/db/src",
+            "packages/validation/src"
           ]
         }
       ]
@@ -2167,6 +2210,20 @@
           "summary": "js/views/message_view.js in Open Whisper Signal (aka Signal-Desktop) before 1.10.1 allows XSS via a URL.",
           "scope": [
             "js/views"
+          ]
+        },
+        {
+          "id": "GHSA-jcgm-7m3g-h3cx",
+          "cve": "CVE-2026-102911",
+          "repo": "https://github.com/zosmaai/pi-llm-wiki.git",
+          "fix": "360867034e79175b45c8e04a98e4ca712bbaca35",
+          "cwe": [
+            77
+          ],
+          "license": "MIT",
+          "summary": "A flaw has been found in zosmaai pi-llm-wiki up to 0.11.7. Affected is an unknown function of the file mcp/index.ts of the component wiki_capture_source MCP tool. Executing a manipulation of the argument url can lead to os command injection. The attack can be executed remotely. The exploit has been ",
+          "scope": [
+            "extensions/llm-wiki/lib"
           ]
         }
       ]

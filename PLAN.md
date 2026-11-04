@@ -979,6 +979,15 @@ rule):
     (5), part: `codewatch.templates.request-in-url-attribute`, a vulnerability for `request.args/GET/form/...`
     printed at the start of an href/src/action or inside an event handler (Formspree GHSA-2wvm, now found and
     quiet at its fix); no match in any learning app or ~/Dev project.
+33. **Topic 3, first batch** (2026-11-04; JS/TS repos without a listed web framework, research by the desktop agent,
+    reviewed here): 60 read, 2 accepted (servor GHSA-pcvv, open: request URL to path.join(); one blind, to
+    `cve-pairs-blind-javascript-nonhttp`). Two "fix too large" rejections were the size tool's fault, which counted
+    locale JSON and `vitest.config.ts` as source; `reviewed.py`'s NOT_SOURCE now skips translation catalogs and
+    test-runner configs, and both were overturned: SQLBot GHSA-fghj (a Python FastAPI backend: a body model's
+    filePath joined to the upload folder) to `cve-pairs-python`, and Openpanel GHSA-wfxj (a WebSocket route's
+    projectId in a ClickHouse query) to `cve-pairs-javascript`. Their split was checked after their diffs were read
+    (both open, so no harm, but the order is split first). Every earlier "too large" rejection whose case would be
+    open is being re-sized with the corrected tool.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

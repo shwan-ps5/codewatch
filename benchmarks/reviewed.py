@@ -52,9 +52,13 @@ def known(root=HERE):
     return seen, fixes
 
 
-# Not source code for the size limits: tests, docs, changelogs, lockfiles, manifests.
+# Not source code for the size limits: tests and test-runner configs, docs, changelogs, lockfiles, manifests, and
+# translation catalogs (SQLBot GHSA-fghj and Openpanel GHSA-wfxj were rejected as too large over locale JSON and
+# vitest.config.ts, 2026-11-04).
 NOT_SOURCE = re.compile(r"(^|/)(tests?|spec|__tests__|docs?|changelog\.d)/|test_|_test\.|\.(test|spec)\.|\.(md|mdx|rst|txt|lock)$"
-                        r"|(^|/)(package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|\.gitignore|CHANGELOG[^/]*)$",
+                        r"|(^|/)(package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|\.gitignore|CHANGELOG[^/]*)$"
+                        r"|(^|/)(vitest|jest|playwright|karma|cypress)\.config\.[cm]?[jt]s$"
+                        r"|(^|/)(locales?|i18n|lang|translations?)/.*\.(json|ya?ml|po|properties)$|\.po$",
                         re.IGNORECASE)
 LIMITS = {"default": (3, 120), "python": (5, 200)}  # PLAN.md step 22; step 24 widened Python's
 

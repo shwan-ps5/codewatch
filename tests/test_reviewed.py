@@ -35,8 +35,12 @@ def test_measure_ignores_whitespace_tests_and_manifests():
         "diff --git a/tests/test_views.py b/tests/test_views.py", "+++ b/tests/test_views.py", "+assert 1",
         "diff --git a/package.json b/package.json", "+++ b/package.json", '+"v": 2',
         "diff --git a/src/same.js b/src/same.js", "-a = 1", "+a  =  1",
+        "diff --git a/vitest.config.ts b/vitest.config.ts", "+++ b/vitest.config.ts", "+include: []",
+        "diff --git a/frontend/src/i18n/en.json b/frontend/src/i18n/en.json", "+++ b/x", '+"k": "v"',
+        "diff --git a/app/locale/de/LC_MESSAGES/django.po b/app/locale/de/LC_MESSAGES/django.po", '+msgid "x"',
+        "diff --git a/src/lang.ts b/src/lang.ts", "+export const x = 1",
     ]
-    assert reviewed.measure("\n".join(lines)) == {"app/views.py": 2}
+    assert reviewed.measure("\n".join(lines)) == {"app/views.py": 2, "src/lang.ts": 1}
 
 
 def _repo(tmp_path):
