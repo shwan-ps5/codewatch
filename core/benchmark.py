@@ -286,8 +286,12 @@ def fetch_pair(suite, case):
     if not (target / ".git").exists():
         git("init", "-q", cwd=target)
         git("remote", "add", "origin", case["repo"], cwd=target)
-        if case.get("scope"):
-            git("sparse-checkout", "set", *case["scope"], cwd=target)
+    # Every time, so a scope widened in suites.json reaches a clone made before (SQLBot GHSA-fghj: its request model
+    # sat outside the first scope).
+    if case.get("scope"):
+        git("sparse-checkout", "set", *case["scope"], cwd=target)
+    else:
+        git("sparse-checkout", "disable", cwd=target)
     git("fetch", "-q", "--depth", "2", "--filter=blob:none", "origin", case["fix"], cwd=target)
     return target, git("rev-parse", f"{case['fix']}^", cwd=target).strip()
 

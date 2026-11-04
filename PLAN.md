@@ -988,6 +988,15 @@ rule):
     projectId in a ClickHouse query) to `cve-pairs-javascript`. Their split was checked after their diffs were read
     (both open, so no harm, but the order is split first). Every earlier "too large" rejection whose case would be
     open is being re-sized with the corrected tool.
+    Measured the same day: servor found (still flagged after its fix, `path.normalize()` plus stripping leading
+    `../` isn't recognised), Openpanel missed (the projectId crosses packages). SQLBot was only a hotspot because
+    its request model sat outside the case's scope, and widening the scope did nothing: `fetch_pair` set the
+    sparse checkout only when it first cloned. It now sets it every time, so the nightly run picks up any scope
+    changed since a clone was made (numbers can move for that reason alone). With `if os.path.commonpath([p, base])
+    != base: raise` accepted as a containment check (its fix), SQLBot is found and quiet. Left as designed:
+    cg GHSA-w228 (a redirect back to the Referer is not treated as open; only the linking site chose it) and
+    OpenResolve GHSA-h3h4 (request values in a JSON error message are not XSS). Whoogle GHSA-2689 is a cross-file
+    flow (a cookie reaching pickle.loads inside a model class).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

@@ -1138,6 +1138,26 @@ def test_request_values_printed_into_a_link_or_an_event_handler(tmp_path):
     assert {(path, line) for path, line, _ in found} == {("templates/thanks.html", 2), ("templates/thanks.html", 4)}
 
 
+def test_a_commonpath_containment_check_clears_the_path(tmp_path):
+    """SQLBot GHSA-fghj-qqgj-7rxf's fix: the joined path is realpath'd and compared with the base by
+    os.path.commonpath, raising when it falls outside. The unchecked join before it stays a finding."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\n\nfrom flask import Flask, request\n\napp = Flask(__name__)\nBASE = '/srv/uploads'\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    return open(os.path.join(BASE, request.args['f'])).read()\n\n\n"
+        "@app.route('/b')\n"
+        "def b():\n"
+        "    base = os.path.realpath(BASE)\n"
+        "    p = os.path.realpath(os.path.join(base, request.args['f']))\n"
+        "    if p == base or os.path.commonpath([p, base]) != base:\n"
+        "        raise ValueError('outside')\n"
+        "    return open(p).read()\n")})
+    assert found == {("app.py", 11, "path-traversal")}
+
+
 def test_error_details_in_responses(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
