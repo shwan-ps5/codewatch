@@ -82,10 +82,12 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-python-frontend` (templates and front-end JS); blind ones go in a new blind suite with the next unused
    number (section 4). Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-unreviewed.{tsv,json}`.
-2. **Node web apps not published on npm.** Same source and method as topic 1, keeping JavaScript/TypeScript
+2. **Node web apps not published on npm.** (done 2026-11-04 after 2 batches, 93 read: every JS/TS candidate whose
+   package.json declares one of the frameworks below was read.) Same source and method as topic 1, keeping JavaScript/TypeScript
    repositories with a web server (Express, Koa, Fastify, Nest, Next, Hapi) or a Vue/React front end. Suites:
    `cve-pairs-javascript` or `cve-pairs-javascript-nonhttp`, blind ones in the next unused
-   `cve-pairs-blind-javascript-N`. Files:
+   `cve-pairs-blind-javascript-N` (one suite for the whole batch, not one per case) or, for non-HTTP input,
+   `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.

@@ -103,7 +103,7 @@ Next, in order:
    in the nightly run.
 5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites
    (`cve-pairs-blind-python-2` to `-7`, `-python-nonhttp`, `cve-pairs-blind-python-frontend`, `-frontend-2`, `-frontend-3`, and from step 29
-   `cve-pairs-blind-javascript-2` to `-5`), each scanned once, measurement only. The fixes in `-python-5` and the
+   `cve-pairs-blind-javascript-2` to `-6` and `-javascript-nonhttp`), each scanned once, measurement only. The fixes in `-python-5` and the
    JavaScript ones were never sized (steps 27 and 29), so report them with that caveat. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
    (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
 6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
@@ -922,6 +922,21 @@ rule):
     which passes). GHSA-2xj7 went to `cve-pairs-python-nonhttp`, and the blind one to a new
     `cve-pairs-blind-python-nonhttp`. Topic 1 is closed: accepted cases fell from 13 to 10, 2 and 2, and the 92 left
     are mostly libraries. Research moves to topic 2 (Node web apps not on npm).
+31. **JavaScript ground truth from unreviewed advisories** (2026-11-04; topic 2, Node web apps not on npm, research
+    by a separate agent on the desktop timer, reviewed here; no rules changed). Two batches: the newest 60 of 70
+    candidates whose package.json declares a web framework, then all 33 left once the filter was rebuilt. 24
+    accepted (17 open, 7 blind). Every open fix commit was checked on GitHub (`reviewed.py size`, all within the
+    limits with one parent) and read. Four were dropped: RapidRAW GHSA-2jwx (the fix is Rust), PeerTube GHSA-xpfq
+    (an IP check added in a validator; the fetch is in the import job, outside the changed file), fallstudie
+    GHSA-vm92 (the fix still concatenates the email into one query, so the fixed side isn't safe) and MicrobeTrace
+    GHSA-99f9 (a regex tag-stripper on files the user opens, like the Joplin denylist fixes in step 29). Added:
+    8 to `cve-pairs-javascript` and 5 to `cve-pairs-javascript-nonhttp` (chat commands, MCP tool arguments, LLM
+    output, RSS and WebRTC peer content). The agent gave each blind case its own suite; they are regrouped by the
+    same web/non-HTTP split, judged from the advisory text only: 2 in `cve-pairs-blind-javascript-6` and 5 in a new
+    `cve-pairs-blind-javascript-nonhttp`. Their fixes weren't sized. Reasons are in
+    `benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv`. The JavaScript/TypeScript web-app filter is
+    exhausted, so topic 2 is closed. No topic 3 is queued in `AGENTS.md` yet. `AGENTS.md` now says one blind suite
+    per batch, with non-HTTP cases in `cve-pairs-blind-javascript-nonhttp`.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

@@ -981,7 +981,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -1371,6 +1371,122 @@
           "scope": [
             "src"
           ]
+        },
+        {
+          "id": "GHSA-3rxx-xp85-4r8j",
+          "cve": "CVE-2026-110690",
+          "repo": "https://github.com/coderaiser/cloudcmd.git",
+          "fix": "91c024591f425e26200884d5e1d5ba972377968b",
+          "cwe": [
+            23
+          ],
+          "license": "MIT",
+          "summary": "Cloud Commander (cloudcmd) versions 19.20.2 through 19.21.1 contains a path traversal vulnerability in the GET /api/v1/pack endpoint where the onGET handler at server/rest/index.js:130 calls the unguarded root() function instead of the root.resolve() validation wrapper used elsewhere. Attackers can ",
+          "scope": [
+            "server/rest"
+          ]
+        },
+        {
+          "id": "GHSA-cjr4-fpcr-5mvq",
+          "cve": "CVE-2026-82460",
+          "repo": "https://github.com/coderaiser/cloudcmd.git",
+          "fix": "b9bdc9ed528350eeb2f9ef974c18998096fae919",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Cloud Commander before 19.20.2 contains a directory traversal vulnerability in REST file-operation and markdown endpoints that fails to properly validate path normalization. Attackers can use path traversal sequences to read, write, move, or copy files outside the configured root directory.",
+          "scope": [
+            "server",
+            "server/markdown",
+            "server/rest"
+          ]
+        },
+        {
+          "id": "GHSA-rm8c-j3vq-fv9j",
+          "cve": "CVE-2026-19327",
+          "repo": "https://github.com/abracadabra50/claude-sesh.git",
+          "fix": "786c9d74800e6d0858b65778f31beb71b3983a50",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "A flaw has been found in abracadabra50 claude-sesh 1.0.0. This issue affects the function getEnrichedData/enrichSession of the file src/services/enricher.ts. Executing a manipulation of the argument sessionId can lead to path traversal. The attack needs to be launched locally. This patch is called 7",
+          "scope": [
+            "src/services"
+          ]
+        },
+        {
+          "id": "GHSA-2p7p-3c9x-rwxm",
+          "cve": "CVE-2026-19264",
+          "repo": "https://github.com/gitroomhq/postiz-app.git",
+          "fix": "793606226f981706cc0201c8023f0f2b57ce08e4",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Postiz is an open-source social media scheduling tool. The route that serves locally stored media joins URL-supplied path segments onto the upload directory and streams the file without normalising the path or confining it to that directory, and the route requires no authentication. Raw dot-segments",
+          "scope": [
+            "apps/frontend/src/app/(app)/api/uploads/[[...path]]"
+          ]
+        },
+        {
+          "id": "GHSA-g4jq-25cx-3cw5",
+          "cve": "CVE-2026-58578",
+          "repo": "https://github.com/lobehub/lobehub.git",
+          "fix": "349bbe326eb8635d6d9c6a96d12702681ae3a84a",
+          "cwe": [
+            1333
+          ],
+          "license": "NOASSERTION",
+          "summary": "LobeChat before version 2.2.10-canary.15 contains a regular expression denial of service (ReDoS) vulnerability that allows authenticated attackers to block the Node.js event loop by supplying a catastrophic-backtracking pattern in a GitHub repository URL path during skill import. Attackers can craft",
+          "scope": [
+            "apps/server/src/services/skill"
+          ]
+        },
+        {
+          "id": "GHSA-45r7-w6hj-284x",
+          "cve": "CVE-2015-10055",
+          "repo": "https://github.com/jan-rodriguez/PictureThisWebServer.git",
+          "fix": "68b9dc346e88b494df00d88c7d058e96820e1479",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability was found in PictureThisWebServer and classified as critical. This issue affects the function router.post of the file routes/user.js. The manipulation of the argument username/password leads to sql injection. The name of the patch is 68b9dc346e88b494df00d88c7d058e96820e1479. It is re",
+          "scope": [
+            "routes"
+          ]
+        },
+        {
+          "id": "GHSA-rc4g-x5g6-63x3",
+          "cve": "CVE-2020-36621",
+          "repo": "https://github.com/chedabob/whatismyudid.git",
+          "fix": "bb33d4325fba80e7ea68b79121dba025caf6f45f",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability, which was classified as problematic, has been found in chedabob whatismyudid. Affected by this issue is the function exports.enrollment of the file routes/mobileconfig.js. The manipulation leads to cross site scripting. The attack may be launched remotely. The name of the patch is b",
+          "scope": [
+            ".",
+            "routes"
+          ]
+        },
+        {
+          "id": "GHSA-2w76-4r82-v23p",
+          "cve": "CVE-2019-19250",
+          "repo": "https://github.com/3s3s/opentrade.git",
+          "fix": "a3eb3c645cfd1f3d310c10e4fb1f2f64a4d5e45e",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "OpenTrade before 2019-11-23 allows SQL injection, related to server/modules/api/v1.js and server/utils.js.",
+          "scope": [
+            "server",
+            "server/modules/api"
+          ]
         }
       ]
     },
@@ -1379,7 +1495,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet.",
+      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers, chat commands, MCP tool arguments, peer and feed content rendered in a desktop or browser client. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet. Added 2026-11-04 (PLAN.md step 31): Leon GHSA-5jhh, FlyEnv GHSA-w92g, spec-workflow-mcp GHSA-xgwr, lettura GHSA-6fpp, MiroTalk GHSA-rcjf; their blind half is cve-pairs-blind-javascript-nonhttp.",
       "cases": [
         {
           "id": "GHSA-ffwf-47x2-jpr8",
@@ -1435,6 +1551,79 @@
           "summary": "electerm has Command Injection in File System Operations (rmrf, mv, cp)",
           "scope": [
             "src/app/lib"
+          ]
+        },
+        {
+          "id": "GHSA-5jhh-46x7-49hp",
+          "cve": "CVE-2026-116073",
+          "repo": "https://github.com/leon-ai/leon.git",
+          "fix": "50df142a89a0859e5b7283d87afdab7b01e712a2",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Leon before commit 50df142 contains a path traversal vulnerability in getModelFileNameFromURL() that allows attackers to write files outside the models directory via percent-encoded separators. Attackers can trick a user into running '/download model' with a crafted URL containing encoded '../' sequ",
+          "scope": [
+            "server/src/built-in-command/commands/download-command"
+          ]
+        },
+        {
+          "id": "GHSA-w92g-j683-fhvq",
+          "cve": "CVE-2026-69116",
+          "repo": "https://github.com/xpf0000/FlyEnv.git",
+          "fix": "68fd6d7b200273ad0a8bce09424b8bd87134cfb6",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "FlyEnv before 4.18.0 fails to sanitize HTML from markdown rendering and AI chat content passed to Vue v-html directives. Attackers can inject malicious scripts through markdown sources or chat messages that execute in the Electron renderer process with access to Node.js APIs and the filesystem.",
+          "scope": [
+            "src/render/components/AI/Chat/Main",
+            "src/render/util"
+          ]
+        },
+        {
+          "id": "GHSA-xgwr-j735-3wg4",
+          "cve": "CVE-2026-19336",
+          "repo": "https://github.com/Pimzino/spec-workflow-mcp.git",
+          "fix": "9c7a7839e690bb4543f0e7481b5740d23808e5fe",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability was found in Pimzino spec-workflow-mcp up to 2.2.6. This issue affects the function ApprovalStorage.createApproval of the file src/tools/approvals.ts. Performing a manipulation of the argument categoryName results in path traversal. The attack is only possible with local access. Upgr",
+          "scope": [
+            "src/dashboard",
+            "src/tools"
+          ]
+        },
+        {
+          "id": "GHSA-6fpp-9pqw-wr8m",
+          "cve": "CVE-2025-15454",
+          "repo": "https://github.com/zhanglun/lettura.git",
+          "fix": "67213093db9923e828a6e3fd8696a998c85da2d4",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability was detected in zhanglun lettura up to 0.1.22. This issue affects some unknown processing of the file src/components/ArticleView/ContentRender.tsx of the component RSS Handler. The manipulation results in cross site scripting. The attack can be executed remotely. This attack is chara",
+          "scope": [
+            "src/components/ArticleView"
+          ]
+        },
+        {
+          "id": "GHSA-rcjf-5cjm-p5q4",
+          "cve": "CVE-2023-27054",
+          "repo": "https://github.com/miroslavpejic85/mirotalk.git",
+          "fix": "f535b3515d2d480dc3135b37982f5df93e43c592",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A cross-site scripting (XSS) vulnerability in MiroTalk P2P before commit f535b35 allows attackers to execute arbitrary web scripts or HTML via a crafted payload injected into the Name parameter under the settings module.",
+          "scope": [
+            "public/js",
+            "public/views"
           ]
         }
       ]
@@ -1855,6 +2044,129 @@
           "summary": "Electerm Security Vulnerability: RCE via malicious SSH server filename in openFileWithEditor",
           "scope": [
             "src"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-6",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Sixth blind set of JavaScript/Node CVE fix pairs, split from the unreviewed-advisory batches of 2026-11-04 (PLAN.md step 31) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Fix sizes were not checked (that would mean reading them).",
+      "cases": [
+        {
+          "id": "GHSA-prp6-v677-xqhq",
+          "cve": "CVE-2026-44996",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "6e58f1f9f54bca1fea1268ec0ee4c01a2af03dde",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw before 2026.4.15 contains an arbitrary local file read vulnerability in the webchat audio embedding helper that fails to apply local media root containment checks. Attackers can influence agent or tool-produced ReplyPayload.mediaUrl parameters to resolve absolute local paths or file URLs, r",
+          "scope": [
+            "src/gateway/server-methods"
+          ]
+        },
+        {
+          "id": "GHSA-9g28-m7m5-fqf2",
+          "cve": "CVE-2022-1719",
+          "repo": "https://github.com/polonel/trudesk.git",
+          "fix": "36a542abbbb74828338ce402d65653ac58db42e0",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Reflected XSS on ticket filter function in GitHub repository polonel/trudesk prior to 1.2.2. This vulnerability is capable of executing a malicious javascript code in web page",
+          "scope": [
+            "src/controllers",
+            "src/helpers/utils"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-nonhttp",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind JavaScript/TypeScript CVE fix pairs whose input isn't an HTTP request (desktop IPC, chat and agent messages, MCP tool arguments), split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0); from the unreviewed-advisory batches of 2026-11-04 (PLAN.md step 31). Scanned only when named, at the end of a round; never used to write or tune rules. Fix sizes were not checked.",
+      "cases": [
+        {
+          "id": "GHSA-pwqg-g4m5-54gf",
+          "cve": "CVE-2026-108156",
+          "repo": "https://github.com/netease-youdao/LobsterAI.git",
+          "fix": "82fdfe10d1b85d0ff734aa720e18c866b4be2406",
+          "cwe": [
+            73
+          ],
+          "license": "MIT",
+          "summary": "LobsterAI 2026.5.27 through 2026.9.23 contains an external control of file path vulnerability in the skills:delete IPC handler that trusts the openclawSourceDir value from a skill's _meta.json during uninstall. Attackers who convince a user to install a crafted skill can make uninstallation recursiv",
+          "scope": [
+            "src/main/ipcHandlers/skills",
+            "src/main/skills",
+            "src/shared"
+          ]
+        },
+        {
+          "id": "GHSA-5383-j2p9-qfg3",
+          "cve": "CVE-2026-61462",
+          "repo": "https://github.com/zereight/gitlab-mcp.git",
+          "fix": "e2a81a047ab8750fa5bfa1763b5d85e5616f3994",
+          "cwe": [
+            73
+          ],
+          "license": "MIT",
+          "summary": "mcp-gitlab contains a path traversal vulnerability in the job_id parameter of build/index.js that allows attackers to redirect GitLab API requests to arbitrary endpoints. Attackers can supply crafted job_id values like ../../../user to escape the intended path prefix and access arbitrary GitLab API ",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-pmg8-9xxh-v2wv",
+          "cve": "CVE-2026-41370",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "566fb73d9da2d73c0be0d9b8e5b762e4dcd8e81d",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw before 2026.3.31 contains a path traversal vulnerability in ACP dispatch that allows attackers to read arbitrary files by manipulating inbound channel attachment paths. Remote attackers can bypass attachment-cache and root directory checks to access files outside intended directories.",
+          "scope": [
+            "src/auto-reply/reply",
+            "src/media-understanding"
+          ]
+        },
+        {
+          "id": "GHSA-7mfp-8xjr-g749",
+          "cve": "CVE-2026-32917",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "a54bf71b4c0cbe554a84340b773df37ee8e959de",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw before 2026.3.13 contains a remote command injection vulnerability in the iMessage attachment staging flow that allows attackers to execute arbitrary commands on configured remote hosts. The vulnerability exists because unsanitized remote attachment paths containing shell metacharacters are",
+          "scope": [
+            "src/auto-reply/reply",
+            "src/infra"
+          ]
+        },
+        {
+          "id": "GHSA-p95x-2rhj-jcfg",
+          "cve": "CVE-2018-10994",
+          "repo": "https://github.com/signalapp/Signal-Desktop.git",
+          "fix": "bfbd84f5d1308cdfcb08a1727821f7103be151ea",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "js/views/message_view.js in Open Whisper Signal (aka Signal-Desktop) before 1.10.1 allows XSS via a URL.",
+          "scope": [
+            "js/views"
           ]
         }
       ]
