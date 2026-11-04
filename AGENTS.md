@@ -89,6 +89,17 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-blind-javascript-N` (one suite for the whole batch, not one per case) or, for non-HTTP input,
    `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-unreviewed.{tsv,json}`.
+3. **JavaScript/TypeScript apps without a listed web framework.** Same source and filter as topic 2, but keep the
+   non-archived JavaScript/TypeScript repositories that topic 2 skipped because their `package.json` (at the fix
+   commit) declares none of its frameworks, or that have no `package.json` at the root (about 380 advisories in
+   about 210 repositories on 2026-11-04). Expect Electron and Tauri apps, browser extensions, plain-Node servers
+   (`http.createServer`), Discord/Telegram bots, VS Code extensions, static front ends and many libraries. Reject
+   libraries and CLI tools whose input is the user's own arguments or files (section 3), as before; a published
+   npm package is a library unless the advisory's vulnerable code is an app it ships (a server, a dashboard).
+   Suites: request input in server code → `cve-pairs-javascript`; desktop IPC, extension messages, bot and chat
+   messages, MCP tool arguments, remote content rendered in a client → `cve-pairs-javascript-nonhttp`. Blind ones:
+   one new `cve-pairs-blind-javascript-N` per batch (next unused N) or `cve-pairs-blind-javascript-nonhttp`. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-javascript-noframework.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 

@@ -935,7 +935,9 @@ rule):
     same web/non-HTTP split, judged from the advisory text only: 2 in `cve-pairs-blind-javascript-6` and 5 in a new
     `cve-pairs-blind-javascript-nonhttp`. Their fixes weren't sized. Reasons are in
     `benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv`. The JavaScript/TypeScript web-app filter is
-    exhausted, so topic 2 is closed. No topic 3 is queued in `AGENTS.md` yet. `AGENTS.md` now says one blind suite
+    exhausted, so topic 2 is closed. Topic 3 is queued: the about 380 JS/TS candidates topic 2's framework filter
+    skipped (desktop apps, extensions, bots, plain-Node servers). With that, this source has little left for
+    Python or JavaScript (32 Python candidates, mostly libraries); the rest is mostly PHP (about 1,100). `AGENTS.md` now says one blind suite
     per batch, with non-HTTP cases in `cve-pairs-blind-javascript-nonhttp`.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
