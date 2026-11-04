@@ -939,6 +939,30 @@ rule):
     skipped (desktop apps, extensions, bots, plain-Node servers). With that, this source has little left for
     Python or JavaScript (32 Python candidates, mostly libraries); the rest is mostly PHP (about 1,100). `AGENTS.md` now says one blind suite
     per batch, with non-HTTP cases in `cve-pairs-blind-javascript-nonhttp`.
+32. **Where the Python misses are** (2026-11-04, from the nightly run's cached scans of `cve-pairs-python` and
+    `-frontend`; open suites only). Each missed pair was sorted mechanically (`score_pair` in both modes): Python 31
+    missed = 5 found only as a hotspot, 5 flagged but the flag survives the fix (the fix's check isn't recognised),
+    21 with nothing of that weakness; front end 28 = 10 hotspot only, 1 survives, 17 nothing. What is behind the
+    "nothing" ones (from the fix diffs, read by an Ollama model, 7 checked by hand with probes): missing sinks or
+    sources (pgAdmin's `conn.execute_scalar()` isn't a SQL sink; `req.form` where `req` is the request passed in
+    as a parameter isn't a source; a cookie decompressed and unpickled; `abort(400, message=...)`), project checks
+    trusted by name that the advisory says are incomplete (pyLoad twice, a weak `get_safe_url`, a homemade
+    `sanitized_join`, an unquote bypass), flows through framework layers in other files (pygeoapi providers,
+    Dagster, Lektor, a DRF serializer feeding a Jira client), and 4 with no data flow at all (a settings flag, an
+    unauthenticated RPC, an ownership check, a stored URL). Front end: about 11 are browser JS writing fetched
+    data as HTML (`innerHTML`, `.html(response)`, notification and select2 markup), about 5 are template contexts
+    autoescape doesn't cover (`href="{{ request.args.next }}"`, `onclick="location.href='{{ x }}'"`, unquoted
+    attributes, `'{{ x }}'` in a script), and the 10 hotspot-only ones are `|safe`/`autoescape off` on stored data.
+    Work order, local: (1) the hotspot-only Python flows that are request data (FastAPI `UploadFile.filename`),
+    (2) project SQL helpers such as `execute_scalar` as sinks, (3) the request passed in as a parameter as a
+    source, (4) the fixes' checks recognised, (5) template-context XSS. The browser-JS block and the
+    incomplete-check cases are the hard part and wait.
+    (1) done the same day: a FastAPI route's `UploadFile` parameter (or a list of them) is request data through
+    `.filename` (libre-chat GHSA-3864, LightRAG GHSA-v9w6, both now found and quiet at their fixes). LightRAG also
+    needed `match` statements whose `case` pattern spans lines (`case (\n ".txt"\n | ".md"\n ):`) rewritten:
+    the rewrite skipped them, and the unrewritten `match` lost the route's finding further down the file. The six
+    learning apps with uploads or `match` statements (paperless-ngx, recipes, wger, dispatch, immich, netbox)
+    gave the same findings as the nightly run.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

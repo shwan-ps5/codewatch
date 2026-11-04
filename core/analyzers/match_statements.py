@@ -28,6 +28,52 @@ def colon_after(line, col):
     return -1
 
 
+def multiline_case_header(lines, case, subject):
+    """{row: new line} for a case whose pattern spans lines (LightRAG GHSA-v9w6-9hq9-33ch:
+    `case (\n ".txt"\n | ".md"\n ):`): `case` becomes `if subject == (` on the first line and `)` closes it before
+    the colon on the last, so the lines between stay as they are, inside the brackets."""
+    # `case (` can stand alone on its line, with the pattern starting on the next.
+    first = case.pattern.lineno
+    while first > 1 and not CASE_RE.match(lines[first - 1]) and lines[first - 1].strip() not in ("", ")"):
+        first -= 1
+        if case.pattern.lineno - first > 2:
+            return None
+    if not (m := CASE_RE.match(lines[first - 1])):
+        return None
+    # The header ends at the first colon after the pattern (or guard); a bracket the pattern sits in can close on
+    # a later line, outside the pattern's own span.
+    after = case.guard or case.pattern
+    last, end = after.end_lineno, colon_after(lines[after.end_lineno - 1], after.end_col_offset)
+    while end == -1 and last < len(lines) and last < case.body[0].lineno - 1:
+        last += 1
+        end = colon_after(lines[last - 1], 0)
+    if end == -1 or last == first:
+        return None
+    head = lines[first - 1][len(m.group(0)):]
+    body = [head, *lines[first:last - 1], lines[last - 1][:end]]
+    pattern_text = "".join(body)
+    if case.guard:
+        guard_start = pattern_text.rfind(" if ")
+        if guard_start == -1:
+            return None
+        pattern_text, guard = pattern_text[:guard_start], pattern_text[guard_start + 4:]
+        if not expression(f"({guard})"):
+            return None
+    if not expression(f"({pattern_text})"):
+        return None
+    edits = {first: f"{m.group(1)}if {subject} == ({head}"}
+    tail = lines[last - 1]
+    if case.guard:
+        # The guard sits after the pattern on the last line: close the pattern's bracket before its `if`.
+        cut = tail.rfind(" if ", 0, end)
+        if cut == -1:
+            return None
+        edits[last] = f"{tail[:cut]}) and ({tail[cut + 4:end]}){tail[end:]}"
+    else:
+        edits[last] = f"{tail[:end]}){tail[end:]}"
+    return edits
+
+
 def case_header(source, lines, case, subject):
     if case.pattern.lineno != case.pattern.end_lineno or (case.guard and case.guard.end_lineno != case.pattern.lineno):
         return None
@@ -60,9 +106,13 @@ def match_edits(source, lines, node):
     edits = {node.lineno: f"{head.group(1)}if True{line[end:]}"}
     for case in node.cases:
         header = case_header(source, lines, case, f"({subject})")
-        if header is None:
+        if header is not None:
+            edits[header[0]] = header[1]
+            continue
+        multiline = multiline_case_header(lines, case, f"({subject})")
+        if not multiline:
             return {}
-        edits[header[0]] = header[1]
+        edits.update(multiline)
     return edits
 
 

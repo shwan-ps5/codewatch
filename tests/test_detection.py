@@ -444,6 +444,32 @@ def test_match_statements_become_ifs_on_the_same_lines():
     assert match_as_if("match x:\n    case str() as s:\n        pass\n") is None
 
 
+def test_match_cases_spanning_lines_become_ifs_too():
+    """LightRAG GHSA-v9w6-9hq9-33ch: one `case (\n ".txt"\n | ".md"\n):` left the match unrewritten, and Semgrep
+    then lost an upload route's path traversal elsewhere in the file."""
+    import ast
+
+    from core.analyzers.match_statements import match_as_if
+
+    source = ("def f(ext, p):\n"
+              "    match ext:\n"
+              "        case (\n"
+              "            '.txt'\n"
+              "            | '.md'\n"
+              "        ):\n"
+              "            y = p\n"
+              "        case '.pdf' | (\n"
+              "            '.doc'\n"
+              "        ) if p:\n"
+              "            y = 2\n"
+              "    return y\n")
+    lines = match_as_if(source).splitlines()
+    assert len(lines) == len(source.splitlines())
+    assert [lines[i] for i in (2, 5, 7, 9)] == [
+        "        if (ext) == ( (", "        )):", "        if (ext) == ( '.pdf' | (", "        )) and (p):"]
+    ast.parse(match_as_if(source))
+
+
 def test_dead_ternary_nested_in_functions_is_replaced_once():
     from core.analyzers.constant_branches import blank_dead_branches
 
@@ -968,11 +994,39 @@ def test_uploads_stored_under_the_client_name(tmp_path):
         ("app.py", 19, "path-traversal", "vulnerability"),
         ("app.py", 19, "unrestricted-upload", "security_hotspot"),
         ("app.py", 20, "unrestricted-upload", "security_hotspot"),
+        ("app.py", 30, "path-traversal", "vulnerability"),
         ("app.py", 30, "unrestricted-upload", "security_hotspot"),
         ("upload.js", 3, "unrestricted-upload", "security_hotspot"),
         ("upload.js", 10, "unrestricted-upload", "security_hotspot"),
         ("upload.js", 11, "path-traversal", "vulnerability"),
     }
+
+
+def test_fastapi_upload_file_names_are_request_data(tmp_path):
+    """libre-chat GHSA-3864-rp2m-2qfj (files: List[UploadFile]) and LightRAG GHSA-v9w6-9hq9-33ch: the client's file
+    name is joined to a folder and opened for writing. A route parameter typed UploadFile wasn't a source, so only
+    the "parameter reaches a sink" hotspot reported it. secure_filename() still clears it, and a function that
+    isn't a route stays a hotspot."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\nfrom typing import List\n\nfrom fastapi import APIRouter, File, UploadFile\n"
+        "from werkzeug.utils import secure_filename\n\nrouter = APIRouter()\n\n\n"
+        "@router.post('/documents')\n"
+        "def many(files: List[UploadFile] = File(...)):\n"
+        "    for uploaded in files:\n"
+        "        if uploaded.filename:\n"
+        "            with open(os.path.join('docs', uploaded.filename), 'wb') as out:\n"
+        "                out.write(uploaded.file.read())\n\n\n"
+        "@router.post('/upload')\n"
+        "async def one(file: UploadFile = File(...)):\n"
+        "    with open(INPUT_DIR / file.filename, 'wb') as out:\n"
+        "        out.write(await file.read())\n"
+        "    with open(os.path.join('docs', secure_filename(file.filename)), 'wb') as out:\n"
+        "        out.write(await file.read())\n\n\n"
+        "def helper(file: UploadFile):\n"
+        "    return open(file.filename, 'wb')\n")})
+    assert found == {("app.py", 14, "path-traversal"), ("app.py", 20, "path-traversal")}
 
 
 def test_error_details_in_responses(tmp_path):

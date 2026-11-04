@@ -64,6 +64,39 @@ rules:
           - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
           - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
           - focus-metavariable: $PARAM
+      # A FastAPI route's uploaded files: the name the client sent (file: UploadFile, files: List[UploadFile]),
+      # not the file object, whose contents aren't a path or markup. libre-chat GHSA-3864-rp2m-2qfj, LightRAG
+      # GHSA-v9w6-9hq9-33ch (both: open(os.path.join(folder, file.filename), "wb")).
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  def $VIEW(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  async def $VIEW(..., $PARAM: $TYPE, ...):
+                    ...
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  def $VIEW(..., $PARAM: $TYPE = $DEFAULT, ...):
+                    ...
+              - pattern-inside: |
+                  @$APP.$ROUTE($PATH, ...)
+                  async def $VIEW(..., $PARAM: $TYPE = $DEFAULT, ...):
+                    ...
+          - metavariable-regex:
+              metavariable: $TYPE
+              regex: '^((typing\.)?(Optional|List)\[|(list|set)\[)?(fastapi\.)?UploadFile\]?( \| None)?$'
+          - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
+          - pattern-either:
+              - pattern: $PARAM.filename
+              - patterns:
+                  - pattern-inside: |
+                      for $F in $PARAM:
+                        ...
+                  - pattern: $F.filename
       - patterns:
           - pattern-either:
               - pattern-inside: |
