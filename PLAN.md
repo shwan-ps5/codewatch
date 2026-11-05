@@ -1113,6 +1113,76 @@ rule):
     an exposure through template context, not request input reaching a sink. Blind: 2 in a new
     `cve-pairs-blind-python-8`. Once topic 5 is done, every topic is done or paused and the research runs stop
     without committing until a new topic is written.
+42. **The Python gaps and how to close them** (2026-11-05). New ground truth is nearly used up (step 41), so the
+    gaps close by the scanner's own work, not by waiting for cases. Last full numbers (2026-11-04, verdict mode):
+    `cve-pairs-python` 31 of 62 found, `-frontend` 1 of 29 (11 in review mode), `-nonhttp` 0 of 3. Steps 32
+    (1)-(5), 36 and 38 came after that run and target about ten of the misses; the 2026-11-05 run crashed
+    (step 39), so the first measurement of them is the next nightly run. First job after it: sort the misses again
+    as step 32 did (hotspot only / flag survives the fix / nothing), with the new cases, and check this list
+    against it. The gaps, from what the fixes show, with the cases behind each and the way to close it:
+
+    **Back end (views and handlers)**
+    - **A. Allowlist checks that end the flow.** The fix rejects anything outside a pattern and returns:
+      `if not re.match(r'^[a-zA-Z0-9.-]+$', x): return ...` (Roxy-WI GHSA-2f7r, PostHog GHSA-jrwm, new today), or
+      `if x not in ALLOWED: raise` (Vibe-Trading GHSA-3j25). Without it as a sanitizer those fixes stay flagged.
+      Close: a guard sanitizer for `re.match/fullmatch` with an anchored pattern (`^...$` or `\A...\Z`) whose
+      character class has no `/`, `.` run or `%` for paths and no shell metacharacters, when the failing branch
+      returns, raises or aborts; set/tuple/dict membership the same way. Safe look-alikes: an unanchored
+      `re.search`, a check whose failing branch only logs. Cheap; do first.
+    - **B. Which class an object is.** `self._client = JiraClient(...)` then `self._client.get(url)` (taiga, the
+      false alarms of step 39; firefighter GHSA-fqvv, a DRF serializer feeding a Jira client). Generic method names
+      (`get`, `save`, `update`) aren't connected across files today, to avoid false alarms. Close: an ast pass that
+      records, per file, names and `self.` fields assigned from a project class's constructor (and parameters
+      annotated with one), and rewrites the analysis copy's `recv.method(` to a qualified via-sink name only for
+      those, so `Class.get` gets its own summary. Keeps taiga's real Jira SSRF (step 39) and drops the GitHub one.
+    - **C. DRF serializer data as a source.** `serializer.validated_data[...]`, `serializer.data`, and
+      `validate_<field>(self, value)` / `create(self, validated_data)` in a `Serializer` subclass (firefighter).
+      Close: sources in `python-web.yml`, kept to classes based on `*Serializer`; text fields only where the
+      serializer declares them (`CharField`, `URLField`...), as `body_models.py` does for Pydantic.
+    - **D. Project checks trusted by name.** A function named `*safe*`, `*sanitize*`, `*valid*` clears its result
+      today whatever it does; pyLoad (twice), a weak `get_safe_url`, a homemade `sanitized_join` and an unquote
+      bypass were all missed that way (step 32), and MobSF GHSA-8m9j / LLaMA Factory GHSA-527m are incomplete
+      checks still flagged (step 35). Close: trust a project helper only when the pass-through analysis (step 38)
+      shows it doesn't hand the parameter back unchecked, or its body contains a recognised check (a containment
+      check after `realpath`/`resolve`, a `urlparse(...).netloc` comparison, an allowlist from A); a name alone no
+      longer clears. Risk: more false alarms where a sound helper isn't recognised, so measure on the learning
+      apps before keeping it.
+    - **E. Dispatch the summaries can't follow.** pygeoapi GHSA-f6pr (a provider plugin loaded by name) and
+      Lektor GHSA-wv28 (a handler passed as a value). Close, later: summarise a method over every class in the
+      project that defines it under a common base (`BaseProvider.query` stands for each subclass's `query`), only
+      when the base is the project's own. Costly and wide; after A-D.
+    - **F. Small source and sink gaps** from step 32 still open: `abort(400, message=...)` reflecting request
+      data, a cookie decompressed then unpickled. One rule line each, with a test.
+    - **G. Whoogle GHSA-2689**: a probe of its two files finds the flow (`routes.py:161 [via from_params()]`) but the
+      case doesn't (step 38). Find out why (likely the scope or the importer visibility in the real tree) before
+      building more on the cross-file pass.
+
+    **Front end (templates and the JavaScript they ship), the larger gap**
+    - **H. Stored data rendered unescaped** (about 10 front-end misses found only as hotspots: `|safe`,
+      `autoescape off`, `mark_safe` on a model field). These are stored XSS: the request reaches the database in
+      one view and the page in another. Close: a store-and-read pass. Find model fields the project writes from
+      request data (`obj.field = request...`, `Model.objects.create(field=request...)`, a form or serializer
+      save), then make reads of those fields (`obj.field`, `{{ obj.field|safe }}`) a source for the XSS rule only.
+      A field the project never writes from a request stays a hotspot. This moves hotspot-only cases to found
+      without making every database read tainted.
+    - **I. Browser JS writing fetched data as HTML** (about 11 misses): `fetch(...).then(r => r.json())` or
+      `$.ajax({success: d => $el.html(d.x)})`, `innerHTML` of a notification or select2 option. Close in two
+      steps: first a review-mode hotspot for a fetched/AJAX response reaching an HTML sink (no data-flow claim);
+      then, where the fetched URL is a literal path that matches one of the project's own routes, follow it to
+      that view and use H to decide whether the field it returns is request-written.
+    - **J. Template contexts autoescape doesn't cover** (about 5): `'{{ x }}'` inside a `<script>`, unquoted
+      attributes, event handlers with values other than `request.*` (step 32 (5) covered the request ones). Close:
+      extend `request-in-url-attribute` to H's request-written fields, and a hotspot for any variable in a
+      script string or unquoted attribute (5 hotspots on the learning apps for 2 cases, step 32: review mode only).
+
+    **Input that isn't an HTTP request** (`-nonhttp`, 0 of 3 Python, 0 of 12 JS): MCP tools are done (step 36). Next
+    by the cases: agent tool arguments in frameworks other than FastMCP (LangChain `@tool`, OpenAI function
+    tools), bot message handlers (discord.py, python-telegram-bot), Electron IPC handlers on the JS side.
+
+    **Order**: G, A, B, C, F (small and measurable on existing cases), then H, I and J (the front end, where the
+    numbers are worst), then D (needs care with false alarms), then E. Each one: its tests (a vulnerable case and
+    a safe look-alike), `devtools.py cases` for the cases behind it, the learning apps compared with the last
+    nightly run, and an entry here with what moved.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
