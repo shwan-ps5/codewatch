@@ -773,6 +773,25 @@ rules:
           - patterns:
               - pattern: $MODEL.objects.$QUERY(...)
               - metavariable-regex: {metavariable: $QUERY, regex: '^(?!(raw|extra)$)\w+$'}
+          # What an outbound HTTP call returns is the remote server's data, not the request's (taiga's importers:
+          # a project id sent to GitHub or Jira, then avatar URLs and attachment names from the reply).
+          - patterns:
+              - pattern-either:
+                  - pattern-inside: |
+                      $RESULT = requests.$HTTP_METHOD(...)
+                      ...
+                  - pattern-inside: |
+                      $RESULT = httpx.$HTTP_METHOD(...)
+                      ...
+                  - pattern-inside: |
+                      $RESULT = requests.$HTTP_METHOD(...).$READ(...)
+                      ...
+                  - pattern-inside: |
+                      $RESULT = httpx.$HTTP_METHOD(...).$READ(...)
+                      ...
+              - pattern: $RESULT
+          # A django-filter FilterSet's rows (netbox: self.filterset(request.GET, self.queryset).qs).
+          - pattern: $FILTERSET(...).qs
       - pattern: shlex.quote(...)
       # secure_filename() leaves only letters, digits, "_", "." and "-": nothing a shell treats specially.
       - pattern: secure_filename(...)
@@ -943,6 +962,19 @@ rules:
       - pattern: pathlib.Path(...).stem
       - pattern: pathlib.PurePath(...).name
       - pattern: pathlib.PurePath(...).stem
+      # The same through a variable: candidate = Path(run_id) ... base / candidate.name (Vibe-Trading GHSA-mjrq at its
+      # fix).
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $CANDIDATE = pathlib.Path(...)
+                  ...
+              - pattern-inside: |
+                  $CANDIDATE = pathlib.PurePath(...)
+                  ...
+          - pattern-either:
+              - pattern: $CANDIDATE.name
+              - pattern: $CANDIDATE.stem
       - pattern: werkzeug.utils.secure_filename(...)
       - pattern: secure_filename(...)
       # Replacing every character outside a class of letters, digits, "_", "-" and spaces leaves one name that can't
@@ -1020,6 +1052,10 @@ rules:
           # try, before the open() that is the sink).
           - pattern-not-inside: pathlib.Path(...).relative_to(...)
           - pattern-not-inside: pathlib.Path(...).is_relative_to(...)
+          # A Path assigned to a variable opens nothing yet; each use of the variable is a sink of its own
+          # (Vibe-Trading GHSA-mjrq at its fix: candidate = Path(run_id), checked, then only candidate.name used).
+          - pattern-not-inside: $CANDIDATE = pathlib.Path($PATH, ...)
+          - pattern-not-inside: $CANDIDATE = pathlib.PurePath($PATH, ...)
           - focus-metavariable: $PATH
 
   - id: codewatch.python.web.xss

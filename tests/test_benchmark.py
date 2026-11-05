@@ -292,3 +292,20 @@ def test_an_unrelated_finding_in_the_rendering_file_is_not_counted(template_pair
     in_routes = {(i["line"], i["rule"]) for side in ("before", "after") for i in sides[side] if i["path"] == "app/routes.py"}
     assert in_routes == {(9, TEMPLATE_RULE)}
     assert result["still_by"] == []
+
+
+def test_importers_of_a_changed_module_are_scored(tmp_path, cwes):
+    """A fix inside a helper module removes the finding at its caller (Dagster GHSA-q93c): files importing a changed
+    module are scanned, and their findings count when the fix makes them go away, never as still flagged."""
+    git_repo(tmp_path, {
+        "pkg/web/server.py": "from core.storage.logs import Manager\n",
+        "pkg/core/core/storage/logs.py": "class Manager: ...\n",
+        "pkg/web/other.py": "import json\n",
+        "pkg/web/tests/test_server.py": "from core.storage.logs import Manager\n",
+    })
+    assert benchmark.importers(tmp_path, ["pkg"], {"pkg/core/core/storage/logs.py"}) == {"pkg/web/server.py"}
+    caller = {**issue("pkg/web/server.py", "sqli", line=5), "code": "FileResponse(location)"}
+    gone = benchmark.score_pair(CASE, SPOTS, {"before": [caller], "after": []}, benchmark.MODES["verdict"], PARENTS)
+    assert gone["detected"] and not gone["still_flagged"]
+    kept = benchmark.score_pair(CASE, SPOTS, {"before": [caller], "after": [caller]}, benchmark.MODES["verdict"], PARENTS)
+    assert not kept["detected"] and not kept["still_flagged"]

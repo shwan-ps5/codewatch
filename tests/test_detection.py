@@ -775,6 +775,10 @@ def test_import_resolution_for_summaries():
     assert visible("pkg/views.py", {"pkg/helpers.py"}, texts.get)
     assert visible("pkg/views.py", {"pkg/sub.py"}, texts.get)
     assert not visible("pkg/views.py", {"other/helpers.py"}, texts.get)
+    # A monorepo's package under another folder (Dagster GHSA-q93c), but not a bare module name anywhere.
+    texts["mods/web/server.py"] = "from dagster._core.storage.logs import Manager\n"
+    assert visible("mods/web/server.py", {"mods/dagster/dagster/_core/storage/logs.py"}, texts.get)
+    assert not visible("mods/web/server.py", {"mods/other/logs.py"}, texts.get)
 
 
 def test_weak_hash_is_a_vulnerability_only_where_it_protects_something(tmp_path):
@@ -3224,3 +3228,125 @@ def test_requests_given_the_url_by_keyword(tmp_path):
         "    requests.get(url='https://example.com/', params={'q': request.args['q']}, timeout=5)\n"
         "    return 'sent'\n")})
     assert found == {("app.py", 9, "ssrf")}
+
+
+def test_python_methods_called_on_other_objects_across_files(tmp_path):
+    """A summarised method reached through another receiver (`store.load_run(run_id)`, Vibe-Trading GHSA-mjrq), only
+    where the calling file imports the defining module and the name isn't one every library object has."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    store = ("import os\nimport pickle\n\n\nclass Store:\n"
+             "    def load_run(self, run_id):\n"
+             "        return open(os.path.join('/data', run_id)).read()\n\n"
+             "    def decode_prefs(self, blob):\n"
+             "        return pickle.loads(blob)\n\n"
+             "    def update(self, name):\n"
+             "        return open(name, 'w')\n")
+    views = ("from flask import Flask, request\nfrom app.store import Store\n\napp = Flask(__name__)\n\n\n"
+             "@app.route('/run')\n"
+             "def run(form):\n"
+             "    Store().load_run(request.args['id'])\n"          # 9
+             "    Store().decode_prefs(request.cookies['p'])\n"    # 10
+             "    form.update(request.args['n'])\n"                # 11: update is anyone's
+             "    return 'ok'\n")
+    other = ("from flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+             "@app.route('/x')\n"
+             "def x(store):\n"
+             "    store.load_run(request.args['id'])\n"            # no import of app.store
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/store.py": store, "app/views.py": views, "app/other.py": other})
+    assert found == {("app/views.py", 9, "path-traversal"), ("app/views.py", 10, "unsafe-deserialization")}
+
+
+def test_starred_unpacking_keeps_request_data(tmp_path):
+    """Semgrep leaves a starred target clean (`[*log_key, ext] = request.path_params["path"].split("/")`, Dagster
+    GHSA-q93c); the analysis copy unstars it on the same line."""
+    from core.analyzers.starred_targets import unstar_targets
+
+    source = "def g():\n    *a, b = x\n    [*a, b] = x\n    h, *r = y\n    f(*args)\n    q = [*a, *b]\n"
+    assert unstar_targets(source) == (
+        "def g():\n    a , b = x\n    [a , b] = x\n    h, r  = y\n    f(*args)\n    q = [*a, *b]\n")
+    assert unstar_targets("f(*args)\n") is None
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    [*parts, ext] = request.args['p'].split('/')\n"
+        "    open('/'.join(parts))\n"                                  # 9
+        "    *rest, last = request.args['p'].split('/')\n"
+        "    open('/'.join(rest))\n"                                   # 11
+        "    return 'ok'\n")})
+    assert found == {("app.py", 9, "path-traversal"), ("app.py", 11, "path-traversal")}
+
+
+def test_helpers_that_check_a_path_clean_their_callers(tmp_path):
+    """A helper that checks the path before returning it hands nothing back for path traversal (its own pass-through
+    answer), so neither a call to it nor a method building on its result is a sink (Vibe-Trading GHSA-mjrq and Dagster
+    GHSA-q93c at their fixes); the same helpers without the check still are."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    store = ("from pathlib import Path\n\n\nclass Store:\n"
+             "    base_dir = Path('/data')\n\n"
+             "    def run_dir(self, run_id):\n"
+             "        candidate = Path(run_id)\n"
+             "        if '..' in candidate.parts:\n"
+             "            raise ValueError('bad')\n"
+             "        return self.base_dir / candidate.name\n\n"
+             "    def raw_dir(self, run_id):\n"
+             "        return self.base_dir / run_id\n\n"
+             "    def load_run(self, run_id):\n"
+             "        run_file = self.run_dir(run_id) / 'run.json'\n"
+             "        return run_file.read_text()\n\n"
+             "    def load_raw(self, run_id):\n"
+             "        run_file = self.raw_dir(run_id) / 'run.json'\n"
+             "        return run_file.read_text()\n")
+    views = ("from flask import Flask, request\nfrom app.store import Store\n\napp = Flask(__name__)\n\n\n"
+             "@app.route('/a')\n"
+             "def a():\n"
+             "    Store().load_run(request.args['id'])\n"          # 9: checked
+             "    Store().load_raw(request.args['id'])\n"          # 10
+             "    p = Store().run_dir(request.args['id'])\n"
+             "    open(p)\n"                                       # 12: checked
+             "    q = Store().raw_dir(request.args['id'])\n"
+             "    open(q)\n"                                       # 14
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/store.py": store, "app/views.py": views})
+    assert found == {("app/views.py", 10, "path-traversal"), ("app/views.py", 14, "path-traversal")}
+
+
+def test_a_path_object_is_a_sink_where_it_is_used(tmp_path):
+    """Path(x) assigned to a variable opens nothing; its uses are the sinks. Its .name is a basename through the
+    variable too (Vibe-Trading GHSA-mjrq's fix: candidate = Path(run_id) ... base / candidate.name)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from pathlib import Path\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    candidate = Path(request.args['n'])\n"
+        "    open(Path('/data') / candidate.name)\n"           # 10: a basename
+        "    other = Path(request.args['m'])\n"
+        "    open(other)\n"                                    # 12
+        "    return Path(request.args['k']).read_text()\n")})  # 13
+    assert found == {("app.py", 12, "path-traversal"), ("app.py", 13, "path-traversal")}
+
+
+def test_remote_replies_and_filterset_rows_are_not_request_data(tmp_path):
+    """What an outbound HTTP call returns is the remote server's data (taiga's importers: a project id sent to
+    GitHub, then an avatar URL from the reply), and a django-filter FilterSet's .qs is rows (netbox)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import requests\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    repo = requests.get('https://api.github.com/repos/' + request.args['p']).json()\n"
+        "    requests.get(repo['avatar_url'])\n"                         # 10: the reply's URL
+        "    requests.get(request.args['u'])\n"                          # 11
+        "    rows = ItemFilter(request.args, queryset=items).qs\n"
+        "    open(rows[0])\n"                                            # 13: rows
+        "    open(request.args['f'])\n"                                  # 14
+        "    return 'ok'\n")})
+    assert found == {("app.py", 11, "ssrf"), ("app.py", 14, "path-traversal")}

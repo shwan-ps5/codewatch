@@ -301,6 +301,23 @@ def callees(method, js):
     return [f"{r}.$VIA_FUNC" for r in receivers] if method else ["$VIA_FUNC", "$MODULE.$VIA_FUNC"]
 
 
+# A method summarised in one class is also reached through other receivers (`store.load_run(run_id)` with store a
+# SwarmStore, Vibe-Trading GHSA-mjrq), but only where the calling file imports the defining module (visible()), and
+# not for names every library object has: `form.save(x)` or `cache.get(x)` isn't a call to the project's save/get.
+GENERIC_METHODS = PYTHON_BUILTINS | HANDLER_NAMES | {
+    name for kind in (dict, list, str, bytes, set, frozenset) for name in dir(kind) if not name.startswith("_")} | {
+    "add", "all", "apply", "call", "clean", "close", "commit", "connect", "create", "decode", "delete", "dump",
+    "dumps", "emit", "encode", "execute", "exists", "fetch", "filter", "first", "flush", "load", "loads", "open",
+    "parse", "patch", "post", "process", "put", "query", "read", "remove", "run", "save", "send", "set", "start",
+    "stop", "submit", "update", "validate", "write"}
+OTHER_RECEIVER = {"metavariable-regex": {"metavariable": "$OBJ", "regex": "^(?!(self|cls)$)"}}
+
+
+def other_receiver_methods(found):
+    """Summarised Python methods that a call on another object may reach."""
+    return {f for f, _index, _param, method, _path in found if method and f not in GENERIC_METHODS}
+
+
 def call_patterns(index, method, js):
     """Semgrep patterns for a call passing $ARG at that position; $VIA_FUNC binds the name."""
     if index is None:
@@ -334,6 +351,22 @@ def via_sinks(found, js):
              for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
     if js:
         return sinks
+    others = other_receiver_methods(found)
+    positional = {}
+    for func, index, _param, _method, _path in found:
+        if func in others and index is not None:
+            positional.setdefault(index, set()).add(func)
+    sinks += [{"patterns": [{"pattern": "$OBJ.$VIA_FUNC(" + "".join(f"$A{i}, " for i in range(index)) + "$ARG, ...)"},
+                            OTHER_RECEIVER,
+                            {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": regex}},
+                            {"focus-metavariable": "$ARG"}]}
+              for index, funcs in sorted(positional.items()) for regex in name_regexes(funcs)]
+    params = {p for f, _index, p, m, _path in found if m and f in others}
+    sinks += [{"patterns": [{"pattern": "$OBJ.$VIA_FUNC(..., $VIA_KW=$ARG, ...)"}, OTHER_RECEIVER,
+                            {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": func_regex}},
+                            {"metavariable-regex": {"metavariable": "$VIA_KW", "regex": param_regex}},
+                            {"focus-metavariable": "$ARG"}]}
+              for func_regex in name_regexes(others) for param_regex in name_regexes(params)] if others else []
     for method in (False, True):
         funcs = {f for f, _index, _param, m, _path in found if m == method}
         params = {p for _f, _index, p, m, _path in found if m == method}
@@ -437,15 +470,41 @@ def js_imports(path, text):
         yield from ("/".join(parts) + ext for ext in JS_EXTENSIONS)
 
 
+def python_absolute_modules(text):
+    """Module files a package-qualified absolute import names, relative to whatever folder is its import root:
+    `from a.b import c` gives a/b.py, a/b/__init__.py, a/b/c.py and a/b/c/__init__.py."""
+    for match in PY_IMPORT_RE.finditer(text):
+        source, names, plain = match.groups()
+        if plain:
+            modules = [n.split(" as ")[0].strip() for n in plain.split(",")]
+        elif source.startswith("."):
+            continue
+        else:
+            bare = [n.split(" as ")[0].strip(" ()") for n in names.split(",")]
+            modules = [source, *(f"{source}.{n}" for n in bare if n and n != "*")]
+        # Only a package-qualified name: `import libuser` could be any libuser.py in the project.
+        for module in (m for m in modules if "." in m):
+            stem = "/".join(module.split("."))
+            yield f"{stem}.py"
+            yield f"{stem}/__init__.py"
+
+
 def visible(path, defining_paths, read_text):
     """The call in path can reach one of the summarised definitions of func: it is in the same file, or the file
-    imports the module that defines it."""
+    imports the module that defines it. An absolute import also matches a module under another folder of the
+    project (a monorepo's packages: Dagster's webserver imports dagster._core.storage from
+    python_modules/dagster/dagster/_core/storage, GHSA-q93c)."""
     if path in defining_paths:
         return True
     text = read_text(path) or ""
     imports = python_imports(path, text) if path.endswith(".py") else js_imports(path, text)
     normalised = {Path(p).as_posix().removeprefix("./") for p in imports}
-    return bool(normalised & set(defining_paths))
+    if normalised & set(defining_paths):
+        return True
+    if not path.endswith(".py"):
+        return False
+    modules = set(python_absolute_modules(text))
+    return any(defining.endswith(tuple(f"/{m}" for m in modules)) for defining in defining_paths) if modules else False
 
 
 def returner_rules(rules, returners=None, base=True):
@@ -602,8 +661,9 @@ PASS_MAX_ROUNDS = 4
 
 
 # What with_pass_through's sanitizer matches: a variable assigned from a call, or a call returned (a superset; a
-# miss only means a function is never treated as clean).
-ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:(?:self|cls|this)\.)?(\w+)\s*\(")
+# miss only means a function is never treated as clean). Any receiver: `obj.method(` is asked about too, for
+# other_receiver_methods.
+ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
 
 
 def assigned_calls(texts):
@@ -611,6 +671,11 @@ def assigned_calls(texts):
     return {name for text in texts for name in ASSIGNED_CALL_RE.findall(text)}
 
 
+# Rules whose pass-through answer uses their own sanitizers rather than those every rule shares: a helper that
+# checks containment before returning a path (Dagster GHSA-q93c's get_captured_local_path, Vibe-Trading GHSA-mjrq's
+# run_dir at their fixes) hands back nothing for path traversal. One more variant of the pass rules; a variant per
+# rule was the slowest part of a large project's scan.
+OWN_PASS_RULES = {"codewatch.python.web.path-traversal"}
 PASS_RULE_OWN_KEYS = {"id", "message", "metadata", "severity", "pattern-sources", "pattern-sinks", "pattern-sanitizers"}
 
 
@@ -629,12 +694,14 @@ def pass_rules(rules, names, signatures=None, passes=None):
     # count (a parameter handed back under fewer is still handed back): a group per rule's own sanitizers made
     # eleven variants, the slowest part of a large project's scan (paperless-ngx).
     python = [rule for rule in taint_rules(rules) if not is_js(rule)]
-    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in python]
-    common = [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])] if python else []
+    shared = [rule for rule in python if rule["id"] not in OWN_PASS_RULES]
+    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in shared]
+    common = [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])] if shared else []
     groups = {}
     for rule in python:
         variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
-        variant["pattern-sanitizers"] = copy.deepcopy(common)
+        variant["pattern-sanitizers"] = copy.deepcopy(
+            without_lookup_result(rule) if rule["id"] in OWN_PASS_RULES else common)
         if passes is not None:
             variant["pattern-sanitizers"] += argument_sanitizers(
                 signatures, passing_parameters(passes.get(rule["id"], ())), PYTHON_BUILTINS | HANDLER_NAMES,
@@ -874,21 +941,43 @@ def with_arguments(rules, signatures, passes, summaries=None):
     return out
 
 
+def clean_functions(rule, functions, passes, summaries, returners):
+    """with_pass_through's functions for rule: asked about, and not passing, summarised or a returner."""
+    rule_id = rule["id"]
+    return sorted(set(functions.get(is_js(rule), ()))
+                  - set(passing_parameters(passes.get(rule_id, ())))
+                  - {func for func, *_ in summaries.get(rule_id, ())}
+                  - {func for func, _path in returners.get(rule_id, ())}
+                  - HANDLER_NAMES)
+
+
+def stale_summaries(rules, summaries, texts, functions, passes):
+    """{rule id: summarised Python functions} whose body calls one that clean_functions says hands nothing back:
+    pass 1 ran before the passes were known, so their summary may rest on that call's result. texts: {path: text}."""
+    stale = {}
+    for rule in taint_rules(rules):
+        found = summaries.get(rule["id"])
+        if not found or is_js(rule):
+            continue
+        clean = set(clean_functions(rule, functions, passes, summaries, {}))
+        summarised = {func for func, *_ in found}
+        callers = set(python_callers(texts, clean)) & summarised if clean else set()
+        if callers:
+            stale[rule["id"]] = callers
+    return stale
+
+
 def with_pass_through(rules, functions, passes, summaries, returners):
     """Each taint rule plus a sanitizer for the result of calls to functions that can't return a parameter: not
     found by pass_rules (js_pass_rules for JS), not summarised (a call to one is a via-sink) and not a returner.
-    functions: {is_js: names asked about}. Only a plain call or one on self/cls/this: `obj.check(x)` may be anyone's."""
+    functions: {is_js: names asked about}. A plain call or one on self/cls/this; in Python also one on another
+    object, for names not in GENERIC_METHODS (`obj.check(x)` may be anyone's)."""
     out = []
     for rule in rules:
         if rule not in taint_rules([rule]):
             out.append(rule)
             continue
-        rule_id = rule["id"]
-        clean = sorted(set(functions.get(is_js(rule), ()))
-                       - set(passing_parameters(passes.get(rule_id, ())))
-                       - {func for func, *_ in summaries.get(rule_id, ())}
-                       - {func for func, _path in returners.get(rule_id, ())}
-                       - HANDLER_NAMES)
+        clean = clean_functions(rule, functions, passes, summaries, returners)
         if not clean:
             out.append(rule)
             continue
@@ -899,5 +988,26 @@ def with_pass_through(rules, functions, passes, summaries, returners):
             {"pattern": "$RESULT"},
             {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
         ]} for regex in name_regexes(clean)]
+        if not is_js(rule):
+            # The call itself, where its result is used inside an expression (`self.run_dir(run_id) / "run.json"`,
+            # Vibe-Trading GHSA-mjrq at its fix), only when no argument holds a call: a sanitizer on a call hides
+            # sinks among its arguments.
+            sanitizers += [{"patterns": [
+                {"pattern-either": [{"pattern": f"{r}{PASS_THROUGH_MARK}($...PT_ARGS)"} for r in receivers]},
+                {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
+                {"metavariable-regex": {"metavariable": "$...PT_ARGS", "regex": "^[^()]*$"}},
+            ]} for regex in name_regexes(clean)]
+        # A Python method that hands nothing back is clean on any receiver too, unless every library has its name.
+        methods = [] if is_js(rule) else sorted(set(clean) - GENERIC_METHODS)
+        sanitizers += [{"patterns": [
+            {"pattern-either": [{"pattern-inside": f"$RESULT = {a}$OBJ.{PASS_THROUGH_MARK}(...)\n...\n"}
+                                for a in ("", "await ")]},
+            {"pattern": "$RESULT"},
+            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
+        ]} for regex in name_regexes(methods)] + [{"patterns": [
+            {"pattern": f"$OBJ.{PASS_THROUGH_MARK}($...PT_ARGS)"},
+            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
+            {"metavariable-regex": {"metavariable": "$...PT_ARGS", "regex": "^[^()]*$"}},
+        ]} for regex in name_regexes(methods)]
         out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *sanitizers]})
     return out

@@ -1041,6 +1041,35 @@ rule):
     `cve-pairs-python-frontend` (cti-transmute GHSA-fq55, ECharts tooltip HTML). Blind: 2 in
     `cve-pairs-blind-javascript-7`, 5 in `-8`, 2 in `cve-pairs-blind-python-frontend-4`, 1 in
     `cve-pairs-blind-javascript-nonhttp`; their fixes weren't sized. 147 topic-3 candidates remain.
+38. **Cross-file method calls** (2026-11-04/05; step 32's "flows through framework layers in other files"). The six
+    Python misses read first: each needs something different. Done:
+    - A summarised Python method also connects through another receiver (`store.load_run(run_id)`), only where
+      the calling file imports the defining module (`visible`) and the name isn't in `GENERIC_METHODS` (builtins,
+      dict/list/str methods, `get`/`save`/`update`/`run`...). A method that hands nothing back is clean on such a
+      receiver too, and so is a call to one used inside an expression (`self.run_dir(x) / "run.json"`) when no
+      argument holds a call.
+    - Path traversal gets its own pass-through answer (`OWN_PASS_RULES`): a helper that checks containment before
+      returning a path hands nothing back for that rule. Pass 1 ran before the passes were known, so summaries
+      that rest on such a helper are redone (`resummarise`, only their defining files).
+    - `pathlib.Path(x)` assigned to a variable is no longer a sink by itself (its uses are); `candidate.name`
+      through a variable is a basename.
+    - Starred assignment targets (`[*log_key, ext] = request...split("/")`) lost taint; the analysis copy unstars
+      them (`starred_targets.py`).
+    - A package-qualified import resolves to a project file under another folder (monorepos: Dagster's
+      webserver imports `dagster._core.storage...` from `python_modules/dagster/dagster/`).
+    - Lookup results: an outbound `requests`/`httpx` reply and a django-filter `.qs` aren't request data.
+    - Scorer: files importing a changed Python module are scanned too; their findings count when the fix makes
+      them go away, never as still flagged (Dagster's fix is in the log manager, the sink in the webserver).
+    Measured with `devtools.py cases`: Vibe-Trading GHSA-mjrq and Dagster GHSA-q93c now found and quiet at their
+    fixes. Whoogle GHSA-2689: a probe of its two files finds the flow (`g.user_config.from_params(...)` to
+    pickle.loads, routes.py:161), but the case is still missed; not yet explained. Left: pygeoapi GHSA-f6pr (plugin
+    loaded by name, the handler passed as a value), Lektor GHSA-wv28, firefighter GHSA-fqvv (DRF `validated_data`
+    as a source, and `http_client.get(url)` on a project wrapper: needs receiver types).
+    Fifteen Python learning apps against the 2026-11-04 nightly run: 4 findings gone, all triaged false alarms the
+    night before (label-studio's safe_join-guarded local files, a serializer save); 1 new, then removed (netbox,
+    FilterSet rows); 3 lines new in taiga's importers and left: jira/api.py:137 and :166, github/api.py:89, flows
+    through the project's own API client wrappers (`self._client.get(...)`, a generic name). Typed receivers
+    (`self._client = GithubClient(...)`) would both clean those and connect firefighter: next.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

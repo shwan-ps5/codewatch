@@ -369,6 +369,23 @@ def template_renderers(root, paths, names):
     return found
 
 
+def importers(root, paths, changed):
+    """Python files in the checkout that import a changed Python module (summaries.visible): a fix inside a helper
+    removes the finding at its caller (Dagster GHSA-q93c: the containment check went into the log manager, the
+    FileResponse is in the webserver). Their findings count only when the fix makes them go away."""
+    from .analyzers.summaries import visible
+
+    modules = {c for c in changed if c.endswith(".py")}
+    if not modules:
+        return set()
+    found = set()
+    for path in git("ls-files", "-z", "--", *paths, cwd=root).split("\0"):
+        if (path.endswith(".py") and path not in modules and not TEST_PATH_RE.search(path) and (root / path).is_file()
+                and visible(path, modules, lambda rel: (root / rel).read_text(errors="replace"))):
+            found.add(path)
+    return found
+
+
 def at_render(issue, renders):
     """A finding of the template rule inside a call that renders a changed template."""
     return issue["rule"] == TEMPLATE_RULE and any(
@@ -399,11 +416,13 @@ def scan_pair(suite, case, log):
     for side, commit in (("before", parent), ("after", case["fix"])):
         git("checkout", "-q", "--force", commit, cwd=root)
         renders = spots["renders"][side] = template_renderers(root, case.get("scope", []), templates)
-        # Only findings in the changed files (and those render calls) are scored, so Semgrep's per-file pass looks
-        # only at those files.
-        found = [i for i in scan(root, log, case.get("scope", []), focus=sorted({*spots[side], *renders}))
+        callers = importers(root, case.get("scope", []), set(spots[side]))
+        # Only findings in the changed files (and those render calls, and the changed modules' importers) are
+        # scored, so Semgrep's per-file pass looks only at those files.
+        found = [i for i in scan(root, log, case.get("scope", []), focus=sorted({*spots[side], *renders, *callers}))
                  if i["type"] in SECURITY_TYPES]
-        sides[side] = with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)])
+        sides[side] = with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)
+                                       or i["path"] in callers])
     return spots, sides
 
 

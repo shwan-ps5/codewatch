@@ -36,6 +36,7 @@ from .match_statements import match_as_if
 from .python_tools import LineCache, complexity_severity, security_purpose
 from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
 from .slices import index_slices
+from .starred_targets import unstar_targets
 from .template_sinks import TEMPLATE_EXTENSIONS, with_template_sinks
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
@@ -125,6 +126,8 @@ class Semgrep(Analyzer):
                                 + summaries_module.js_pass_rules(custom_rules, js_functions))
             summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
             passes = self.find_passes(ctx, custom_rules, (targets, originals, Path(work)), signatures)
+            summaries, hits = self.resummarise(ctx, custom_rules, (targets, originals, Path(work)),
+                                               (summaries, hits), (signatures, js_functions, passes))
             returners, fields = self.find_returners(
                 ctx, summaries_module.with_arguments(custom_rules, signatures, passes), targets, originals, Path(work))
             final = summaries_module.with_pass_through(
@@ -270,6 +273,49 @@ class Semgrep(Analyzer):
             scanned = mentioning(ctx, targets, added_names(summaries, merged))
             summaries = known = merged
         return summaries, hits
+
+    def resummarise(self, ctx, custom_rules, copies, found, known):
+        """Pass 1 again for the summaries that rest on a call the passes now say hands nothing back
+        (stale_summaries): only their defining files, with with_pass_through's sanitizers; a function no longer
+        summarised makes its summarised callers stale in turn. copies: (targets, originals, work); found:
+        (summaries, hits); known: (signatures, js_functions, passes)."""
+        targets, originals, work = copies
+        summaries, hits = found
+        signatures, js_functions, passes = known
+        functions = {False: set(signatures), True: js_functions}
+        texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
+        stale = summaries_module.stale_summaries(custom_rules, summaries, texts, functions, passes)
+        for _ in range(summaries_module.MAX_DEPTH):
+            if not stale:
+                break
+            names = set().union(*stale.values())
+            kept = {rule: {e for e in entries if rule not in stale or e[0] not in stale[rule]}
+                    for rule, entries in summaries.items()}
+            cleaned = summaries_module.with_pass_through(
+                summaries_module.with_arguments(custom_rules, signatures, passes, kept), functions, passes, kept, {})
+            rules = [r for r in summaries_module.summary_rules(cleaned, kept, base=True)
+                     if r["id"].removesuffix(summaries_module.SUMMARY_SUFFIX) in stale]
+            scanned = sorted(summaries_module.python_definers(texts, names))
+            if not rules or not scanned:
+                break
+            config = work / "resummaries.yml"
+            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+            data = self.scan(ctx, ["--config", str(config)], scanned)
+            ids = [r["id"] for r in rules]
+            results = tuple((next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
+                             ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
+                             item["extra"]["message"]) for item in data["results"])
+            again = summaries_module.parse_summaries(results, lambda rel: read_source(ctx.root / rel), kept)
+            again = {rule: {e for e in entries if e[0] in stale.get(rule, ())} for rule, entries in again.items()}
+            updated = summaries_module.merge(kept, again) or kept
+            gone = {rule: {e[0] for e in summaries.get(rule, set()) - updated.get(rule, set())} for rule in stale}
+            summaries = updated
+            # Callers summarised through a function that no longer is.
+            stale = {rule: callers for rule, names_gone in gone.items() if names_gone
+                     and (callers := set(summaries_module.python_callers(texts, names_gone))
+                          & {e[0] for e in summaries.get(rule, ())})}
+        live = {(rule, e[0], e[4]) for rule, entries in summaries.items() for e in entries}
+        return summaries, [h for h in hits if (h[0], h[3], h[1]) in live]
 
     @staticmethod
     def signatures(ctx, targets):
@@ -423,12 +469,12 @@ def read_source(path):
 
 
 def analysis_copy(source, url_views=None):
-    """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, container
+    """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, starred targets unstarred, container
     slots tracked one by one, match statements made ifs, Flask converter types written on view parameters and
     Django views' free-text URL arguments marked (url_views, from django_text_parameters). None when nothing
     changes."""
     current = None
-    for rewrite in (blank_dead_branches, index_slices, track_slots, match_as_if, type_route_converters,
+    for rewrite in (blank_dead_branches, index_slices, unstar_targets, track_slots, match_as_if, type_route_converters,
                     lambda text: mark_url_text(text, url_views)):
         current = rewrite(current or source) or current
     return current
