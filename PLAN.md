@@ -41,7 +41,7 @@ gaps, not from these suites.
 Remaining Juice Shop misses are business logic, data files, Solidity and a Docker image; most remaining
 SecurityEval misses are design flaws or plain functions with no request source. Don't chase those with rules.
 
-## Where things stand (2026-11-02, commit ec6a841)
+## Where things stand (2026-11-02, commit ceb95ca)
 
 Detection, measured at this commit (verdict mode first; review mode adds hotspots):
 
@@ -115,19 +115,19 @@ Next, in order:
 Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
 knowledge.
 
-### Record of 2026-10-31 (commit 799955c)
+### Record of 2026-10-31 (commit 1959106)
 
 - Step 1 is built: `cve-pairs-python` (14 cases), `cve-pairs-javascript` (10), and blind `cve-pairs-blind-*`
   (run only when named). Ordinary apps (7) give 0 vulnerability false alarms. Standards-gap rules (CWE-208, 209,
   306, 434, 532, 614, 915, 942, 1004, 1336, 90, 643) and the OSV lockfile analyzer are in.
-- First CVE-pair run, at commit 6f3739a (before e7c27d4's rules and the scan narrowing in 799955c):
+- First CVE-pair run, at commit bd6b53a (before be61622's rules and the scan narrowing in 1959106):
 
   | Suite | Verdict found / still flagged | Review found / still flagged |
   |---|---|---|
   | cve-pairs-python | 2/14 / 1/14 | 5/14 / 1/14 |
   | cve-pairs-javascript | 1/10 / 1/10 | 4/10 / 4/10 |
 
-  Re-run at commit 112de4c (e7c27d4's rules plus the scan narrowing) gave exactly the same table; those result
+  Re-run at commit 26e7dd2 (be61622's rules plus the scan narrowing) gave exactly the same table; those result
   files are the CVE baseline. `pytest -q` there: 134 passed, 1 skipped (cppcheck not installed, a system package
   `make tools` doesn't install).
 - The CVE suites are slow (Python ~4.5 h on the laptop, which overheated); run them on the desktop and commit
@@ -1070,7 +1070,7 @@ rule):
     FilterSet rows); 3 lines new in taiga's importers and left: jira/api.py:137 and :166, github/api.py:89, flows
     through the project's own API client wrappers (`self._client.get(...)`, a generic name). Typed receivers
     (`self._client = GithubClient(...)`) would both clean those and connect firefighter: next.
-39. **The 2026-11-05 nightly run and a suite crash** (2026-11-05). Lint and tests passed on 4ce3687, but the suites
+39. **The 2026-11-05 nightly run and a suite crash** (2026-11-05). Lint and tests passed on 7e7b1b0, but the suites
     stopped after 256 minutes without results: Postiz GHSA-2p7p's scope is a Next.js route folder,
     `[[...path]]`, which `git sparse-checkout set` refuses as a pattern, and `scan_parallel` let the error end the
     run. `fetch_pair` now passes `--skip-checks`, and a case that fails to fetch or scan is logged as "scan

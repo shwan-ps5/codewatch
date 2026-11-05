@@ -46,7 +46,7 @@
   ],
   "batch": "SecurityEval miss classification (2026-11-03)",
   "status": "research only; no rules or suites changed; a single SecurityEval re-scan on the 16 GB machine, no other suites",
-  "commit": "216f907",
+  "commit": "a4a230a",
   "suite": {
     "name": "securityeval",
     "kind": "cwe-folders",
