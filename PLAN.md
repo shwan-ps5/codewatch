@@ -1256,6 +1256,13 @@ rule):
     the model: the class a template variable comes from (the render call's argument, traced to `Model.query...`
     / `Model.objects...`) and the class a write goes to (`obj = Model(...)`, `Model.objects.create`, a ModelForm's
     or serializer's Meta.model). Next session.
+44. **Topic 5 done; research has no topic left** (2026-11-05). Topic 5's second batch read the last 4 candidates and
+    accepted 1, MoinMoin 1.9 GHSA-42fp, rejected at review: its own WSGI framework on Python 2, not Django, Flask or
+    FastAPI as the topic requires. With topic 5 done the research model went back to the paused PHP topic (batches
+    4 and 5, 120 read, 21 accepted): the runner's prompt said to stop only when no topic was "left unfinished",
+    and a paused one is unfinished. Both batches are held like the first three, and `tools/research-batch.sh` now
+    says a paused topic isn't to be worked on and to stop when every topic is done or paused. Until a new topic is
+    written the hourly runs stop without committing.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

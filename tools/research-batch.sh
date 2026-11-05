@@ -81,8 +81,8 @@ timeout 3h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)
 'Carrying on a topic'. Keep your scripts and downloads in ~/codewatch-research/ (the only folder outside this
 repository you may write to; ~/advisory-database/ is readable too). Commit only your candidate files
 (and AGENTS.md if you mark a topic done), with the identity AGENTS.md gives. Don't push, pull or switch branches:
-the script that started you does that. If no topic in the queue is left unfinished, stop without committing and
-say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
+the script that started you does that. A topic marked paused is not to be worked on. If every topic in the queue
+is done or paused, stop without committing and say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
 refused: if one is, use python3 for it instead.
 End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
 say "opencode exited $?"
