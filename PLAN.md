@@ -1183,6 +1183,79 @@ rule):
     numbers are worst), then D (needs care with false alarms), then E. Each one: its tests (a vulnerable case and
     a safe look-alike), `devtools.py cases` for the cases behind it, the learning apps compared with the last
     nightly run, and an entry here with what moved.
+43. **Step 42's G, A, B, C and F** (2026-11-05). Each change has a test in `tests/test_detection.py` that fails
+    with it switched off (checked one by one); cases scored with `devtools.py cases`.
+    - **G, Whoogle GHSA-2689**: not a scanner gap. The scan finds the cookie reaching `pickle.loads` through
+      `from_params()` at routes.py:161, quiet after the fix, but the advisory is filed as CWE-78; the fix swaps
+      pickle for json, so CWE-502 was added to the case (78 kept). Now found.
+    - **Checks trusted by name hid their own sinks** (part of D): Semgrep clears everything inside a sanitized call,
+      arguments included, so a summarised function named like a check (`validate_credentials`, PostHog
+      GHSA-jrwm: it *is* the outbound request) lost its via-sink. The summary passes' rules no longer trust, by
+      name, a summarised function whose name a check sanitizer could match (`unshielded`). Also: functions
+      imported under an alias (`import validate_credentials as validate_zendesk_credentials`) are summarised
+      under the alias too, rebuilt after resummarise (`python_aliases`, `realiased`).
+    - **A**: the allowlist guards (`re.match`/`fullmatch`, `in`/`not in`) already existed; a compiled pattern
+      (`subdomain_regex.match(x)` then return/raise) joined them, for receivers named as a pattern.
+    - **Partial pass-through**: resummarise now also re-checks summarised functions that call a helper handing
+      back only some parameters (PostHog's `get_base_url(region, subdomain)`, where region is compared), the
+      pass-through analysis asks about calls inside f-strings (Python only), and a rule left with no summaries
+      by resummarise is still rescanned (it was skipped).
+    - **B, receivers of a project class**: a generic-named method (`add`, `get`) is connected through variables and
+      self fields assigned an instance of the project class that defines it (`self._memory = memory or
+      PersistentMemory()`, `http_client = HttpClient()`), keyed by the original path (a rewritten file is scanned
+      from its copy, which first hid it). Other objects with an add() stay unconnected.
+    - **Agent tool classes as sources** (the non-HTTP item): the method an agent framework calls (`execute`,
+      `_run`, `forward`, ...) in a `*Tool` class that describes itself to the model (`description`,
+      `args_schema`, `parameters`); `**kwargs` included, numeric parameters not. XPath's ElementTree find/findall
+      sinks no longer match a regular expression's (`_TOKEN_RE.findall`), a false alarm this source reached.
+    - **C, DRF serializers**: `validated_data` in create/update, `attrs` in validate, a value in
+      validate_<field>, and `.validated_data`/`.initial_data` are sources; a field with its own
+      `validate_<field>` method is clean in that serializer (`drf_serializers.py`, generated per project).
+    - **SSRF through client objects**: `requests.Session()`, `httpx.Client()`/`AsyncClient()` made in the
+      function, in a `with`, or kept in a field by __init__, including `getattr(self._client, method)(url)`.
+    - **F**: Flask-RESTful/RESTX Resource handler parameters are sources where `api.add_resource(Class, url)`
+      fills them with text (`flask_resources.py`; `<int:id>` isn't). OpenResolve GHSA-h3h4 stays missed by
+      design: its sink is `abort(400, message=...)`, a JSON body, which codewatch doesn't count as XSS. The
+      cookie-unpickle item was Whoogle (G).
+    - **A substring check isn't a forbidden-character check**: the guard `if "'" in name: return` cleared name for
+      any string literal, so `if 'http' in q: return redirect(q)` cleared q for the rest of the function (Whoogle
+      GHSA-mxvc: the else branch put q into an error page printed `|safe`; the redirect itself is an open redirect
+      the guard hid as well). Now only literals of up to three punctuation characters or a control escape.
+    - **A fixed host kept in a field**: `self.api_url = "https://api.github.com/{}"` in __init__, then
+      `self.api_url.format(path)`, counts as the fixed-prefix URL it is. Meant for taiga's GithubClient.get, but
+      taiga's github/api.py:89 (a false alarm since step 38) stays: its path is the avatar fetch in
+      import_project, `requests.get(repo['organization']['avatar_url'])` with `repo = self._client.get(...)`,
+      because the pass-through rules drop lookup-result, and with it the remote-reply sanitizer, so the wrapper
+      is taken to hand its URL argument back. Putting that sanitizer back in the pass rules didn't clear it in a
+      probe of the importer files; left for later.
+    Cases: found and quiet at their fixes: Whoogle GHSA-2689 and GHSA-mxvc (front end), Roxy-WI GHSA-2f7r (its route was outside the scope;
+    scope widened to `app/routes/admin`), PostHog GHSA-jrwm, firefighter GHSA-fqvv; Dagster GHSA-q93c and
+    Vibe-Trading GHSA-mjrq unchanged. Vibe-Trading GHSA-3j25 stays missed as scored: the flow is found, at the
+    tool's entry (`return self._save(kwargs)`), outside the fix's lines, and the memory name still reaches the
+    path after the fix through a slug that only a regex built from a constant (`rf"[^a-z0-9_\-{RANGES}]"`)
+    makes safe.
+    - **Shapes the new sources reached on the learning apps**: a project's `sql, params = build(...)` (the SQL
+      text isn't request data when the values come back to be bound: label-studio's summary updates), and a Jinja
+      sandbox made in another module (paperless-ngx's `JinjaEnvironment(SandboxedEnvironment)` instance, found
+      through the project's classes: `jinja_sandboxes.py`), and a regular expression compiled alone in a try only
+      to check it (paperless-ngx's validate_regex_pattern; matching happens elsewhere with a timeout).
+    **Learning apps** (all 50, the nightly's list, against the 2026-11-05 nightly run): gone, taiga's
+    jira/api.py:166 path traversal (a triaged false alarm). New, all from the serializer and validator sources
+    and real at code level: label-studio projects/api.py:571 and projects/serializers.py:356 (a label config's
+    regular expressions, sent by a user who can change the project, compiled), netbox
+    extras/api/serializers_/scripts.py:64 (an uploaded custom script loaded as Python: NetBox's design, admin
+    only). Three more were false alarms and are fixed above (label-studio tasks/serializers.py:752/768, paperless
+    serialisers.py:2556 and :208), each checked with a rescan of the app. taiga github/api.py:89 stays (see above).
+    **H, measured before building**: of the 10 front-end cases found only as hotspots, Whoogle GHSA-mxvc was a
+    reflected flow (fixed above), bird-lg GHSA-xjrp is request arguments kept in the session and printed from
+    `session` in the template, and the rest are stored data (calibre-web author fields, Invenio and GeoNode
+    descriptions, Cabot, modoboa logs). A prototype rule listing the fields a project writes from request data
+    (`obj.field = ...`, `Model.objects.create(field=...)`, `Model(field=...)`) showed matching by field name alone
+    is too coarse: calibre-web writes `shelf.name` and `user.name` from requests, so `{{ author.name|safe }}`
+    would count for the wrong reason, and keyword calls such as `Q(date__gte=...)` read as model writes. H needs
+    the model: the class a template variable comes from (the render call's argument, traced to `Model.query...`
+    / `Model.objects...`) and the class a write goes to (`obj = Model(...)`, `Model.objects.create`, a ModelForm's
+    or serializer's Meta.model). Next session.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

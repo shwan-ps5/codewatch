@@ -31,7 +31,10 @@ from .base import (
 from .body_models import with_model_sources
 from .constant_branches import blank_dead_branches
 from .containers import track_slots
+from .drf_serializers import with_serializer_checks
+from .flask_resources import with_resource_sources
 from .inline_scripts import inline_scripts
+from .jinja_sandboxes import with_sandbox_sanitizers
 from .match_statements import match_as_if
 from .python_tools import LineCache, complexity_severity, security_purpose
 from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
@@ -96,7 +99,7 @@ class Semgrep(Analyzer):
 
     def __init__(self):
         self.timeouts = set()
-        self.first_rules, self.first_found = [], []
+        self.first_rules, self.first_found, self.aliases, self.receivers = [], [], {}, {}
 
     def binary(self):
         # Own venv: semgrep pins dependencies (e.g. an old mcp) that conflict with codewatch's.
@@ -113,7 +116,11 @@ class Semgrep(Analyzer):
         custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
         if not ctx.semgrep_config and not custom_rules:
             return Result()
-        custom_rules = with_model_sources(custom_rules, (read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})))
+        python_texts = [read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})]
+        custom_rules = with_model_sources(custom_rules, python_texts)
+        custom_rules = with_serializer_checks(custom_rules, python_texts)
+        custom_rules = with_resource_sources(custom_rules, python_texts)
+        custom_rules = with_sandbox_sanitizers(custom_rules, python_texts)
         custom_rules = with_template_sinks(custom_rules, {
             f: text for f in ctx.files_with(TEMPLATE_EXTENSIONS) if (text := read_source(ctx.root / f)) is not None})
         self.timeouts, self.first_found = set(), []
@@ -133,7 +140,7 @@ class Semgrep(Analyzer):
             final = summaries_module.with_pass_through(
                 summaries_module.with_arguments(custom_rules, signatures, passes, summaries),
                 {False: set(signatures), True: js_functions}, passes, summaries, returners)
-            rules = (final + summaries_module.via_rules(final, summaries)
+            rules = (final + summaries_module.via_rules(final, summaries, self.receivers)
                      + summaries_module.from_rules(final, returners, summaries)
                      + summaries_module.field_variants(final, fields, summaries))
             configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
@@ -246,10 +253,15 @@ class Semgrep(Analyzer):
         self.first_found."""
         summaries, known, new, hits = {}, None, None, []
         scanned = targets
+        texts = [read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")]
+        self.aliases = {}
+        # Keyed by the original's path, as summaries are: a rewritten file is scanned from its analysis copy.
+        self.receivers = summaries_module.typed_receivers(dict(zip(
+            [ctx.rel(originals.get(t, t)) for t in targets if t.endswith(".py")], texts, strict=True)))
         for _ in range(summaries_module.MAX_DEPTH):
             # Semi-naive: a deeper pass has only the summaries the last one added as sinks. Whatever reaches an
             # older one was found when it was added, in every file that names it.
-            own = summaries_module.summary_rules(custom_rules, new, base=new is None)
+            own = summaries_module.summary_rules(custom_rules, new, base=new is None, receivers=self.receivers)
             rules = own + (self.first_rules if new is None else [])
             if not rules or not scanned:
                 break
@@ -266,6 +278,9 @@ class Semgrep(Analyzer):
                 self.first_found = [f for f in found if f[0] in theirs]
                 found = [f for f in found if f[0] not in theirs]
             more = summaries_module.parse_summaries(found, lambda rel: read_source(ctx.root / rel), known, hits)
+            names = {e[0] for entries in more.values() for e in entries}
+            self.aliases.update(summaries_module.python_aliases(texts, names))
+            more = summaries_module.with_aliases(more, self.aliases)
             merged = summaries_module.merge(summaries, more)
             if merged is None:
                 break
@@ -284,7 +299,7 @@ class Semgrep(Analyzer):
         signatures, js_functions, passes = known
         functions = {False: set(signatures), True: js_functions}
         texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
-        stale = summaries_module.stale_summaries(custom_rules, summaries, texts, functions, passes)
+        stale = summaries_module.stale_summaries(custom_rules, summaries, texts, (functions, passes, signatures))
         for _ in range(summaries_module.MAX_DEPTH):
             if not stale:
                 break
@@ -293,7 +308,7 @@ class Semgrep(Analyzer):
                     for rule, entries in summaries.items()}
             cleaned = summaries_module.with_pass_through(
                 summaries_module.with_arguments(custom_rules, signatures, passes, kept), functions, passes, kept, {})
-            rules = [r for r in summaries_module.summary_rules(cleaned, kept, base=True)
+            rules = [r for r in summaries_module.summary_rules(cleaned, kept, base=True, receivers=self.receivers)
                      if r["id"].removesuffix(summaries_module.SUMMARY_SUFFIX) in stale]
             scanned = sorted(summaries_module.python_definers(texts, names))
             if not rules or not scanned:
@@ -314,13 +329,15 @@ class Semgrep(Analyzer):
             stale = {rule: callers for rule, names_gone in gone.items() if names_gone
                      and (callers := set(summaries_module.python_callers(texts, names_gone))
                           & {e[0] for e in summaries.get(rule, ())})}
+        summaries = summaries_module.realiased(summaries, self.aliases)
         live = {(rule, e[0], e[4]) for rule, entries in summaries.items() for e in entries}
         return summaries, [h for h in hits if (h[0], h[3], h[1]) in live]
 
     @staticmethod
     def signatures(ctx, targets):
         """python_signatures of the functions whose result is assigned or returned: the ones pass_rules asks about."""
-        calls = summaries_module.assigned_calls(read_source(ctx.root / t) or "" for t in targets if t.endswith(".py"))
+        calls = summaries_module.assigned_calls(
+            (read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")), fstrings=True)
         return {name: defs for name, defs in summaries_module.python_signatures(
             read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})).items() if name in calls}
 

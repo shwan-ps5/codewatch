@@ -118,6 +118,90 @@ rules:
               metavariable: $TYPE
               regex: '^((typing\.)?(Optional|List|Annotated)\[str\b.*|(list|set)\[str\]|str( \| None)?|Any)$'
           - focus-metavariable: $PARAM
+      # An agent tool class's arguments, which the model fills in from a JSON schema, as for MCP tools above: the
+      # method an agent framework calls (LangChain/CrewAI `_run`, smolagents `forward`, a project's own
+      # `execute(self, **kwargs)`) in a class based on a *Tool class that describes itself to the model
+      # (`description`, `args_schema` or a `parameters` schema). Vibe-Trading GHSA-3j25 (RememberTool.execute's
+      # memory_type joined into a file path). Not numeric-typed parameters.
+      - patterns:
+          - pattern-inside: |
+              class $CLS(..., $BASE, ...):
+                ...
+          - pattern-either:
+              - pattern-inside: |
+                  class $CLS(...):
+                    ...
+                    $DESC = ...
+                    ...
+              - pattern-inside: |
+                  class $CLS(...):
+                    ...
+                    $DESC: $DTYPE = ...
+                    ...
+          - metavariable-regex: {metavariable: $BASE, regex: '^(\w+\.)*\w*Tool$'}
+          - metavariable-regex: {metavariable: $DESC, regex: '^(description|args_schema|parameters)$'}
+          - pattern-either:
+              - patterns:
+                  - pattern-inside: |
+                      def $RUN(self, ..., **$KW):
+                        ...
+                  - pattern: $KW
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          def $RUN(self, ..., $PARAM, ...):
+                            ...
+                      - pattern-inside: |
+                          async def $RUN(self, ..., $PARAM, ...):
+                            ...
+                  - pattern-not-inside: |
+                      def $RUN(..., $PARAM: int, ...):
+                        ...
+                  - pattern-not-inside: |
+                      def $RUN(..., $PARAM: int = $DEFAULT, ...):
+                        ...
+                  - pattern-not-inside: |
+                      def $RUN(..., $PARAM: float, ...):
+                        ...
+                  - pattern-not-inside: |
+                      def $RUN(..., $PARAM: float = $DEFAULT, ...):
+                        ...
+                  - pattern-not-inside: |
+                      def $RUN(..., $PARAM: bool, ...):
+                        ...
+                  - pattern-not-inside: |
+                      def $RUN(..., $PARAM: bool = $DEFAULT, ...):
+                        ...
+                  - focus-metavariable: $PARAM
+          - metavariable-regex: {metavariable: $RUN, regex: '^(execute|run|_run|_arun|arun|forward|invoke|ainvoke|__call__)$'}
+      # Django REST framework serializers: the request body after DRF's field checks, as `validated_data` in
+      # create()/update(), `attrs` in validate(), a field's value in validate_<field>(), and .validated_data or
+      # .initial_data on a serializer (firefighter GHSA-fqvv: create(self, validated_data) passes
+      # validated_data["attachments"] to the Jira client, which fetches each URL). A field with its own
+      # validate_<field> method is cleared by the project's serializer checks (drf_serializers.py).
+      - patterns:
+          - pattern-inside: |
+              class $SER(..., $SBASE, ...):
+                ...
+          - metavariable-regex: {metavariable: $SBASE, regex: '^(\w+\.)*\w*Serializer(\[.*\])?$'}
+          - pattern-either:
+              - pattern-inside: |
+                  def create(self, $PARAM, ...):
+                    ...
+              - pattern-inside: |
+                  def update(self, $INSTANCE, $PARAM, ...):
+                    ...
+              - pattern-inside: |
+                  def validate(self, $PARAM, ...):
+                    ...
+              - patterns:
+                  - pattern-inside: |
+                      def $FIELD_CHECK(self, $PARAM, ...):
+                        ...
+                  - metavariable-regex: {metavariable: $FIELD_CHECK, regex: '^validate_\w+$'}
+          - focus-metavariable: $PARAM
+      - pattern: $SERIALIZER.validated_data
+      - pattern: $SERIALIZER.initial_data
       # A FastAPI route's uploaded files: the name the client sent (file: UploadFile, files: List[UploadFile]),
       # not the file object, whose contents aren't a path or markup. libre-chat GHSA-3864-rp2m-2qfj, LightRAG
       # GHSA-v9w6-9hq9-33ch (both: open(os.path.join(folder, file.filename), "wb")).
@@ -431,6 +515,23 @@ rules:
                       except:
                         ...
                       ...
+                  # A compiled pattern, as re.match above: `subdomain_regex = re.compile("^[a-zA-Z-]+$")` then
+                  # `if not subdomain_regex.match(subdomain): return Response(...)` (PostHog GHSA-jrwm at its fix).
+                  # Only receivers named as a pattern, so a router's or a model's own .match() isn't one.
+                  - patterns:
+                      - pattern-either:
+                          - pattern-inside: |
+                              if <... $RE.$MATCH($X, ...) ...>:
+                                ...
+                                return ...
+                              ...
+                          - pattern-inside: |
+                              if <... $RE.$MATCH($X, ...) ...>:
+                                ...
+                                raise ...
+                              ...
+                      - metavariable-regex: {metavariable: $MATCH, regex: ^(match|fullmatch)$}
+                      - metavariable-regex: {metavariable: $RE, regex: '(?i)^(.*[._])?(re|rx|regex|regexp|pattern)$'}
                   # A normalised path checked against its base and a separator (pyLoad GHSA-48rp at its fix):
                   # if not os.path.abspath(p).startswith(os.path.abspath(base) + os.sep): return. Not without the
                   # separator: /srv/files_evil starts with /srv/files (xiaomusic's advisory).
@@ -597,17 +698,24 @@ rules:
                   - pattern-inside: |
                       if <... url_has_allowed_host_and_scheme(..., url=$X, ...) ...>:
                         ...
-                  # A forbidden-character check that bails out: if "'" in name: return ...
-                  - pattern-inside: |
-                      if <... "..." in $X ...>:
-                        ...
-                        return ...
-                      ...
-                  - pattern-inside: |
-                      if <... "..." in $X ...>:
-                        ...
-                        raise ...
-                      ...
+                  # A forbidden-character check that bails out: if "'" in name: return ... Only for a few punctuation
+                  # characters or a control escape: `if 'http' in q: return redirect(q)` routes the value, it doesn't
+                  # check it (Whoogle GHSA-mxvc: the else branch put q in an error page printed |safe).
+                  - patterns:
+                      - pattern-either:
+                          - pattern-inside: |
+                              if <... $CHAR in $X ...>:
+                                ...
+                                return ...
+                              ...
+                          - pattern-inside: |
+                              if <... $CHAR in $X ...>:
+                                ...
+                                raise ...
+                              ...
+                      - metavariable-regex:
+                          metavariable: $CHAR
+                          regex: '^[rbu]*(''|")([^A-Za-z0-9\s]{1,3}|\\[nrt0]|\\x00)\1$'
                   - pattern-inside: |
                       if <... $X in $ALLOWED ...>:
                         ...
@@ -904,6 +1012,16 @@ rules:
       # Django's compiled WHERE/query: SQL with %s placeholders, the values returned separately (taiga:
       # queryset.query.where.as_sql(compiler, connection)). str(queryset.query) inlines them and stays tainted.
       - pattern: $NODE.as_sql(...)
+      # The same shape from a project's own builder: `sql, params = build(...)` hands back the SQL text and the
+      # values to bind, and unpacking taints both names alike (label-studio's _build_flat_increment_sql puts every
+      # key in params and only %s in the text). The params half stays tainted for whatever else uses it.
+      - patterns:
+          - pattern-inside: |
+              $SQL, $PARAMS = $BUILD(...)
+              ...
+          - pattern: $SQL
+          - metavariable-regex: {metavariable: $PARAMS, regex: '(?i)^\w*(params|args|values|bindings|binds)$'}
+          - metavariable-regex: {metavariable: $SQL, regex: '(?i)^\w*(sql|query|expr|clause|where)$'}
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -1240,8 +1358,16 @@ rules:
               - pattern: lxml.etree.ETXPath($QUERY, ...)
               - pattern: $TREE.xpath($QUERY, ...)
               - pattern: elementpath.select($ROOT, $QUERY, ...)
+          - focus-metavariable: $QUERY
+      # ElementTree's find/findall, not a regular expression's: re.findall(pattern, text) or a compiled
+      # `_TOKEN_RE.findall(text)` (Vibe-Trading's memory search, reached once agent tool arguments were sources).
+      - patterns:
+          - pattern-either:
               - pattern: $TREE.findall($QUERY, ...)
               - pattern: $TREE.find($QUERY, ...)
+          - metavariable-regex:
+              metavariable: $TREE
+              regex: '^(?!(re|regex)$)(?!(?i:.*([._]|^)(re|rx|regex|regexp|pattern)$)).*$'
           - focus-metavariable: $QUERY
 
   - id: codewatch.python.web.ldap-injection
@@ -1764,6 +1890,23 @@ rules:
               patterns:
                 - pattern: f"..."
                 - pattern-regex: '^f[''"]https?://[^/{''"]+/'
+      # The same, with the fixed start kept in a field by __init__: `self.api_url = "https://api.github.com/{}"`,
+      # then `self.api_url.format(uri_path)` (taiga's GithubClient.get, reached once receivers of a project class
+      # were connected).
+      - patterns:
+          - pattern-inside: |
+              class $HOLDER(...):
+                ...
+                def __init__(...):
+                  ...
+                  self.$BASE = "$PREFIX"
+                  ...
+                ...
+          - pattern-either:
+              - pattern: self.$BASE.format(...)
+              - pattern: self.$BASE + $REST
+              - pattern: self.$BASE % $REST
+          - metavariable-regex: {metavariable: $PREFIX, regex: '^https?://[^/{%]+/'}
     pattern-sinks:
       - patterns:
           - pattern-either:
@@ -1785,6 +1928,51 @@ rules:
               - pattern: urllib.request.urlopen($URL, ...)
               - pattern: urllib.request.Request($URL, ...)
               - pattern: urllib.request.urlretrieve($URL, ...)
+          - focus-metavariable: $URL
+      # The same calls on a client or session object: `requests.Session()`, `httpx.Client()` /
+      # `httpx.AsyncClient()`, made in the function (`with httpx.Client() as client:`) or kept in a field by
+      # __init__, including `getattr(self._client, method)(url)` (firefighter GHSA-fqvv's HttpClient.call).
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          $CLIENT = $SESSION(...)
+                          ...
+                      - pattern-inside: |
+                          with $SESSION(...) as $CLIENT:
+                            ...
+                      - pattern-inside: |
+                          async with $SESSION(...) as $CLIENT:
+                            ...
+                  - pattern-either:
+                      - patterns:
+                          - pattern-either:
+                              - pattern: $CLIENT.$METHOD($URL, ...)
+                              - pattern: $CLIENT.$METHOD(..., url=$URL, ...)
+                          - metavariable-regex: {metavariable: $METHOD, regex: ^(get|post|put|patch|delete|head|options|stream)$}
+                      - pattern: $CLIENT.request($VERB, $URL, ...)
+                      - pattern: $CLIENT.request(..., url=$URL, ...)
+                      - pattern: getattr($CLIENT, $NAME)($URL, ...)
+              - patterns:
+                  - pattern-inside: |
+                      class $HOLDER(...):
+                        ...
+                        def __init__(...):
+                          ...
+                          self.$FIELD = $SESSION(...)
+                          ...
+                        ...
+                  - pattern-either:
+                      - patterns:
+                          - pattern-either:
+                              - pattern: self.$FIELD.$METHOD($URL, ...)
+                              - pattern: self.$FIELD.$METHOD(..., url=$URL, ...)
+                          - metavariable-regex: {metavariable: $METHOD, regex: ^(get|post|put|patch|delete|head|options|stream)$}
+                      - pattern: self.$FIELD.request($VERB, $URL, ...)
+                      - pattern: self.$FIELD.request(..., url=$URL, ...)
+                      - pattern: getattr(self.$FIELD, $NAME)($URL, ...)
+          - metavariable-regex: {metavariable: $SESSION, regex: '^(requests\.(Session|session)|httpx\.(Client|AsyncClient))$'}
           - focus-metavariable: $URL
 
   - id: codewatch.python.web.regex-injection
@@ -1820,6 +2008,18 @@ rules:
           # The regex module's timeout bounds a slow pattern: a user's own pattern taken on purpose (recipes'
           # automations, regex.sub(rule[1], ..., timeout=REGEX_TIMEOUT)).
           - pattern-not: regex.$FUNC(..., timeout=$TIMEOUT, ...)
+          # A compile that only checks the pattern, alone in a try: compiling doesn't backtrack, and its result is
+          # dropped (paperless-ngx's validate_regex_pattern, before matching with a timeout elsewhere).
+          - pattern-not-inside: |
+              try:
+                $LIB.compile($PATTERN, ...)
+              except $ERROR:
+                ...
+          - pattern-not-inside: |
+              try:
+                $LIB.compile($PATTERN, ...)
+              except $ERROR as $E:
+                ...
           - metavariable-regex: {metavariable: $FUNC, regex: ^(compile|search|match|fullmatch|findall|finditer|sub|subn|split)$}
           - focus-metavariable: $PATTERN
 

@@ -3350,3 +3350,373 @@ def test_remote_replies_and_filterset_rows_are_not_request_data(tmp_path):
         "    open(request.args['f'])\n"                                  # 14
         "    return 'ok'\n")})
     assert found == {("app.py", 11, "ssrf"), ("app.py", 14, "path-traversal")}
+
+
+def test_a_check_named_helper_that_is_itself_the_sink(tmp_path):
+    """A helper named like a check (`validate_credentials`) is trusted as one by name, which hid its own via-sink
+    when it is the outbound request (PostHog GHSA-jrwm: validate_zendesk_credentials(subdomain=...) GETs
+    https://{subdomain}.zendesk.com). Also reached under an import alias. The fix's compiled-pattern allowlist
+    (`subdomain_regex.match(subdomain)` and return) clears the value; a real check named the same way still does."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    zendesk = ("import requests\n\n\n"
+               "def validate_credentials(subdomain, api_key):\n"
+               "    res = requests.get(f'https://{subdomain}.zendesk.com/api/v2/tickets/count')\n"
+               "    return res.status_code == 200\n")
+    checks = ("from urllib.parse import urlparse\n\n\n"
+              "def validate_url(url):\n"
+              "    return url if urlparse(url).hostname == 'api.example.com' else 'https://api.example.com/'\n")
+    views = ("import re\nimport requests\n"
+             "from app.pipelines.zendesk import validate_credentials as validate_zendesk_credentials\n"
+             "from app.checks import validate_url\n"
+             "from flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+             "@app.route('/schema', methods=['POST'])\n"
+             "def schema():\n"
+             "    subdomain = request.form.get('subdomain', '')\n"
+             "    if not validate_zendesk_credentials(subdomain=subdomain, api_key='k'):\n"   # 13
+             "        return 'no'\n"
+             "    requests.get(validate_url(request.form['u']))\n"                           # 15: a real check
+             "    return 'ok'\n\n\n"
+             "@app.route('/fixed', methods=['POST'])\n"
+             "def fixed():\n"
+             "    subdomain = request.form.get('subdomain', '')\n"
+             "    subdomain_regex = re.compile('^[a-zA-Z-]+$')\n"
+             "    if not subdomain_regex.match(subdomain):\n"
+             "        return 'bad subdomain'\n"
+             "    validate_zendesk_credentials(subdomain=subdomain, api_key='k')\n"           # 25: allowlisted
+             "    checker = Checker()\n"
+             "    if not checker.match(request.form['s']):\n"
+             "        return 'no'\n"
+             "    validate_zendesk_credentials(subdomain=request.form['s'], api_key='k')\n"   # 29: not a pattern
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/pipelines/zendesk.py": zendesk, "app/checks.py": checks,
+                                               "app/views.py": views})
+    assert found == {("app/views.py", 13, "ssrf"), ("app/views.py", 29, "ssrf")}
+
+
+def test_agent_tool_arguments_are_untrusted(tmp_path):
+    """The arguments a model fills in for an agent tool class (Vibe-Trading GHSA-3j25: RememberTool.execute(**kwargs)
+    joins memory_type into a path; LangChain-style `_run(self, query: str)`): only the method the framework calls,
+    in a *Tool class that describes itself to the model, and not numeric parameters."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"tools.py": (
+        "import os\nimport subprocess\nfrom src.agent.tools import BaseTool\n\n\n"
+        "class RememberTool(BaseTool):\n"
+        "    name = 'remember'\n"
+        "    description = 'Persistent memory.'\n\n"
+        "    def execute(self, **kwargs):\n"
+        "        kind = kwargs.get('memory_type', 'project')\n"
+        "        return open(os.path.join('/memory', kind + '.md'), 'w')\n\n\n"     # 12
+        "class SearchTool(BaseTool):\n"
+        "    name: str = 'search'\n"
+        "    description: str = 'Search files.'\n\n"
+        "    def _run(self, query: str, limit: int = 5):\n"
+        "        subprocess.run('grep ' + query, shell=True)\n"                    # 20
+        "        return open(os.path.join('/x', str(limit)))\n\n\n"               # 21: a number
+        "class NotATool(Base):\n"
+        "    description = 'x'\n\n"
+        "    def execute(self, **kwargs):\n"
+        "        return open(kwargs['name'])\n\n\n"                               # 28: not a tool
+        "class MigrationTool(BaseTool):\n"
+        "    def run(self, path):\n"
+        "        return open(path)\n\n\n"                                         # 33: not described to a model
+        "class Helper(BaseTool):\n"
+        "    description = 'x'\n\n"
+        "    def helper(self, path):\n"
+        "        return open(path)\n")})                                          # 39: not the entry point
+    assert found == {("tools.py", 12, "path-traversal"), ("tools.py", 20, "command-injection")}
+
+
+def test_generic_methods_through_receivers_of_a_project_class(tmp_path):
+    """A generic method name (`add`, `get`) is connected only through a receiver assigned an instance of the
+    project class that defines it (Vibe-Trading GHSA-3j25: self._memory = memory or PersistentMemory(), then
+    self._memory.add(title, content, memory_type)), not through any other object with an add()."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    memory = ("import os\n\n\nclass PersistentMemory:\n"
+              "    def add(self, title, content, memory_type, description=''):\n"
+              "        path = os.path.join('/memory', memory_type, title + '.md')\n"
+              "        return open(path, 'w')\n")
+    views = ("from flask import Flask, request\nfrom app.memory import PersistentMemory\n\napp = Flask(__name__)\n\n\n"
+             "class Notes:\n"
+             "    def __init__(self, memory=None):\n"
+             "        self._memory = memory or PersistentMemory()\n\n"
+             "    def remember(self, kind):\n"
+             "        return self._memory.add('t', 'c', kind)\n\n\n"
+             "@app.route('/a')\n"
+             "def a(tags):\n"
+             "    Notes().remember(request.args['kind'])\n"                    # 17
+             "    store = PersistentMemory()\n"
+             "    store.add('t', 'c', memory_type=request.args['k'])\n"        # 19
+             "    tags.add('t', 'c', request.args['k'])\n"                     # 20: some other add()
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/memory.py": memory, "app/views.py": views})
+    assert found == {("app/views.py", 17, "path-traversal"), ("app/views.py", 19, "path-traversal")}
+
+
+def test_a_regular_expression_find_is_not_xpath(tmp_path):
+    """ElementTree's find/findall take an XPath; a regular expression's findall doesn't (Vibe-Trading's
+    `_TOKEN_RE.findall(text.lower())` on a query, once agent tool arguments were sources)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import re\nfrom flask import Flask, request\n\napp = Flask(__name__)\n_TOKEN_RE = re.compile('[a-z]+')\n\n\n"
+        "@app.route('/a')\n"
+        "def a(tree):\n"
+        "    _TOKEN_RE.findall(request.args['q'])\n"                       # 10
+        "    re.findall(request.args['p'], 'text')\n"                       # 11: a regex, not XPath
+        "    tree.findall(request.args['x'])\n"                             # 12
+        "    return 'ok'\n")})
+    assert ("app.py", 12, "xpath-injection") in found
+    assert not {f for f in found if f[2] == "xpath-injection" and f[1] in (10, 11)}
+
+
+def test_a_helper_called_inside_an_f_string_is_asked_what_it_hands_back(tmp_path):
+    """The pass-through analysis asks about calls whose result is assigned or returned, and now one interpolated
+    into an f-string too (PostHog GHSA-jrwm at its fix: f"{get_base_url(region, subdomain)}resources/users", where
+    region is only compared and subdomain was checked against an allowlist first)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import re\nimport requests\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "def get_base_url(region, subdomain):\n"
+        "    if region == 'US' and subdomain:\n"
+        "        return f'https://{subdomain}.rest.vitally.io/'\n"
+        "    return 'https://rest.vitally-eu.io/'\n\n\n"
+        "@app.route('/a', methods=['POST'])\n"
+        "def a():\n"
+        "    subdomain = request.form.get('subdomain', '')\n"
+        "    if not re.match('^[a-zA-Z-]+$', subdomain):\n"
+        "        return 'bad'\n"
+        "    requests.get(f\"{get_base_url(request.form['region'], subdomain)}resources/users\")\n"   # 19
+        "    requests.get(f\"{get_base_url('US', request.form['s'])}resources/users\")\n"            # 20
+        "    return 'ok'\n")})
+    assert found == {("app.py", 20, "ssrf")}
+
+
+def test_a_summary_resting_on_a_helper_that_hands_back_some_parameters(tmp_path):
+    """A summarised function whose sink argument comes from a helper that hands back only some of its parameters is
+    summarised again once the passes are known (PostHog GHSA-jrwm at its fix: validate_credentials(secret_token,
+    region, subdomain) requests f"{get_base_url(region, subdomain)}...", and region is only compared)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    vitally = ("import requests\n\n\n"
+               "def get_base_url(region, subdomain):\n"
+               "    if region == 'US' and subdomain:\n"
+               "        return f'https://{subdomain}.rest.vitally.io/'\n"
+               "    return 'https://rest.vitally-eu.io/'\n\n\n"
+               "def validate_credentials(secret_token, region, subdomain):\n"
+               "    res = requests.get(f'{get_base_url(region, subdomain)}resources/users?limit=1')\n"
+               "    return res.status_code == 200\n")
+    views = ("from flask import Flask, request\nfrom app.vitally import validate_credentials\n"
+             "from app.vitally import validate_credentials as validate_vitally_credentials\n\napp = Flask(__name__)\n\n\n"
+             "@app.route('/a', methods=['POST'])\n"
+             "def a():\n"
+             "    validate_credentials(secret_token='t', subdomain='acme', region=request.form['region'])\n"   # 10
+             "    validate_credentials(secret_token='t', subdomain=request.form['s'], region='US')\n"          # 11
+             "    validate_vitally_credentials(secret_token='t', subdomain='a', region=request.form['r'])\n"   # 12
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/vitally.py": vitally, "app/views.py": views})
+    # 12: the alias follows the function's summary once that loses region.
+    assert found == {("app/views.py", 11, "ssrf")}
+
+
+def test_drf_serializer_data_and_its_field_checks(tmp_path):
+    """A DRF serializer's validated_data is the request body (firefighter GHSA-fqvv: create() hands
+    validated_data["attachments"] to a Jira client that fetches each URL); a field the serializer checks in
+    validate_<field>, which DRF runs first, is clean (the fix's validate_attachments)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    client = ("import httpx\n\n\nclass RaidJiraClient:\n"
+              "    @staticmethod\n"
+              "    def add_attachments_to_issue(issue_id, urls):\n"
+              "        for url in urls:\n"
+              "            httpx.get(url)\n\n\n"
+              "client = RaidJiraClient()\n")
+    serializers = (
+        "from rest_framework import serializers\nfrom app.client import client as jira_client\n\n\n"
+        "class TicketSerializer(serializers.ModelSerializer[Ticket]):\n"
+        "    attachments = serializers.CharField()\n\n"
+        "    def create(self, validated_data):\n"
+        "        jira_client.add_attachments_to_issue(1, validated_data['attachments'].split(','))\n"   # 9
+        "        return 1\n\n\n"
+        "class CheckedSerializer(serializers.Serializer):\n"
+        "    def validate_attachments(self, value):\n"
+        "        if not value.startswith('https://files.example.com/'):\n"
+        "            raise serializers.ValidationError('no')\n"
+        "        return value\n\n"
+        "    def create(self, validated_data):\n"
+        "        jira_client.add_attachments_to_issue(1, validated_data['attachments'].split(','))\n"   # 20: checked
+        "        jira_client.add_attachments_to_issue(1, [validated_data.get('other')])\n"              # 21
+        "        return 1\n\n\n"
+        "class NotASerializer(Base):\n"
+        "    def create(self, validated_data):\n"
+        "        jira_client.add_attachments_to_issue(1, validated_data['a'])\n")                      # 27
+    found = semgrep_vulnerabilities(tmp_path, {"app/client.py": client, "app/serializers.py": serializers})
+    assert found == {("app/serializers.py", 9, "ssrf"), ("app/serializers.py", 21, "ssrf")}
+
+
+def test_requests_through_a_client_or_session_object(tmp_path):
+    """SSRF through a requests Session or an httpx Client, made in the function or kept in a field by __init__,
+    including `getattr(self._client, method)(url)` (firefighter GHSA-fqvv's HttpClient, reached through
+    `http_client = HttpClient()` then `http_client.get(url)`)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import httpx\nimport requests\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "class HttpClient:\n"
+        "    def __init__(self, client_kwargs=None):\n"
+        "        self._client = httpx.Client(**(client_kwargs or {}))\n\n"
+        "    def call(self, method, url, **kwargs):\n"
+        "        return getattr(self._client, method)(url, **kwargs)\n\n"
+        "    def get(self, url, **kwargs):\n"
+        "        return self.call('get', url, **kwargs)\n\n\n"
+        "@app.route('/a')\n"
+        "def a(other):\n"
+        "    session = requests.Session()\n"
+        "    session.get(request.args['u'])\n"                       # 22
+        "    with httpx.Client() as client:\n"
+        "        client.post(url=request.args['v'])\n"                # 24
+        "        client.request('GET', request.args['w'])\n"          # 25
+        "        client.get('https://api.example.com/', params={'q': request.args['q']})\n"   # 26: a query
+        "    http_client = HttpClient()\n"
+        "    http_client.get(request.args['y'])\n"                    # 28
+        "    other.get(request.args['z'])\n"                          # 29: not a client
+        "    return 'ok'\n")})
+    assert found == {("app.py", 22, "ssrf"), ("app.py", 24, "ssrf"), ("app.py", 25, "ssrf"), ("app.py", 28, "ssrf")}
+
+
+def test_flask_restful_resource_url_parameters(tmp_path):
+    """A Flask-RESTful Resource's handler parameters are the URL's variable parts, given where the class is
+    registered (OpenResolve GHSA-h3h4: api.add_resource(LookupRecordType, '/<rdtype>/<domain>')); only those the
+    URL fills with text, and only for registered classes."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\nfrom flask import Flask\nfrom flask_restful import Api, Resource\n\n\n"
+        "class LookupRecordType(Resource):\n"
+        "    def get(self, rdtype, domain):\n"
+        "        return open(os.path.join('/zones', domain))\n\n\n"            # 8
+        "class Certificate(Resource):\n"
+        "    def get(self, certificate_id):\n"
+        "        return open(os.path.join('/certs', certificate_id))\n\n\n"    # 13: an int converter
+        "class Unregistered(Resource):\n"
+        "    def get(self, name):\n"
+        "        return open(name)\n\n\n"                                       # 18
+        "app = Flask(__name__)\napi = Api(app)\n"
+        "api.add_resource(LookupRecordType, '/<rdtype>/<domain>')\n"
+        "api.add_resource(Certificate, '/certificates/<int:certificate_id>')\n")})
+    assert found == {("app.py", 8, "path-traversal")}
+
+
+def test_a_substring_check_routes_a_value_without_checking_it(tmp_path):
+    """`if "'" in name: return` clears name, but `if 'http' in q: return redirect(q)` only sends q one way or
+    the other (Whoogle GHSA-mxvc: the else branch rendered q into an error page printed |safe)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app.py": ("from flask import Flask, request, redirect, render_template\n\napp = Flask(__name__)\n\n\n"
+                   "@app.route('/url')\ndef url():\n"
+                   "    q = request.args.get('q')\n"
+                   "    if len(q) > 0 and 'http' in q:\n"
+                   "        return redirect(q)\n"                                                         # 10
+                   "    else:\n"
+                   "        return render_template('error.html', error_message='Unable: ' + q)\n\n\n"   # 12
+                   "@app.route('/b')\ndef b():\n"
+                   "    q = request.args.get('q')\n"
+                   "    if '<' in q:\n"
+                   "        return 'no'\n"
+                   "    return render_template('error.html', error_message=q)\n"),                      # 19
+        "templates/error.html": "<div>{{ error_message|safe }}</div>\n"})
+    assert found == {("app.py", 10, "open-redirect"), ("app.py", 12, "xss")}
+
+
+def test_a_fixed_host_kept_in_a_field(tmp_path):
+    """A client whose __init__ keeps a URL with a fixed host in a field builds its request URLs from it
+    (taiga's GithubClient: self.api_url = "https://api.github.com/{}", then self.api_url.format(uri_path) in its
+    get()); one whose base URL is a plain parameter doesn't. Each reached through a receiver of its own class."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    github = ("import requests\n\n\n"
+              "class GithubClient:\n"
+              "    def __init__(self, token):\n"
+              "        self.api_url = 'https://api.github.com/{}'\n"
+              "        self.token = token\n\n"
+              "    def get(self, uri_path):\n"
+              "        return requests.get(self.api_url.format(uri_path))\n")
+    mirror = ("import requests\n\n\n"
+              "class Mirror:\n"
+              "    def __init__(self, base):\n"
+              "        self.base = base\n\n"
+              "    def get(self, uri_path):\n"
+              "        return requests.get(self.base.format(uri_path))\n")
+    views = ("from flask import Flask, request\nfrom app.github import GithubClient\nfrom app.mirror import Mirror\n\n"
+             "app = Flask(__name__)\n\n\n"
+             "@app.route('/a')\n"
+             "def a():\n"
+             "    github = GithubClient('t')\n"
+             "    github.get('repos/' + request.args['p'])\n"     # 11: a path on GitHub's host
+             "    mirror = Mirror('{}')\n"
+             "    mirror.get(request.args['p'])\n"                 # 13
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/github.py": github, "app/mirror.py": mirror, "app/views.py": views})
+    assert found == {("app/views.py", 13, "ssrf")}
+
+
+def test_sql_text_from_a_builder_that_returns_its_params(tmp_path):
+    """`sql, params = build(...)` hands back SQL text and the values to bind (label-studio's summary updates):
+    the text isn't request data even when the params are; a builder returning one string still is."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from django.db import connection\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "def build(keys):\n"
+        "    return 'jsonb_set(x, %s)', [list(keys)]\n\n\n"
+        "def build_text(keys):\n"
+        "    return 'x = ' + keys[0]\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    ann_sql, ann_params = build([request.args['k']])\n"
+        "    connection.cursor().execute(f'UPDATE t SET c = {ann_sql}', ann_params)\n"     # 18
+        "    clause = build_text([request.args['k']])\n"
+        "    connection.cursor().execute(f'UPDATE t SET {clause}')\n"                      # 20
+        "    return 'ok'\n")})
+    assert found == {("app.py", 20, "sql-injection")}
+
+
+def test_a_sandboxed_jinja_environment_made_in_another_module(tmp_path):
+    """A project's own SandboxedEnvironment subclass, made in one module and rendered with in another (paperless-ngx's
+    JinjaEnvironment for storage-path templates), is a sandbox; a plain Environment isn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    environment = ("from jinja2 import Environment\nfrom jinja2.sandbox import SandboxedEnvironment\n\n\n"
+                   "class JinjaEnvironment(SandboxedEnvironment):\n    pass\n\n\n"
+                   "_template_environment = JinjaEnvironment()\nplain_environment = Environment()\n")
+    views = ("from flask import Flask, request\n"
+             "from app.environment import _template_environment, plain_environment\n\napp = Flask(__name__)\n\n\n"
+             "@app.route('/a')\n"
+             "def a():\n"
+             "    _template_environment.from_string(request.args['t']).render()\n"   # 9
+             "    plain_environment.from_string(request.args['t']).render()\n"       # 10
+             "    return 'ok'\n")
+    found = semgrep_vulnerabilities(tmp_path, {"app/environment.py": environment, "app/views.py": views})
+    assert found == {("app/views.py", 10, "template-injection")}
+
+
+def test_a_regex_compiled_only_to_check_it(tmp_path):
+    """Compiling a user's pattern alone in a try only checks it (paperless-ngx's validate_regex_pattern); compiling
+    it for use is still a sink."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import re\nimport regex\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    try:\n"
+        "        regex.compile(request.args['p'])\n"                     # 11: a check
+        "    except regex.error as exc:\n"
+        "        return str(exc)\n"
+        "    pattern = re.compile(request.args['q'])\n"                  # 14
+        "    return str(pattern.fullmatch('x'))\n")})
+    assert {f for f in found if f[2] == "regex-injection"} == {("app.py", 14, "regex-injection")}

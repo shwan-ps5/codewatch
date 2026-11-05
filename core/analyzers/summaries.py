@@ -148,7 +148,7 @@ def is_js(rule):
     return bool(JS_LANGUAGES & set(rule.get("languages", [])))
 
 
-def summary_rules(rules, summaries=None, base=True):
+def summary_rules(rules, summaries=None, base=True, receivers=None):
     """Pass 1: every taint rule with function parameters as sources, reporting "function|parameter|callee".
 
     With summaries, only the summarised rules, and calls to the summarised functions are sinks as well (the callee
@@ -157,14 +157,17 @@ def summary_rules(rules, summaries=None, base=True):
     out = []
     for rule in taint_rules(rules):
         found = (summaries or {}).get(rule["id"])
-        if summaries is not None and not found:
+        # Listed with no summaries left is still asked about: resummarise's kept can empty a rule (PostHog
+        # GHSA-jrwm's only SSRF summary was the stale one).
+        if summaries is not None and rule["id"] not in summaries:
             continue
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + SUMMARY_SUFFIX
         variant["message"] = "$FUNC|$PARAM|$VIA_FUNC|$VIA_KW"
         variant["pattern-sources"] = copy.deepcopy(JS_PARAM_SOURCES if is_js(rule) else PYTHON_PARAM_SOURCES)
         if found:
-            variant["pattern-sinks"] = (rule["pattern-sinks"] if base else []) + via_sinks(found, is_js(rule))
+            variant["pattern-sinks"] = (rule["pattern-sinks"] if base else []) + via_sinks(found, is_js(rule), receivers)
+            unshielded(variant, found)
         out.append(variant)
     return out
 
@@ -318,6 +321,77 @@ def other_receiver_methods(found):
     return {f for f, _index, _param, method, _path in found if method and f not in GENERIC_METHODS}
 
 
+def constructed_class(value, classes):
+    """The project class a value is made from: `Class(...)`, `module.Class(...)`, or one side of `x or Class()` /
+    `a if c else Class()` (Vibe-Trading: self._memory = memory or PersistentMemory())."""
+    if isinstance(value, ast.Call):
+        name = value.func.attr if isinstance(value.func, ast.Attribute) else getattr(value.func, "id", None)
+        return name if name in classes else None
+    parts = value.values if isinstance(value, ast.BoolOp) else (
+        [value.body, value.orelse] if isinstance(value, ast.IfExp) else [])
+    return next((c for part in parts if (c := constructed_class(part, classes))), None)
+
+
+def receiver_text(target):
+    """`name` or `self.field` as written, or None for anything else."""
+    if isinstance(target, ast.Name):
+        return target.id
+    if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id in RECEIVERS:
+        return f"{target.value.id}.{target.attr}"
+    return None
+
+
+def typed_receivers(texts):
+    """{(method, defining path): receivers} for the generic-named methods of the project's classes (GENERIC_METHODS:
+    `get`, `add`, `save`), and the variables and self fields assigned an instance of that class anywhere in texts
+    ({path: source}). A call on one of them reaches the project's method, not a library's: taiga's
+    `self._client = JiraClient(...)` then `self._client.get(url)`, Vibe-Trading's `self._memory.add(...)`
+    (GHSA-3j25). By name across files, so visible() still decides whether the calling file can reach it."""
+    trees = {}
+    for path, text in texts.items():
+        try:
+            trees[path] = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+    methods = {}
+    for path, tree in trees.items():
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in GENERIC_METHODS:
+                        methods.setdefault(node.name, set()).add((item.name, path))
+    if not methods:
+        return {}
+    by_class = {}
+    for tree in trees.values():
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+                cls = constructed_class(node.value, methods)
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for target in targets if cls else ():
+                    if (text := receiver_text(target)) and text not in RECEIVERS:
+                        by_class.setdefault(cls, set()).add(text)
+    return {key: receivers for cls, receivers in by_class.items() for key in methods[cls]}
+
+
+def typed_receiver_sinks(found, receivers):
+    """Sinks for calls to summarised generic-named methods through a receiver typed as their class."""
+    sinks = []
+    for func, index, param, method, path in sorted(found, key=str):
+        names = receivers.get((func, path)) if method else None
+        if not names:
+            continue
+        shape = [{"metavariable-regex": {"metavariable": "$OBJ", "regex": regex}} for regex in name_regexes(names)]
+        named = {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": f"^{re.escape(func)}$"}}
+        if index is not None:
+            call = "$OBJ.$VIA_FUNC(" + "".join(f"$A{i}, " for i in range(index)) + "$ARG, ...)"
+            sinks += [{"patterns": [{"pattern": call}, s, named, {"focus-metavariable": "$ARG"}]} for s in shape]
+        keyword = {"metavariable-regex": {"metavariable": "$VIA_KW", "regex": f"^{re.escape(param)}$"}}
+        sinks += [{"patterns": [{"pattern": "$OBJ.$VIA_FUNC(..., $VIA_KW=$ARG, ...)"}, s, named, keyword,
+                                {"focus-metavariable": "$ARG"}]} for s in shape]
+    return sinks
+
+
 def call_patterns(index, method, js):
     """Semgrep patterns for a call passing $ARG at that position; $VIA_FUNC binds the name."""
     if index is None:
@@ -337,7 +411,7 @@ def name_regexes(names):
             for i in range(0, len(names), NAME_BATCH)]
 
 
-def via_sinks(found, js):
+def via_sinks(found, js, receivers=None):
     """One sink per call shape, naming every function called that way: a sink per function made Semgrep match
     thousands of patterns in a large project. Python keyword arguments get one sink per kind of callee, naming every
     summarised function and keyword (see KEYWORD_MARK)."""
@@ -351,6 +425,7 @@ def via_sinks(found, js):
              for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
     if js:
         return sinks
+    sinks += typed_receiver_sinks(found, receivers or {})
     others = other_receiver_methods(found)
     positional = {}
     for func, index, _param, _method, _path in found:
@@ -408,7 +483,25 @@ def merge(summaries, more):
     return None if merged == summaries else merged
 
 
-def via_rules(rules, summaries):
+# Names the rules' sanitizers trust as checks (`known-safe`, the guards: validate_url, is_safe, sanitize_path...).
+CHECK_NAME_RE = re.compile(r"(?i)^_?(get_|make_|to_|is_?|check_?|can_?)?\w{0,30}"
+                           r"(safe|valid|saniti[sz]|clean|allow|permit|trust|whitelist|escape)")
+
+
+def unshielded(variant, found):
+    """The variant with its sanitizers no longer trusting, by name, a summarised function that passes a parameter
+    to the rule's sink. Semgrep clears everything inside a sanitized call, so `validate_credentials(subdomain=s)`,
+    PostHog's check that is itself the outbound request (GHSA-jrwm), hid its own via-sink. Only names a sanitizer
+    could match are listed, so a project with many summaries doesn't get a pattern-not per function."""
+    names = sorted({func for func, *_ in found if CHECK_NAME_RE.match(func)})
+    if not names or not variant.get("pattern-sanitizers"):
+        return variant
+    nots = [{"pattern-not": f"{name}(...)"} for name in names] + [{"pattern-not": f"$OBJ.{name}(...)"} for name in names]
+    variant["pattern-sanitizers"] = [{"patterns": [sanitizer, *nots]} for sanitizer in variant["pattern-sanitizers"]]
+    return variant
+
+
+def via_rules(rules, summaries, receivers=None):
     """Pass 2 rules: each summarised taint rule with calls to its functions as extra sinks."""
     out = []
     for rule in taint_rules(rules):
@@ -417,9 +510,9 @@ def via_rules(rules, summaries):
             continue
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + VIA_SUFFIX
-        variant["pattern-sinks"] = via_sinks(found, is_js(rule))
+        variant["pattern-sinks"] = via_sinks(found, is_js(rule), receivers)
         variant["message"] = rule["message"].strip() + KEYWORD_MARK + " [via $VIA_FUNC()]"
-        out.append(variant)
+        out.append(unshielded(variant, found))
     return out
 
 
@@ -487,6 +580,48 @@ def python_absolute_modules(text):
             stem = "/".join(module.split("."))
             yield f"{stem}.py"
             yield f"{stem}/__init__.py"
+
+
+def python_aliases(texts, names):
+    """{alias: name} for `from module import name as alias` of the given function names, in any of texts. PostHog
+    imports two `validate_credentials` as `validate_zendesk_credentials` and `validate_vitally_credentials`
+    (GHSA-jrwm): the via-sinks list functions by their own name. visible() still requires the importing file to
+    import the module that defines the name."""
+    aliases = {}
+    for text in texts:
+        if " as " not in text:
+            continue
+        try:
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.asname and alias.asname != alias.name and alias.name in names:
+                        aliases.setdefault(alias.asname, alias.name)
+    return aliases
+
+
+def with_aliases(summaries, aliases):
+    """summaries plus, for each Python entry whose function has an alias, the same entry under the alias."""
+    if not aliases:
+        return summaries
+    by_name = {}
+    for alias, name in aliases.items():
+        by_name.setdefault(name, []).append(alias)
+    return {rule: entries | {(alias, *entry[1:]) for entry in entries if entry[4].endswith(".py")
+                             for alias in by_name.get(entry[0], ())}
+            for rule, entries in summaries.items()}
+
+
+def realiased(summaries, aliases):
+    """summaries with the alias entries made again from their functions' current entries: resummarise can drop a
+    parameter from a function (PostHog's validate_credentials no longer passing region) or the function itself."""
+    if not aliases:
+        return summaries
+    return with_aliases({rule: {e for e in entries if e[0] not in aliases} for rule, entries in summaries.items()},
+                        aliases)
 
 
 def visible(path, defining_paths, read_text):
@@ -664,10 +799,16 @@ PASS_MAX_ROUNDS = 4
 # miss only means a function is never treated as clean). Any receiver: `obj.method(` is asked about too, for
 # other_receiver_methods.
 ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
+# Python only: a call interpolated into an f-string (PostHog GHSA-jrwm: f"{get_base_url(region, subdomain)}users",
+# where only subdomain reaches the URL and region is compared). In JavaScript `{` starts every block.
+FSTRING_CALL_RE = re.compile(r"\{\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
 
 
-def assigned_calls(texts):
-    """Names of functions whose result some code assigns to a variable or returns."""
+def assigned_calls(texts, fstrings=False):
+    """Names of functions whose result some code assigns to a variable or returns (or, with fstrings, puts in an
+    f-string)."""
+    if fstrings:
+        return {name for text in texts for regex in (ASSIGNED_CALL_RE, FSTRING_CALL_RE) for name in regex.findall(text)}
     return {name for text in texts for name in ASSIGNED_CALL_RE.findall(text)}
 
 
@@ -951,15 +1092,28 @@ def clean_functions(rule, functions, passes, summaries, returners):
                   - HANDLER_NAMES)
 
 
-def stale_summaries(rules, summaries, texts, functions, passes):
-    """{rule id: summarised Python functions} whose body calls one that clean_functions says hands nothing back:
-    pass 1 ran before the passes were known, so their summary may rest on that call's result. texts: {path: text}."""
+def partly_passing(signatures, passing):
+    """Functions that hand back some of their parameters but not all, whose other arguments with_arguments cleans."""
+    return {func for func, defs in (signatures or {}).items()
+            if (through := passing.get(func)) and ANY_PARAMETER not in through
+            and any((set(pos) | set(kw)) - through for pos, kw, _only in defs)}
+
+
+def stale_summaries(rules, summaries, texts, known):
+    """{rule id: summarised Python functions} whose body calls one that clean_functions says hands nothing back, or
+    (with signatures) one that hands back only some parameters: pass 1 ran before the passes were known, so their
+    summary may rest on that call's result. PostHog GHSA-jrwm: validate_credentials builds its URL with
+    get_base_url(region, subdomain), which hands back subdomain only, so region doesn't reach the request.
+    texts: {path: text}; known: (functions, passes, signatures or None)."""
+    functions, passes, signatures = known
     stale = {}
     for rule in taint_rules(rules):
         found = summaries.get(rule["id"])
         if not found or is_js(rule):
             continue
-        clean = set(clean_functions(rule, functions, passes, summaries, {}))
+        summarised_names = {func for func, *_ in found}
+        clean = set(clean_functions(rule, functions, passes, summaries, {})) | (
+            partly_passing(signatures, passing_parameters(passes.get(rule["id"], ()))) - summarised_names)
         summarised = {func for func, *_ in found}
         callers = set(python_callers(texts, clean)) & summarised if clean else set()
         if callers:
