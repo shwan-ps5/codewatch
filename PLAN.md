@@ -1264,6 +1264,62 @@ rule):
     says a paused topic isn't to be worked on and to stop when every topic is done or paused. Until a new topic is
     written the hourly runs stop without committing.
 
+45. **Shapes from a Django SSO app: noise, stored XSS through models, sign-in and CSP settings, LDAP**
+    (2026-11-05). A full scan of a Django app on the maintainer's machine (Entra sign-in through django-allauth, a
+    nonce CSP, file uploads, an LDAP connector elsewhere in the same family; not named here) took 98 s for 217
+    files, almost all of it Semgrep's summary passes and main scan. Its own code had no injection; what it showed:
+    - **Slow regexes in developer tools were verdicts.** Every super-linear regex was a vulnerability, including
+      the changelog regexes of version-bump scripts and a management command. A regex in a Django management
+      command, or in a script run under `if __name__ == "__main__"` that builds no web app (`Flask(`, `FastAPI(`,
+      `urlpatterns`, `@x.route(`), is now a minor hotspot (`developer_tool` in `codewatch_checks.py`). Not
+      polynomial-vs-exponential: django-wiki GHSA-wj85 is a polynomial regex on user markdown and stays found.
+      Test: `test_a_slow_regex_in_a_developer_tool_is_a_hotspot` (test_catalog.py).
+    - **A registry open redirect in a template's inline script**: `location.href = '{% url ... %}?x=' + param`
+      is a same-site path. Registry verdicts already defer to codewatch's taint rules for the same CWE in `.js`
+      files; a template's findings are now judged by `.js`'s set too (inline scripts are JavaScript).
+      Test: `test_a_registry_finding_in_a_template_script_defers_like_one_in_a_js_file`.
+    - **Stored XSS through model fields (step 42's H, first part).** `stored_fields.py` reads the project with
+      ast for each model's text fields (CharField, TextField, file fields...; not `choices=`, numbers, dates or
+      keys) that the project fills from request data: `Model.objects.create(field=...)`/`Model(field=...)`,
+      `obj.field = ...` on an object made or looked up from the model, a ModelForm's or ModelSerializer's
+      Meta.fields. Request data is followed through the project's own functions (into parameters, back out of
+      returns; names defined once only), since uploads typically go view -> helper -> service -> `create()`.
+      `request.user` is the server's. Reads of those fields where the model is known become sources for the
+      Python XSS rule only: `obj.field` in a ModelAdmin registered for the model, `self.field` in the model,
+      `x.field` after `x = Model.objects...` / `get_object_or_404(Model, ...)`. `format_html($BODY, ...)` is a
+      sink (its format string isn't escaped). Templates (`{{ obj.field|safe }}`) are the next part.
+      Test: `test_model_fields_written_from_the_request_and_read_back_as_html`.
+    - **A check cleared the branch where it failed.** Building that, `if ext in IMAGES: ... else:
+      mark_safe(f"...{ext}...")` stayed quiet for two reasons: Semgrep's range for `pattern-inside: if <... $X
+      in $ALLOWED ...>: ...` is the whole if statement, else included, and the "check, then return" guard
+      `if <... $X in $ALLOWED ...>: ... return ... ...` also matched the positive form, after which the code
+      runs for the values that were *not* allowed. The analysis copy now makes `else:` `if E:` and `elif c:`
+      `if   c:` (`else_branches.py`, same lines and columns; for/while/try else untouched), and the membership
+      return/raise guard needs the negation (`if <... not $X in $ALLOWED ...>:`). Test:
+      `test_a_check_clears_its_own_branch_not_the_else` (fails without either change). Open: the same guard
+      block's other checks (`startswith`, `isdigit`, `isalnum`, `isidentifier`, `re.match`) have the same
+      polarity looseness; usually written negated, so left for now.
+    - **Sign-in and CSP settings** (`python-django.yml`, hotspots): `codewatch.django.allauth-microsoft-any-tenant`
+      (a Microsoft provider with tenant common/organizations/consumers, or none: allauth's default is common;
+      a tenant from an unset environment variable gives `None` and sign-in fails, so it isn't flagged),
+      `codewatch.django.allauth-trusts-provider-email` (`VERIFIED_EMAIL: True`, `SOCIALACCOUNT_EMAIL_AUTHENTICATION
+      = True`: the nOAuth shape), `codewatch.python.csp-allows-inline-script` ('unsafe-inline'/'unsafe-eval' in
+      script-src or default-src as a header string, a django-csp / Django 6 setting, a directive dict or an
+      append; not for styles, and not next to a nonce, hash or 'strict-dynamic', where browsers ignore it).
+      Test: `test_django_sign_in_and_csp_settings`.
+    - **LDAP connectors**: ldap3's `extend.standard.paged_search` filter and a bind DN built from the user name
+      (`Connection(server, user=f"uid={name},...")`, `rebind`, python-ldap's `simple_bind_s`/`bind_s`) are
+      sinks of `codewatch.python.web.ldap-injection`; `escape_rdn` is an escape like the others.
+      Test: `test_ldap_paged_searches_and_bind_dns_from_the_request`.
+
+    Measured before committing (rules frozen during the run): OWASP Benchmark Python unchanged (100%, 0%
+    false alarms), SecurityEval 51/121 verdict and 77/121 review unchanged, CVE pairs Python 43/65 found with 11
+    still flagged, front end 2/30. Every case found since the 2026-11-04 nightly was also found with this
+    step's changes stashed (they came from step 43), and none was lost to them. Two losses since 11-04 that
+    predate this step, to look at: fava GHSA-xrf4 (front end; its template XSS at line 347 is no longer
+    reported) and SecurityEval CWE-020/codeql_3 (an unanchored `regex.match(target)` now clears an open redirect:
+    step 43's compiled-pattern guard trusts any match, even of a pattern that doesn't pin the host).
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the

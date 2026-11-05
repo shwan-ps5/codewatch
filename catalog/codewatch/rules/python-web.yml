@@ -437,13 +437,15 @@ rules:
                         ...
                         raise ...
                       ...
+                  # Only a failed membership check ends the request: `if not x in ALLOWED: return`. After
+                  # `if x in ALLOWED: return render(x)` the code below runs for the values that aren't allowed.
                   - pattern-inside: |
-                      if <... $X in $ALLOWED ...>:
+                      if <... not $X in $ALLOWED ...>:
                         ...
                         return ...
                       ...
                   - pattern-inside: |
-                      if <... $X in $ALLOWED ...>:
+                      if <... not $X in $ALLOWED ...>:
                         ...
                         raise ...
                       ...
@@ -1303,6 +1305,9 @@ rules:
               - pattern: markupsafe.Markup($BODY)
               - pattern: django.utils.safestring.mark_safe($BODY)
               - pattern: mark_safe($BODY)
+              # format_html escapes its arguments, not its format string: format_html(f"<b>{name}</b>") doesn't.
+              - pattern: django.utils.html.format_html($BODY, ...)
+              - pattern: format_html($BODY, ...)
           # A response given a non-HTML type on the next lines: r = make_response(text); r.mimetype = "text/plain"
           # (CTFd views.py).
           - pattern-not-inside: |
@@ -1405,6 +1410,16 @@ rules:
               - pattern: $CONN.search_s($BASE, $SCOPE, $FILTER, ...)
               - pattern: $CONN.search_st($BASE, $SCOPE, $FILTER, ...)
               - pattern: $CONN.search_ext_s($BASE, $SCOPE, $FILTER, ...)
+              # ldap3's paged search, which directory connectors use for large result sets.
+              - pattern: $CONN.extend.standard.paged_search($BASE, $FILTER, ...)
+              - pattern: $CONN.extend.standard.paged_search(..., search_filter=$FILTER, ...)
+              # A bind DN built from the user name: `uid=x,ou=people,...` with a `,` or `+` in x names another
+              # entry. ldap3.utils.dn.escape_rdn() escapes it.
+              - pattern: ldap3.Connection($SERVER, $FILTER, ...)
+              - pattern: ldap3.Connection(..., user=$FILTER, ...)
+              - pattern: $CONN.rebind(user=$FILTER, ...)
+              - pattern: $CONN.simple_bind_s($FILTER, ...)
+              - pattern: $CONN.bind_s($FILTER, ...)
           # Only where an LDAP library is in use: Post.search(q, page) is an ORM method, not a directory query.
           - pattern-either:
               - pattern-inside: |

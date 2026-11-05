@@ -160,3 +160,108 @@ rules:
     # |escape, |tojson, |sanitize...); |safe is reported by codewatch.templates.unescaped-output.
     pattern-regex: >-
       \{\{-?\s{0,5}(?!(form|url_for|get_flashed_messages|config|loop|super|self|caller|csrf_token)\b)[A-Za-z_][\w.]*(?![^{}\n]{0,200}\|\s{0,5}(e|escape|safe|tojson|sanitize\w*|clean\w*|bleach\w*|striptags|int|float|length|count|urlencode|filesizeformat)\b)
+
+  - id: codewatch.django.allauth-microsoft-any-tenant
+    languages: [python]
+    severity: WARNING
+    message: >-
+      django-allauth's Microsoft provider signs in accounts from any Entra tenant here ("common", "organizations"
+      or "consumers"; "common" is also what it uses when no tenant is set). Anyone with a Microsoft account in
+      another organisation can sign in, and with SOCIALACCOUNT_AUTO_SIGNUP gets an account. Set the tenant to
+      your directory's ID, or reject other tenants (the token's tid claim) in your social account adapter.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Microsoft sign-in open to any Entra tenant
+      cwe: ["CWE-284: Improper Access Control"]
+      owasp: ["A01:2025 - Broken Access Control"]
+      references:
+        - https://docs.allauth.org/en/latest/socialaccount/providers/microsoft.html
+        - https://learn.microsoft.com/en-us/entra/identity-platform/howto-convert-app-to-be-multi-tenant
+    pattern-either:
+      - patterns:
+          - pattern-inside: SOCIALACCOUNT_PROVIDERS = {...}
+          - pattern: '{..., $KEY: $VALUE, ...}'
+          - metavariable-regex: {metavariable: $KEY, regex: '^[rbu]*["''](tenant|TENANT)["'']$'}
+          - metavariable-regex: {metavariable: $VALUE, regex: '^[rbu]*["''](common|organizations|consumers)["'']$'}
+          - focus-metavariable: $VALUE
+      - patterns:
+          - pattern-inside: SOCIALACCOUNT_PROVIDERS = {...}
+          - pattern: '{..., $PROVIDER: $CONFIG, ...}'
+          - metavariable-regex: {metavariable: $PROVIDER, regex: '^[rbu]*["'']microsoft["'']$'}
+          - metavariable-regex: {metavariable: $CONFIG, regex: '^(?![\s\S]*["''](tenant|TENANT)["''])\{'}
+          - focus-metavariable: $PROVIDER
+
+  - id: codewatch.django.allauth-trusts-provider-email
+    languages: [python]
+    severity: WARNING
+    message: >-
+      django-allauth is told to trust email addresses from a social login: VERIFIED_EMAIL treats every address a
+      provider sends as verified, and SOCIALACCOUNT_EMAIL_AUTHENTICATION signs a social login into the local
+      account with the same address. Together, anyone who can make a provider send someone else's address signs in
+      as them (Microsoft Entra's email claim can be set by the admin of any tenant: "nOAuth"). Leave both off, or
+      match accounts on the provider's immutable ID (Entra's oid/sub) instead.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Social sign-in trusts the provider's email address
+      cwe: ["CWE-287: Improper Authentication"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      references:
+        - https://docs.allauth.org/en/latest/socialaccount/configuration.html
+        - https://www.descope.com/blog/post/noauth
+    pattern-either:
+      - patterns:
+          - pattern-inside: SOCIALACCOUNT_PROVIDERS = {...}
+          - pattern: '{..., $KEY: True, ...}'
+          - metavariable-regex: {metavariable: $KEY, regex: '^[rbu]*["'']VERIFIED_EMAIL["'']$'}
+          - focus-metavariable: $KEY
+      - pattern: SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+
+  - id: codewatch.python.csp-allows-inline-script
+    languages: [python]
+    severity: WARNING
+    message: >-
+      This Content-Security-Policy lets scripts run inline ('unsafe-inline') or from strings ('unsafe-eval'), so
+      it no longer stops injected script: the policy's main protection against XSS is off. Use nonces or hashes
+      for inline scripts ('unsafe-inline' is ignored next to a nonce or hash, so keeping it there as a fallback
+      for old browsers is fine) and remove eval-style code.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Content-Security-Policy allows inline or eval'd script
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      references:
+        - https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src
+        - https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html
+    pattern-either:
+      # A policy written out as a header value.
+      - patterns:
+          - pattern: '"$POLICY"'
+          - metavariable-regex:
+              metavariable: $POLICY
+              regex: '(?i)(.*;)?\s*(script-src|script-src-elem|default-src)\s[^;]*''unsafe-(inline|eval)'''
+          # 'unsafe-inline' next to a nonce or hash is ignored by browsers that know them (a fallback).
+          - metavariable-regex:
+              metavariable: $POLICY
+              regex: '(?is)^(?!.*(script-src|default-src)\s[^;]*''(nonce-|sha(256|384|512)-|strict-dynamic))|.*''unsafe-eval'''
+      # Directives kept as lists (django-csp's CSP_SCRIPT_SRC and CONTENT_SECURITY_POLICY, Django 6's SECURE_CSP,
+      # a project's own dict) with an unsafe source among them.
+      - patterns:
+          - pattern-either:
+              - pattern: '$SETTING = [..., "$SOURCE", ...]'
+              - pattern: '$SETTING = (..., "$SOURCE", ...)'
+              - pattern: '{..., $SETTING: [..., "$SOURCE", ...], ...}'
+              - pattern: '{..., $SETTING: (..., "$SOURCE", ...), ...}'
+              - pattern: '$D[$SETTING].append("$SOURCE")'
+              # The scanned copy writes a constant key as an attribute: d["script-src"] -> d.k_script_src.
+              - pattern: '$D.$SETTING.append("$SOURCE")'
+              - pattern: '$D[$SETTING] += [..., "$SOURCE", ...]'
+          - metavariable-regex: {metavariable: $SETTING, regex: '(?i)^[rbu]*["'']?(CSP_|k_)?(script[-_]src(_elem|[-_]elem)?|default[-_]src)["'']?$'}
+          - metavariable-regex: {metavariable: $SOURCE, regex: '^''unsafe-(inline|eval)''$'}
+          - pattern-not: '$SETTING = [..., "=~/^.(nonce-|sha(256|384|512)-|strict-dynamic)/", ...]'
+          - pattern-not: '{..., $SETTING: [..., "=~/^.(nonce-|sha(256|384|512)-|strict-dynamic)/", ...], ...}'

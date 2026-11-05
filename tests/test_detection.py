@@ -3,6 +3,7 @@ import json
 import shutil
 
 import pytest
+import yaml
 
 from core import benchmark, catalog
 from core.analyzers.base import Context, Finding
@@ -468,6 +469,29 @@ def test_match_cases_spanning_lines_become_ifs_too():
     assert [lines[i] for i in (2, 5, 7, 9)] == [
         "        if (ext) == ( (", "        )):", "        if (ext) == ( '.pdf' | (", "        )) and (p):"]
     ast.parse(match_as_if(source))
+
+
+def test_a_registry_finding_in_a_template_script_defers_like_one_in_a_js_file(tmp_path):
+    """A registry rule (stood in for here) flags `location.href = '{% url "list" %}?s=' + param` in a template's
+    inline script as an open redirect, but the target is a path on the same site. codewatch's own JavaScript
+    open-redirect rule judges inline scripts too, so the registry verdict becomes a hotspot as it would in .js."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    (tmp_path / "registry.yml").write_text(yaml.safe_dump({"rules": [{
+        "id": "javascript.browser.security.open-redirect.js-open-redirect", "mode": "taint", "severity": "ERROR",
+        "languages": ["javascript"], "message": "open redirect",
+        "metadata": {"cwe": ["CWE-601: Open Redirect"], "category": "security", "subcategory": ["vuln"]},
+        "pattern-sources": [{"pattern": "new URLSearchParams(...).get(...)"}],
+        "pattern-sinks": [{"patterns": [{"pattern": "window.location.href = $X"}, {"focus-metavariable": "$X"}]}],
+    }]}))
+    script = ("const s = new URLSearchParams(window.location.search).get('s');\n"
+              "window.location.href = '{% url \"list\" %}?s=' + s;\n")
+    (tmp_path / "chart.html").write_text("<p>chart</p>\n<script>\n" + script + "</script>\n")
+    (tmp_path / "chart.js").write_text(script.replace('{% url \\"list\\" %}', "/list/"))
+    ctx = Context(root=tmp_path, files=["chart.html", "chart.js"], semgrep_config=str(tmp_path / "registry.yml"),
+                  custom_rules=catalog.custom_semgrep_rules())
+    found = {(f.path, f.type) for f in Semgrep().run(ctx).findings if f.rule.endswith("js-open-redirect")}
+    assert found == {("chart.html", "security_hotspot"), ("chart.js", "security_hotspot")}
 
 
 def test_dead_ternary_nested_in_functions_is_replaced_once():
@@ -3522,6 +3546,117 @@ def test_a_summary_resting_on_a_helper_that_hands_back_some_parameters(tmp_path)
     assert found == {("app/views.py", 11, "ssrf")}
 
 
+STORED_MODELS = """from django.db import models
+
+
+class Attachment(models.Model):
+    filename = models.CharField(max_length=255)
+    note = models.TextField(blank=True)
+    kind = models.CharField(max_length=10, choices=[("a", "A")])
+    size = models.IntegerField(default=0)
+
+    def label(self):
+        return mark_safe(f"<b>{self.filename}</b>")
+
+    def note_html(self):
+        return mark_safe(f"<i>{self.note}</i>")
+
+
+class Ticket(models.Model):
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+"""
+
+STORED_VIEWS = """from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django import forms
+
+from .models import Attachment, Ticket
+
+
+def upload(request):
+    for f in request.FILES.getlist("files"):
+        Attachment.objects.create(filename=f.name, size=f.size, note="uploaded")
+    return HttpResponse("ok")
+
+
+def show(request, pk):
+    item = get_object_or_404(Attachment, pk=pk)
+    return HttpResponse(f"<h1>{item.filename}</h1><p>{item.note}</p>")
+
+
+class TicketForm(forms.ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ["body"]
+
+
+def ticket(request, pk):
+    row = Ticket.objects.get(pk=pk)
+    heading = HttpResponse(f"<h1>{row.title}</h1>")
+    return HttpResponse(f"<div>{row.body}</div>")
+"""
+
+STORED_ADMIN = """from django.contrib import admin
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
+
+from .models import Attachment
+
+
+@admin.register(Attachment)
+class AttachmentAdmin(admin.ModelAdmin):
+    def name_display(self, obj):
+        return mark_safe(f'<span class="file">{obj.filename}</span>')
+
+    def kind_display(self, obj):
+        return mark_safe(f"<span>{obj.kind} {obj.size}</span>")
+
+    def safe_display(self, obj):
+        return format_html("<span>{}</span>", obj.filename)
+
+    def unsafe_format(self, obj):
+        return format_html(f"<span>{obj.filename}</span>")
+"""
+
+
+def test_a_check_clears_its_own_branch_not_the_else(tmp_path):
+    """`if ext in ALLOWED:` clears ext in its body. Semgrep's range for the pattern is the whole if statement,
+    so the else branch (where the check failed) was cleared too; the analysis copy makes it an if of its own."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, request\nfrom markupsafe import Markup\n\napp = Flask(__name__)\n"
+        "ALLOWED = {'.png', '.jpg'}\n\n\n"
+        "@app.route('/kind')\ndef kind():\n"
+        "    ext = request.args['ext']\n"
+        "    if ext in ALLOWED:\n"
+        "        return Markup(f'<i>{ext}</i>')\n"           # 12: checked
+        "    elif len(ext) > 3:\n"
+        "        return Markup(f'<b>{ext}</b>')\n"           # 14: failed the check
+        "    else:\n"
+        "        return Markup(f'<u>{ext}</u>')\n"           # 16: failed the check
+    )})
+    assert found == {("app.py", 14, "xss"), ("app.py", 16, "xss")}
+
+
+def test_model_fields_written_from_the_request_and_read_back_as_html(tmp_path):
+    """Stored XSS, model by model: Attachment.filename is filled from an upload's name and Ticket.body from a
+    ModelForm, so reading them back into HTML counts. Attachment.note (a constant), kind (fixed choices), size (a
+    number) and Ticket.title (never written from a request) don't, nor does format_html's own escaping."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app/__init__.py": "", "app/models.py": "from django.utils.safestring import mark_safe\n" + STORED_MODELS,
+        "app/views.py": STORED_VIEWS, "app/admin.py": STORED_ADMIN,
+    })
+    assert found == {("app/models.py", 12, "xss"),       # self.filename in the model's own method
+                     ("app/views.py", 16, "xss"),        # item.filename after get_object_or_404
+                     ("app/views.py", 28, "xss"),        # row.body (the ModelForm's field)
+                     ("app/admin.py", 11, "xss"),        # obj.filename in the registered admin
+                     ("app/admin.py", 20, "xss")}        # format_html with the field in its format string
+
+
 def test_drf_serializer_data_and_its_field_checks(tmp_path):
     """A DRF serializer's validated_data is the request body (firefighter GHSA-fqvv: create() hands
     validated_data["attachments"] to a Jira client that fetches each URL); a field the serializer checks in
@@ -3555,6 +3690,76 @@ def test_drf_serializer_data_and_its_field_checks(tmp_path):
         "        jira_client.add_attachments_to_issue(1, validated_data['a'])\n")                      # 27
     found = semgrep_vulnerabilities(tmp_path, {"app/client.py": client, "app/serializers.py": serializers})
     assert found == {("app/serializers.py", 9, "ssrf"), ("app/serializers.py", 21, "ssrf")}
+
+
+def test_django_sign_in_and_csp_settings(tmp_path):
+    """Settings that open sign-in or switch off the CSP's script protection, as hotspots: an Entra tenant of
+    "common" (or none: allauth's default), trusting a provider's email, and 'unsafe-inline'/'unsafe-eval' in
+    script-src. Not: a tenant from the environment (unset gives None, and sign-in fails), 'unsafe-inline' for
+    styles, or next to a nonce, hash or 'strict-dynamic' (browsers ignore it there; it's a fallback)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_findings(tmp_path, {
+        "bad/settings.py": (
+            "import os\n\nSOCIALACCOUNT_PROVIDERS = {\n    \"microsoft\": {\n"
+            "        \"APPS\": [{\"client_id\": \"x\", \"settings\": {\"tenant\": \"common\"}}],\n"   # 5
+            "    },\n}\nSOCIALACCOUNT_EMAIL_AUTHENTICATION = True\n"                                 # 8
+            "CSP_SCRIPT_SRC = [\"'self'\", \"'unsafe-inline'\"]\n"                                    # 9
+            "CONTENT_SECURITY_POLICY = {\"DIRECTIVES\": {\"script-src\": [\"'self'\", \"'unsafe-eval'\"]}}\n\n\n"
+            "def policy(response):\n"
+            "    response[\"Content-Security-Policy\"] = \"default-src 'self'; script-src 'self' 'unsafe-inline'\"\n"
+            "    directives = {\"script-src\": [\"'self'\"]}\n"
+            "    directives[\"script-src\"].append(\"'unsafe-inline'\")\n"                            # 16
+            "    return response\n"),
+        "bad2/settings.py": (
+            "SOCIALACCOUNT_PROVIDERS = {\n    \"microsoft\": {\n"                                     # 2: no tenant
+            "        \"APPS\": [{\"client_id\": \"x\"}],\n        \"VERIFIED_EMAIL\": True,\n    },\n}\n"),
+        "good/settings.py": (
+            "import os\n\nSOCIALACCOUNT_PROVIDERS = {\n    \"microsoft\": {\n"
+            "        \"APPS\": [{\"client_id\": \"x\", \"settings\": {\"tenant\": os.environ.get(\"TENANT\")}}],\n"
+            "    },\n    \"google\": {\"SCOPE\": [\"email\"]},\n}\n"
+            "CSP_STYLE_SRC = [\"'self'\", \"'unsafe-inline'\"]\n"
+            "CSP_SCRIPT_SRC = [\"'self'\", \"'nonce-abc'\", \"'unsafe-inline'\"]\n\n\n"
+            "def policy(response, nonce):\n"
+            "    response[\"Content-Security-Policy\"] = f\"script-src 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'\"\n"
+            "    response[\"X-Policy\"] = \"script-src 'nonce-x' 'strict-dynamic' 'unsafe-inline' https:\"\n"
+            "    directives = {\"style-src\": [\"'self'\"]}\n"
+            "    directives[\"style-src\"].append(\"'unsafe-inline'\")\n"
+            "    return response\n"),
+    })
+    rules = ("allauth-microsoft-any-tenant", "allauth-trusts-provider-email", "csp-allows-inline-script")
+    assert {f for f in found if f[2] in rules} == {
+        ("bad/settings.py", 5, "allauth-microsoft-any-tenant", "security_hotspot"),
+        ("bad/settings.py", 8, "allauth-trusts-provider-email", "security_hotspot"),
+        ("bad/settings.py", 9, "csp-allows-inline-script", "security_hotspot"),
+        ("bad/settings.py", 10, "csp-allows-inline-script", "security_hotspot"),
+        ("bad/settings.py", 14, "csp-allows-inline-script", "security_hotspot"),
+        ("bad/settings.py", 16, "csp-allows-inline-script", "security_hotspot"),
+        ("bad2/settings.py", 2, "allauth-microsoft-any-tenant", "security_hotspot"),
+        ("bad2/settings.py", 4, "allauth-trusts-provider-email", "security_hotspot"),
+    }
+
+
+def test_ldap_paged_searches_and_bind_dns_from_the_request(tmp_path):
+    """A FastAPI directory connector: a filter in ldap3's paged search and a bind DN built from the user name are
+    injection like a search filter is; escape_filter_chars / escape_rdn and a fixed service account are not."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"ldap_api.py": (
+        "from fastapi import FastAPI\nfrom ldap3 import Connection, Server\n"
+        "from ldap3.utils.dn import escape_rdn\n\napp = FastAPI()\nserver = Server('ldaps://dc.example.org')\n"
+        "BASE = 'ou=people,dc=example,dc=org'\n\n\n"
+        "@app.get('/groups')\ndef members(group: str):\n"
+        "    conn = Connection(server, user='cn=svc,dc=example,dc=org', password='x', auto_bind=True)\n"
+        "    return list(conn.extend.standard.paged_search(BASE, f'(memberOf=cn={group},{BASE})'))\n\n\n"  # 13
+        "@app.post('/login')\ndef login(username: str, password: str):\n"
+        "    conn = Connection(server, user=f'uid={username},{BASE}', password=password)\n"             # 18
+        "    return {'ok': conn.bind()}\n\n\n"
+        "@app.post('/login/safe')\ndef login_safe(username: str, password: str):\n"
+        "    conn = Connection(server, user=f'uid={escape_rdn(username)},{BASE}', password=password)\n"
+        "    return {'ok': conn.bind()}\n"
+    )})
+    assert found == {("ldap_api.py", 13, "ldap-injection"), ("ldap_api.py", 18, "ldap-injection")}
 
 
 def test_requests_through_a_client_or_session_object(tmp_path):

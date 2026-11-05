@@ -18,6 +18,7 @@ from .base import (
     ACCESSIBILITY,
     CODE_SMELL,
     CRITICAL,
+    HOTSPOT,
     JS,
     MAJOR,
     MINOR,
@@ -225,7 +226,8 @@ class CodewatchChecks(Analyzer):
             if not is_test_file(path):
                 for value, lines in python_literals(tree, ctx.max_literal_repeats):
                     result.findings.append(literal_finding(path, value, lines))
-            regexes += python_regexes(tree, path)
+            regexes += [{**r, "tooling": True} if developer_tool(tree, path) else r
+                        for r in python_regexes(tree, path)]
         result.findings += self.table_findings(ctx)
         node_out = self.run_node(ctx, regexes)
         for lit in node_out["literals"]:
@@ -265,6 +267,25 @@ def literal_finding(path, value, lines):
 def regex_finding(path, r):
     severity = CRITICAL if r.get("complexity") == "exponential" else MAJOR
     pattern = r.get("original") or r["pattern"]
-    return Finding(TOOL, "regex-backtracking", severity, VULNERABILITY,
-                   f"Regex /{pattern[:80]}/ has {r.get('complexity', 'super-linear')} backtracking "
-                   f"({r.get('summary') or 'ReDoS'}); e.g. input {r.get('attack', '')[:80]}", path, r["line"])
+    message = (f"Regex /{pattern[:80]}/ has {r.get('complexity', 'super-linear')} backtracking "
+               f"({r.get('summary') or 'ReDoS'}); e.g. input {r.get('attack', '')[:80]}")
+    if r.get("tooling"):
+        return Finding(TOOL, "regex-backtracking", MINOR, HOTSPOT,
+                       message + ". It is in a developer tool (a script or management command), so it only "
+                       "matters if that tool reads text someone else controls", path, r["line"])
+    return Finding(TOOL, "regex-backtracking", severity, VULNERABILITY, message, path, r["line"])
+
+
+# A file that builds a web app, even if it also runs itself under `if __name__ == "__main__"` (app.run()).
+WEB_APP_RE = re.compile(r"\b(Flask|FastAPI|Starlette|Quart|Sanic|APIRouter|Blueprint)\(|urlpatterns\b|@\w+\.(route|get|post)\(")
+
+
+def developer_tool(tree, path):
+    """A Django management command, or a script run by hand (`if __name__ == "__main__":`) that builds no web
+    app: what its regexes read is the developer's own input (a changelog, the repo's files), not a visitor's.
+    A slow regex there is a hotspot, not a denial of service anyone outside can trigger."""
+    if "/management/commands/" in f"/{path}":
+        return True
+    main = any(isinstance(n, ast.If) and isinstance(n.test, ast.Compare) and isinstance(n.test.left, ast.Name)
+               and n.test.left.id == "__name__" for n in tree.body)
+    return main and not WEB_APP_RE.search(ast.unparse(tree))

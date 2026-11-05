@@ -88,6 +88,27 @@ def test_codewatch_checks_find_redos_in_python_and_js(tmp_path):
                      ("regex-backtracking", "b.js", 1, "critical")]
 
 
+@pytest.mark.skipif(not CodewatchChecks().available(), reason="tools/ not installed")
+def test_a_slow_regex_in_a_developer_tool_is_a_hotspot(tmp_path):
+    """A version-bump script or a management command reads the developer's own text; a Flask app run with
+    `python app.py` (also under __main__) still serves visitors."""
+    slow = 'import re\n\ndef strip(text):\n    return re.sub(r"<[^>]+>", "", text)\n'
+    main = '\nif __name__ == "__main__":\n    strip(open("CHANGELOG").read())\n'
+    (tmp_path / "bump_version.py").write_text(slow + main)
+    (tmp_path / "app" / "management" / "commands").mkdir(parents=True)
+    (tmp_path / "app" / "management" / "commands" / "audit.py").write_text(slow)
+    (tmp_path / "app" / "services.py").write_text(slow)
+    (tmp_path / "web.py").write_text("from flask import Flask\napp = Flask(__name__)\n" + slow
+                                     + '\nif __name__ == "__main__":\n    app.run()\n')
+    files = ["bump_version.py", "app/management/commands/audit.py", "app/services.py", "web.py"]
+    result = CodewatchChecks().run(Context(root=tmp_path, files=files))
+    found = sorted((f.path, f.type) for f in result.findings if f.rule == "regex-backtracking")
+    assert found == [("app/management/commands/audit.py", "security_hotspot"),
+                     ("app/services.py", "vulnerability"),
+                     ("bump_version.py", "security_hotspot"),
+                     ("web.py", "vulnerability")]
+
+
 def test_ratings():
     assert ratings.worst([]) == 1 and ratings.worst(["minor", "critical"]) == 4
     assert ratings.debt_rating(0, 0) == 1 and ratings.debt_rating(60, 10) == 3  # 20% debt

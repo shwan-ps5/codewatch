@@ -32,6 +32,7 @@ from .body_models import with_model_sources
 from .constant_branches import blank_dead_branches
 from .containers import track_slots
 from .drf_serializers import with_serializer_checks
+from .else_branches import split_else
 from .flask_resources import with_resource_sources
 from .inline_scripts import inline_scripts
 from .jinja_sandboxes import with_sandbox_sanitizers
@@ -40,6 +41,7 @@ from .python_tools import LineCache, complexity_severity, security_purpose
 from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
 from .slices import index_slices
 from .starred_targets import unstar_targets
+from .stored_fields import with_stored_sources
 from .template_sinks import TEMPLATE_EXTENSIONS, with_template_sinks
 
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
@@ -121,6 +123,7 @@ class Semgrep(Analyzer):
         custom_rules = with_serializer_checks(custom_rules, python_texts)
         custom_rules = with_resource_sources(custom_rules, python_texts)
         custom_rules = with_sandbox_sanitizers(custom_rules, python_texts)
+        custom_rules = with_stored_sources(custom_rules, python_texts)
         custom_rules = with_template_sinks(custom_rules, {
             f: text for f in ctx.files_with(TEMPLATE_EXTENSIONS) if (text := read_source(ctx.root / f)) is not None})
         self.timeouts, self.first_found = set(), []
@@ -185,8 +188,10 @@ class Semgrep(Analyzer):
             kind = semgrep_type(check_id, metadata)
             # codewatch's own taint rule for this weakness already followed the data here; a registry rule that
             # matches the same weakness without seeing guards or sanitizers is left for review, not a verdict.
+            # A template's inline scripts are scanned as JavaScript, so its findings are judged like a .js file's.
+            suffix = ".js" if Path(path).suffix in TEMPLATE_EXTENSIONS else Path(path).suffix
             if (not custom_id and kind == VULNERABILITY
-                    and cwe_numbers(metadata.get("cwe")) & traced.get(Path(path).suffix, set())):
+                    and cwe_numbers(metadata.get("cwe")) & traced.get(suffix, set())):
                 kind = HOTSPOT
             # Rules for primitives that are only weak when they protect something (MD5 for a Gravatar URL is
             # fine): a vulnerability where the code is about secrets or verification, otherwise for review.
@@ -487,11 +492,12 @@ def read_source(path):
 
 def analysis_copy(source, url_views=None):
     """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, starred targets unstarred, container
-    slots tracked one by one, match statements made ifs, Flask converter types written on view parameters and
+    slots tracked one by one, match statements made ifs, else branches made ifs of their own, Flask converter types written on view parameters and
     Django views' free-text URL arguments marked (url_views, from django_text_parameters). None when nothing
     changes."""
     current = None
-    for rewrite in (blank_dead_branches, index_slices, unstar_targets, track_slots, match_as_if, type_route_converters,
+    for rewrite in (blank_dead_branches, index_slices, unstar_targets, track_slots, match_as_if, split_else,
+                    type_route_converters,
                     lambda text: mark_url_text(text, url_views)):
         current = rewrite(current or source) or current
     return current
