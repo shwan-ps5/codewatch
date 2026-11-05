@@ -987,6 +987,37 @@
           "scope": [
             "backend/apps/datasource"
           ]
+        },
+        {
+          "id": "GHSA-2f7r-82r8-4h2g",
+          "cve": "CVE-2024-13129",
+          "repo": "https://github.com/roxy-wi/roxy-wi.git",
+          "fix": "32313928eb9ce906887b8a30bf7b9a3d5c0de1be",
+          "cwe": [
+            77,
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "A vulnerability was found in Roxy-WI up to 8.1.3. It has been declared as critical. Affected by this vulnerability is the function action_service of the file app/modules/roxywi/roxy.py. The manipulation of the argument action/service leads to os command injection. The attack can be launched remotely. The exploit has been disclosed to the public and may be used. Upgrading to version 8.1.4 is able to address this issue. The identifier of the patch is 32313928eb9ce906887b8a30bf7b9a3d5c0de1be. It is recommended to upgrade the affected component.",
+          "scope": [
+            "app/modules/roxywi"
+          ]
+        },
+        {
+          "id": "GHSA-jrwm-4975-3g9g",
+          "cve": "CVE-2024-9710",
+          "repo": "https://github.com/PostHog/posthog.git",
+          "fix": "3732c0fd9551ed29521b58611bf1e44d918c1032",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "PostHog database_schema Server-Side Request Forgery Information Disclosure Vulnerability. This vulnerability allows remote attackers to disclose sensitive information on affected installations of PostHog. Authentication is required to exploit this vulnerability.",
+          "scope": [
+            "posthog/warehouse/api",
+            "posthog/temporal/data_imports/pipelines/zendesk",
+            "posthog/temporal/data_imports/pipelines/vitally"
+          ]
         }
       ]
     },
@@ -3170,6 +3201,21 @@
           "scope": [
             "agent/tools/vision"
           ]
+        },
+        {
+          "id": "GHSA-3j25-mjx3-pwg4",
+          "cve": "CVE-2026-58173",
+          "repo": "https://github.com/HKUDS/Vibe-Trading.git",
+          "fix": "2e78f1402d7eda5ef466f294543f964f2950b603",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Vibe-Trading before 0.1.10 contains a path traversal vulnerability that allows attackers to write files outside the intended memory root directory by supplying a malicious memory_type value containing path traversal sequences through the remember tool. Attackers can manipulate the memory_type parameter in the persistent memory store to cause the application to write arbitrary Markdown files to unintended locations on the filesystem.",
+          "scope": [
+            "agent/src/memory",
+            "agent/src/tools"
+          ]
         }
       ]
     },
@@ -4185,6 +4231,44 @@
           "summary": "ws-scrcpy is vulnerable to External Control of File Name or Path",
           "scope": [
             "src/server/services"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-8",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Eighth blind set of Python CVE fix pairs, split from topic 5's first batch of 2026-11-05 (Python advisories whose fix is a pull request or several commits, and reviewed PyPI advisories before 2021; PLAN.md step 41) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Fix sizes were not checked (that would mean reading them).",
+      "cases": [
+        {
+          "id": "GHSA-f649-fjv9-qgcg",
+          "cve": "CVE-2026-17347",
+          "repo": "https://github.com/pgadmin-org/pgadmin4.git",
+          "fix": "ea7e798aac27174d2bacee1d6e136bed76a95e23",
+          "cwe": [
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "The MASTER_PASSWORD_HOOK setting, introduced in pgAdmin 4 7.2, lets an administrator configure an external command that returns a per-user encryption key, with %u in the configured string replaced by the current user's name. The previous implementation substituted the username directly into the command string and executed the result with subprocess.Popen(..., shell=True). Because the username can originate from an external authentication source (OAuth/OIDC claims, Kerberos, webserver auth) rather than a value pgAdmin fully controls, a username containing shell metacharacters (';', '$()', backticks, pipes, '&&', newlines) allowed an authenticated user to execute arbitrary commands as the pgAdmin service account in any deployment where the configured hook string uses %u.",
+          "scope": [
+            "web"
+          ]
+        },
+        {
+          "id": "GHSA-3vcx-qq88-36qg",
+          "cve": "CVE-2022-31504",
+          "repo": "https://github.com/ChangeWeDer/BaiduWenkuSpider_flaskWeb.git",
+          "fix": "5b4a9288e349d871dc280c0ada062dffa920c016",
+          "cwe": [
+            22
+          ],
+          "license": "none",
+          "summary": "The ChangeWeDer/BaiduWenkuSpider_flaskWeb repository before 2021-11-29 on GitHub allows absolute path traversal because the Flask send_file function is used unsafely.",
+          "scope": [
+            "."
           ]
         }
       ]

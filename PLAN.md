@@ -1099,6 +1099,20 @@ rule):
     goes back to Python: the advisories topic 1 dropped for their references (one pull request and no commit,
     about 2,300 in all languages; several commits in one repository, about 1,100, mostly a fix and its backports)
     and GitHub-reviewed PyPI advisories from before 2021 (about 170).
+41. **Topic 5, first batch reviewed** (2026-11-05). A supervised run of the new topic took 43 minutes (it wrote
+    its own pull-request resolver first; its first version marked every pull request "not found" and dropped the
+    several-commits group, and it fixed both before reading) and $0.08. 832 raw candidates came down to 64 Python
+    Django/Flask/FastAPI apps not already known; 60 read, 6 accepted (4 open, 2 blind), 54 rejected (23 pull
+    requests never merged, 4 fixes over several commits, the rest by section 3). So the whole Python pool left in
+    GitHub's advisory database is about 64 advisories: 4 remain for one more batch. Of the 4 open, all within
+    5 files/200 lines: added Roxy-WI GHSA-2f7r (request parameters into a `systemctl` shell command) and PostHog
+    GHSA-jrwm (a POST body's subdomain into the URL of an outbound request made in an imported module; scope
+    widened to `pipelines/zendesk` and `pipelines/vitally`, where the fetch is) to `cve-pairs-python`, and
+    Vibe-Trading GHSA-3j25 (an MCP tool argument into a file path) to `cve-pairs-python-nonhttp`. Dropped NetBox
+    GHSA-hwq6: the request object reaches a custom-link template a user wrote and saved, so it is stored data and
+    an exposure through template context, not request input reaching a sink. Blind: 2 in a new
+    `cve-pairs-blind-python-8`. Once topic 5 is done, every topic is done or paused and the research runs stop
+    without committing until a new topic is written.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
