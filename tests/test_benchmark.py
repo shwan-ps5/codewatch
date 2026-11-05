@@ -309,3 +309,49 @@ def test_importers_of_a_changed_module_are_scored(tmp_path, cwes):
     assert gone["detected"] and not gone["still_flagged"]
     kept = benchmark.score_pair(CASE, SPOTS, {"before": [caller], "after": [caller]}, benchmark.MODES["verdict"], PARENTS)
     assert not kept["detected"] and not kept["still_flagged"]
+
+
+def test_a_scope_folder_named_like_a_pattern_is_checked_out(tmp_path, monkeypatch):
+    # Postiz GHSA-2p7p's scope is a Next.js route folder, `[[...path]]`, which git refuses as a sparse-checkout
+    # pattern unless told to skip its checks; the refusal stopped a whole night's suites (PLAN.md step 39).
+    def git(*args, cwd):
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+    repo = tmp_path / "repo"
+    route = repo / "app" / "[[...path]]"
+    route.mkdir(parents=True)
+    git("init", "-q", cwd=repo)
+    for n in (1, 2):
+        (route / "route.ts").write_text(f"export const n = {n};\n")
+        git("add", ".", cwd=repo)
+        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", str(n), cwd=repo)
+    fix = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+    monkeypatch.setattr(benchmark, "CACHE", tmp_path / "cache")
+
+    target, parent = benchmark.fetch_pair({"name": "s"}, {"id": "c", "repo": repo.as_uri(), "fix": fix,
+                                                           "scope": ["app/[[...path]]"]})
+
+    assert parent and (target / ".git").is_dir()
+
+
+def test_a_case_that_fails_to_scan_is_left_out_not_fatal(tmp_path, monkeypatch, cwes):
+    cases = [{"id": "ok", "repo": "r", "fix": "f", "cwe": [89]}, {"id": "bad", "repo": "r", "fix": "f", "cwe": [89]}]
+    suite = {"name": "pairs", "kind": "cve-pairs", "about": "Demo.", "cases": cases}
+    (tmp_path / "suites.json").write_text(json.dumps({"suites": [suite]}))
+    monkeypatch.setattr(benchmark, "ROOT", tmp_path)
+    monkeypatch.setattr(benchmark, "CACHE", tmp_path / "cache")
+    (tmp_path / "cache").mkdir()
+    monkeypatch.setattr(benchmark.catalog, "load", lambda: ({}, {"cwe_parents": PARENTS}))
+
+    def scan_pair(suite, case, log):
+        if case["id"] == "bad":
+            raise subprocess.CalledProcessError(128, ["git"], stderr="fatal: specify directories")
+        return {"before": {}, "after": {}}, {"before": [], "after": []}
+
+    monkeypatch.setattr(benchmark, "scan_pair", scan_pair)
+    logged = []
+
+    out = benchmark.run(["pairs"], log=logged.append)
+
+    assert [c["id"] for c in out["pairs"]["verdict"]["cases"]] == ["ok"]
+    assert any("bad: scan failed" in line and "specify directories" in line for line in logged)

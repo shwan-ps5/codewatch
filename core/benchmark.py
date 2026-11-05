@@ -289,7 +289,9 @@ def fetch_pair(suite, case):
     # Every time, so a scope widened in suites.json reaches a clone made before (SQLBot GHSA-fghj: its request model
     # sat outside the first scope).
     if case.get("scope"):
-        git("sparse-checkout", "set", *case["scope"], cwd=target)
+        # --skip-checks: a folder named like a pattern, such as Next.js's `[[...path]]` (Postiz GHSA-2p7p), is
+        # refused without it, and that refusal once stopped a whole night's suites.
+        git("sparse-checkout", "set", "--skip-checks", *case["scope"], cwd=target)
     else:
         git("sparse-checkout", "disable", cwd=target)
     git("fetch", "-q", "--depth", "2", "--filter=blob:none", "origin", case["fix"], cwd=target)
@@ -468,14 +470,28 @@ def score_cve_pairs(suite, log):
     scanned = {}
     for case in suite["cases"]:
         log(f"   {case['id']}: {case['repo']} {case['fix'][:10]}")
-        scanned[case["id"]] = scan_pair(suite, case, log)
+        scanned[case["id"]] = scan_pair_or_none(suite, case, log)
     return score_scanned_pairs(suite, scanned)
 
 
+def scan_pair_or_none(suite, case, log):
+    """scan_pair, or None (logged as a failure) when fetching or scanning the case fails: one case that can't be
+    fetched shouldn't stop every other suite of the night."""
+    try:
+        return scan_pair(suite, case, log)
+    except Exception as error:  # noqa: BLE001 - any failure of one case is reported and the run goes on
+        detail = getattr(error, "stderr", "") or ""
+        log(f"   {case['id']}: scan failed: {error} {detail.strip()}".rstrip())
+        return None
+
+
 def score_scanned_pairs(suite, scanned):
+    """Scores of the cases that were scanned; a case whose scan failed (None) is left out of this run's scores."""
     parents = catalog.load()[1].get("cwe_parents", {})
+    scanned = {case_id: pair for case_id, pair in scanned.items() if pair is not None}
+    cases = [case for case in suite["cases"] if case["id"] in scanned]
     (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(scanned))
-    return {mode: score_pairs_mode(suite["cases"], scanned, types, parents) for mode, types in MODES.items()}
+    return {mode: score_pairs_mode(cases, scanned, types, parents) for mode, types in MODES.items()}
 
 
 SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets, "cwe-folders": score_cwe_folders,
@@ -513,7 +529,7 @@ def scan_job(suite, case=None):
         root = fetch(suite)
         return suite["name"], None, (str(root), scan(root, lines.append)), lines
     lines.append(f"   {suite['name']} {case['id']}: {case['repo']} {case['fix'][:10]}")
-    return suite["name"], case["id"], scan_pair(suite, case, lines.append), lines
+    return suite["name"], case["id"], scan_pair_or_none(suite, case, lines.append), lines
 
 
 def scan_parallel(suites, log, workers):

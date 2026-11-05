@@ -1070,6 +1070,19 @@ rule):
     FilterSet rows); 3 lines new in taiga's importers and left: jira/api.py:137 and :166, github/api.py:89, flows
     through the project's own API client wrappers (`self._client.get(...)`, a generic name). Typed receivers
     (`self._client = GithubClient(...)`) would both clean those and connect firefighter: next.
+39. **The 2026-11-05 nightly run and a suite crash** (2026-11-05). Lint and tests passed on 4ce3687, but the suites
+    stopped after 256 minutes without results: Postiz GHSA-2p7p's scope is a Next.js route folder,
+    `[[...path]]`, which `git sparse-checkout set` refuses as a pattern, and `scan_parallel` let the error end the
+    run. `fetch_pair` now passes `--skip-checks`, and a case that fails to fetch or scan is logged as "scan
+    failed" and left out of that night's scores instead of stopping every suite (`scan_pair_or_none`; tests in
+    `tests/test_benchmark.py`). Postiz itself now scans (missed | quiet in verdict mode). Step 38's suite numbers
+    wait for the next run. The `results/` copied by the nightly that night were the old committed files.
+    Apps, against 2026-11-04: 6 findings gone, all triaged false alarms (label-studio's four, netbox
+    bulk_views.py:183 open-redirect, pygoat ssrf_lab/app.py:39 xss on a fetched reply), and 4 new in taiga's
+    importers. Correction to step 38: the two jira/api.py SSRF lines (137, 166) are real flows, triage agreeing: the
+    Jira server URL comes from `request.DATA` and the importer's client fetches it (an import feature, but
+    request-controlled server-side requests all the same). github/api.py:89 SSRF (a fixed host) and
+    jira/api.py:166 path-traversal stay false alarms. Typed receivers have to keep the first and drop the second.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
