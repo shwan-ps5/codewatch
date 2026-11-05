@@ -55,7 +55,7 @@ Use only advisories that link a fix commit.
 
 ### Topic queue
 
-If the maintainer just says "do the next topic", take the first one below not marked done. A topic is finished
+If the maintainer just says "do the next topic", take the first one below not marked done or paused. A topic is finished
 when its candidate list, rebuilt and filtered, is empty (one batch is not a topic; topic 3 was marked done on
 2026-11-04 with 324 candidates left). Only then mark it `(done YYYY-MM-DD, file name)` in this list and commit that
 with your batch. Don't start a topic that isn't
@@ -102,7 +102,8 @@ npm advisories (step 29). Those pools are nearly used up.
    messages, MCP tool arguments, remote content rendered in a client → `cve-pairs-javascript-nonhttp`. Blind ones:
    one new `cve-pairs-blind-javascript-N` per batch (next unused N) or `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-noframework.{tsv,json}`.
-4. **PHP web apps.** Same source and filter as topics 1-3, keeping non-archived repositories whose primary language
+4. **PHP web apps.** (paused 2026-11-05 after 3 batches, 180 read: codewatch has no PHP rules yet, so Python
+   comes first; resume when topic 5 is done.) Same source and filter as topics 1-3, keeping non-archived repositories whose primary language
    is PHP: applications and CMSs (Laravel, Symfony, CodeIgniter, Yii, Slim, WordPress/Drupal/Joomla themes and
    plugins, plain PHP apps), about 1,100 candidates on 2026-11-04. Reject libraries (Composer packages whose
    advisory is in library code), and fixes in vendored code. Request input is `$_GET`, `$_POST`, `$_REQUEST`,
@@ -110,6 +111,28 @@ npm advisories (step 29). Those pools are nearly used up.
    batch needs them): `cve-pairs-php` for request input, blind ones in `cve-pairs-blind-php-N` (one per batch).
    Templates (Blade, Twig, Smarty) count as source. codewatch has no PHP rules yet, so this is ground truth for
    later work: no scans. Files: `benchmarks/cve-candidates-YYYY-MM-DD-php-unreviewed.{tsv,json}`.
+5. **Python web apps, fixes topic 1 couldn't take.** Python (Django, Flask, FastAPI) is the priority, and topic 1
+   only kept advisories whose references hold exactly one commit URL. Same source, filters and checks as topic 1
+   (published since 2021, a CWE from the list, a non-archived Python repository found with GraphQL, Django, Flask
+   or FastAPI confirmed at the fix commit, judged by section 3, Python's 5-file/200-line limit), but keep the
+   advisories topic 1 dropped for their references, and also GitHub-reviewed PyPI advisories published before
+   2021 with one commit URL (about 170 on 2026-11-05, mostly libraries: reject those as section 3 says). The
+   references of an unreviewed advisory then hold either:
+   - **no commit URL and exactly one pull request** (`https://github.com/OWNER/REPO/pull/N`, about 2,300 in all
+     languages). Look the pull requests up with GraphQL, 100 per query, one query at a time with two seconds
+     between: `pullRequest(number: N) { merged mergeCommit { oid } commits(first: 2) { totalCount nodes { commit
+     { oid } } } }`. Not merged: reject ("pull request not merged"). The fix is the merge commit when it has one
+     parent (a squash or rebase merge); for a two-parent merge, the pull request's own commit when it has exactly
+     one, otherwise reject ("fix spread over N commits"). `reviewed.py size` must say 1 parent.
+   - **several commit URLs, all in one repository** (about 1,100 in all languages). Usually one fix and its
+     backports to release branches: take the one on the default branch when the others make the same change.
+     When the commits are different parts of one fix, reject ("fix spread over N commits").
+   Build the list from all three groups together, newest first, and read from the top, as for any topic. Write
+   the fix commit you chose in the entry and say in the TSV which group the advisory came from (`pull request`,
+   `several commits`, `reviewed before 2021`). Suites as topic 1: `cve-pairs-python` or `cve-pairs-python-frontend`
+   (`cve-pairs-python-nonhttp` for MCP tool, bot or desktop input), blind ones in the next unused
+   `cve-pairs-blind-python-N`, `cve-pairs-blind-python-frontend-N` or `cve-pairs-blind-python-nonhttp`. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-python-second-pass.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 

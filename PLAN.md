@@ -1083,6 +1083,22 @@ rule):
     Jira server URL comes from `request.DATA` and the importer's client fetches it (an import feature, but
     request-controlled server-side requests all the same). github/api.py:89 SSRF (a fixed host) and
     jira/api.py:166 path-traversal stay false alarms. Typed receivers have to keep the first and drop the second.
+40. **Topic 3 batches 5-7 reviewed; PHP held; a Python topic** (2026-11-05). 25 accepted by the research model,
+    16 open: every open fix sized on GitHub (all within 3 files/120 lines). Three dropped: dash-live GHSA-532m (the
+    filenames are the user's own upload or a stored file's, the kid values stored media metadata: no attacker
+    request), hoppscotch GHSA-4rhc (a renderer-setting fix, `sandbox=""` on the preview iframe, like step 29's
+    Joplin cases; the HTML is the user's own API response) and maps-js-icoads GHSA-269f (same fix commit as
+    GHSA-5pph, kept, so one fix would be scored twice). Added: 10 to `cve-pairs-javascript` (AnythingLLM GHSA-cw8v
+    and -72wm, Gladys GHSA-r67g, Lightdash GHSA-x8qg, scanservjs GHSA-h5q9, maps-js-icoads GHSA-5pph, Planka
+    GHSA-5c4f, Etherpad GHSA-wm6p and -487r, Gitpod GHSA-r48p), 3 to `cve-pairs-javascript-nonhttp` (ajaxlife
+    GHSA-cqf6, fittr-flickr GHSA-vj8w, ss15-this-is-sparta GHSA-c74p); blind: 6 in a new
+    `cve-pairs-blind-javascript-9`, 1 in `-10`, 2 more in `cve-pairs-blind-javascript-nonhttp`. Topic 3 is done.
+    The research model went on to topic 4 (PHP) and wrote three batches (180 read, 45 accepted). With no PHP rules
+    those don't help now and only filled the six-batch limit, which stopped research at 07:00: they are marked
+    held (status "held ...", not counted by `reviewed.py pending`) and topic 4 paused. New topic 5 in AGENTS.md
+    goes back to Python: the advisories topic 1 dropped for their references (one pull request and no commit,
+    about 2,300 in all languages; several commits in one repository, about 1,100, mostly a fix and its backports)
+    and GitHub-reviewed PyPI advisories from before 2021 (about 170).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

@@ -995,7 +995,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -1601,6 +1601,148 @@
           "scope": [
             "server/utils/files"
           ]
+        },
+        {
+          "id": "GHSA-cw8v-p9jq-r69x",
+          "cve": "CVE-2024-0759",
+          "repo": "https://github.com/mintplex-labs/anything-llm.git",
+          "fix": "0db6c3b2aa1787a7054ffdaba975474f122c20eb",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "Should an instance of AnythingLLM be hosted on an internal network and the attacked be explicitly granted a permission level of manager or admin, they could link-scrape internally resolving IPs of other services that are on the same network as AnythingLLM.",
+          "scope": [
+            "collector/utils/url",
+            "server/endpoints"
+          ]
+        },
+        {
+          "id": "GHSA-72wm-hh56-9gp6",
+          "cve": "CVE-2024-0440",
+          "repo": "https://github.com/mintplex-labs/anything-llm.git",
+          "fix": "1563a1b20f72846d617a88510970d0426ab880d3",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "Attacker, with permission to submit a link or submits a link via POST  to be collected that is using the file:// protocol can then introspect host files and other relatively stored files.",
+          "scope": [
+            "collector/utils/url"
+          ]
+        },
+        {
+          "id": "GHSA-r67g-g678-mjx5",
+          "cve": "CVE-2023-43256",
+          "repo": "https://github.com/GladysAssistant/Gladys.git",
+          "fix": "f27d0ea4689c3deca5739b5f9ed45a2ddbf00b7b",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "A path traversal in Gladys Assistant v4.26.1 and below allows authenticated attackers to extract sensitive files in the host machine by exploiting a non-sanitized user input.",
+          "scope": [
+            "server/services/rtsp-camera"
+          ]
+        },
+        {
+          "id": "GHSA-x8qg-5w28-wmr9",
+          "cve": "CVE-2023-35844",
+          "repo": "https://github.com/lightdash/lightdash.git",
+          "fix": "fcc808c84c2cc3afb343063e32a49440d32a553c",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "packages/backend/src/routers in Lightdash before 0.510.3 has insecure file endpoints, e.g., they allow .. directory traversal and do not ensure that an intended file extension (.csv or .png) is used.",
+          "scope": [
+            "packages/backend/src/routers"
+          ]
+        },
+        {
+          "id": "GHSA-h5q9-8q57-gqh2",
+          "cve": "CVE-2023-2564",
+          "repo": "https://github.com/sbs20/scanservjs.git",
+          "fix": "d51fd52c1569813990b8f74e64ae6979c665dca1",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-2.0",
+          "summary": "OS Command Injection in GitHub repository sbs20/scanservjs prior to v2.27.0.",
+          "scope": [
+            "packages/server/src/classes"
+          ]
+        },
+        {
+          "id": "GHSA-5pph-5f85-479x",
+          "cve": "CVE-2014-125068",
+          "repo": "https://github.com/saxman/maps-js-icoads.git",
+          "fix": "34b8b0cce2807b119f4cffda2ac48fc8f427d69a",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "A vulnerability was found in saxman maps-js-icoads and classified as critical. This issue affects some unknown processing of the file http-server.js. The manipulation leads to path traversal. The name of the patch is 34b8b0cce2807b119f4cffda2ac48fc8f427d69a. It is recommended to apply a patch to fix",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-5c4f-cr5c-fm9x",
+          "cve": "CVE-2022-2653",
+          "repo": "https://github.com/plankanban/planka.git",
+          "fix": "ac1df5201dfdaf68d37f7e1b272bc137870d7418",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "With this vulnerability an attacker can read many sensitive files like configuration files, or the /proc/self/environ file, that contains the environment variable used by the web server that includes database credentials. If the web server user is root, an attacker will be able to read any file in t",
+          "scope": [
+            "server/api/controllers/attachments",
+            "server/config"
+          ]
+        },
+        {
+          "id": "GHSA-wm6p-54cv-qxf5",
+          "cve": "CVE-2019-18209",
+          "repo": "https://github.com/ether/etherpad-lite.git",
+          "fix": "5879037ddca4ab9a4002adf90fc7ce6c9f82f01b",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "templates/pad.html in Etherpad-Lite 1.7.5 has XSS when the browser does not encode the path of the URL, as demonstrated by Internet Explorer.",
+          "scope": [
+            "src/templates"
+          ]
+        },
+        {
+          "id": "GHSA-487r-wq2j-f8m4",
+          "cve": "CVE-2015-3297",
+          "repo": "https://github.com/ether/etherpad-lite.git",
+          "fix": "9d4e5f6e35153129377206ef545d4965afae627d",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Directory traversal vulnerability in node/utils/Minify.js in Etherpad 1.1.1 through 1.5.2 allows remote attackers to read arbitrary files by leveraging replacement of backslashes with slashes in the path parameter of HTTP API requests.",
+          "scope": [
+            "src/node/utils"
+          ]
+        },
+        {
+          "id": "GHSA-r48p-vhgj-x8mm",
+          "cve": "CVE-2021-35206",
+          "repo": "https://github.com/gitpod-io/gitpod.git",
+          "fix": "8ca431f86ae3a6f9a17afcfed51cdd065fcff1a5",
+          "cwe": [
+            601
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Unvalidated redirects",
+          "scope": [
+            "components/server/src/user"
+          ]
         }
       ]
     },
@@ -1780,6 +1922,48 @@
           "summary": "A security vulnerability has been detected in MonomythDevelopment la-forge-mcp 1.0.0. This issue affects the function screenshotElement of the file src/index.ts of the component screenshot_element Tool. Such manipulation of the argument output_name leads to path traversal. The attack can be executed",
           "scope": [
             "src"
+          ]
+        },
+        {
+          "id": "GHSA-cqf6-7wvc-xg52",
+          "cve": "CVE-2008-10002",
+          "repo": "https://github.com/cfire24/ajaxlife.git",
+          "fix": "9fb53b67312fe3f4336e01c1e3e1bedb4be0c1c8",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability has been found in cfire24 ajaxlife up to 0.3.2 and classified as problematic. This vulnerability affects unknown code. The manipulation leads to cross site scripting. The attack can be initiated remotely. Upgrading to version 0.3.3 is able to address this issue. The name of the patch",
+          "scope": [
+            "client"
+          ]
+        },
+        {
+          "id": "GHSA-vj8w-gmcx-c68x",
+          "cve": "CVE-2009-10002",
+          "repo": "https://github.com/dpup/fittr-flickr.git",
+          "fix": "08875dd8a2e5d0d16568bb0d67cb4328062fccde",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability, which was classified as problematic, has been found in dpup fittr-flickr. This issue affects some unknown processing of the file fittr-flickr/features/easy-exif.js of the component EXIF Preview Handler. The manipulation leads to cross site scripting. The attack may be initiated remo",
+          "scope": [
+            "fittr-flickr"
+          ]
+        },
+        {
+          "id": "GHSA-c74p-x565-fv2v",
+          "cve": "CVE-2015-10028",
+          "repo": "https://github.com/mauriciosoares/ss15-this-is-sparta.git",
+          "fix": "ba2f71ad3a46e5949ee0c510b544fa4ea973baaa",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability has been found in ss15-this-is-sparta and classified as problematic. This vulnerability affects unknown code of the file js/roomElement.js of the component Main Page. The manipulation leads to cross site scripting. The attack can be initiated remotely. The name of the patch is ba2f71",
+          "scope": [
+            "js"
           ]
         }
       ]
@@ -2351,6 +2535,35 @@
           "summary": "A vulnerability was determined in adenot mcp-google-search up to 0.3.1. Impacted is an unknown function of the file src/index.ts of the component read_webpage. Executing a manipulation of the argument url can lead to server-side request forgery. The attack is restricted to local execution. This patc",
           "scope": [
             "src"
+          ]
+        },
+        {
+          "id": "GHSA-2x4j-58j9-x8c9",
+          "cve": "CVE-2020-36826",
+          "repo": "https://github.com/AwesomestCode/LiveBot.git",
+          "fix": "57505527f838d1e46e8f93d567ba552a30185bfa",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "A vulnerability was found in AwesomestCode LiveBot. It has been classified as problematic. Affected is the function parseSend of the file js/parseMessage.js. The manipulation leads to cross site scripting. It is possible to launch the attack remotely. This product is using a rolling release to provi",
+          "scope": [
+            "js"
+          ]
+        },
+        {
+          "id": "GHSA-jcgv-r252-27j3",
+          "cve": "CVE-2018-25064",
+          "repo": "https://github.com/osmlab/show-me-the-way.git",
+          "fix": "4bed3b34dcc01fe6661f39c0e5d2285b340f7cac",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was found in OSM Lab show-me-the-way. It has been rated as problematic. This issue affects some unknown processing of the file js/site.js. The manipulation leads to cross site scripting. The attack may be initiated remotely. The name of the patch is 4bed3b34dcc01fe6661f39c0e5d2285b34",
+          "scope": [
+            ".",
+            "js"
           ]
         }
       ]
@@ -3851,6 +4064,127 @@
           "summary": "A vulnerability was determined in zhayujie CowAgent up to 2.1.1. This affects the function WebFetch.",
           "scope": [
             "agent/tools"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-9",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Ninth blind set of JavaScript/Node CVE fix pairs, split from topic 3's fifth and sixth unreviewed-advisory batches (2026-11-04/05) (PLAN.md step 40) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Fix sizes were not checked (that would mean reading them).",
+      "cases": [
+        {
+          "id": "GHSA-v78g-p78j-5486",
+          "cve": "CVE-2023-4897",
+          "repo": "https://github.com/mintplex-labs/anything-llm.git",
+          "fix": "3c88aec034934bcbad30c5ef1cab62cbbdb98e64",
+          "cwe": [
+            23
+          ],
+          "license": "MIT",
+          "summary": "Relative Path Traversal in GitHub repository mintplex-labs/anything-llm prior to 0.0.1.",
+          "scope": [
+            "server/endpoints",
+            "frontend/src/components/Modals/MangeWorkspace/Documents"
+          ]
+        },
+        {
+          "id": "GHSA-pqx3-wcmm-q9p2",
+          "cve": "CVE-2023-3294",
+          "repo": "https://github.com/saleor/react-storefront.git",
+          "fix": "c29aab226f07ca980cc19787dcef101e11b83ef7",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross-site Scripting (XSS) - DOM in GitHub repository saleor/react-storefront prior to c29aab226f07ca980cc19787dcef101e11b83ef7.",
+          "scope": [
+            "apps/storefront"
+          ]
+        },
+        {
+          "id": "GHSA-9vfh-c8mq-w54g",
+          "cve": "CVE-2023-25314",
+          "repo": "https://github.com/WWBN/AVideo.git",
+          "fix": "2b44dee815b208da85e1dcafa9839391c3de2655",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross Site Scripting (XSS) vulnerability in World Wide Broadcast Network AVideo before 12.4, allows attackers to gain sensitive information via the success parameter to /user.",
+          "scope": [
+            "view/js"
+          ]
+        },
+        {
+          "id": "GHSA-xwgm-fp55-vxq4",
+          "cve": "CVE-2015-10035",
+          "repo": "https://github.com/gperson/angular-test-reporter.git",
+          "fix": "a29d8ae121b46ebfa96a55a9106466ab2ef166ae",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was found in gperson angular-test-reporter and classified as critical. This issue affects the function getProjectTables/addTest of the file rest-server/data-server.js. The manipulation leads to sql injection. The name of the patch is a29d8ae121b46ebfa96a55a9106466ab2ef166ae. It is re",
+          "scope": [
+            "app",
+            "rest-server"
+          ]
+        },
+        {
+          "id": "GHSA-jg95-rrp5-h9rc",
+          "cve": "CVE-2014-125046",
+          "repo": "https://github.com/Seiji42/cub-scout-tracker.git",
+          "fix": "b4bc1a328b1f59437db159f9d136d9ed15707e31",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability, which was classified as critical, was found in Seiji42 cub-scout-tracker. This affects an unknown part of the file databaseAccessFunctions.js. The manipulation leads to sql injection. The name of the patch is b4bc1a328b1f59437db159f9d136d9ed15707e31. It is recommended to apply a pat",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-mj9g-jm8w-h9p4",
+          "cve": "CVE-2021-27886",
+          "repo": "https://github.com/rakibtg/docker-web-gui.git",
+          "fix": "79cdc41809f2030fce21a1109898bd79e4190661",
+          "cwe": [
+            77,
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "rakibtg Docker Dashboard before 2021-02-28 allows command injection in backend/utilities/terminal.js via shell metacharacters in the command parameter of an API request. NOTE: this is NOT a Docker, Inc. product.",
+          "scope": [
+            "backend/utilities"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-10",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Tenth blind set of JavaScript/Node CVE fix pairs, split from topic 3's seventh and last unreviewed-advisory batch of 2026-11-05 (PLAN.md step 40) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Fix sizes were not checked (that would mean reading them).",
+      "cases": [
+        {
+          "id": "GHSA-rrcw-m6cc-w2cx",
+          "cve": "CVE-2021-3845",
+          "repo": "https://github.com/netristv/ws-scrcpy.git",
+          "fix": "e83cf65438bef83a3503b25358bba97bcc156fef",
+          "cwe": [
+            73
+          ],
+          "license": "MIT",
+          "summary": "ws-scrcpy is vulnerable to External Control of File Name or Path",
+          "scope": [
+            "src/server/services"
           ]
         }
       ]
