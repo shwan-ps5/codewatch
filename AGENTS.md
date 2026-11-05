@@ -111,7 +111,7 @@ npm advisories (step 29). Those pools are nearly used up.
    batch needs them): `cve-pairs-php` for request input, blind ones in `cve-pairs-blind-php-N` (one per batch).
    Templates (Blade, Twig, Smarty) count as source. codewatch has no PHP rules yet, so this is ground truth for
    later work: no scans. Files: `benchmarks/cve-candidates-YYYY-MM-DD-php-unreviewed.{tsv,json}`.
-5. **Python web apps, fixes topic 1 couldn't take.** Python (Django, Flask, FastAPI) is the priority, and topic 1
+5. **Python web apps, fixes topic 1 couldn't take.** (done 2026-11-05, cve-candidates-2026-11-05-python-second-pass-2.*) Python (Django, Flask, FastAPI) is the priority, and topic 1
    only kept advisories whose references hold exactly one commit URL. Same source, filters and checks as topic 1
    (published since 2021, a CWE from the list, a non-archived Python repository found with GraphQL, Django, Flask
    or FastAPI confirmed at the fix commit, judged by section 3, Python's 5-file/200-line limit), but keep the
