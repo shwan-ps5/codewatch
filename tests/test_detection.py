@@ -3561,6 +3561,11 @@ class Attachment(models.Model):
     def note_html(self):
         return mark_safe(f"<i>{self.note}</i>")
 
+    image = models.ImageField(upload_to="files", null=True)
+
+    def thumbnail(self):
+        return mark_safe(f'<img src="{self.image.url}">')
+
 
 class Ticket(models.Model):
     title = models.CharField(max_length=200)
@@ -3576,7 +3581,7 @@ from .models import Attachment, Ticket
 
 def upload(request):
     for f in request.FILES.getlist("files"):
-        Attachment.objects.create(filename=f.name, size=f.size, note="uploaded")
+        Attachment.objects.create(filename=f.name, size=f.size, note="uploaded", image=f)
     return HttpResponse("ok")
 
 
@@ -3595,6 +3600,11 @@ def ticket(request, pk):
     row = Ticket.objects.get(pk=pk)
     heading = HttpResponse(f"<h1>{row.title}</h1>")
     return HttpResponse(f"<div>{row.body}</div>")
+
+
+def export(request, pk):
+    item = Attachment.objects.get(pk=pk)
+    return HttpResponse(f"filename: {item.filename}", content_type="text/yaml")
 """
 
 STORED_ADMIN = """from django.contrib import admin
@@ -3643,7 +3653,8 @@ def test_a_check_clears_its_own_branch_not_the_else(tmp_path):
 def test_model_fields_written_from_the_request_and_read_back_as_html(tmp_path):
     """Stored XSS, model by model: Attachment.filename is filled from an upload's name and Ticket.body from a
     ModelForm, so reading them back into HTML counts. Attachment.note (a constant), kind (fixed choices), size (a
-    number) and Ticket.title (never written from a request) don't, nor does format_html's own escaping."""
+    number) and Ticket.title (never written from a request) don't, nor does format_html's own escaping, an
+    uploaded image's .url (the storage percent-encodes it) or a YAML response."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     found = semgrep_vulnerabilities(tmp_path, {

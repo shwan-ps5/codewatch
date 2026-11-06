@@ -1298,8 +1298,8 @@ rules:
                       - pattern: django.http.HttpResponse($BODY, ...)
                   # Media, JSON, plain text and downloads aren't rendered as HTML (recipes:
                   # HttpResponse(export_file, content_type='application/force-download')).
-                  - pattern-not: $RESP($B, ..., mimetype="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download)|^text\/(plain|csv)/", ...)
-                  - pattern-not: $RESP($B, ..., content_type="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download)|^text\/(plain|csv)/", ...)
+                  - pattern-not: $RESP($B, ..., mimetype="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/", ...)
+                  - pattern-not: $RESP($B, ..., content_type="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/", ...)
               - pattern: flask.render_template_string($BODY, ...)
               - pattern: render_template_string($BODY, ...)
               - pattern: markupsafe.Markup($BODY)
@@ -1313,19 +1313,19 @@ rules:
           - pattern-not-inside: |
               $R = $MAKE(...)
               ...
-              $R.mimetype = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download)|^text\/(plain|csv)/"
+              $R.mimetype = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/"
           - pattern-not-inside: |
               $R = $MAKE(...)
               ...
-              $R.content_type = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download)|^text\/(plain|csv)/"
+              $R.content_type = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/"
           - pattern-not-inside: |
               $R = $MAKE(...)
               ...
-              $R[$HEADER] = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download)|^text\/(plain|csv)/"
+              $R[$HEADER] = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/"
           - pattern-not-inside: |
               $R = $MAKE(...)
               ...
-              $R.headers[$HEADER] = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download)|^text\/(plain|csv)/"
+              $R.headers[$HEADER] = "=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/"
           - focus-metavariable: $BODY
 
   - id: codewatch.python.web.xpath-injection

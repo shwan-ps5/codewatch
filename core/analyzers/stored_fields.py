@@ -25,6 +25,9 @@ TEXT_FIELDS = {"CharField", "TextField", "EmailField", "URLField", "SlugField", 
 MODEL_BASE_RE = re.compile(r"Model$")
 FORM_BASE_RE = re.compile(r"^(ModelForm|ModelSerializer|HyperlinkedModelSerializer)$")
 REQUEST_NAMES = {"request", "req"}
+# A file field's .url is the storage's URL for the stored name, percent-encoded (Django's filepath_to_uri), so it
+# can't break out of an HTML attribute: mark_safe(f'<img src="{self.image.url}">').
+FILE_FIELDS = {"FileField", "ImageField"}
 
 
 def last_name(node):
@@ -36,14 +39,14 @@ def last_name(node):
     return getattr(node, "id", "")
 
 
-def text_fields(cls):
-    """Names of a model class's text fields without fixed choices."""
+def text_fields(cls, kinds=TEXT_FIELDS):
+    """Names of a model class's text fields (or fields of the given kinds) without fixed choices."""
     found = set()
     for item in cls.body:
         if not (isinstance(item, ast.Assign) and len(item.targets) == 1 and isinstance(item.targets[0], ast.Name)
                 and isinstance(item.value, ast.Call)):
             continue
-        if last_name(item.value.func) in TEXT_FIELDS and not any(k.arg == "choices" for k in item.value.keywords):
+        if last_name(item.value.func) in kinds and not any(k.arg == "choices" for k in item.value.keywords):
             found.add(item.targets[0].id)
     return found
 
@@ -219,17 +222,19 @@ def parse_all(texts):
 
 
 def stored_fields(texts):
-    """({model: request-written text fields}, {admin class: model}) for the project's Python sources."""
+    """({model: request-written text fields}, {admin class: model}, {model: its file fields}) for the project's
+    Python sources."""
     trees = parse_all(texts)
-    models = {}
+    models, files = {}, {}
     for tree in trees:
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and any(MODEL_BASE_RE.search(last_name(b)) for b in node.bases) \
                     and not any(FORM_BASE_RE.search(last_name(b)) for b in node.bases):
                 models.setdefault(node.name, set()).update(text_fields(node))
+                files.setdefault(node.name, set()).update(text_fields(node, FILE_FIELDS))
     models = {m: f for m, f in models.items() if f}
     if not models:
-        return {}, {}
+        return {}, {}, {}
     writes, admins, functions = set(), {}, []
     for tree in trees:
         admins.update(admin_models(tree, models))
@@ -243,7 +248,8 @@ def stored_fields(texts):
     for model, field in writes:
         if field in models.get(model, ()):
             stored.setdefault(model, set()).add(field)
-    return stored, {a: m for a, m in admins.items() if m in stored}
+    return (stored, {a: m for a, m in admins.items() if m in stored},
+            {m: f & stored[m] for m, f in files.items() if m in stored and f & stored[m]})
 
 
 def field_regex(fields):
@@ -281,9 +287,13 @@ def sources(stored, admins):
 
 def with_stored_sources(rules, texts):
     """The rules, with sources for request-written model fields on the Python XSS rule."""
-    stored, admins = stored_fields(texts)
+    stored, admins, files = stored_fields(texts)
     if not stored:
         return rules
     extra = sources(stored, admins)
-    return [{**rule, "pattern-sources": [*rule["pattern-sources"], *extra]} if rule.get("id") == RULE else rule
+    names = set().union(*files.values()) if files else set()
+    url = [{"patterns": [{"pattern": "$X.$FIELD.url"},
+                         {"metavariable-regex": {"metavariable": "$FIELD", "regex": field_regex(names)}}]}] if names else []
+    return [{**rule, "pattern-sources": [*rule["pattern-sources"], *extra],
+             "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *url]} if rule.get("id") == RULE else rule
             for rule in rules]

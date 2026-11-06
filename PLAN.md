@@ -1336,6 +1336,37 @@ rule):
     unreviewed ones topics 2 and 3 couldn't take (pull requests and several commits, which topic 5's method
     covers, and about 40 single commits neither read): topic 7, queued to start after topic 6.
 
+47. **Nightly 2026-11-06; topic 6's first six batches reviewed** (2026-11-06). The nightly (commit fc795c0) matched
+    step 45's measurements on every suite; the 2026-11-05 comparison had crashed on a sparse-checkout path with
+    brackets, so its case diffs list everything as new. New app findings: five, all false alarms (triage agreed,
+    each checked by hand). Two came from step 45's stored-field sources and are fixed here:
+    - NetBox `ImageAttachment.html_tag`: `mark_safe('<img src="{url}" ...>'.format(url=self.image.url))`. A file
+      field's `.url` is the storage's URL for the stored name, percent-encoded by Django (`filepath_to_uri`), so
+      `$X.<file field>.url` is now a sanitizer for the stored fields' file fields.
+    - NetBox bulk export: `HttpResponse(self.export_yaml(), content_type='text/yaml')` with an attachment
+      disposition. YAML (`text/yaml`, `text/x-yaml`, `application/yaml`, `application/x-yaml`) joined the
+      non-HTML response types in `python-web.yml`.
+    Test: `test_model_fields_written_from_the_request_and_read_back_as_html` (an `ImageField`'s `.url` and a YAML
+    response; each half fails without its change). The other three are left: two label-studio regex-injection
+    findings where `label_config` goes to a validator, and NetBox's uploaded-script `validate_script_content`
+    reported as code injection (it compiles the source to check it, which a later run does execute; a hotspot
+    at most).
+
+    Topic 6's agent counted far more candidates than step 46 (1,326 after the language filter, about a quarter
+    of them Django, Flask or FastAPI), because it looked up the languages of repositories no earlier topic had.
+    Six batches, 360 read, 24 accepted. Four were rejected at review: Weblate GHSA-cwcx (a URL persisted from a
+    project backup and used as a git remote later: stored data), LLaMA-Factory GHSA-xj56 (a Gradio app),
+    Superset GHSA-jfxj (the values come from the user's own SQL template through an in-app Jinja macro; no request
+    flow a scanner can see) and MoviePilot GHSA-8gr5 (the context is saved from the request and unpickled later by
+    the executor: stored data). That leaves 20: 11 open (cve-pairs-python: Open WebUI GHSA-j657, Langflow
+    GHSA-79ph, alerta GHSA-8prr, OpenHands GHSA-7h8w, Swing Music GHSA-pj88, Horizon GHSA-f8fh, -rhjj and -j72v;
+    cve-pairs-python-frontend: Fava GHSA-q8hg; plus bbot GHSA-m54h and -3mp7 for cve-pairs-python-nonhttp) and
+    9 blind ones, unread. The 11 open ones are in suites.json (8 in cve-pairs-python, 1 front end, 2 nonhttp),
+    first measured by the nightly run; the 9 blind ones went into cve-pairs-blind-python-9 to -13 and
+    cve-pairs-blind-python-nonhttp unread, for the end of the round. The research runs had
+    stopped at 09:00 on their cap of 6 batches waiting for review (`CODEWATCH_RESEARCH_MAX_PENDING`, set in the
+    maintainer's systemd override); it is now 12, about a day of hourly runs between reviews.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the

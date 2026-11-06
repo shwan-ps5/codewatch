@@ -1020,6 +1020,118 @@
             "posthog/temporal/data_imports/pipelines/zendesk",
             "posthog/temporal/data_imports/pipelines/vitally"
           ]
+        },
+        {
+          "id": "GHSA-j657-m4c4-24jq",
+          "cve": "CVE-2026-59224",
+          "repo": "https://github.com/open-webui/open-webui.git",
+          "fix": "5f3a628a8d291bb5d33e1a0b0c89fb62a2927934",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open WebUI: Terminal proxy forwards a spoofable, integrity-unbound user identity to the upstream (X-User-Id header and ws_terminal session_id query injection)",
+          "scope": [
+            "backend/open_webui/routers"
+          ]
+        },
+        {
+          "id": "GHSA-79ph-745m-6wxq",
+          "cve": "CVE-2026-42867",
+          "repo": "https://github.com/langflow-ai/langflow.git",
+          "fix": "41d34b204803dc2b7de9734bdd238cac87c32585",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Langflow: Path Traversal in Knowledge Bases API via Creation Endpoint",
+          "scope": [
+            "src/backend/base/langflow/api/v1"
+          ]
+        },
+        {
+          "id": "GHSA-8prr-286p-4w7j",
+          "cve": "CVE-2026-34400",
+          "repo": "https://github.com/alerta/alerta.git",
+          "fix": "fdd52cd1abad8d02d1dfb8ecdcdbb43b6af3b883",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "alerta-server has potential SQL Injection vulnerability in Query String Syntax (q=) API",
+          "scope": [
+            "alerta/database/backends/postgres"
+          ]
+        },
+        {
+          "id": "GHSA-7h8w-hj9j-8rjw",
+          "cve": "CVE-2026-33718",
+          "repo": "https://github.com/openhands/openhands.git",
+          "fix": "698cfc2520cdc50eac5fa869c6c1ba5c8fee9e13",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "OpenHands is Vulnerable to Command Injection through its Git Diff Handler",
+          "scope": [
+            "openhands/runtime/utils"
+          ]
+        },
+        {
+          "id": "GHSA-pj88-9xww-gxmh",
+          "cve": "CVE-2026-23877",
+          "repo": "https://github.com/swingmx/swingmusic.git",
+          "fix": "9a915ca62af1502b9550722df82f5d432cb73de3",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Swing Music has a Directory Traversal & Filesystem can be accessed by a non-admin user",
+          "scope": [
+            "src/swingmusic/api"
+          ]
+        },
+        {
+          "id": "GHSA-f8fh-xp28-q59m",
+          "cve": "CVE-2020-29565",
+          "repo": "https://github.com/openstack/horizon.git",
+          "fix": "252467100f75587e18df9c43ed5802ee8f0017fa",
+          "cwe": [
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "OpenStack Horizon Open redirect in workflow forms",
+          "scope": [
+            "horizon/workflows"
+          ]
+        },
+        {
+          "id": "GHSA-rhjj-f6gq-6gx2",
+          "cve": "CVE-2015-3219",
+          "repo": "https://github.com/openstack/horizon.git",
+          "fix": "28d8f49786d6df297b2574514916fa782e941e09",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "OpenStack Dashboard (Horizon) Cross-site scripting (XSS) vulnerability",
+          "scope": [
+            "openstack_dashboard/dashboards/project/stacks"
+          ]
+        },
+        {
+          "id": "GHSA-j72v-mpwp-rg79",
+          "cve": "CVE-2012-3540",
+          "repo": "https://github.com/openstack/horizon.git",
+          "fix": "35eada8a27323c0f83c400177797927aba6bc99b",
+          "cwe": [
+            601
+          ],
+          "license": "Apache-2.0",
+          "summary": "Open redirect vulnerability in views/auth_forms.py in OpenStack Dashboard (Horizon) Essex (2012.1) allows remote attackers to redirect users to arbitrary web sites and conduct phishing attacks via a URL in the next parameter to auth/login/.  NOTE: this issue was originally assigned CVE-2012-3542 by ",
+          "scope": [
+            "horizon/views"
+          ]
         }
       ]
     },
@@ -3152,6 +3264,20 @@
           "scope": [
             "website/web/static/js/graph"
           ]
+        },
+        {
+          "id": "GHSA-q8hg-3vqv-f8v3",
+          "cve": "CVE-2022-2523",
+          "repo": "https://github.com/beancount/fava.git",
+          "fix": "dccfb6a2f4567f35ce2e9a78e24f92ebf946bc9b",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Fava vulnerable to Reflected Cross-site Scripting",
+          "scope": [
+            "frontend/src"
+          ]
         }
       ]
     },
@@ -3217,6 +3343,35 @@
           "scope": [
             "agent/src/memory",
             "agent/src/tools"
+          ]
+        },
+        {
+          "id": "GHSA-m54h-vhf9-3w3m",
+          "cve": "CVE-2026-12568",
+          "repo": "https://github.com/blacklanternsecurity/bbot.git",
+          "fix": "36bc20818206a59f6d430e905248f85c439e5397",
+          "cwe": [
+            22,
+            73
+          ],
+          "license": "AGPL-3.0",
+          "summary": "BBOT: Arbitrary File Write in postman_download Module",
+          "scope": [
+            "bbot/modules"
+          ]
+        },
+        {
+          "id": "GHSA-3mp7-vp6j-2mxx",
+          "cve": "CVE-2026-12566",
+          "repo": "https://github.com/blacklanternsecurity/bbot.git",
+          "fix": "c2f4bc0f4e4bb4d00f06750dcabf1d9c74c0d3b4",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "BBOT: Server-Side Request Forgery (SSRF) in docker_pull module via WWW-Authenticate realm parsing",
+          "scope": [
+            "bbot/modules"
           ]
         }
       ]
@@ -4113,6 +4268,35 @@
           "scope": [
             "agent/tools"
           ]
+        },
+        {
+          "id": "GHSA-pxhg-7xr2-w7xg",
+          "cve": "CVE-2026-42080",
+          "repo": "https://github.com/icip-cas/pptagent.git",
+          "fix": "418491a9a1c02d9d93194b5973bb58df35cf9d00",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "PPTAgent: Arbitrary File Write via `save_generated_slides`",
+          "scope": [
+            "pptagent"
+          ]
+        },
+        {
+          "id": "GHSA-cm35-v4vp-5xvx",
+          "cve": "CVE-2025-64496",
+          "repo": "https://github.com/open-webui/open-webui.git",
+          "fix": "8af6a4cf21b756a66cd58378a01c60f74c39b7ca",
+          "cwe": [
+            78,
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open WebUI Affected by an External Model Server (Direct Connections) Code Injection via SSE Events",
+          "scope": [
+            "backend/open_webui/utils"
+          ]
         }
       ]
     },
@@ -4271,6 +4455,155 @@
           "summary": "The ChangeWeDer/BaiduWenkuSpider_flaskWeb repository before 2021-11-29 on GitHub allows absolute path traversal because the Flask send_file function is used unsafely.",
           "scope": [
             "."
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-10",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from topic 6's batch 2 of 2026-11-06 (Python advisories every earlier pass skipped; PLAN.md step 47) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-ccv6-r384-xp75",
+          "cve": "CVE-2026-55447",
+          "repo": "https://github.com/langflow-ai/langflow.git",
+          "fix": "cb06a666d0f00a86d40599a91713fc615d7ea313",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Langflow: BaseFileComponent-based nodes arbitrary file read with RCE exploit",
+          "scope": [
+            "src/lfx/src/lfx/base/data"
+          ]
+        },
+        {
+          "id": "GHSA-fj2m-qvh9-jq4q",
+          "cve": "CVE-2026-43979",
+          "repo": "https://github.com/learningcircuit/local-deep-research.git",
+          "fix": "15f13d5c79847f1c38c2dc67bd0027c38af9e34b",
+          "cwe": [
+            79,
+            918
+          ],
+          "license": "MIT",
+          "summary": "local-deep-research is Vulnerable to HTML Injection via Unescaped User Input in PDF Export (`pdf_service.py:_markdown_to_html`)",
+          "scope": [
+            "src/local_deep_research/web/services"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-11",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from topic 6's batch 3 of 2026-11-06 (Python advisories every earlier pass skipped; PLAN.md step 47) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "PYSEC-2026-2199",
+          "cve": "CVE-2026-0560",
+          "repo": "https://github.com/parisneo/lollms.git",
+          "fix": "76a54f0df2df8a5b254aa627d487b5dc939a0263",
+          "cwe": [
+            918
+          ],
+          "license": "Apache-2.0",
+          "summary": "A Server-Side Request Forgery (SSRF) vulnerability exists in parisneo/lollms versions prior to 2.2.0, specifically in the `/api/files/export-content` endpoint. The `_download_image_to_temp()` function in `backend/routers/files.py` fails to validate user-controlled URLs, allowing attackers to make ar",
+          "scope": [
+            "backend/routers"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-12",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from topic 6's batch 4 of 2026-11-06 (Python advisories every earlier pass skipped; PLAN.md step 47) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-wxj7-3fx5-pp9m",
+          "cve": "CVE-2025-52967",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "4a0f6c1345d7502451c89ee1c375891901c21393",
+          "cwe": [
+            918
+          ],
+          "license": "Apache-2.0",
+          "summary": "MLFlow SSRF via gateway_proxy_handler",
+          "scope": [
+            "mlflow/server"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-9",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from topic 6's batches 1, 5 of 2026-11-06 (Python advisories every earlier pass skipped; PLAN.md step 47) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-hq88-wg7q-gp4g",
+          "cve": "CVE-2024-3573",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "438a450714a3ca06285eeea34bdc6cf79d7f6cbc",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "mlflow vulnerable to Path Traversal",
+          "scope": [
+            "mlflow"
+          ]
+        },
+        {
+          "id": "GHSA-x2rj-828p-hx9m",
+          "cve": "CVE-2026-61539",
+          "repo": "https://github.com/xorbitsai/inference.git",
+          "fix": "1b3d220f342ce68d34cec4586d9409d457dadc42",
+          "cwe": [
+            94
+          ],
+          "license": "Apache-2.0",
+          "summary": "Xinference vulnerable to remote code execution via unsafe `eval()` in Llama3 tool-call parsing",
+          "scope": [
+            "xinference/model/llm"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-13",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from topic 6's batch 6 of 2026-11-06 (Python advisories every earlier pass skipped; PLAN.md step 47) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-32jf-8hmq-3gv8",
+          "cve": "CVE-2021-3027",
+          "repo": "https://github.com/librit/passhport.git",
+          "fix": "366b03f607729c4538e91b634ecc57c8398522a1",
+          "cwe": [
+            90
+          ],
+          "license": "AGPL-3.0",
+          "summary": "app/views_mod/user/user.py in LibrIT PaSSHport through 2.5 is affected by LDAP Injection. There is an information leak through the crafting of special queries, escaping the provided search filter because user input gets no sanitization.",
+          "scope": [
+            "passhportd/app/views_mod/user"
           ]
         }
       ]
