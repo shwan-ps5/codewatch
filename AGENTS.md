@@ -134,6 +134,32 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-blind-python-N`, `cve-pairs-blind-python-frontend-N` or `cve-pairs-blind-python-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-second-pass.{tsv,json}`.
 
+6. **Python advisories every earlier pass skipped.** Python is still the priority, and three groups slipped
+   through topics 1 and 5 and the PyPI mining of PLAN.md steps 22-27. All three need a non-archived repository whose
+   primary language is Python (GraphQL as in topic 1), and a web framework confirmed at the fix commit as in topic 1.
+   Counted on 2026-11-06, before dropping what `reviewed.py` knows by fix SHA, and mostly library code:
+   - **GitHub-reviewed PyPI advisories published since 2021 that nobody has read** (about 235). Use
+     `advisories/github-reviewed/**` in the advisory database, keep a CWE from the list, references in one
+     repository, and drop every id and fix SHA `reviewed.py` knows. The references can hold one commit URL, one
+     pull request, or several commits. The last two are resolved exactly as in topic 5.
+   - **PyPA advisories with no GitHub advisory** (about 140): `git clone --depth 1
+     https://github.com/pypa/advisory-database ~/pypa-advisory-database`, then the `vulns/**/PYSEC-*.yaml` files
+     (YAML in OSV format) published since 2021 whose `aliases` hold no `GHSA-` id and whose references are in one
+     repository. Most have no CWE, so judge the weakness from `details`; keep only those in the list above. The
+     PYSEC id is the advisory's id everywhere: in the TSV, the JSON and `reviewed.py --split`.
+   - **Advisories in Python repositories whose CWE is missing or outside the list but whose text names one of
+     the listed weaknesses** (about 50, reviewed and unreviewed): "cross-site scripting", "SQL injection", "path
+     traversal", "command injection", "template injection", "open redirect", "SSRF", "arbitrary file
+     read/write/upload", "deserialization", "XXE" or "LDAP injection" in the summary or details. Advisories that
+     only mention these as a consequence of something else (missing authorization, a DoS) are rejected.
+   Reject without reading the diff when the repository is a framework or library itself: Django, Flask,
+   Werkzeug, Jinja, Starlette, FastAPI, LangChain, NLTK, vLLM, Mistune, sqlparse, Ansible and the like, or Apache
+   Airflow providers. A CMS or app that is also published on PyPI (Wagtail, NetBox, Home Assistant, Frappe,
+   pgAdmin, web2py, Invenio modules) is an app: read it. Build the list from all three groups together, newest
+   first, and read from the top. Say in the TSV which group each advisory came from (`reviewed unread`, `pypa
+   only`, `cwe by text`). Suites as topic 5. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-python-skipped.{tsv,json}`.
+
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
 **Carrying on a topic** doesn't depend on anything an earlier session did. Rebuild the topic's candidate list from

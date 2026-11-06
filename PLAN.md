@@ -1320,6 +1320,18 @@ rule):
     reported) and SecurityEval CWE-020/codeql_3 (an unanchored `regex.match(target)` now clears an open redirect:
     step 43's compiled-pattern guard trusts any match, even of a pattern that doesn't pin the host).
 
+46. **Research topic 6: Python advisories every earlier pass skipped** (2026-11-06). The hourly runs had been
+    idle since topic 5 finished. The pools were counted locally before writing the topic (repository languages
+    from the earlier topics' GraphQL lookups, no new API calls): about 235 GitHub-reviewed PyPI advisories since
+    2021 with a listed CWE and references in one repository that no TSV or suite holds (77 with one commit, 70
+    commit plus pull request, 57 several commits, 32 pull request only); about 140 PyPA advisories since 2021 with
+    no GHSA alias; about 50 in Python repositories whose CWE is missing or unlisted but whose text names a listed
+    weakness. Most are library code (Django itself, LangChain, NLTK, vLLM, Airflow providers), so the topic lists
+    those to reject unread and expects a low yield, perhaps 15-30 accepted; the apps among them (Wagtail, NetBox,
+    Home Assistant, Frappe, pgAdmin, web2py, Invenio) are read. Considered and not used: the CVE list (GitHub
+    imports NVD, so it overlaps the unreviewed advisories) and fix commits without an advisory (step 22 needs an
+    advisory). PHP (topic 4) stays paused.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the
