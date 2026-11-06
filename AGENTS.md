@@ -134,7 +134,7 @@ npm advisories (step 29). Those pools are nearly used up.
    `cve-pairs-blind-python-N`, `cve-pairs-blind-python-frontend-N` or `cve-pairs-blind-python-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-second-pass.{tsv,json}`.
 
-6. **Python advisories every earlier pass skipped.** Python is still the priority, and three groups slipped
+6. **Python advisories every earlier pass skipped.** (done 2026-11-06, cve-candidates-2026-11-06-python-skipped-7.*) Python is still the priority, and three groups slipped
    through topics 1 and 5 and the PyPI mining of PLAN.md steps 22-27. All three need a non-archived repository whose
    primary language is Python (GraphQL as in topic 1), and a web framework confirmed at the fix commit as in topic 1.
    One exception to the language rule: a PyPI advisory (`affected` names the PyPI ecosystem) whose repository's
