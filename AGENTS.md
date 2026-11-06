@@ -137,6 +137,10 @@ npm advisories (step 29). Those pools are nearly used up.
 6. **Python advisories every earlier pass skipped.** Python is still the priority, and three groups slipped
    through topics 1 and 5 and the PyPI mining of PLAN.md steps 22-27. All three need a non-archived repository whose
    primary language is Python (GraphQL as in topic 1), and a web framework confirmed at the fix commit as in topic 1.
+   One exception to the language rule: a PyPI advisory (`affected` names the PyPI ecosystem) whose repository's
+   primary language is JavaScript, TypeScript, Vue or Svelte is kept too (about 20). That is usually a Python web
+   app with a large front end. Read it like the others; when the fix is only in templates or front-end JS, the
+   suite is `cve-pairs-python-frontend`.
    Counted on 2026-11-06, before dropping what `reviewed.py` knows by fix SHA, and mostly library code:
    - **GitHub-reviewed PyPI advisories published since 2021 that nobody has read** (about 235). Use
      `advisories/github-reviewed/**` in the advisory database, keep a CWE from the list, references in one
@@ -159,6 +163,18 @@ npm advisories (step 29). Those pools are nearly used up.
    first, and read from the top. Say in the TSV which group each advisory came from (`reviewed unread`, `pypa
    only`, `cwe by text`). Suites as topic 5. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-skipped.{tsv,json}`.
+7. **JavaScript advisories every earlier pass skipped.** Start only when topic 6 is done. Same method as topic 6
+   for non-archived repositories whose primary language is JavaScript, TypeScript, Vue or Svelte, leaving out the
+   PyPI advisories topic 6 takes. Counted on 2026-11-06:
+   - **GitHub-reviewed npm advisories published since 2021 that nobody has read** (about 240): one commit URL
+     (about 120), one pull request, or several commits, resolved as in topic 5. Most are library code: reject
+     those as section 3 says.
+   - **Unreviewed advisories that topics 2 and 3 couldn't take** (about 170): one pull request or several
+     commits, resolved as in topic 5 (about 130), and single-commit ones that neither topic read (about 40).
+   Keep apps as topics 2 and 3 describe them (a web server, a front end, Electron, an extension, a bot). Build the
+   list from all groups together, newest first. Say in the TSV which group each came from (`reviewed unread`,
+   `pull request`, `several commits`, `single commit`). Suites as topics 2 and 3. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-javascript-skipped.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 

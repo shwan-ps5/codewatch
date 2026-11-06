@@ -1330,7 +1330,11 @@ rule):
     those to reject unread and expects a low yield, perhaps 15-30 accepted; the apps among them (Wagtail, NetBox,
     Home Assistant, Frappe, pgAdmin, web2py, Invenio) are read. Considered and not used: the CVE list (GitHub
     imports NVD, so it overlaps the unreviewed advisories) and fix commits without an advisory (step 22 needs an
-    advisory). PHP (topic 4) stays paused.
+    advisory). PHP (topic 4) stays paused. Topic 6 also takes PyPI advisories in repositories that are mostly
+    JavaScript (about 20; usually Python apps with a large front end, for the weak `cve-pairs-python-frontend`).
+    The same count for JavaScript found about 240 unread GitHub-reviewed npm advisories and about 170
+    unreviewed ones topics 2 and 3 couldn't take (pull requests and several commits, which topic 5's method
+    covers, and about 40 single commits neither read): topic 7, queued to start after topic 6.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
