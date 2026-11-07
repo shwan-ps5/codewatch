@@ -1132,6 +1132,34 @@
           "scope": [
             "horizon/views"
           ]
+        },
+        {
+          "id": "GHSA-37c2-pxv8-c2mx",
+          "cve": "CVE-2026-10595",
+          "repo": "https://github.com/parisneo/lollms.git",
+          "fix": "9bc6431ae7b708da76d51e7626a7cf48ff2b1d24",
+          "cwe": [
+            23
+          ],
+          "license": "Apache-2.0",
+          "summary": "A path traversal vulnerability exists in parisneo/lollms version 2.1.0, specifically in the SPA catch-all route implemented in `backend/routers/ui.py`. The vulnerability arises from the improper handling of user-controlled path input, which is directly joined into a filesystem path without sanitizat",
+          "scope": [
+            "backend/routers"
+          ]
+        },
+        {
+          "id": "GHSA-xf3h-4wh8-v749",
+          "cve": "CVE-2025-71458",
+          "repo": "https://github.com/cern-fts/fts-monitoring.git",
+          "fix": "e993c27d60a150c67cc2b415ddb272b5d3f05596",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "FTS3 Web Monitoring (fts-monitoring) versions 3.12.0 through 3.13.2 and 3.14.0 contain an unauthenticated sql injection vulnerability in the /linkinfo endpoint handled by get_linkinfo. Remote attackers can inject SQL through the source_se and dest_se query parameters to perform blind injection and r",
+          "scope": [
+            "src/apps/ftsmon/views"
+          ]
         }
       ]
     },
@@ -1888,6 +1916,49 @@
           "scope": [
             "components/server/src/user"
           ]
+        },
+        {
+          "id": "GHSA-224m-3wgx-rg59",
+          "cve": "CVE-2026-123617",
+          "repo": "https://github.com/openwhyd/openwhyd.git",
+          "fix": "167c45d6754df0adb3415f71cbd7cde91cbe7874",
+          "cwe": [
+            943
+          ],
+          "license": "MIT",
+          "summary": "Openwhyd before 1.65.1 contains a NoSQL injection vulnerability that allows unauthenticated attackers to manipulate user lookups by passing JSON objects in the id parameter. Attackers can send MongoDB query operators such as $ne or $gt to POST /api/user to select and enumerate other users' public pr",
+          "scope": [
+            "app/controllers/api",
+            "app/models"
+          ]
+        },
+        {
+          "id": "GHSA-jf75-q64q-g65r",
+          "cve": "",
+          "repo": "https://github.com/walinejs/waline.git",
+          "fix": "e611aed4e571c2a86103f5cee48791ca6b460360",
+          "cwe": [
+            943
+          ],
+          "license": "GPL-2.0",
+          "summary": "Waline login accepts a non-string email as a match-all MongoDB query",
+          "scope": [
+            "packages/server/src/logic"
+          ]
+        },
+        {
+          "id": "GHSA-95f6-rfpg-c3w8",
+          "cve": "CVE-2026-10291",
+          "repo": "https://github.com/enderfga/claw-orchestrator.git",
+          "fix": "3f970a974c65a94555c25af9f2796f11315e4584",
+          "cwe": [
+            1333
+          ],
+          "license": "MIT",
+          "summary": "Claw Orchestrator has inefficient regular expression complexity via validateRegex()",
+          "scope": [
+            "src"
+          ]
         }
       ]
     },
@@ -2109,6 +2180,20 @@
           "summary": "A vulnerability has been found in ss15-this-is-sparta and classified as problematic. This vulnerability affects unknown code of the file js/roomElement.js of the component Main Page. The manipulation leads to cross site scripting. The attack can be initiated remotely. The name of the patch is ba2f71",
           "scope": [
             "js"
+          ]
+        },
+        {
+          "id": "GHSA-f962-v9hr-pfg5",
+          "cve": "CVE-2026-54527",
+          "repo": "https://github.com/jupyterlab/jupyterlab-git.git",
+          "fix": "c6d37b88f36aa59aee317930b95e427fb9d6b09b",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "jupyterlab-git extension: Stored XSS leading to RCE",
+          "scope": [
+            "src/components/diff"
           ]
         }
       ]
@@ -2709,6 +2794,20 @@
           "scope": [
             ".",
             "js"
+          ]
+        },
+        {
+          "id": "GHSA-5xx3-j724-wmx5",
+          "cve": "CVE-2026-10690",
+          "repo": "https://github.com/sorlen008/desktopcommandermcp.git",
+          "fix": "53699bebba9950047bca16ac4dc8f0568f596aaa",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "DesktopCommanderMCP is vulnerable to SSRF",
+          "scope": [
+            "src/tools"
           ]
         }
       ]
@@ -4604,6 +4703,44 @@
           "summary": "app/views_mod/user/user.py in LibrIT PaSSHport through 2.5 is affected by LDAP Injection. There is an information leak through the crafting of special queries, escaping the provided search filter because user input gets no sanitization.",
           "scope": [
             "passhportd/app/views_mod/user"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-11",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from topic 7 (JavaScript advisories every earlier pass skipped; PLAN.md step 48) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-rxjr-6c9q-h67x",
+          "cve": "CVE-2026-63188",
+          "repo": "https://github.com/logto-io/logto.git",
+          "fix": "5686815955534f803d3d50738259efd0f741e62c",
+          "cwe": [
+            22
+          ],
+          "license": "MPL-2.0",
+          "summary": "logto-tunnel serves files outside `--experience-path` via path traversal",
+          "scope": [
+            "packages/tunnel/src/commands/tunnel"
+          ]
+        },
+        {
+          "id": "GHSA-r2cx-cpfx-9h63",
+          "cve": "CVE-2026-59095",
+          "repo": "https://github.com/lobehub/lobehub.git",
+          "fix": "e7ffa57f999d417d19671e09ab860488227c9645",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "LobeChat before 2.2.10-canary.18 contains a server-side request forgery vulnerability that allows authenticated attackers to direct internal HTTP requests to arbitrary URLs by supplying user-controlled input to the skill import service (importFromUrl) and topic cover update (fetchImageFromUrl) endpo",
+          "scope": [
+            "apps/server/src/services"
           ]
         }
       ]

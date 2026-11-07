@@ -1367,6 +1367,21 @@ rule):
     stopped at 09:00 on their cap of 6 batches waiting for review (`CODEWATCH_RESEARCH_MAX_PENDING`, set in the
     maintainer's systemd override); it is now 12, about a day of hourly runs between reviews.
 
+48. **Topic 6 done; topic 7's first six batches reviewed** (2026-11-07). Topic 6's seventh batch read the last 46
+    framework-confirmed candidates and accepted none: of the ~970 Python-repository candidates left on 2026-11-06,
+    most are in repositories that declare none of Django, Flask or FastAPI (Zope, OpenStack, IPython, LangChain,
+    pylint...), which the topic's framework check drops without a row. Topic 6 in all: 7 batches, 406 read, 20
+    kept. Topic 7 (JavaScript) started on its own at 20:00: six batches, 360 read, 11 accepted. Two were rejected at
+    review: Eclipse Che GHSA-7c8p (the private-host check already existed; the fix closes an IPv4-mapped IPv6
+    bypass: a validator made stricter) and NoteGen GHSA-4fc4 (the path comes from synced conversation data in the
+    app's store; no input source in the code the fix touches). Added to suites.json: cve-pairs-javascript Openwhyd
+    GHSA-224m and Waline GHSA-jf75 (NoSQL operator objects from the body), Claw Orchestrator GHSA-95f6 (request
+    pattern into new RegExp); cve-pairs-javascript-nonhttp jupyterlab-git GHSA-f962 (file names into diff header
+    HTML); cve-pairs-python lollms GHSA-37c2 (SPA catch-all path joined to the static directory) and FTS3 Web
+    Monitoring GHSA-xf3h (query parameters %-formatted into SQL; both Python apps in JavaScript-primary
+    repositories). Three blind ones went unread into cve-pairs-blind-javascript-11 and -nonhttp. Topic 7 yields
+    about 2 per batch against topic 6's 3-4, as expected for a pool that is mostly npm library code.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the
