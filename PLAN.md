@@ -1419,6 +1419,18 @@ rule):
     GHSA-c4qg (a chat image URL fetched for upload) and GHSA-jf25 (a tool's outPath written without the workspace
     check); 4 blind ones unread into cve-pairs-blind-javascript-12 and -nonhttp. Agent apps like OpenClaw now
     supply many advisories; their tool arguments and chat messages are the nonhttp suite's input.
+51. **Nightly 2026-11-07 (commit 52d3e4b) and a scorer fix** (2026-11-07). The netbox false alarms of step 47
+    are gone and no app finding is new. New cases found: Langflow GHSA-79ph and Swing Music GHSA-pj88 (the
+    latter still flagged after the fix); missed: Open WebUI, alerta, OpenHands, Horizon x3, Fava, bbot x2.
+    mlflow GHSA-wqmh showed as detected in review mode only, by 6 hotspots away from the fix that were missing
+    from the fixed side; re-run alone it is missed and quiet in both modes, as on every earlier night. Semgrep
+    gives up on rules in a file under load and drops their findings without an error (only a note), so a
+    finding "the fix made go away" is now counted only when the fixed side's scan didn't give up; the case's
+    result says `gave_up` when either side did (test_a_finding_gone_from_an_incomplete_fixed_scan_is_not_detection).
+    Front-end template work (step 49): of the 7 |safe / autoescape-off misses only GeoNode GHSA-rwcv and Modoboa
+    GHSA-jm3m print Django model fields; calibre-web GHSA-h56g and invenio GHSA-mfv8 are SQLAlchemy models,
+    Cabot GHSA-mqwh prints check errors, bird-lg GHSA-xjrp session data, OctoPrint GHSA-xvxq an autoescape
+    setting. Stored fields into |safe would need SQLAlchemy model support to reach more than two cases.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

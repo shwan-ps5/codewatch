@@ -152,6 +152,17 @@ def test_pair_detected_when_the_fix_silences_the_finding(cwes):
     assert r["detected"] and not r["still_flagged"] and r["by"] == ["codewatch:sqli@11"]
 
 
+def test_a_finding_gone_from_an_incomplete_fixed_scan_is_not_detection(cwes):
+    """Semgrep giving up on a file drops its findings silently: when the fixed side's scan gave up, a finding away
+    from the fix that is missing there isn't one the fix removed (mlflow GHSA-wqmh, nightly 2026-11-07)."""
+    far, near = pair_issue("sqli", 70, "cursor.execute(sql)"), pair_issue("sqli", 11, "db.execute(q)")
+    spots = {**SPOTS, "gave_up": {"before": False, "after": True}}
+    r = benchmark.score_pair(CASE, spots, {"before": [far], "after": []}, benchmark.MODES["verdict"], PARENTS)
+    assert not r["detected"] and r["gave_up"] == ["after"]
+    r = benchmark.score_pair(CASE, spots, {"before": [far, near], "after": []}, benchmark.MODES["verdict"], PARENTS)
+    assert r["detected"] and r["by"] == ["codewatch:sqli@11"]
+
+
 def test_pair_still_flagged_when_the_finding_survives_the_fix(cwes):
     far = pair_issue("sqli", 70, "cursor.execute(sql)")
     sides = {"before": [far], "after": [{**far, "line": 71}, pair_issue("sqli", 30, "x()", kind="security_hotspot")]}

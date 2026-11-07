@@ -48,13 +48,20 @@ def fetch(suite):
 
 
 def scan(root, log, paths=(), focus=None):
+    return scan_and_gave_up(root, log, paths, focus)[0]
+
+
+def scan_and_gave_up(root, log, paths=(), focus=None):
+    """The scan's issues, and whether Semgrep gave up on some rules in some files (its only note is that one)."""
     files = [f for f in git("ls-files", "-z", "--", *paths, cwd=root).split("\0") if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
     out = collect(cfg, ScanInput(root, files, "benchmark", focus=focus), log)
     # A suite scored without Semgrep would look like a run of misses and quiet fixed code.
     if (semgrep := out["tools"].get("semgrep", {})).get("status") == "error":
         raise RuntimeError(f"semgrep failed on {root}: {semgrep['detail']}")
-    return out["issues"]
+    if semgrep.get("detail"):
+        log(f"  {root}: {semgrep['detail']}")
+    return out["issues"], bool(semgrep.get("detail"))
 
 
 def related(a, b, parents):
@@ -413,7 +420,7 @@ def scan_pair(suite, case, log):
     # A fix in a template (dropping |safe) leaves the finding at the Python call that renders it, in a file the
     # fix didn't change: those calls are scored too, for the template rule only.
     templates = changed_templates(diff) if suite["language"].startswith("python") else set()
-    spots["renders"] = {}
+    spots["renders"], spots["gave_up"] = {}, {}
     sides = {}
     for side, commit in (("before", parent), ("after", case["fix"])):
         git("checkout", "-q", "--force", commit, cwd=root)
@@ -421,8 +428,9 @@ def scan_pair(suite, case, log):
         callers = importers(root, case.get("scope", []), set(spots[side]))
         # Only findings in the changed files (and those render calls, and the changed modules' importers) are
         # scored, so Semgrep's per-file pass looks only at those files.
-        found = [i for i in scan(root, log, case.get("scope", []), focus=sorted({*spots[side], *renders, *callers}))
-                 if i["type"] in SECURITY_TYPES]
+        found, spots["gave_up"][side] = scan_and_gave_up(root, log, case.get("scope", []),
+                                                         focus=sorted({*spots[side], *renders, *callers}))
+        found = [i for i in found if i["type"] in SECURITY_TYPES]
         sides[side] = with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)
                                        or i["path"] in callers])
     return spots, sides
@@ -447,10 +455,15 @@ def score_pair(case, spots, sides, types, parents):
 
     before, after = relevant("before"), relevant("after")
     after_keys = {key(i) for i in after}
-    hits = [i for i in before if at_spot(i, "before") or key(i) not in after_keys]
+    # A finding the fix makes go away counts only when the fixed side's scan was complete: Semgrep giving up on a
+    # file under load (the 2026-11-07 nightly, mlflow GHSA-wqmh) drops its findings there without an error.
+    complete = not spots.get("gave_up", {}).get("after")
+    hits = [i for i in before if at_spot(i, "before") or (complete and key(i) not in after_keys)]
     hit_keys = {key(i) for i in hits}
     still = [i for i in after if key(i) in hit_keys or at_spot(i, "after")]
-    return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], "detected": bool(hits),
+    gave_up = sorted(side for side, flag in spots.get("gave_up", {}).items() if flag)
+    return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], **({"gave_up": gave_up} if gave_up else {}),
+            "detected": bool(hits),
             "still_flagged": bool(still), "by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in hits}),
             "still_by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in still})}
 
