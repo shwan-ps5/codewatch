@@ -1410,6 +1410,16 @@ rule):
     Next rule work, by cases reached: stored fields into `|safe`/autoescape-off templates (about 7), then fetched
     or form data into jQuery `.html()`/`innerHTML` (about 8).
 
+50. **Topic 7 batch 7 reviewed** (2026-11-07). 60 read, 11 accepted, 3 rejected at review, all OpenClaw:
+    GHSA-r39h (plugin setup code loaded from the working directory; the fix removes a lookup location, no input
+    reaches a sink), GHSA-f7fh (the CDP WebSocket target comes from the endpoint's own response and the
+    operator's config) and GHSA-c9h3 (the fix adds a key to the parameter list an existing sandbox check covers).
+    Added: cve-pairs-javascript MCPHub GHSA-p3h2 (an upload's manifest name in the extraction path);
+    cve-pairs-javascript-nonhttp Summarize GHSA-2r69 (a page's link URL reaches the daemon's fetch), OpenClaw
+    GHSA-c4qg (a chat image URL fetched for upload) and GHSA-jf25 (a tool's outPath written without the workspace
+    check); 4 blind ones unread into cve-pairs-blind-javascript-12 and -nonhttp. Agent apps like OpenClaw now
+    supply many advisories; their tool arguments and chat messages are the nonhttp suite's input.
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the
