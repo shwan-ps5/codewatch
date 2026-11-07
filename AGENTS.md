@@ -175,6 +175,25 @@ npm advisories (step 29). Those pools are nearly used up.
    list from all groups together, newest first. Say in the TSV which group each came from (`reviewed unread`,
    `pull request`, `several commits`, `single commit`). Suites as topics 2 and 3. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-skipped.{tsv,json}`.
+8. **Python: the weaknesses with too few cases.** Start only when topic 7 is done. The Python suites hold 26 path
+   traversal cases but only a handful, or none, of these: command injection (77, 78), code injection (94, 95),
+   deserialization (502), XXE (611), SSRF (918), template injection (1336), LDAP (90), header injection (113),
+   XPath (643), NoSQL (943) and ReDoS from request data (1333). Keep only advisories with one of these CWEs, or
+   with none of them but a summary or details naming one (as in topic 6). Sources and reference handling as topic
+   6 (reviewed and unreviewed GitHub advisories since 2021, PYSEC with no GHSA alias; one commit, one pull
+   request or several commits in one repository), in non-archived repositories whose primary language is Python
+   (about 430 on 2026-11-07, mostly library code). Two filters are wider than topic 6's, for these weaknesses
+   only:
+   - **The framework may be declared anywhere in the repository**, not just at the root: `backend/requirements.txt`,
+     `server/pyproject.toml`, `apps/api/setup.py` and the like (search the tree at the fix commit with
+     `gh api repos/O/R/git/trees/SHA?recursive=1`, then fetch only the dependency files you need). The vulnerable
+     code must be in that app.
+   - **More frameworks count:** Django, Flask, FastAPI, Starlette, Litestar, Quart, Falcon, Pyramid and Bottle
+     (still not Tornado, aiohttp, Gradio or Streamlit). Agent and MCP servers count too when the input is a tool
+     argument or a message from a chat channel: suite `cve-pairs-python-nonhttp`, as in section 3.
+   Reject library code as always (vLLM, LangChain, NLTK, Keras, picklescan, GitPython, Ansible and the like).
+   Say in the TSV which filter let each one in (`root framework`, `nested framework`, `other framework`,
+   `agent tool`). Suites as topic 5. Files: `benchmarks/cve-candidates-YYYY-MM-DD-python-thin.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 

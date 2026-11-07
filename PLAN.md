@@ -1382,6 +1382,34 @@ rule):
     repositories). Three blind ones went unread into cve-pairs-blind-javascript-11 and -nonhttp. Topic 7 yields
     about 2 per batch against topic 6's 3-4, as expected for a pool that is mostly npm library code.
 
+49. **Where the gaps are; topic 8; the front-end misses sorted** (2026-11-07). From the 2026-11-06 nightly
+    (verdict mode, found/cases): Python server-side path traversal 19/26 and SQL 5/6, open redirect 4/9, XSS 3/7;
+    Python front end 2/30; JavaScript path traversal 3/19, XSS 1/11, redirect and SSRF 0/8; JavaScript non-HTTP
+    0/15. The front end, redirects and JavaScript have enough cases: those gaps are rule work. What research can
+    fill is the weaknesses with almost no Python cases (SSRF 5, command injection 5, code injection 3, ReDoS 1,
+    deserialization 1; template injection, XXE, LDAP and header injection none), so rules for them are tested by
+    unit tests only. Topics 1, 5 and 6 used up the Django/Flask/FastAPI advisories, so topic 8 (queued after topic
+    7) takes only those weaknesses and widens two filters for them: the framework may be declared in a nested
+    dependency file (`backend/requirements.txt`), and Starlette, Litestar, Quart, Falcon, Pyramid, Bottle and
+    agent/MCP tool input count. About 430 unread advisories in Python repositories matched on 2026-11-07, mostly
+    library code (picklescan, vLLM, LangChain, NLTK, Keras), across about 200 repositories.
+
+    The 28 missed front-end cases, sorted by the cheap model from their fix diffs (a few quotes checked by hand):
+    - Template output marked safe: `|safe` on a model field 5 (calibre-web, modoboa, invenio-communities,
+      GeoNode, fava), `|safe` inside a script string 1 (bird-lg), `{% autoescape off %}` 2 (cabot,
+      changedetection.io), a template variable in a JS string or inline handler 2 (pgAdmin layout, Airflow
+      onclick), an unquoted attribute 1 (nautobot). Most read a stored field: the templates half of step 45's
+      stored XSS (`{{ obj.field|safe }}` with obj from the view's context) would reach about 5.
+    - Shipped JS writing HTML: jQuery `.html()`/`html:` 6 (modoboa x2, indico, horizon, calibre-web, OctoPrint),
+      `innerHTML` 2 (pgAdmin, fava), a template literal returned to a chart tooltip 1 (cti-transmute), an
+      `href` from data 2 (Weblate, pyload), library options that render HTML 2 (PNotify text, select2
+      escapeMarkup). The data is mostly an API response or a form field's value: step 42's gap I (fetched data
+      written as HTML in JS).
+    - Other: Graphite query parameters, Airflow ANSI link allowlist, MLflow `yaml.load` (not XSS as such), and
+      one Python string built into HTML (OctoPrint).
+    Next rule work, by cases reached: stored fields into `|safe`/autoescape-off templates (about 7), then fetched
+    or form data into jQuery `.html()`/`innerHTML` (about 8).
+
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
 `test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the
