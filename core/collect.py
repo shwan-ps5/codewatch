@@ -261,7 +261,9 @@ def minified(path):
 # its version. Name and version, not a copyright or licence line: projects such as Airflow put a licence header on
 # their own files. Checked on all 30 apps and the benchmark checkouts: it matched only third-party libraries.
 LIBRARY_SUFFIXES = BUNDLE_SUFFIXES | {".css"}
-LIBRARY_BANNER = re.compile(rb"\A\s*/\*[!*]?[\s*]*([A-Za-z][\w.\- ]{0,40}?)\s+v?\d+\.\d+(\.\d+)?\b")
+# A date is not a version: calibre-web's own edit_books.js opens "Created by SpeedProg on 05.04.2015".
+LIBRARY_BANNER = re.compile(rb"\A\s*/\*[!*]?[\s*]*([A-Za-z][\w.\- ]{0,40}?)\s+(?!\d{1,2}[./]\d{1,2}[./]\d{4}\b)"
+                            rb"v?\d+\.\d+(\.\d+)?\b")
 
 
 def vendored(path):

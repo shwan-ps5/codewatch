@@ -590,7 +590,8 @@ rules:
     languages: [typescript, javascript]
     severity: ERROR
     message: >-
-      Data from the request or the URL is written into HTML without escaping, so it can carry script. Escape it
+      Data from the request, the URL or a form field is written into HTML without escaping, so it can carry
+      script. Escape it
       (escape-html, he.encode, DOMPurify.sanitize for markup), use textContent, or render through a template engine
       that escapes by default.
     metadata:
@@ -627,6 +628,14 @@ rules:
               - pattern-inside: |
                   $W.addEventListener("message", ($E) => { ... })
               - pattern: $E.data
+      # A form field's value is whatever was typed or pasted into it (calibre-web GHSA-wrp6: an upload's file name
+      # from $(this).val() into .html(); Modoboa GHSA-c467: $("#id_name").val()). For this rule only: as a URL or
+      # a path it is the user's own navigation.
+      - pattern-either:
+          - pattern: $($SEL).val()
+          - pattern: $($SEL).$FIND(...).val()
+          - pattern: document.getElementById(...).value
+          - pattern: document.querySelector(...).value
     pattern-sanitizers:
       - *san-numeric
       - *san-named
@@ -663,6 +672,13 @@ rules:
           - pattern: encodeURIComponent(...)
           - pattern: encodeURI(...)
           - pattern: $X.textContent
+      # A fetch's response is what the server sent back, not the text the request carried: a form value posted
+      # with fetch('/api/compare', {body: ...}) doesn't make the reply's fields the user's input.
+      - pattern: fetch(...)
+      # htmlEncode(str) / encodeHTML / html_encode: named for escaping markup (Modoboa's fix for GHSA-c467).
+      - patterns:
+          - pattern: $ENCODE(...)
+          - metavariable-regex: {metavariable: $ENCODE, regex: '(?i)(.*\.)?(html_?encode|encode_?html|html_?entities)\w*$'}
       # A record from the data layer, found or saved using the request's values, is the stored object rather
       # than the request's text: await userService.getUserById(req.params.id)
       - patterns:
@@ -714,6 +730,12 @@ rules:
               - pattern: document.writeln($HTML)
               - pattern: $($SEL).html($HTML)
               - pattern: $($SEL).append($HTML)
+              # A jQuery object kept in a variable, named with a $ as jQuery code does: $span.html(...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $JQ.html($HTML)
+                      - pattern: $JQ.append($HTML)
+                  - metavariable-regex: {metavariable: $JQ, regex: '^\$\w+$'}
           - focus-metavariable: $HTML
 
   - id: codewatch.js.open-redirect

@@ -412,6 +412,8 @@ def test_vendored_libraries_are_recognised_by_their_banner(tmp_path):
     (tmp_path / "app.js").write_text("/*\n * Licensed to the Apache Software Foundation (ASF) 2.0\n */\nlet a = 1\n")
     (tmp_path / "util.js").write_text("// helpers for v1.2 of the API\nexport const x = 1\n")
     (tmp_path / "setup.py").write_text("/*! Thing v1.0 */")
+    # calibre-web's own edit_books.js (GHSA-wrp6): a date isn't a version.
+    (tmp_path / "edit_books.js").write_text("/**\n * Created by SpeedProg on 05.04.2015.\n */\n$('#a').html(x)\n")
     assert sorted(p.name for p in tmp_path.iterdir() if vendored(p)) == ["bootstrap.css", "jquery.js", "materialize.js"]
 
 

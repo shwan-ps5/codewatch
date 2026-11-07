@@ -1216,6 +1216,37 @@ def test_dom_xss_in_a_templates_inline_script(tmp_path):
     assert found == {("templates/page.html", 4, "xss"), ("templates/page.html", 5, "xss")}
 
 
+def test_form_field_values_written_into_html(tmp_path):
+    """A form field's value is whatever was typed or pasted into it: jQuery's .val() and a looked-up element's
+    .value written with .html()/innerHTML run it as markup (calibre-web GHSA-wrp6: an upload's file name into
+    $("#upload-format").html(); Modoboa GHSA-c467: $("#id_name").val() into a $span held in a variable). .text(),
+    an htmlEncode()d value, .html() of a variable not named like a jQuery object, and the response to a fetch that
+    posted the value (pygoat's comparison lab: the server's reply, not the input) stay quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"static/js/edit.js": (
+        "$('#btn-upload').on('change', function () {\n"
+        "    var filename = $(this).val();\n"
+        "    $('#upload-format').html(filename);\n"
+        "    $('#upload-name').text(filename);\n"
+        "});\n"
+        "function prefill() {\n"
+        "    var $span = $('#id_admin').next('span');\n"
+        "    $span.html('@' + $('#id_name').val());\n"
+        "    $span.html('@' + htmlEncode($('#id_name').val()));\n"
+        "    var doc = parser.parse(text);\n"
+        "    doc.html($('#id_name').val());\n"
+        "    document.getElementById('out').innerHTML = document.getElementById('q').value;\n"
+        "}\n"
+        "async function compare() {\n"
+        "    const v1 = document.getElementById('version').value;\n"
+        "    const response = await fetch('/api/compare', {method: 'POST', body: JSON.stringify({v1})});\n"
+        "    const data = await response.json();\n"
+        "    document.getElementById('out').innerHTML = data.summary;\n"
+        "}\n")})
+    assert found == {("static/js/edit.js", 3, "xss"), ("static/js/edit.js", 8, "xss"), ("static/js/edit.js", 12, "xss")}
+
+
 def test_mcp_tool_arguments_are_untrusted_input(tmp_path):
     """An MCP server's tool arguments are chosen by a model that any text it reads can steer (Vibe-Trading
     GHSA-mjrq-xg2m-qg94: a run id from @mcp.tool joined into a path). Text-typed parameters only; a checked one and

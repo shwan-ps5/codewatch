@@ -1431,6 +1431,23 @@ rule):
     GHSA-jm3m print Django model fields; calibre-web GHSA-h56g and invenio GHSA-mfv8 are SQLAlchemy models,
     Cabot GHSA-mqwh prints check errors, bird-lg GHSA-xjrp session data, OctoPrint GHSA-xvxq an autoescape
     setting. Stored fields into |safe would need SQLAlchemy model support to reach more than two cases.
+52. **Form field values into HTML (codewatch.js.xss)** (2026-11-07). The JavaScript side of step 49's front-end
+    misses, read at the vulnerable lines: only two have a source a rule can see. Modoboa GHSA-c467
+    (`$span.html("@" + $("#id_name").val())`) and calibre-web GHSA-wrp6 (`$(this).val()`, an upload's file name,
+    into `$("#upload-format").html()`). Added to the XSS rule only: sources `$(...).val()` (also one find step
+    deep) and `document.getElementById/querySelector(...).value`; sinks `.html()`/`.append()` on a variable named
+    with a leading `$` (jQuery's convention); sanitizers htmlEncode/encodeHTML/htmlEntities-named functions and
+    `fetch(...)` (the server's reply, not the posted value: pygoat's comparison lab sends a select's value and
+    renders the response). calibre-web's edit_books.js was skipped as vendored: its opening comment "Created by
+    SpeedProg on 05.04.2015" matched the library banner with the date as a version; a d.m.yyyy date no longer
+    counts (no file among the 50 apps' 3302 JS/CSS files changes status). Both cases found, fixed sides quiet;
+    double-take GHSA-q9xj, vulnerable-snippets-js and vulnerable-node-seeds unchanged. App probe (the 18 app JS
+    files and 8 templates with both a form value and an HTML sink): two findings, both pygoat's package labs
+    (a typed package name into an activity log's innerHTML, real). Left out on purpose: AJAX/fetch responses as a
+    source (Horizon GHSA-j772, Weblate GHSA-6wxc): loading a server fragment into .html() is the ordinary pattern.
+    pgAdmin GHSA-2rrx and Modoboa GHSA-mgmm have no visible source; django-ucamlookup GHSA-pjx4 (select2's
+    escapeMarkup turned off) and Fava GHSA-6hcj (d3 tooltip HTML) need library-specific rules. Test:
+    test_form_field_values_written_into_html; test_vendored_libraries_are_recognised_by_their_banner.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
