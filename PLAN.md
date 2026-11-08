@@ -1264,10 +1264,9 @@ rule):
     says a paused topic isn't to be worked on and to stop when every topic is done or paused. Until a new topic is
     written the hourly runs stop without committing.
 
-45. **Shapes from a Django SSO app: noise, stored XSS through models, sign-in and CSP settings, LDAP**
-    (2026-11-05). A full scan of a Django app on the maintainer's machine (Entra sign-in through django-allauth, a
-    nonce CSP, file uploads, an LDAP connector elsewhere in the same family; not named here) took 98 s for 217
-    files, almost all of it Semgrep's summary passes and main scan. Its own code had no injection; what it showed:
+45. **Shapes from a Django app: noise, stored XSS through models, sign-in and CSP settings, LDAP**
+    (2026-11-05). A full scan of a Django app with single sign-on, a CSP and file uploads spent almost all its
+    time in Semgrep's summary passes and main scan. Its own code had no injection; what it showed:
     - **Slow regexes in developer tools were verdicts.** Every super-linear regex was a vulnerability, including
       the changelog regexes of version-bump scripts and a management command. A regex in a Django management
       command, or in a script run under `if __name__ == "__main__"` that builds no web app (`Flask(`, `FastAPI(`,
