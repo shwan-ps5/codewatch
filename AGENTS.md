@@ -163,7 +163,7 @@ npm advisories (step 29). Those pools are nearly used up.
    first, and read from the top. Say in the TSV which group each advisory came from (`reviewed unread`, `pypa
    only`, `cwe by text`). Suites as topic 5. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-skipped.{tsv,json}`.
-7. **JavaScript advisories every earlier pass skipped.** Start only when topic 6 is done. Same method as topic 6
+7. **JavaScript advisories every earlier pass skipped.** (done 2026-11-08, cve-candidates-2026-11-08-javascript-skipped-6.*) Start only when topic 6 is done. Same method as topic 6
    for non-archived repositories whose primary language is JavaScript, TypeScript, Vue or Svelte, leaving out the
    PyPI advisories topic 6 takes. Counted on 2026-11-06:
    - **GitHub-reviewed npm advisories published since 2021 that nobody has read** (about 240): one commit URL
