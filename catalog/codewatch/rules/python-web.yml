@@ -1420,6 +1420,13 @@ rules:
           - metavariable-regex:
               metavariable: $TREE
               regex: '^(?!(re|regex)$)(?!(?i:.*([._]|^)(re|rx|regex|regexp|pattern)$)).*$'
+          # Nor a MongoDB collection's find({...}) (mongo.db.users, items_collection; nosql-injection's) or
+          # BeautifulSoup's find(tag name), which take no path.
+          - metavariable-regex:
+              metavariable: $TREE
+              regex: '^(?!(?i:((.*\.)?(db|mongo|database)(\.\w+|\[[^\]]+\])|(.*\.)?\w*(collection|coll|_col)s?)$))(?!(?i:.*soup)).*$'
+          - pattern-not: $TREE.find({...}, ...)
+          - pattern-not: $TREE.findall({...}, ...)
           - focus-metavariable: $QUERY
 
   - id: codewatch.python.web.ldap-injection
@@ -1482,6 +1489,122 @@ rules:
                   from ldap import $NAME
                   ...
           - focus-metavariable: $FILTER
+
+  - id: codewatch.python.web.nosql-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Data from the HTTP request becomes part of a NoSQL query's syntax. In a MongoDB filter a JSON value can be an
+      object such as {"$ne": null} instead of a string and change what the query matches; in $where it runs as
+      JavaScript on the database server; in a DynamoDB expression string it can name other attributes and
+      conditions. Convert JSON values to the type expected (str(), int(), ObjectId()) or validate the body with a
+      schema, keep request data out of $where, and give DynamoDB values through ExpressionAttributeValues or
+      boto3.dynamodb.conditions Key()/Attr().
+    metadata:
+      category: security
+      subcategory: [vuln]
+      type: vulnerability
+      title: Request data in NoSQL query syntax
+      cwe: ["CWE-943: Improper Neutralization of Special Elements in Data Query Logic"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+        - https://www.mongodb.com/docs/manual/reference/operator/query/where/
+        - https://boto3.amazonaws.com/v1/documentation/api/latest/guide/dynamodb.html#querying-and-scanning
+    pattern-sources:
+      - pattern-either: *web-sources
+      # A parsed JSON body is the only request data that can be an object or a list: query strings, form fields
+      # and headers are always text, so {"name": request.args["name"]} can't carry an operator.
+      - label: JSON
+        pattern-either:
+          - pattern: flask.request.get_json(...)
+          - pattern: flask.request.json
+          - pattern: request.get_json(...)
+          - pattern: request.json
+          - pattern: req.get_json(...)
+          - pattern: request.json()
+          - pattern: json.loads(<... request ...>)
+          - pattern: json.loads(<... self.request ...>)
+          # Django REST framework's parsed body.
+          - patterns:
+              - pattern-either:
+                  - pattern: request.data
+                  - pattern: self.request.data
+              - pattern-either:
+                  - pattern-inside: |
+                      class $VIEW(..., $BASE, ...):
+                        ...
+                  - pattern-inside: |
+                      @api_view(...)
+                      def $FUNC(...):
+                        ...
+                  - pattern-inside: |
+                      @rest_framework.decorators.api_view(...)
+                      def $FUNC(...):
+                        ...
+              - metavariable-regex: {metavariable: $BASE, regex: '(APIView|ViewSet|ViewSetMixin)$'}
+    pattern-propagators: *propagators
+    pattern-sanitizers:
+      - *validated-guard
+      - *checked-inside
+      - *known-safe
+      - *lookup-result
+      - patterns:
+          - pattern-either:
+              - pattern: str(...)
+              - pattern: int(...)
+              - pattern: float(...)
+              - pattern: bool(...)
+              - pattern: ObjectId(...)
+              - pattern: bson.ObjectId(...)
+              - pattern: bson.objectid.ObjectId(...)
+              - pattern: uuid.UUID(...)
+              # A schema or model that checks the body's types: marshmallow's load(), pydantic's model_validate().
+              - pattern: $SCHEMA.load(...)
+              - pattern: $MODEL.model_validate(...)
+              - pattern: $MODEL.parse_obj(...)
+      # boto3's condition builders send the value as an expression attribute value, never as syntax:
+      # Attr("owner").eq(name) & Key("pk").begins_with(prefix).
+      - patterns:
+          - pattern-either:
+              - pattern: $COND(...).$OP(...)
+              - pattern: $COND(...)
+          - metavariable-regex: {metavariable: $COND, regex: '^(boto3\.dynamodb\.conditions\.)?(Key|Attr)$'}
+      - patterns:
+          - pattern: $X
+          - pattern-inside: |
+              if isinstance($X, str):
+                ...
+    pattern-sinks:
+      # Operators come only from a JSON body: a filter (or pipeline) given to a MongoDB collection method.
+      - requires: JSON
+        patterns:
+          - pattern-either:
+              - pattern: $COLL.$METHOD($QUERY, ...)
+              - pattern: $COLL.$METHOD(..., filter=$QUERY, ...)
+          - metavariable-regex:
+              metavariable: $COLL
+              # mongo.db.users, db["users"], self.collection, users_collection: named for a database or a
+              # collection, so BeautifulSoup's soup.find() and str.find() don't match.
+              regex: '(?i)^((.*\.)?(db|mongo|database)(\.\w+|\[[^\]]+\])|(.*\.)?\w*(collection|coll|_col)s?)$'
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: '^(find|find_one|find_one_and_update|find_one_and_delete|find_one_and_replace|update_one|update_many|replace_one|delete_one|delete_many|count_documents|aggregate)$'
+          - pattern-not: '$COLL.$METHOD({..., "$where": $W, ...}, ...)'
+          - focus-metavariable: $QUERY
+      # $where runs as JavaScript on the database server, so request text in it is code whatever its type.
+      - patterns:
+          - pattern: '{..., "$where": $CODE, ...}'
+          - focus-metavariable: $CODE
+      # DynamoDB expressions and PartiQL statements are syntax; values belong in ExpressionAttributeValues or
+      # Parameters (SecurityEval CWE-943 sonar_1: FilterExpression=username + " = :u AND password = :p").
+      - patterns:
+          - pattern: $CLIENT.$METHOD(..., $KW=$EXPR, ...)
+          - metavariable-regex:
+              metavariable: $KW
+              regex: '^(FilterExpression|KeyConditionExpression|ConditionExpression|UpdateExpression|ProjectionExpression|Statement)$'
+          - focus-metavariable: $EXPR
 
   - id: codewatch.python.web.open-redirect
     mode: taint

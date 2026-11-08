@@ -1665,3 +1665,21 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     feature_external_ges; the imported form is already matched. Left for later: CWE-943 (a DynamoDB
     FilterExpression built by concatenation): Python has no NoSQL rule yet (pymongo `$where` and operator
     injection from a JSON body, boto3 condition expressions). Test: test_request_chosen_response_content_type_is_xss.
+57. **Python NoSQL injection (codewatch.python.web.nosql-injection)** (2026-11-08). Python had no rule for
+    CWE-943 (step 56). One rule, three sinks, with Semgrep taint labels to keep operator injection honest:
+    a parsed JSON body (request.get_json()/request.json, json.loads of request data, DRF request.data in an
+    APIView/ViewSet or @api_view) is the only request data that can be an object, so only it counts in a MongoDB
+    collection method's filter or pipeline (find/find_one/update_one/.../aggregate on a receiver named for a
+    database or collection: mongo.db.users, db["items"], items_collection); `{"$where": ...}` and DynamoDB
+    expression keywords (FilterExpression, KeyConditionExpression, ConditionExpression, UpdateExpression,
+    ProjectionExpression, PartiQL Statement) take request text of any kind. Sanitizers: str/int/float/bool,
+    ObjectId, UUID, a schema's load()/model_validate()/parse_obj(), isinstance(x, str), and boto3's Key()/Attr()
+    builders. Known limit: the summary passes give parameters unlabelled sources, so a JSON value handed to a
+    helper that runs the find isn't followed (the $where and DynamoDB sinks are). xpath-injection's
+    ElementTree find/findall sink no longer takes a dict query or a receiver named like a database, collection or
+    soup (Mongo's find({...}) and BeautifulSoup's find(tag) are no XPath). SecurityEval CWE-943 sonar_1 is now a
+    hotspot (a function nothing calls; review 77 to 78 of 121); OWASP, Copilot and InCoder unchanged. False-alarm
+    evidence is thin: of the 53 app and own-project files touching find/Mongo/DynamoDB none changed, and only
+    two projects use boto3 at all, none Mongo from a web view. No CVE pair for Python NoSQL exists yet; a
+    research topic for one (Flask/Django apps on pymongo or DynamoDB) would give ground truth.
+    Tests: tests/test_python_nosql.py.
