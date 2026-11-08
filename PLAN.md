@@ -1448,6 +1448,26 @@ rule):
     pgAdmin GHSA-2rrx and Modoboa GHSA-mgmm have no visible source; django-ucamlookup GHSA-pjx4 (select2's
     escapeMarkup turned off) and Fava GHSA-6hcj (d3 tooltip HTML) need library-specific rules. Test:
     test_form_field_values_written_into_html; test_vendored_libraries_are_recognised_by_their_banner.
+53. **Topic 7 batches 4-13 of 2026-11-07 reviewed** (2026-11-08). 600 read by the agent, 45 accepted: 29 open
+    read here, 16 blind. Added: cve-pairs-javascript 12 (Rocket.Chat GHSA-8fhh redirect query into Location,
+    FalkorDB Browser GHSA-2987 and Swetrix GHSA-6q94 upload names into paths, Actual GHSA-27vg a header file id
+    into a path, Ghost GHSA-gjrp filter post_id into SQL and GHSA-f7qg a bookmark URL fetched, PsiTransfer
+    GHSA-xphh upload names into archive entries, deco.cx GHSA-qwwx a loader prop fetched, React Native CLI
+    GHSA-399j req.body.url into open(), hackmd-mcp GHSA-g5cg a header/query config as the API base URL,
+    url-to-png GHSA-vvmv query params into the image path, HFS GHSA-5f4x an upload path into execSync);
+    cve-pairs-javascript-nonhttp 8 (OpenClaw GHSA-f6pf model-output MEDIA: paths, GHSA-qf48 and GHSA-r5fq tool
+    paths read and written, GHSA-c6hr a chat mention into RegExp; mobile-mcp GHSA-3p2m tool output paths;
+    mcp-maigret GHSA-2g7v tool arguments into exec; sequa-mcp GHSA-9pw5 and mcp-cli GHSA-p6rm a remote server's
+    authorization URL into open(), the OAuth provider method's parameter being the source). Blind, unread:
+    8 into cve-pairs-blind-javascript-nonhttp, 1 into -javascript-12, 3 into a new -javascript-13, and a Python
+    one (frappe/crm) into a new cve-pairs-blind-python-14. Rejected at review: create-mcp-server-stdio GHSA-3ch2
+    (port is z.number()), mcp-remote GHSA-6xpm (an existing sanitizer made stricter), url-to-png GHSA-665w (a
+    protocol refine on an existing zod validator), Parse Server GHSA-x4qj (framework code, as the agent's own
+    GHSA-792q), OpenClaw GHSA-hggm (same fix commit as GHSA-f6pf), GHSA-w76h (an allowlist extended to
+    redirects) and GHSA-xw4p (a name from an installed skill package), Mockoon GHSA-w7f9 (request values reach
+    the path only through the operator's route template). Deferred: LimeSurvey GHSA-wj23 and a blind Tainacan
+    case are PHP, kept for a PHP suite. The agent began topic 8 before topic 7 was done (two python-thin batches,
+    1 accepted of 120 read); left as is.
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in

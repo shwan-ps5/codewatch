@@ -1973,6 +1973,176 @@
           "scope": [
             "src/controllers"
           ]
+        },
+        {
+          "id": "GHSA-8fhh-33x2-c7c5",
+          "cve": "CVE-2026-22560",
+          "repo": "https://github.com/rocketchat/rocket.chat.git",
+          "fix": "d12b53ce53175f175a05cd52413e0d1723238c2c",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "An open redirect vulnerability in Rocket.Chat versions prior to 8.4.0 allows users to be redirected to arbitrary URLs by manipulating parameters within a SAML endpoint.",
+          "scope": [
+            "apps/meteor/app/meteor-accounts-saml/server/lib"
+          ]
+        },
+        {
+          "id": "GHSA-2987-f6gf-82vj",
+          "cve": "CVE-2026-6057",
+          "repo": "https://github.com/falkordb/falkordb-browser.git",
+          "fix": "5345b4e2c58faa828927bcda04e0382580353224",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "FalkorDB Browser 1.9.3 contains an unauthenticated path traversal vulnerability in the file upload API that allows remote attackers to write arbitrary files and achieve remote code execution.",
+          "scope": [
+            "app/api/upload"
+          ]
+        },
+        {
+          "id": "GHSA-27vg-33gh-4hwg",
+          "cve": "CVE-2026-3089",
+          "repo": "https://github.com/actualbudget/actual.git",
+          "fix": "18072e1d8b5281db43ded8b21433ee177bae9dfa",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Actual Sync Server has an Authenticated Path Traversal",
+          "scope": [
+            "packages/sync-server/src"
+          ]
+        },
+        {
+          "id": "GHSA-gjrp-xgmh-x9qq",
+          "cve": "CVE-2026-22596",
+          "repo": "https://github.com/tryghost/ghost.git",
+          "fix": "f2165f968bcdaae0e35590b38fa280ab03239391",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Ghost has SQL Injection in Members Activity Feed",
+          "scope": [
+            "ghost/core/core/server/services/members/members-api/repositories"
+          ]
+        },
+        {
+          "id": "GHSA-xphh-5v4r-r3rx",
+          "cve": "",
+          "repo": "https://github.com/psi-4ward/psitransfer.git",
+          "fix": "6c71bc0b8afa1ffa7aabd6c5fb28677651fd57b6",
+          "cwe": [
+            22,
+            23
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "PsiTransfer has Zip Slip Path Traversal via TAR Archive Download",
+          "scope": [
+            "lib"
+          ]
+        },
+        {
+          "id": "GHSA-qwwx-fhv3-c8q4",
+          "cve": "CVE-2025-13796",
+          "repo": "https://github.com/deco-cx/apps.git",
+          "fix": "8675c0b3d75a778198afdf6f35730eafd114ccd8",
+          "cwe": [
+            918
+          ],
+          "license": "Apache-2.0",
+          "summary": "A security vulnerability has been detected in deco-cx apps up to 0.120.1. Affected by this vulnerability is the function AnalyticsScript of the file website/loaders/analyticsScript.ts of the component Parameter Handler. Such manipulation of the argument url leads to server-side request forgery. The ",
+          "scope": [
+            "website/loaders"
+          ]
+        },
+        {
+          "id": "GHSA-399j-vxmf-hjvr",
+          "cve": "CVE-2025-11953",
+          "repo": "https://github.com/react-native-community/cli.git",
+          "fix": "15089907d1f1301b22c72d7f68846a2ef20df547",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "@react-native-community/cli has arbitrary OS command injection",
+          "scope": [
+            "packages/cli-server-api/src"
+          ]
+        },
+        {
+          "id": "GHSA-6q94-xgm6-vjmf",
+          "cve": "CVE-2025-59304",
+          "repo": "https://github.com/swetrix/swetrix.git",
+          "fix": "f2e89a8629c966ae911d71a9726de9f925a2a1fb",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A directory traversal issue in Swetrix Web Analytics API 3.1.1 before 7d8b972 allows a remote attacker to achieve Remote Code Execution via a crafted HTTP request.",
+          "scope": [
+            "backend/apps/cloud/src/marketplace/cdn"
+          ]
+        },
+        {
+          "id": "GHSA-g5cg-6c7v-mmpw",
+          "cve": "CVE-2025-59155",
+          "repo": "https://github.com/yuna0x0/hackmd-mcp.git",
+          "fix": "43936c78a5bb3dedc74e8f080607a1125caa8c13",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "HackMD MCP Server has Server-Side Request Forgery (SSRF) vulnerability",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-f7qg-xj45-w956",
+          "cve": "CVE-2025-9862",
+          "repo": "https://github.com/tryghost/ghost.git",
+          "fix": "01d64c7c0ffbf90cd036195c60ded6d08077d612",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "Ghost vulnerable to Server Side Request Forgery (SSRF) via oEmbed Bookmark",
+          "scope": [
+            "ghost/core/core/server/lib",
+            "ghost/core/core/server/services/oembed"
+          ]
+        },
+        {
+          "id": "GHSA-vvmv-wrvp-9gjr",
+          "cve": "CVE-2024-39918",
+          "repo": "https://github.com/jasonraimondi/url-to-png.git",
+          "fix": "e4eaeca6493b21cd515b582fd6c0af09ede54507",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "@jmondi/url-to-png contains a Path Traversal vulnerability",
+          "scope": [
+            "src/middlewares"
+          ]
+        },
+        {
+          "id": "GHSA-5f4x-hwv2-w9w2",
+          "cve": "CVE-2024-39943",
+          "repo": "https://github.com/rejetto/hfs.git",
+          "fix": "305381bd36eee074fb238b64302a252668daad1d",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-3.0",
+          "summary": "rejetto HFS vulnerable to OS Command Execution by remote authenticated users",
+          "scope": [
+            "src"
+          ]
         }
       ]
     },
@@ -2250,6 +2420,120 @@
           "summary": "OpenClaw: screen_record outPath bypassed workspace-only filesystem guard",
           "scope": [
             "src/agents"
+          ]
+        },
+        {
+          "id": "GHSA-f6pf-4gjx-c94r",
+          "cve": "",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "4797bbc5b96e2cca5532e43b58915c051746fe37",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw: Media Parsing Path Traversal Leads to Arbitrary File Read",
+          "scope": [
+            "src/media"
+          ]
+        },
+        {
+          "id": "GHSA-qf48-qfv4-jjm9",
+          "cve": "CVE-2026-41363",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "764394c78b6c22c5b53c3cd132d27ff36340bf45",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw: Feishu extension resolveUploadInput bypasses file-system sandbox and allows arbitrary file reads via upload_image",
+          "scope": [
+            "extensions/feishu/src"
+          ]
+        },
+        {
+          "id": "GHSA-3p2m-h2v6-g9mx",
+          "cve": "CVE-2026-33989",
+          "repo": "https://github.com/mobile-next/mobile-mcp.git",
+          "fix": "f5e32295903128c1e71cf915ae6c0b76c7b0153b",
+          "cwe": [
+            22,
+            73
+          ],
+          "license": "Apache-2.0",
+          "summary": "@mobilenext/mobile-mcp alllows arbitrary file write via Path Traversal in mobile screen capture tools",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-c6hr-w26q-c636",
+          "cve": "CVE-2026-22178",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
+          "cwe": [
+            1333
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw has ReDoS and regex injection via unescaped Feishu mention metadata in RegExp construction",
+          "scope": [
+            "extensions/feishu/src"
+          ]
+        },
+        {
+          "id": "GHSA-r5fq-947m-xm57",
+          "cve": "CVE-2026-32060",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "5544646a09c0121fca7d7093812dc2de8437c7f1",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw has a path traversal in apply_patch could write/delete files outside the workspace",
+          "scope": [
+            "src/agents"
+          ]
+        },
+        {
+          "id": "GHSA-2g7v-hghf-grg4",
+          "cve": "CVE-2026-2130",
+          "repo": "https://github.com/burtthecoder/mcp-maigret.git",
+          "fix": "b1ae073c4b3e789ab8de36dc6ca8111ae9399e7a",
+          "cwe": [
+            77
+          ],
+          "license": "MIT",
+          "summary": "mcp-maigret vulnerable to command injection",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-9pw5-wx67-q964",
+          "cve": "CVE-2025-10619",
+          "repo": "https://github.com/sequa-ai/sequa-mcp.git",
+          "fix": "e569815854166db5f71c2e722408f8957fb9e804",
+          "cwe": [
+            77
+          ],
+          "license": "MIT",
+          "summary": "@sequa-ai/sequa-mcp has Command Injection vulnerability",
+          "scope": [
+            "src/helpers"
+          ]
+        },
+        {
+          "id": "GHSA-p6rm-483j-37jf",
+          "cve": "CVE-2025-9262",
+          "repo": "https://github.com/wong2/mcp-cli.git",
+          "fix": "35629664cc5d3aea4c3d083d075fe26e7c346b59",
+          "cwe": [
+            77,
+            78
+          ],
+          "license": "GPL-3.0",
+          "summary": "wong2 mcp-cli Command Injection Vulnerability",
+          "scope": [
+            "src/oauth"
           ]
         }
       ]
@@ -2893,6 +3177,120 @@
           "summary": "OpenClaw: QMD memory_get restricts reads to canonical or indexed memory paths",
           "scope": [
             "extensions/memory-core/src/memory"
+          ]
+        },
+        {
+          "id": "GHSA-prmx-7v35-7q82",
+          "cve": "CVE-2026-5323",
+          "repo": "https://github.com/priyankark/a11y-mcp.git",
+          "fix": "e3e11c9e8482bd06b82fd9fced67be4856f0dffc",
+          "cwe": [
+            918
+          ],
+          "license": "MPL-2.0",
+          "summary": "a11y-mcp: Server-Side Request Forgery (SSRF) vulnerability in A11yServer function",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-fqcm-97m6-w7rm",
+          "cve": "CVE-2026-27522",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "270ab03e379f9653e15f7033c9830399b66b7e51",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw: Message action attachment hydration bypasses local media root checks when sandboxRoot is unset",
+          "scope": [
+            "src/infra/outbound"
+          ]
+        },
+        {
+          "id": "GHSA-jq4x-98m3-ggq6",
+          "cve": "",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "39816e61b0c4347a83c9b76bc8883190cfe5a3c9",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw Canvas Path Traversal Information Disclosure Vulnerability",
+          "scope": [
+            "src/agents",
+            "src/agents/tools"
+          ]
+        },
+        {
+          "id": "GHSA-x22m-j5qq-j49m",
+          "cve": "CVE-2026-28451",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "5b4121d6011a48c71e747e3c18197f180b872c5d",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw has two SSRF via sendMediaFeishu and markdown image fetching in Feishu extension",
+          "scope": [
+            "extensions/feishu/src"
+          ]
+        },
+        {
+          "id": "GHSA-g6q9-8fvw-f7rf",
+          "cve": "CVE-2026-26322",
+          "repo": "https://github.com/openclaw/openclaw.git",
+          "fix": "c5406e1d2434be2ef6eb4d26d8f1798d718713f4",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "OpenClaw Gateway tool allowed unrestricted gatewayUrl override",
+          "scope": [
+            "src/infra/outbound"
+          ]
+        },
+        {
+          "id": "GHSA-p8gp-2w28-mhwg",
+          "cve": "CVE-2026-23515",
+          "repo": "https://github.com/signalk/set-system-time.git",
+          "fix": "75b11eae2de528bf89ede3fb1f7ed057ddbb4d24",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "Signal K set-system-time plugin vulnerable to RCE - Command Injection",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-wvxp-jp4w-w8wg",
+          "cve": "CVE-2025-66404",
+          "repo": "https://github.com/flux159/mcp-server-kubernetes.git",
+          "fix": "d091107ff92d9ffad1b3c295092f142d6578c48b",
+          "cwe": [
+            77
+          ],
+          "license": "MIT",
+          "summary": "mcp-server-kubernetes has potential security issue in exec_in_pod tool",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-9394-rw2q-x5m7",
+          "cve": "CVE-2024-48463",
+          "repo": "https://github.com/usebruno/bruno.git",
+          "fix": "07baa63e9d8548173cd9078483c059eaf279caa8",
+          "cwe": [
+            601
+          ],
+          "license": "MIT",
+          "summary": "Bruno before 1.29.1 uses Electron shell.openExternal without validation (of http or https) for opening windows within the Markdown docs viewer.",
+          "scope": [
+            "packages/bruno-app/src/components/MarkDown",
+            "packages/bruno-electron/src"
           ]
         }
       ]
@@ -4793,6 +5191,30 @@
       ]
     },
     {
+      "name": "cve-pairs-blind-python-14",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from a Python advisory that topic 7's JavaScript search turned up on 2026-11-07 (PLAN.md step 53) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-33p9-qh39-m99v",
+          "cve": "CVE-2025-11461",
+          "repo": "https://github.com/frappe/crm.git",
+          "fix": "01abf8f790acdce11b739ae9388f6c299d391a51",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Multiple SQL Injections in Frappe CRM Dashboard Controller due to unsafe concatenation of user-controlled parameters into dynamic SQL statements.",
+          "scope": [
+            "crm/api"
+          ]
+        }
+      ]
+    },
+    {
       "name": "cve-pairs-blind-javascript-11",
       "language": "javascript",
       "kind": "cve-pairs",
@@ -4865,6 +5287,75 @@
           "scope": [
             "apps/meteor/app/api/server/middlewares",
             "apps/meteor/app/oauth2-server-config/server/oauth"
+          ]
+        },
+        {
+          "id": "GHSA-rq9r-qvwg-829q",
+          "cve": "CVE-2024-57186",
+          "repo": "https://github.com/erxes/erxes.git",
+          "fix": "d626070a0fcd435ae29e689aca051ccfb440c2f3",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Erxes Path Traversal vulnerability",
+          "scope": [
+            "packages/core/src/data",
+            "packages/workers/src/data",
+            "packages/workers/src/worker/import"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-13",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from topic 7's batches of 2026-11-07 (JavaScript advisories every earlier pass skipped; PLAN.md step 53) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-89v5-38xr-9m4j",
+          "cve": "",
+          "repo": "https://github.com/gitroomhq/postiz-app.git",
+          "fix": "be5d871896e97cb1f5a2c9241f156b6a1e1debe8",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Postiz has Multiple SSRF Vectors - Webhooks, RSS Feed, URL Loader",
+          "scope": [
+            "apps/backend/src/api/routes",
+            "libraries/nestjs-libraries/src/dtos/autopost"
+          ]
+        },
+        {
+          "id": "GHSA-rc58-93g6-jq83",
+          "cve": "CVE-2023-33690",
+          "repo": "https://github.com/lane711/sonicjs.git",
+          "fix": "4e6eca8a0d88f9bfd53a7ebbb54ec7e35aa6b5de",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "SonicJS up to v0.7.0 allows attackers to execute an authenticated path traversal when an attacker injects special characters into the filename of a backup CMS.",
+          "scope": [
+            "server/services"
+          ]
+        },
+        {
+          "id": "GHSA-4hmq-ggrm-qfc6",
+          "cve": "CVE-2023-27474",
+          "repo": "https://github.com/directus/directus.git",
+          "fix": "0f9f0d8fc42a269aa2573efd67dd22b069b4fa83",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "directus vulnerable to HTML Injection in Password Reset email to custom Reset URL",
+          "scope": [
+            "api/src/utils"
           ]
         }
       ]
