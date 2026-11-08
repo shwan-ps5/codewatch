@@ -1683,3 +1683,7 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     two projects use boto3 at all, none Mongo from a web view. No CVE pair for Python NoSQL exists yet; a
     research topic for one (Flask/Django apps on pymongo or DynamoDB) would give ground truth.
     Tests: tests/test_python_nosql.py.
+58. **Research: topic 8 paused, topic 9 (Python NoSQL) queued** (2026-11-08). Topic 8 accepted 1 of 240 read; its
+    pool is mostly library code. Topic 9 looks for ground truth for step 57's rule: advisories with CWE-943 or
+    naming MongoDB/DynamoDB/NoSQL operators, in Python app code, from repositories of any primary language
+    (full-stack apps often report JavaScript), stopping after one full pass if it yields fewer than 5.

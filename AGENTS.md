@@ -175,7 +175,8 @@ npm advisories (step 29). Those pools are nearly used up.
    list from all groups together, newest first. Say in the TSV which group each came from (`reviewed unread`,
    `pull request`, `several commits`, `single commit`). Suites as topics 2 and 3. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-skipped.{tsv,json}`.
-8. **Python: the weaknesses with too few cases.** Start only when topic 7 is done. The Python suites hold 26 path
+8. **Python: the weaknesses with too few cases.** (paused 2026-11-08 after 4 batches, 240 read, 1 accepted: the
+   pool is mostly library code; topic 9 replaces it) Start only when topic 7 is done. The Python suites hold 26 path
    traversal cases but only a handful, or none, of these: command injection (77, 78), code injection (94, 95),
    deserialization (502), XXE (611), SSRF (918), template injection (1336), LDAP (90), header injection (113),
    XPath (643), NoSQL (943) and ReDoS from request data (1333). Keep only advisories with one of these CWEs, or
@@ -194,6 +195,24 @@ npm advisories (step 29). Those pools are nearly used up.
    Reject library code as always (vLLM, LangChain, NLTK, Keras, picklescan, GitPython, Ansible and the like).
    Say in the TSV which filter let each one in (`root framework`, `nested framework`, `other framework`,
    `agent tool`). Suites as topic 5. Files: `benchmarks/cve-candidates-YYYY-MM-DD-python-thin.{tsv,json}`.
+
+9. **Python NoSQL injection.** codewatch has a Python NoSQL rule (PLAN.md step 57) and no ground truth for it.
+   Wanted: advisories where request data reaches a MongoDB query (operator injection such as `{"$ne": null}`
+   from a JSON body, `$where`, `$regex` built from input), a DynamoDB expression or PartiQL statement, or another
+   document store's query (Elasticsearch query DSL, CouchDB Mango, Redis commands built from input), in Python
+   application code. Sources, both:
+   - GitHub advisories (reviewed and unreviewed, any date) with CWE-943, or with no CWE-943 but a summary or
+     details naming MongoDB, Mongo, pymongo, motor, mongoengine, DynamoDB, NoSQL, `$where`, `$ne` or operator
+     injection; PYSEC entries with no GHSA alias, searched the same way.
+   - Unlike topics 6 and 8, **the repository's primary language may be anything**: Flask/Django/FastAPI back ends
+     beside a React or Vue front end often report JavaScript or TypeScript. What counts is that the vulnerable
+     file in the fix commit is Python, in an app using one of topic 8's frameworks (declared anywhere in the
+     tree), or an agent or MCP server's tool input (suite `cve-pairs-python-nonhttp`).
+   Reject library and ODM code (pymongo, mongoengine, Beanie, motor, Flask-PyMongo themselves, Eve and the like)
+   as always. This pool is expected to be small: read it to the end, and if the first full pass finds fewer than
+   5 candidates worth a review, say so in the JSON's `method` and stop the topic rather than widen it on your own.
+   Suites as topic 5 (`cve-pairs-python`, or `cve-pairs-python-nonhttp`). Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-python-nosql.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
