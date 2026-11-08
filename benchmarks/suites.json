@@ -31,7 +31,7 @@
       "kind": "cwe-folders",
       "test_dir": "Testcases_Insecure_Code",
       "held_out": false,
-      "about": "SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses were used to add codewatch's crypto/TLS rules, and later its SSRF, regex and log injection rules."
+      "about": "SecurityEval: 121 insecure Python samples filed under the CWE they demonstrate. Measures detection only; every sample is vulnerable. Was held out until 2026-10-30, when its misses were used to add codewatch's crypto/TLS rules, and later its SSRF, regex and log injection rules. CWE-113 sonar_1/sonar_2 drove the Content-Type sinks of codewatch.python.web.xss (PLAN.md step 56)."
     },
     {
       "name": "securityeval-copilot",

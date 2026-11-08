@@ -1648,3 +1648,20 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     cve-pairs-blind-javascript-14 (the agent proposed -14, -15 and -16 by batch; one suite is enough) and 1 into
     cve-pairs-blind-javascript-nonhttp. Rejected at review: snyk-broker GHSA-gq75 (the fix makes an existing URL
     allowlist stricter, and the path is proxied to an upstream API, not read from disk).
+56. **SecurityEval's misses read again; a request-chosen Content-Type is XSS** (2026-11-08). Of the 70 samples
+    missed in verdict mode: about 15 are flagged already, under a sibling weakness the CWE-family scorer doesn't
+    relate to the folder's (CWE-434 uploads and CWE-099/641/425 as path traversal, CWE-020 codeql_1 as XSS,
+    CWE-116 author_1 as command injection), left as they are rather than widen the scorer; about 35 are design
+    flaws or not request input (input(), races, off-by-one, missing auth). Added to codewatch.python.web.xss:
+    sinks for the response type taken from request data (Response/HttpResponse/FileResponse/make_response
+    mimetype= or content_type=, `.mimetype`/`.content_type` and `headers['Content-Type']`/`r['Content-Type']` on
+    a response built in the function, `Headers()`'s add/set): SecurityEval CWE-113 sonar_1/sonar_2, and the
+    shape of n8n GHSA-c8hm (step 55). Werkzeug and Django refuse newlines in header values, so it is reported as
+    XSS (text/html), not response splitting; the scorer therefore still counts both samples as missed (52.1% to
+    53.7% with some security finding). Not covered: an attachment (as_attachment=True: downloaded, never
+    rendered; label-studio's export was the one app finding among 161 app files that set a type, now quiet), a
+    type looked up in an upper-case table, and send_file(mimetype=...) (send_file is a sanitizer of this rule).
+    OWASP, Copilot and InCoder unchanged. CWE-611 sonar_4 is missed only because the sample never imports
+    feature_external_ges; the imported form is already matched. Left for later: CWE-943 (a DynamoDB
+    FilterExpression built by concatenation): Python has no NoSQL rule yet (pymongo `$where` and operator
+    injection from a JSON body, boto3 condition expressions). Test: test_request_chosen_response_content_type_is_xss.

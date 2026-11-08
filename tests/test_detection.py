@@ -3977,3 +3977,47 @@ def test_a_regex_compiled_only_to_check_it(tmp_path):
         "    pattern = re.compile(request.args['q'])\n"                  # 14
         "    return str(pattern.fullmatch('x'))\n")})
     assert {f for f in found if f[2] == "regex-injection"} == {("app.py", 14, "regex-injection")}
+
+
+def test_request_chosen_response_content_type_is_xss(tmp_path):
+    """A Content-Type taken from the request lets text/html run whatever the body holds (SecurityEval CWE-113
+    sonar_1/sonar_2: request.args into Headers.add and response.headers[...]). A type looked up in a fixed table, a
+    constant, a Content-Type forwarded on an outgoing request, and an attachment (downloaded, never rendered) stay quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import requests\nfrom flask import Flask, Response, request\n"
+        "from werkzeug.datastructures import Headers\n\napp = Flask(__name__)\n"
+        "TYPES = {'csv': 'text/csv', 'json': 'application/json'}\n\n\n"
+        "@app.route('/a')\n"
+        "def a():\n"
+        "    headers = Headers()\n"
+        "    headers.add('Content-Type', request.args['Content-Type'])\n"
+        "    response = Response()\n"
+        "    response.headers = headers\n"
+        "    return response\n\n\n"
+        "@app.route('/b')\n"
+        "def b():\n"
+        "    response = Response()\n"
+        "    response.headers['content-type'] = request.args.get('type')\n"
+        "    return response\n\n\n"
+        "@app.route('/c')\n"
+        "def c():\n"
+        "    return Response(open('static/report').read(), mimetype=request.args.get('type'))\n\n\n"
+        "@app.route('/d')\n"
+        "def d():\n"
+        "    return Response('a,b', mimetype=TYPES.get(request.args.get('format'), 'text/plain'))\n\n\n"
+        "@app.route('/e')\n"
+        "def e():\n"
+        "    headers = {'Content-Type': request.headers.get('Content-Type')}\n"
+        "    headers['content-type'] = request.headers.get('Content-Type')\n"
+        "    upstream = requests.post('https://api.example.com/x', data=b'', headers=headers, timeout=5)\n"
+        "    return Response('ok', mimetype='text/plain')\n"),
+        "views.py": (
+            "from django.http import FileResponse, HttpResponse\n\n\n"
+            "def export(request):\n"
+            "    return FileResponse(open('x', 'rb'), as_attachment=True, content_type=request.GET.get('type'))\n\n\n"
+            "def show(request):\n"
+            "    return HttpResponse(open('x').read(), content_type=request.GET.get('type'))\n")})
+    assert found == {("app.py", 12, "xss"), ("app.py", 21, "xss"), ("app.py", 27, "xss"), ("views.py", 9, "xss")}
+

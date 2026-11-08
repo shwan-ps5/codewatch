@@ -1238,6 +1238,53 @@ rules:
           - pattern: $ESCAPE(...)
           - metavariable-regex: {metavariable: $ESCAPE, regex: '(?i).*escape\w{0,30}$'}
     pattern-sinks:
+      # The request choosing a response's type: text/html makes whatever the body holds run as a page, a stored
+      # upload included (SecurityEval CWE-113 sonar_1/sonar_2; n8n GHSA-c8hm is the JavaScript form). Werkzeug and
+      # Django refuse newlines in header values, so the danger is the type, not a split response. send_file() is a
+      # sanitizer of this rule (a file's bytes aren't request data), so its mimetype= isn't covered.
+      - patterns:
+          - pattern: $RESP(..., $KW=$CT, ...)
+          # An attachment is downloaded, not rendered, whatever its type (label-studio's export FileResponse).
+          - pattern-not: $RESP(..., as_attachment=True, ...)
+          - metavariable-regex: {metavariable: $RESP, regex: '^(\w+\.)*(Response|HttpResponse|StreamingHttpResponse|FileResponse|make_response)$'}
+          - metavariable-regex: {metavariable: $KW, regex: '^(mimetype|content_type)$'}
+          # A type looked up in the app's own table (TYPES.get(fmt, 'text/plain')) is one of its values.
+          - metavariable-regex: {metavariable: $CT, regex: '^(?![A-Z][A-Z0-9_]*(\.get\(|\[))'}
+          - focus-metavariable: $CT
+      - patterns:
+          - pattern-either:
+              - pattern: $R.mimetype = $CT
+              - pattern: $R.content_type = $CT
+          - pattern-inside: |
+              $R = $RESP(...)
+              ...
+          - metavariable-regex: {metavariable: $RESP, regex: '^(\w+\.)*(Response|HttpResponse|StreamingHttpResponse|FileResponse|make_response)$'}
+          # A type looked up in the app's own table (TYPES.get(fmt, 'text/plain')) is one of its values.
+          - metavariable-regex: {metavariable: $CT, regex: '^(?![A-Z][A-Z0-9_]*(\.get\(|\[))'}
+          - focus-metavariable: $CT
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $R.headers[$K] = $CT
+                      - pattern: $R[$K] = $CT
+                  - pattern-inside: |
+                      $R = $RESP(...)
+                      ...
+                  - metavariable-regex: {metavariable: $RESP, regex: '^(\w+\.)*(Response|HttpResponse|StreamingHttpResponse|FileResponse|make_response)$'}
+              - patterns:
+                  - pattern-either:
+                      - pattern: $H.add($K, $CT)
+                      - pattern: $H.set($K, $CT)
+                      - pattern: $H[$K] = $CT
+                  - pattern-inside: |
+                      $H = $HEADERS(...)
+                      ...
+                  - metavariable-regex: {metavariable: $HEADERS, regex: '^(\w+\.)*Headers$'}
+          - metavariable-regex: {metavariable: $K, regex: '(?i)^[''"]content-type[''"]$'}
+          # A type looked up in the app's own table (TYPES.get(fmt, 'text/plain')) is one of its values.
+          - metavariable-regex: {metavariable: $CT, regex: '^(?![A-Z][A-Z0-9_]*(\.get\(|\[))'}
+          - focus-metavariable: $CT
       # A (body, status, headers) tuple: only the body is rendered; header values can't inject markup.
       - patterns:
           - pattern-inside: |
