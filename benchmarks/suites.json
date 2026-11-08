@@ -1182,7 +1182,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv).",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -2156,6 +2156,76 @@
           "summary": "rejetto HFS vulnerable to OS Command Execution by remote authenticated users",
           "scope": [
             "src"
+          ]
+        },
+        {
+          "id": "GHSA-c8hm-hr8h-5xjw",
+          "cve": "CVE-2025-46343",
+          "repo": "https://github.com/n8n-io/n8n.git",
+          "fix": "9c8a5f9c57e65a56a3b7da5dfa805d23c55e5ee3",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "n8n Vulnerable to Stored XSS through Attachments View Endpoint",
+          "scope": [
+            "packages/cli/src/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-jqwf-p5f8-cfhc",
+          "cve": "CVE-2020-23986",
+          "repo": "https://github.com/anuraghazra/github-readme-stats.git",
+          "fix": "0833e8531d0445dd461956b805e69a36d183f021",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Github Read Me Stats commit 3c7220e4f7144f6cb068fd433c774f6db47ccb95 was discovered to contain a reflected cross-site scripting (XSS) vulnerability via the function renderError.",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-2gp3-6c9p-jp7w",
+          "cve": "CVE-2021-42648",
+          "repo": "https://github.com/coder/code-server.git",
+          "fix": "31d5823d1071dc1481c4524157265157c7f292b2",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Cross site scripting in code-server",
+          "scope": [
+            "src/node/routes"
+          ]
+        },
+        {
+          "id": "GHSA-8p9r-f949-699g",
+          "cve": "CVE-2020-7758",
+          "repo": "https://github.com/browserless/chrome.git",
+          "fix": "848b87e5bea4f8473eea85261a5ff922d6ebd2b6",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Path Traversal in browserless-chrome",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-3fwq-qv5v-2wxf",
+          "cve": "CVE-2020-36651",
+          "repo": "https://github.com/youngerheart/nodeserver.git",
+          "fix": "c4c0f0138ab5afbac58e03915d446680421bde28",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Path Traversal in web-node-server",
+          "scope": [
+            "."
           ]
         }
       ]
@@ -3305,6 +3375,20 @@
           "scope": [
             "packages/bruno-app/src/components/MarkDown",
             "packages/bruno-electron/src"
+          ]
+        },
+        {
+          "id": "GHSA-cqwp-79jx-jvm5",
+          "cve": "CVE-2020-12113",
+          "repo": "https://github.com/bigbluebutton/bigbluebutton.git",
+          "fix": "3a6260f6f3d5e3d711d1a86473f601d2e725aacd",
+          "cwe": [
+            79
+          ],
+          "license": "LGPL-3.0",
+          "summary": "BigBlueButton before 2.2.4 allows XSS via closed captions because dangerouslySetInnerHTML in React is used.",
+          "scope": [
+            "bigbluebutton-html5/imports/ui/components/captions"
           ]
         }
       ]
@@ -5370,6 +5454,115 @@
           "summary": "directus vulnerable to HTML Injection in Password Reset email to custom Reset URL",
           "scope": [
             "api/src/utils"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-14",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from topic 7's batches of 2026-11-08 (JavaScript advisories every earlier pass skipped; PLAN.md step 55) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-jvxx-v45p-v5vf",
+          "cve": "CVE-2022-31110",
+          "repo": "https://github.com/diygod/rsshub.git",
+          "fix": "5c4177441417b44a6e45c3c63e9eac2504abeb5b",
+          "cwe": [
+            1333
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Denial of Service (DoS) vulnerability in RSSHub",
+          "scope": [
+            "lib/middleware"
+          ]
+        },
+        {
+          "id": "GHSA-6hrp-g2cw-r29v",
+          "cve": "CVE-2020-24617",
+          "repo": "https://github.com/mailtrain-org/mailtrain.git",
+          "fix": "b7f94b40d6d7d1a4d0b28e3084ce60d1a47c5401",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Mailtrain through 1.24.1 allows SQL Injection in statsClickedSubscribersByColumn in lib/models/campaigns.js via /campaigns/clicked/ajax because variable column names are not properly escaped.",
+          "scope": [
+            "lib/models"
+          ]
+        },
+        {
+          "id": "GHSA-4h83-r8w8-cmrp",
+          "cve": "CVE-2019-15561",
+          "repo": "https://github.com/vpoliakov/flashlingo.git",
+          "fix": "42537d90087a920210048d6fe32c2d8c801790b9",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "FlashLingo before 2019-06-12 allows SQL injection, related to flashlingo.js and db.js.",
+          "scope": [
+            "auth",
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-9x96-x4jj-wpm6",
+          "cve": "CVE-2019-15517",
+          "repo": "https://github.com/jc21/nginx-proxy-manager.git",
+          "fix": "e7ddcb91fc7a4b2afc314ed3eaceb8da2ed6269f",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "jc21 Nginx Proxy Manager before 2.0.13 allows %2e%2e%2f directory traversal.",
+          "scope": [
+            "src/backend/routes"
+          ]
+        },
+        {
+          "id": "GHSA-hf8c-xr89-vfm5",
+          "cve": "CVE-2022-25766",
+          "repo": "https://github.com/fredriknoren/ungit.git",
+          "fix": "37a6893f7e03c41c1027acd68de062f44d85acc1",
+          "cwe": [
+            77
+          ],
+          "license": "MIT",
+          "summary": "Command Injection in ungit",
+          "scope": [
+            "source"
+          ]
+        },
+        {
+          "id": "GHSA-2877-693q-pj33",
+          "cve": "CVE-2021-46704",
+          "repo": "https://github.com/genieacs/genieacs.git",
+          "fix": "7f295beeecc1c1f14308a93c82413bb334045af6",
+          "cwe": [
+            78
+          ],
+          "license": "AGPL-3.0",
+          "summary": "OS Command Injection in GenieACS",
+          "scope": [
+            "lib"
+          ]
+        },
+        {
+          "id": "GHSA-pxcf-v868-m492",
+          "cve": "CVE-2020-7749",
+          "repo": "https://github.com/jperelli/osm-static-maps.git",
+          "fix": "97355d29e08753d1cfe99b1281dbaa06f4e651b0",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Injection and Cross-site Scripting in osm-static-maps",
+          "scope": [
+            "src"
           ]
         }
       ]

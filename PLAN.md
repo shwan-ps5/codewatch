@@ -1637,3 +1637,14 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     pygoat's comparison lab. actual's proxy is reported again; pygoat's findings are the nightly's exactly;
     c467 and wrp6 unchanged. Test: test_form_field_values_written_into_html (proxy.js). README table updated
     to this night.
+55. **Topic 7's last batches, of 2026-11-08, reviewed** (2026-11-08). Six batches, 310 read by the agent (the
+    topic's list is now used up: the sixth batch read the last 10), 14 accepted: 6 open read here, 8 blind.
+    Added to cve-pairs-javascript: n8n GHSA-c8hm (a request's mimeType query parameter becomes the Content-Type
+    of a stored upload, so text/html runs; the fix adds a CSP sandbox, and codewatch has no rule for a
+    request-chosen Content-Type), github-readme-stats GHSA-jqwf (a GitHub API error that echoes the username into
+    renderError's SVG), code-server GHSA-2gp3 (err.message, which carries the requested path, into the HTML
+    error page), browserless GHSA-8p9r (a request file name joined to the workspace directory and read) and
+    web-node-server GHSA-3fwq (request.url appended to the template root and read). Blind, unread: 7 into a new
+    cve-pairs-blind-javascript-14 (the agent proposed -14, -15 and -16 by batch; one suite is enough) and 1 into
+    cve-pairs-blind-javascript-nonhttp. Rejected at review: snyk-broker GHSA-gq75 (the fix makes an existing URL
+    allowlist stricter, and the path is proxied to an upstream API, not read from disk).
