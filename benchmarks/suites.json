@@ -1160,6 +1160,20 @@
           "scope": [
             "src/apps/ftsmon/views"
           ]
+        },
+        {
+          "id": "GHSA-9fpx-fr6j-2vh6",
+          "cve": "CVE-2026-33050",
+          "repo": "https://github.com/geonode/geonode.git",
+          "fix": "1408290c0bb54872924a9b334a516db9758a2180",
+          "cwe": [
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "GeoNode has OS command injection via uploaded file layer name",
+          "scope": [
+            "geonode/upload/handlers/common"
+          ]
         }
       ]
     },

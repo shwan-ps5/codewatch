@@ -1467,7 +1467,8 @@ rule):
     redirects) and GHSA-xw4p (a name from an installed skill package), Mockoon GHSA-w7f9 (request values reach
     the path only through the operator's route template). Deferred: LimeSurvey GHSA-wj23 and a blind Tainacan
     case are PHP, kept for a PHP suite. The agent began topic 8 before topic 7 was done (two python-thin batches,
-    1 accepted of 120 read); left as is.
+    1 accepted of 120 read); left as is. Both reviewed here too: GeoNode GHSA-9fpx added to cve-pairs-python (a layer
+    name from an uploaded vector file into ogr2ogr run with shell=True, through a Celery task; CWE-78).
 
 Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
 findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
