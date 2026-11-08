@@ -1220,8 +1220,9 @@ def test_form_field_values_written_into_html(tmp_path):
     """A form field's value is whatever was typed or pasted into it: jQuery's .val() and a looked-up element's
     .value written with .html()/innerHTML run it as markup (calibre-web GHSA-wrp6: an upload's file name into
     $("#upload-format").html(); Modoboa GHSA-c467: $("#id_name").val() into a $span held in a variable). .text(),
-    an htmlEncode()d value, .html() of a variable not named like a jQuery object, and the response to a fetch that
-    posted the value (pygoat's comparison lab: the server's reply, not the input) stay quiet."""
+    an htmlEncode()d value, .html() of a variable not named like a jQuery object, and the response to a fetch of a
+    same-origin path that posted the value (pygoat's comparison lab: the server's reply, not the input) stay quiet.
+    A server that fetches a URL from the request and sends the body back is still reported (actual's CORS proxy)."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     found = semgrep_vulnerabilities(tmp_path, {"static/js/edit.js": (
@@ -1243,8 +1244,17 @@ def test_form_field_values_written_into_html(tmp_path):
         "    const response = await fetch('/api/compare', {method: 'POST', body: JSON.stringify({v1})});\n"
         "    const data = await response.json();\n"
         "    document.getElementById('out').innerHTML = data.summary;\n"
-        "}\n")})
-    assert found == {("static/js/edit.js", 3, "xss"), ("static/js/edit.js", 8, "xss"), ("static/js/edit.js", 12, "xss")}
+        "}\n"),
+        "proxy.js": (
+            "const express = require('express');\n"
+            "const app = express();\n"
+            "app.get('/proxy', async (req, res) => {\n"
+            "    const response = await fetch(req.query.url);\n"
+            "    res.set('Content-Type', response.headers.get('content-type'));\n"
+            "    res.send(await response.text());\n"
+            "});\n")})
+    assert found == {("static/js/edit.js", 3, "xss"), ("static/js/edit.js", 8, "xss"), ("static/js/edit.js", 12, "xss"),
+                     ("proxy.js", 4, "ssrf"), ("proxy.js", 6, "xss")}
 
 
 def test_mcp_tool_arguments_are_untrusted_input(tmp_path):

@@ -1624,3 +1624,16 @@ unless named and follow the same rule.
 
 The user's own projects in `~/Dev` (the set differs per machine; they are private and not named here) are useful
 false-alarm checks. Their known findings are tracked locally, not in this repository.
+54. **Nightly 2026-11-08 (commit 9dbec85) and a narrower fetch sanitizer** (2026-11-08). Step 52's rule found
+    Modoboa GHSA-c467 and calibre-web GHSA-wrp6 with both fixed sides quiet (python-frontend verdict 2 to 4 of
+    31, no false alarm); the other suites are unchanged. Step 51's scorer took mlflow GHSA-wqmh and GHSA-cr8c
+    out of cve-pairs-python's detections: both sides of each gave up, and the only credit was findings missing
+    from the incomplete fixed scan. Semgrep giving up is common (most front-end pairs, a dozen Python ones), so
+    scans of large repos aren't complete; worth its own look. Of the 10 cases from step 50's review measured
+    here, Python GHSA-37c2 and GHSA-xf3h are found, 7 of 8 JS ones missed. One app finding was lost: actual's
+    app-cors-proxy.js:248, a route that fetches a URL from the request and sends the reply's text on with the
+    remote content type (text/html included). Step 52's `fetch(...)` sanitizer hid it; it now covers only a
+    fetch of a same-origin path (a string or template literal starting with one `/`), which still covers
+    pygoat's comparison lab. actual's proxy is reported again; pygoat's findings are the nightly's exactly;
+    c467 and wrp6 unchanged. Test: test_form_field_values_written_into_html (proxy.js). README table updated
+    to this night.

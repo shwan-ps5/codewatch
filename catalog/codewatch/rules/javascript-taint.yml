@@ -672,9 +672,13 @@ rules:
           - pattern: encodeURIComponent(...)
           - pattern: encodeURI(...)
           - pattern: $X.textContent
-      # A fetch's response is what the server sent back, not the text the request carried: a form value posted
-      # with fetch('/api/compare', {body: ...}) doesn't make the reply's fields the user's input.
-      - pattern: fetch(...)
+      # A fetch to a path on the page's own server returns that server's reply, not the text the request carried: a
+      # form value posted with fetch('/api/compare', {body: ...}) doesn't make the reply's fields the user's input.
+      # Only a same-origin path: a proxy that fetches a URL from the request sends back whatever that site serves
+      # (actual's app-cors-proxy.js passes text/html on with res.send).
+      - patterns:
+          - pattern: fetch($URL, ...)
+          - metavariable-regex: {metavariable: $URL, regex: '^[`''"]/(?![/\\])'}
       # htmlEncode(str) / encodeHTML / html_encode: named for escaping markup (Modoboa's fix for GHSA-c467).
       - patterns:
           - pattern: $ENCODE(...)
