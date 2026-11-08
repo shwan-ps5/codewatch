@@ -196,7 +196,8 @@ npm advisories (step 29). Those pools are nearly used up.
    Say in the TSV which filter let each one in (`root framework`, `nested framework`, `other framework`,
    `agent tool`). Suites as topic 5. Files: `benchmarks/cve-candidates-YYYY-MM-DD-python-thin.{tsv,json}`.
 
-9. **Python NoSQL injection.** codewatch has a Python NoSQL rule (PLAN.md step 57) and no ground truth for it.
+9. **Python NoSQL injection.** (done 2026-11-08, cve-candidates-2026-11-08-python-nosql.*; the whole 123-candidate pool
+   was read in one pass and gave 1 case: 16 are Python repositories, all libraries, and the rest are not Python.) codewatch has a Python NoSQL rule (PLAN.md step 57) and no ground truth for it.
    Wanted: advisories where request data reaches a MongoDB query (operator injection such as `{"$ne": null}`
    from a JSON body, `$where`, `$regex` built from input), a DynamoDB expression or PartiQL statement, or another
    document store's query (Elasticsearch query DSL, CouchDB Mango, Redis commands built from input), in Python
