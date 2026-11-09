@@ -1699,3 +1699,16 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     now accepts a `models.<name>` receiver and `resolve...` methods, and they are quiet. actual's CORS proxy gets
     two more lines (it copies the upstream's Content-Type for a URL the request chose), as does the synthetic
     proxy in test_form_field_values_written_into_html. Test: test_request_chosen_response_content_type_is_xss_in_node.
+60. **Topic 8's last batches and topic 9 reviewed** (2026-11-09). Six batches (topic 8's five of 2026-11-08,
+    topic 9's single pass), 8 accepted by the agent: 6 open read here and accepted, 1 rejected, 1 blind.
+    Added to cve-pairs-python: moonraker GHSA-3jqf (the login username into an LDAP filter; the fix escapes it),
+    mcp-atlassian GHSA-7r34 (Jira/Confluence URLs from request headers fetched by the header-based clients: SSRF)
+    and cve-search GHSA-3fmp (a form field names the MongoDB collection and DataTables column names the
+    projection and sort, so a request reads mgmt_users; filed as CWE-20, CWE-943 added so the scorer counts the
+    NoSQL rule). Added to cve-pairs-python-nonhttp: CHIRP GHSA-6rmm (a CSV file's tone fields into eval()),
+    meta-ads-mcp GHSA-45gf (an MCP tool's image_url fetched with redirects followed) and mcp-for-stata GHSA-4p62
+    (an MCP tool's log name into a Stata `log using` command). Blind, unread: 1 into a new
+    cve-pairs-blind-python-15. Rejected at review: adx-mcp-server GHSA-vphc (KQL from table_name, but the same
+    server's execute_query tool runs any KQL the client sends, so no trust boundary is crossed). Topic 9's pool
+    was 123 advisories, 107 in non-Python repositories and nearly all the Python ones library or driver code; it
+    stopped after one pass as its rule says. Every research topic is now done or paused.

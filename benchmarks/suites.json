@@ -115,7 +115,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-02 in a third batch (PLAN.md step 24) widen that rule: CWE 23, 36, 73, 77, 90, 113, 643, 943 and 1333 as well, fixes of up to five non-test source files and 200 lines when the flow is still clear, Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps counted as Flask/FastAPI, and pre-2021 advisories; decisions are in benchmarks/cve-candidates-2026-11-02-batch3.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-03 in a fourth batch (PLAN.md step 27) follow the third batch's rule, read from OSV's export of GitHub's reviewed PyPI advisories: one open case (Arches GHSA-gmpq, 147 changed lines ignoring re-indented SQL, within step 24's widened limits; Modoboa GHSA-wwv8 was rejected at review for touching 10 files) and three blind in cve-pairs-blind-python-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03.tsv. None used for rules yet. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 6 open, 5 blind in cve-pairs-blind-python-6 here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet. Cases added 2026-11-03 from the second batch of unreviewed advisories (PLAN.md step 30): agent-zero GHSA-8j45 and pyLoad GHSA-3mmf here, 3 blind in cve-pairs-blind-python-7; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed-2.tsv. None used for rules yet. On 2026-11-04 GHSA-3864-rp2m-2qfj (libre-chat) and GHSA-v9w6-9hq9-33ch (LightRAG) were used to make a FastAPI route's UploadFile parameters (and lists of them) a source through their .filename, and LightRAG to rewrite match statements whose case patterns span lines. Also on 2026-11-04: pgAdmin GHSA-v395-x24j-4r3g to make its driver's execute_scalar/execute_dict/execute_2darray/execute_void SQL sinks; GHSA-cr8c-972v-rmp3 to make req.form/args/values/files/get_json() a source, to stop a Path built for a relative_to() check being a sink, and to accept a normalised path's relative_to() in a try that returns on ValueError as a containment check; GHSA-7r93-vp6c-cw5m to accept a named safe-URL check that replaces the value (unless an `and` can skip it) and Flask-Login's login_url() as an internal URL; psiturk GHSA-9mq4-9556-6qxq to stop a key-presence check on request.args clearing the whole request. GHSA-fghj-qqgj-7rxf (SQLBot, added 2026-11-04) was used the same day to accept os.path.commonpath() containment checks; its scope was widened to include its request model. GHSA-2689 (Whoogle) is filed as CWE-78, but its fix replaces pickle with json for the preferences cookie: CWE-502 added on 2026-11-05 (PLAN.md step 43), with no rule changed.",
+      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-02 in a third batch (PLAN.md step 24) widen that rule: CWE 23, 36, 73, 77, 90, 113, 643, 943 and 1333 as well, fixes of up to five non-test source files and 200 lines when the flow is still clear, Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps counted as Flask/FastAPI, and pre-2021 advisories; decisions are in benchmarks/cve-candidates-2026-11-02-batch3.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-03 in a fourth batch (PLAN.md step 27) follow the third batch's rule, read from OSV's export of GitHub's reviewed PyPI advisories: one open case (Arches GHSA-gmpq, 147 changed lines ignoring re-indented SQL, within step 24's widened limits; Modoboa GHSA-wwv8 was rejected at review for touching 10 files) and three blind in cve-pairs-blind-python-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03.tsv. None used for rules yet. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 6 open, 5 blind in cve-pairs-blind-python-6 here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet. Cases added 2026-11-03 from the second batch of unreviewed advisories (PLAN.md step 30): agent-zero GHSA-8j45 and pyLoad GHSA-3mmf here, 3 blind in cve-pairs-blind-python-7; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed-2.tsv. None used for rules yet. On 2026-11-04 GHSA-3864-rp2m-2qfj (libre-chat) and GHSA-v9w6-9hq9-33ch (LightRAG) were used to make a FastAPI route's UploadFile parameters (and lists of them) a source through their .filename, and LightRAG to rewrite match statements whose case patterns span lines. Also on 2026-11-04: pgAdmin GHSA-v395-x24j-4r3g to make its driver's execute_scalar/execute_dict/execute_2darray/execute_void SQL sinks; GHSA-cr8c-972v-rmp3 to make req.form/args/values/files/get_json() a source, to stop a Path built for a relative_to() check being a sink, and to accept a normalised path's relative_to() in a try that returns on ValueError as a containment check; GHSA-7r93-vp6c-cw5m to accept a named safe-URL check that replaces the value (unless an `and` can skip it) and Flask-Login's login_url() as an internal URL; psiturk GHSA-9mq4-9556-6qxq to stop a key-presence check on request.args clearing the whole request. GHSA-fghj-qqgj-7rxf (SQLBot, added 2026-11-04) was used the same day to accept os.path.commonpath() containment checks; its scope was widened to include its request model. GHSA-2689 (Whoogle) is filed as CWE-78, but its fix replaces pickle with json for the preferences cookie: CWE-502 added on 2026-11-05 (PLAN.md step 43), with no rule changed. Cases added 2026-11-09 from topic 8 and topic 9 (PLAN.md step 60): moonraker GHSA-3jqf (LDAP filter), mcp-atlassian GHSA-7r34 (SSRF from request headers) and cve-search GHSA-3fmp (a form field names the MongoDB collection, column names the projection). GHSA-3fmp is filed as CWE-20; CWE-943 added at review so it can be scored as NoSQL injection. Decisions in benchmarks/cve-candidates-2026-11-08-python-thin*.tsv and -python-nosql.tsv. None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-f2mf-q878-gh58",
@@ -1173,6 +1173,51 @@
           "summary": "GeoNode has OS command injection via uploaded file layer name",
           "scope": [
             "geonode/upload/handlers/common"
+          ]
+        },
+        {
+          "id": "GHSA-7r34-79r5-rcc9",
+          "cve": "CVE-2026-27826",
+          "repo": "https://github.com/sooperset/mcp-atlassian.git",
+          "fix": "5cd697dfce9116ef330b8dc7a91291640e0528d9",
+          "cwe": [
+            918
+          ],
+          "license": "MIT",
+          "summary": "MCP Atlassian has SSRF via unvalidated X-Atlassian-Jira-Url / X-Atlassian-Confluence-Url headers",
+          "scope": [
+            "src/mcp_atlassian/servers",
+            "src/mcp_atlassian/utils"
+          ]
+        },
+        {
+          "id": "GHSA-3jqf-v4mv-747g",
+          "cve": "CVE-2026-24130",
+          "repo": "https://github.com/arksine/moonraker.git",
+          "fix": "74c5d8e44c4a4abbfbb06fb991e7ebb9ac947f42",
+          "cwe": [
+            90
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moonraker affected by LDAP search filter injection",
+          "scope": [
+            "moonraker/components"
+          ]
+        },
+        {
+          "id": "GHSA-3fmp-59v6-4qw2",
+          "cve": "CVE-2026-59509",
+          "repo": "https://github.com/cve-search/cve-search.git",
+          "fix": "2108677a3b3a05a7cda8cbb8960e211a256aa59d",
+          "cwe": [
+            20,
+            943
+          ],
+          "license": "AGPL-3.0",
+          "summary": "An unauthenticated improper input validation vulnerability in the POST /fetch_cve_data endpoint in cve-search. A remote attacker can manipulate request parameters controlling the MongoDB collection, projected fields, and regular-expression filters to read arbitrary application MongoDB collections. This can expose administrative usernames and password hashes from the mgmt_users collection, enabling offline password cracking and potential administrative account compromise.",
+          "scope": [
+            "web/home",
+            "web/helpers"
           ]
         }
       ]
@@ -3966,7 +4011,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet. CowAgent GHSA-2xj7 added 2026-11-03 at review of the fourth unreviewed batch (the batch rejected it as an invisible validator, but the fix adds the first check on a URL the agent's vision tool fetches). GHSA-mjrq-xg2m-qg94 (Vibe-Trading) was used on 2026-11-04 to make FastMCP tool parameters a source (still missed: the sink is behind a method in another file).",
+      "about": "Python CVE fix pairs whose input isn't an HTTP request: arguments an LLM agent or MCP client passes to a tool. Same limits and scoring as cve-pairs-python, kept apart so they don't weigh on the web-app numbers; codewatch has no sources for these inputs yet, so misses are expected. From the second batch of unreviewed advisories (2026-11-03, PLAN.md step 30). Not held out; none used for rules yet. CowAgent GHSA-2xj7 added 2026-11-03 at review of the fourth unreviewed batch (the batch rejected it as an invisible validator, but the fix adds the first check on a URL the agent's vision tool fetches). GHSA-mjrq-xg2m-qg94 (Vibe-Trading) was used on 2026-11-04 to make FastMCP tool parameters a source (still missed: the sink is behind a method in another file). Cases added 2026-11-09 from topic 8 (PLAN.md step 60): CHIRP GHSA-6rmm (a CSV file's fields into eval), meta-ads-mcp GHSA-45gf (an MCP tool's image URL fetched: SSRF) and mcp-for-stata GHSA-4p62 (an MCP tool's log name into a Stata command). None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-xq87-v97r-jw5g",
@@ -4052,6 +4097,48 @@
           "summary": "BBOT: Server-Side Request Forgery (SSRF) in docker_pull module via WWW-Authenticate realm parsing",
           "scope": [
             "bbot/modules"
+          ]
+        },
+        {
+          "id": "GHSA-6rmm-3cfr-7939",
+          "cve": "CVE-2026-78136",
+          "repo": "https://github.com/kk7ds/chirp.git",
+          "fix": "39178dbfc4fece083ab9ed20286d6ae3a91a718e",
+          "cwe": [
+            95
+          ],
+          "license": "GPL-3.0",
+          "summary": "chirpmyradio CHIRP before 39178db allows eval injection via crafted CSV data. This occurs in _clean_tmode in drivers/kenwood_itm.py.",
+          "scope": [
+            "chirp"
+          ]
+        },
+        {
+          "id": "GHSA-45gf-fjxp-cjpq",
+          "cve": "CVE-2026-54549",
+          "repo": "https://github.com/pipeboard-co/meta-ads-mcp.git",
+          "fix": "7d9926336bbdac6285a988d043c4ccfe126c94c5",
+          "cwe": [
+            918
+          ],
+          "license": "BUSL-1.1",
+          "summary": "meta-ads-mcp: Server-Side Request Forgery (SSRF) in `upload_ad_image` via Unrestricted `image_url` Fetch",
+          "scope": [
+            "meta_ads_mcp"
+          ]
+        },
+        {
+          "id": "GHSA-4p62-hqp5-g644",
+          "cve": "CVE-2026-47708",
+          "repo": "https://github.com/sepinetam/mcp-for-stata.git",
+          "fix": "e6f945941ae0c7cf5e74a428e0b3dc82b396382f",
+          "cwe": [
+            77
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MCP-for-Stata: Command injection via log_file_name parameter in Stata command wrapper",
+          "scope": [
+            "src/stata_mcp/stata/stata_do"
           ]
         }
       ]
@@ -5308,6 +5395,30 @@
           "summary": "Multiple SQL Injections in Frappe CRM Dashboard Controller due to unsafe concatenation of user-controlled parameters into dynamic SQL statements.",
           "scope": [
             "crm/api"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-15",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from topic 8's batch 4 of 2026-11-08 (Python weaknesses with few cases; PLAN.md step 60) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-74vm-8frp-7w68",
+          "cve": "CVE-2026-25632",
+          "repo": "https://github.com/waterfutures/epyt-flow.git",
+          "fix": "3fff9151494c7dbc72073830b734f0a7e550e385",
+          "cwe": [
+            502
+          ],
+          "license": "MIT",
+          "summary": "EPyT-Flow vulnerable to unsafe JSON deserialization (__type__)",
+          "scope": [
+            "epyt_flow"
           ]
         }
       ]
