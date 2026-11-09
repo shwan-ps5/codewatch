@@ -679,20 +679,28 @@ rules:
       - patterns:
           - pattern: fetch($URL, ...)
           - metavariable-regex: {metavariable: $URL, regex: '^[`''"]/(?![/\\])'}
+      # A type looked up from a file name follows the file actually served (mime.getType(req.path) in a static
+      # file handler), not text the request chose.
+      - patterns:
+          - pattern-either:
+              - pattern: $MIME.getType(...)
+              - pattern: $MIME.lookup(...)
+              - pattern: $MIME.contentType(...)
+          - metavariable-regex: {metavariable: $MIME, regex: '(?i)^(mime|mime_?types|mimetypes?)$'}
       # htmlEncode(str) / encodeHTML / html_encode: named for escaping markup (Modoboa's fix for GHSA-c467).
       - patterns:
           - pattern: $ENCODE(...)
           - metavariable-regex: {metavariable: $ENCODE, regex: '(?i)(.*\.)?(html_?encode|encode_?html|html_?entities)\w*$'}
       # A record from the data layer, found or saved using the request's values, is the stored object rather
-      # than the request's text: await userService.getUserById(req.params.id)
+      # than the request's text: await userService.getUserById(req.params.id), WIKI.models.assets.getAsset(...)
       - patterns:
           - pattern: await $DATA.$ACCESS(...)
           - metavariable-regex:
               metavariable: $DATA
-              regex: '(?i)(.*\.)?(\w*(service|repo|repository|model|dao|store)|db|prisma|collection|knex)$'
+              regex: '(?i)(.*\.)?(\w*(service|repo|repository|model|dao|store)|db|prisma|collection|knex|models?\.\w+)$'
           - metavariable-regex:
               metavariable: $ACCESS
-              regex: '^(?!.*(?i:html|render|template|markup|view|page))(find|get|create|update|save|insert|upsert|delete|remove|query|fetch|load|count)\w*$'
+              regex: '^(?!.*(?i:html|render|template|markup|view|page))(find|get|create|update|save|insert|upsert|delete|remove|query|fetch|load|count|resolve)\w*$'
       # A fixed template rendered with the request's values: these engines escape <%= %>, {{ }} and #{} unless the
       # template asks for raw output (<%-, {{{, !{, !=, | safe).
       - patterns:
@@ -705,6 +713,42 @@ rules:
               metavariable: $TEMPLATE
               regex: '^[''"`](?![\s\S]*(<%-|\{\{\{|!\{|!=|\|\s*safe|\$\{))[\s\S]*[''"`]$'
     pattern-sinks:
+      # The response's type chosen by the request: text/html makes whatever the body holds run as a page on the
+      # app's origin (n8n GHSA-c8hm: a stored upload served with ?mimeType=text/html). Express/Node, Fastify's
+      # reply and Koa's ctx. Not when the same handler sends a `Content-Security-Policy: sandbox` (n8n's fix) or
+      # makes the response an attachment, and not a type looked up in an upper-case table (TYPES[ext]).
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $RES.setHeader($K, $CT)
+                      - pattern: $RES.set($K, $CT)
+                      - pattern: $RES.header($K, $CT)
+                      - pattern: '$RES.set({..., $K: $CT, ...})'
+                      - pattern: '$RES.headers({..., $K: $CT, ...})'
+                      - pattern: '$RES.writeHead($S, {..., $K: $CT, ...})'
+                      - pattern: '$RES.writeHead($S, $MSG, {..., $K: $CT, ...})'
+                  - metavariable-regex: {metavariable: $K, regex: '(?i)^[''"`]?content-type[''"`]?$'}
+              - pattern: $RES.type($CT)
+              - pattern: $RES.contentType($CT)
+              - pattern: $RES.type = $CT
+          - metavariable-regex: {metavariable: $RES, regex: '^(res|response|reply|ctx|ctx\.response)$'}
+          - metavariable-regex: {metavariable: $CT, regex: '^(?![A-Z][A-Z0-9_]*\[)'}
+          - pattern-not-inside: |
+              $RES.$SETCT(...);
+              ...
+              $RES.$SETCSP("=~/(?i)^content-security-policy$/", "=~/sandbox/");
+          - pattern-not-inside: |
+              $RES.$SETCSP("=~/(?i)^content-security-policy$/", "=~/sandbox/");
+              ...
+          - pattern-not-inside: |
+              $RES.attachment(...);
+              ...
+          - pattern-not-inside: |
+              $RES.$SETCT(...);
+              ...
+              $RES.attachment(...);
+          - focus-metavariable: $CT
       - patterns:
           - pattern-either:
               - pattern: $RES.send($HTML)

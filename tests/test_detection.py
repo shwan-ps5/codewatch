@@ -1222,7 +1222,8 @@ def test_form_field_values_written_into_html(tmp_path):
     $("#upload-format").html(); Modoboa GHSA-c467: $("#id_name").val() into a $span held in a variable). .text(),
     an htmlEncode()d value, .html() of a variable not named like a jQuery object, and the response to a fetch of a
     same-origin path that posted the value (pygoat's comparison lab: the server's reply, not the input) stay quiet.
-    A server that fetches a URL from the request and sends the body back is still reported (actual's CORS proxy)."""
+    A server that fetches a URL from the request and sends the body back is still reported (actual's CORS proxy),
+    and so is its passing on the upstream's Content-Type."""
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
     found = semgrep_vulnerabilities(tmp_path, {"static/js/edit.js": (
@@ -1254,7 +1255,7 @@ def test_form_field_values_written_into_html(tmp_path):
             "    res.send(await response.text());\n"
             "});\n")})
     assert found == {("static/js/edit.js", 3, "xss"), ("static/js/edit.js", 8, "xss"), ("static/js/edit.js", 12, "xss"),
-                     ("proxy.js", 4, "ssrf"), ("proxy.js", 6, "xss")}
+                     ("proxy.js", 4, "ssrf"), ("proxy.js", 5, "xss"), ("proxy.js", 6, "xss")}
 
 
 def test_mcp_tool_arguments_are_untrusted_input(tmp_path):
@@ -4020,4 +4021,60 @@ def test_request_chosen_response_content_type_is_xss(tmp_path):
             "def show(request):\n"
             "    return HttpResponse(open('x').read(), content_type=request.GET.get('type'))\n")})
     assert found == {("app.py", 12, "xss"), ("app.py", 21, "xss"), ("app.py", 27, "xss"), ("views.py", 9, "xss")}
+
+
+def test_request_chosen_response_content_type_is_xss_in_node(tmp_path):
+    """n8n GHSA-c8hm: a stored upload served with the Content-Type the query string names, so ?mimeType=text/html
+    runs it as a page. Express setHeader/type/writeHead and Koa's ctx.type are reported; a type from a fixed
+    table or looked up from the file name, an attachment, n8n's fix (a CSP sandbox for HTML) and a stored record's
+    type (wiki's assets, loaded through WIKI.models.assets) stay quiet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"server.js": (
+        "const express = require('express');\nconst mime = require('mime');\n"
+        "const app = express();\nconst TYPES = { csv: 'text/csv' };\n\n"
+        "app.get('/file', (req, res) => {\n"
+        "  res.setHeader('Content-Type', req.query.type);\n"
+        "  res.sendFile('/srv/upload');\n"
+        "});\n"
+        "app.get('/a', (req, res) => {\n"
+        "  res.type(req.query.format);\n"
+        "  res.end();\n"
+        "});\n"
+        "app.get('/b', (req, res) => {\n"
+        "  res.writeHead(200, { 'Content-Type': req.query.type });\n"
+        "  res.end();\n"
+        "});\n"
+        "app.get('/c', (req, res) => {\n"
+        "  res.set('Content-Type', TYPES[req.query.format]);\n"
+        "  res.set('Content-Type', mime.getType(req.path));\n"
+        "  res.end();\n"
+        "});\n"
+        "app.get('/d', (req, res) => {\n"
+        "  res.attachment('report');\n"
+        "  res.type(req.query.type);\n"
+        "  res.end();\n"
+        "});\n"
+        "app.get('/e', (req, res) => {\n"
+        "  const { mimeType, action } = req.query;\n"
+        "  if (mimeType) {\n"
+        "    res.setHeader('Content-Type', mimeType);\n"
+        "    if (mimeType.includes('html') && action === 'view') {\n"
+        "      res.header('Content-Security-Policy', 'sandbox');\n"
+        "    }\n"
+        "  }\n"
+        "  res.end();\n"
+        "});\n"
+        "app.get('/f/:id', async (req, res) => {\n"
+        "  const asset = await app.models.assets.getAsset(req.params.id);\n"
+        "  res.type(asset.mimeType).send(asset.body);\n"
+        "});\n"),
+        "koa.js": (
+            "const Koa = require('koa');\nconst app = new Koa();\n\n"
+            "app.use(async (ctx) => {\n"
+            "  ctx.type = ctx.query.type;\n"
+            "  ctx.body = 'x';\n"
+            "});\n")})
+    assert found == {("server.js", 7, "xss"), ("server.js", 11, "xss"), ("server.js", 15, "xss"),
+                     ("koa.js", 5, "xss")}
 

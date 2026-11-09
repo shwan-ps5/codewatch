@@ -1687,3 +1687,15 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     pool is mostly library code. Topic 9 looks for ground truth for step 57's rule: advisories with CWE-943 or
     naming MongoDB/DynamoDB/NoSQL operators, in Python app code, from repositories of any primary language
     (full-stack apps often report JavaScript), stopping after one full pass if it yields fewer than 5.
+59. **A request-chosen Content-Type in Node is XSS too** (2026-11-09). Step 56's sinks, for codewatch.js.xss:
+    res.setHeader/set/header('Content-Type', ...), res.set({...})/writeHead(status, {...}) with a Content-Type
+    key, res.type()/contentType(), and Koa's `ctx.type =`, on res/response/reply/ctx. Drove it: n8n GHSA-c8hm
+    (step 55; the query's mimeType as the type of a stored upload), now flagged before the fix (line 41) and
+    quiet at it. Not reported: a handler that also sends `Content-Security-Policy: sandbox` (n8n's fix) or calls
+    res.attachment(), a type looked up in an upper-case table, and a type from mime.getType/lookup/contentType
+    (new sanitizer: the type follows the file served). Probe of 121 app and own-project files that set a type or
+    load records: the four new findings in wiki's asset, file, site-asset and avatar handlers were stored records
+    loaded through `await WIKI.models.<name>.get.../resolve...(...)`, which the data-layer sanitizer missed; it
+    now accepts a `models.<name>` receiver and `resolve...` methods, and they are quiet. actual's CORS proxy gets
+    two more lines (it copies the upstream's Content-Type for a URL the request chose), as does the synthetic
+    proxy in test_form_field_values_written_into_html. Test: test_request_chosen_response_content_type_is_xss_in_node.
