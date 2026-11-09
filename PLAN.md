@@ -1712,3 +1712,9 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     server's execute_query tool runs any KQL the client sends, so no trust boundary is crossed). Topic 9's pool
     was 123 advisories, 107 in non-Python repositories and nearly all the Python ones library or driver code; it
     stopped after one pass as its rule says. Every research topic is now done or paused.
+61. **Research: PHP again, as topic 10** (2026-11-09). With every other topic done or paused, topic 4's PHP search
+    is carried on as topic 10 (same source, filter and rules; other-language size limit; files
+    `cve-candidates-YYYY-MM-DD-php.*`; blind suites numbered from cve-pairs-blind-php-6). Topic 4's five held
+    batches (300 read, 66 accepted by the agent, `held` status) stay held until a review session takes them, and
+    so do the PHP cases deferred at step 53 (LimeSurvey GHSA-wj23 and one blind Tainacan case). Still no PHP rules:
+    these suites are ground truth for the PHP rule work that comes after them.

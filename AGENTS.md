@@ -102,8 +102,8 @@ npm advisories (step 29). Those pools are nearly used up.
    messages, MCP tool arguments, remote content rendered in a client → `cve-pairs-javascript-nonhttp`. Blind ones:
    one new `cve-pairs-blind-javascript-N` per batch (next unused N) or `cve-pairs-blind-javascript-nonhttp`. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-noframework.{tsv,json}`.
-4. **PHP web apps.** (paused 2026-11-05 after 3 batches, 180 read: codewatch has no PHP rules yet, so Python
-   comes first; resume when topic 5 is done.) Same source and filter as topics 1-3, keeping non-archived repositories whose primary language
+4. **PHP web apps.** (paused 2026-11-05 after 5 batches, 300 read: codewatch had no PHP rules yet, so Python
+   came first; carried on as topic 10, don't work on it under this number.) Same source and filter as topics 1-3, keeping non-archived repositories whose primary language
    is PHP: applications and CMSs (Laravel, Symfony, CodeIgniter, Yii, Slim, WordPress/Drupal/Joomla themes and
    plugins, plain PHP apps), about 1,100 candidates on 2026-11-04. Reject libraries (Composer packages whose
    advisory is in library code), and fixes in vendored code. Request input is `$_GET`, `$_POST`, `$_REQUEST`,
@@ -214,6 +214,22 @@ npm advisories (step 29). Those pools are nearly used up.
    5 candidates worth a review, say so in the JSON's `method` and stop the topic rather than widen it on your own.
    Suites as topic 5 (`cve-pairs-python`, or `cve-pairs-python-nonhttp`). Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-nosql.{tsv,json}`.
+
+10. **PHP web apps, carried on from topic 4.** Topic 4's five batches of 2026-11-05
+   (`cve-candidates-2026-11-05-php-unreviewed*`, 300 read, held for review) left about 800 candidates. Same source, filter and rules as topic 4: GitHub
+   advisories (reviewed and unreviewed) whose one fix commit is in a non-archived repository with PHP as its primary
+   language; applications and CMSs (Laravel, Symfony, CodeIgniter, Yii, Slim, CakePHP, WordPress/Drupal/Joomla
+   themes and plugins, plain PHP apps). Reject libraries (Composer packages whose advisory is in library code)
+   and fixes in vendored code. Request input is `$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_FILES`, `$_SERVER`
+   and the frameworks' request objects (`$request->input()`, `$request->get()`, `Request::input()`, `$this->input`
+   and the like); templates (Blade, Twig, Smarty) count as source. Size: the limit for other languages (3 source
+   files, 120 lines; `reviewed.py size` without `--python`). Weaknesses: any the topic-4 batches took (SQL
+   injection, XSS, command injection, path traversal and file inclusion, SSRF, open redirect, unsafe
+   deserialization, unrestricted upload, XXE, code injection); skip CSRF-only, missing-authorization and
+   business-logic advisories, as everywhere else. codewatch has no PHP rules yet, so this is ground truth for
+   later work: no scans. Suites: `cve-pairs-php` for request input; blind ones in `cve-pairs-blind-php-N`, one per
+   batch, numbered from 6 (topic 4 used 1-5). Files: `benchmarks/cve-candidates-YYYY-MM-DD-php.{tsv,json}`. When
+   the list is used up, mark this topic done as usual.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
