@@ -228,7 +228,8 @@ npm advisories (step 29). Those pools are nearly used up.
    deserialization, unrestricted upload, XXE, code injection); skip CSRF-only, missing-authorization and
    business-logic advisories, as everywhere else. codewatch has no PHP rules yet, so this is ground truth for
    later work: no scans. Suites: `cve-pairs-php` for request input; blind ones in `cve-pairs-blind-php-N`, one per
-   batch, numbered from 6 (topic 4 used 1-5). Files: `benchmarks/cve-candidates-YYYY-MM-DD-php.{tsv,json}`. When
+   batch, numbered on from the highest `cve-pairs-blind-php-N` already in `suites.json` (17 on 2026-11-10).
+   Files: `benchmarks/cve-candidates-YYYY-MM-DD-php.{tsv,json}`. When
    the list is used up, mark this topic done as usual.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.

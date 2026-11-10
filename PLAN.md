@@ -1743,3 +1743,19 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     stored object served inline with its stored or extension-guessed type, through the Python Content-Type sink of
     step 56). Triage calls it real (the stored-upload XSS shape), but it is a stored type, which step 59 made quiet
     for wiki's assets: left reported for now, to settle when the Content-Type sinks get a stored-type policy.
+63. **Topic 10's batches 5-8 reviewed** (2026-11-10). 240 read by the agent, 51 accepted (38 open, 13 blind). The
+    open fix diffs were pre-screened by deepseek-v4.1-flash as in step 62 (2 flagged); those two and four more whose
+    one-line reasons raised a doubt were read here. Rejected: php-login GHSA-5cpm (the fixed side doesn't parse and
+    the same file keeps another interpolated query), baserCMS GHSA-8vqx (a `javascript:` denylist), mh_httpbl
+    GHSA-5ch9 (the value is a reverse-DNS name, not request input), LibreNMS GHSA-jp3c (one escaper swapped for
+    another in a JavaScript string, as AzuraCast GHSA-q4ph), phpMyFAQ GHSA-v6g2 (two fixes in one commit, the input
+    reaching the page through a global exception handler), and three sharing a fix commit with a kept case
+    (flusity-CMS GHSA-9962, `core` GHSA-3m8r, and the blind chamilo GHSA-28gg). Kept after reading:
+    ipandlanguageredirect GHSA-4xf2 (an allowlist that strips everything but digits and dots). Added: 31 to
+    cve-pairs-php (146 now) and 12 blind to cve-pairs-blind-php-16 and -17 (69 blind PHP now); the agent put three
+    batches in -16, which doesn't matter for a blind suite. AGENTS.md topic 10 now numbers blind suites on from
+    the highest existing one, since topic 10 had already passed its "from 6".
+    Noted for later, from an outside review of the nightly: a suite whose inputs haven't changed (its language's
+    rule files, `core/`, the tool locks and its own `suites.json` entry) gives the same results, so the nightly
+    could reuse yesterday's. First find out why suite time went from 136 min (2026-11-04) to 315 min (2026-11-10)
+    while the scanned cases grew 3%: the result files show no more Semgrep timeouts than before.
