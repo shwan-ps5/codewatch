@@ -7,6 +7,8 @@
     venv/bin/python benchmarks/devtools.py repos [--via|--entry|--messages] DIR...
                                                                      # full Semgrep analyzer on projects (git or not)
     venv/bin/python benchmarks/devtools.py owasp [CATEGORY...]      # OWASP Python cases scored wrong (verdict mode)
+    venv/bin/python benchmarks/devtools.py timings FILE [PREVIOUS]   # where a bench run's time went; bench writes
+                                                                     # FILE when CODEWATCH_BENCH_TIMINGS names it
 
 `rules` scans the same line-preserving rewritten copy of Python files that the analyzer does, but skips summaries;
 `repos` runs everything (summaries, via-findings, entry-point hotspots) and prints vulnerabilities, or only
@@ -46,16 +48,31 @@ CACHE = Path.home() / ".cache" / "codewatch"
 ENTRY_MARK = "nothing in the project calls"
 
 
+def bench_log():
+    """Prints failures; writes the scans' timing lines to $CODEWATCH_BENCH_TIMINGS when it is set (nightly.sh sets
+    it), or drops them."""
+    path = os.environ.get("CODEWATCH_BENCH_TIMINGS")
+    timings = open(path, "a") if path else None  # noqa: SIM115 - open for the whole run, closed at exit
+
+    def log(message):
+        if message.startswith("timing\t"):
+            if timings:
+                timings.write(message.removeprefix("timing\t") + "\n")
+                timings.flush()
+        elif "fail" in message:
+            print(message)
+    return log
+
+
 def bench(suites):
-    out = benchmark.run(suites, log=lambda m: print(m) if "fail" in m else None, workers=benchmark.WORKERS)
+    out = benchmark.run(suites, log=bench_log(), workers=benchmark.WORKERS)
     for name, r in out.items():
         print(name, "verdict", r["verdict"]["overall"], "review", r["review"]["overall"])
 
 
 def cases(ids):
     """Each named CVE pair's row, in both modes."""
-    for suite, modes in benchmark.score_cases(ids, log=lambda m: print(m) if "fail" in m else None,
-                                              workers=benchmark.WORKERS):
+    for suite, modes in benchmark.score_cases(ids, log=bench_log(), workers=benchmark.WORKERS):
         for mode, r in modes.items():
             print(f"{r['id']} {suite} {mode}: {', '.join(r['by']) or 'missed'} | {', '.join(r['still_by']) or 'quiet'}")
 
@@ -132,6 +149,14 @@ def scan_repo(root, mode):
     return lines
 
 
+def timings(args):
+    """Where a bench run's time went (the file $CODEWATCH_BENCH_TIMINGS named), compared with an earlier run's."""
+    if not args:
+        sys.exit("usage: devtools.py timings FILE [PREVIOUS_FILE]")
+    previous = Path(args[1]).read_text().splitlines() if len(args) > 1 and Path(args[1]).exists() else []
+    print(benchmark.timing_report(Path(args[0]).read_text().splitlines(), previous))
+
+
 def owasp(categories):
     results = json.loads((HERE / "results" / "owasp-benchmark-python.json").read_text())
     issues = json.loads((CACHE / "benchmarks" / "owasp-benchmark-python.issues.json").read_text())
@@ -158,7 +183,7 @@ def main(argv):
         COMMANDS[command](rest)
 
 
-COMMANDS = {"bench": bench, "cases": cases, "rules": rules, "repos": repos, "owasp": owasp}
+COMMANDS = {"bench": bench, "cases": cases, "rules": rules, "repos": repos, "owasp": owasp, "timings": timings}
 
 if __name__ == "__main__":
     main(sys.argv[1:])

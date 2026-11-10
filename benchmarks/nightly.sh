@@ -41,7 +41,9 @@ skipped=$(tail -1 "$OUT/tests.txt" | grep -o '[0-9]* skipped' | cut -d' ' -f1)
 if [ "${skipped:-0}" -gt 5 ]; then echo "FAILED: $skipped tests skipped"; exit 1; fi
 
 start=$(date +%s)
-"$PY" benchmarks/devtools.py bench > "$OUT/suites.txt" 2>&1
+# Each fetch and scan's seconds, per analyzer: the "== time" section of the summary.
+rm -f "$OUT/timings.tsv"
+CODEWATCH_BENCH_TIMINGS="$OUT/timings.tsv" "$PY" benchmarks/devtools.py bench > "$OUT/suites.txt" 2>&1
 echo "suites: $(( ($(date +%s) - start) / 60 )) min"
 grep -q "Traceback" "$OUT/suites.txt" && echo "WARNING: a scan crashed, see suites.txt"
 mkdir -p "$OUT/results" && cp benchmarks/results/*.json benchmarks/results/*.md "$OUT/results/" 2>/dev/null
@@ -80,6 +82,13 @@ fi
             echo "-- new app findings:"; LC_ALL=C comm -13 "$PREV/apps.txt" "$OUT/apps.txt"
             echo "-- gone:"; LC_ALL=C comm -23 "$PREV/apps.txt" "$OUT/apps.txt"
         fi
+    fi
+    if [ -s "$OUT/timings.tsv" ]; then
+        echo; echo "== time"
+        previous=(); [ -n "$PREV" ] && [ -s "$PREV/timings.tsv" ] && previous=("$PREV/timings.tsv")
+        "$PY" benchmarks/devtools.py timings "$OUT/timings.tsv" "${previous[@]}"
+        [ -f "$OUT/apps-raw.txt" ] && echo "slowest apps: $(sed -n 's/^== \(.*\): .*, \([0-9]*\)s$/\2s \1/p' \
+            "$OUT/apps-raw.txt" | sort -rn | head -5 | paste -sd, - | sed 's/,/, /g')"
     fi
 } > "$OUT/summary.txt"
 echo "finished $(date '+%F %T')"

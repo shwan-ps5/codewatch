@@ -87,7 +87,8 @@ def test_run_scores_and_writes_results(tmp_path, monkeypatch, cwes):
     monkeypatch.setattr(benchmark, "CACHE", tmp_path / "cache")
     (tmp_path / "cache").mkdir()
     monkeypatch.setattr(benchmark, "fetch", lambda s: checkout)
-    monkeypatch.setattr(benchmark, "scan", lambda root, log, paths=(): [issue("tc/T1.py", "xss")])
+    monkeypatch.setattr(benchmark, "scan_and_gave_up",
+                        lambda root, log, paths=(), focus=None, tools=None: ([issue("tc/T1.py", "xss")], False))
     monkeypatch.setattr(benchmark.catalog, "load", lambda: ({}, {"cwe_parents": PARENTS}))
 
     out = benchmark.run(["demo"], log=lambda *a: None)
@@ -368,3 +369,40 @@ def test_a_case_that_fails_to_scan_is_left_out_not_fatal(tmp_path, monkeypatch, 
 
     assert [c["id"] for c in out["pairs"]["verdict"]["cases"]] == ["ok"]
     assert any("bad: scan failed" in line and "specify directories" in line for line in logged)
+
+
+def test_a_pair_logs_the_time_of_its_fetch_and_of_each_side_with_every_analyzer(monkeypatch):
+    """The nightly's "== time" section is built from these lines (2026-11-10: suite time had doubled in a week and
+    nothing said where it went)."""
+    monkeypatch.setattr(benchmark, "fetch_pair", lambda suite, case: ("root", "parent"))
+    monkeypatch.setattr(benchmark, "git", lambda *args, cwd: "")
+    monkeypatch.setattr(benchmark, "template_renderers", lambda *args: {})
+    monkeypatch.setattr(benchmark, "importers", lambda *args: set())
+
+    def scan_and_gave_up(root, log, paths=(), focus=None, tools=None):
+        tools.update({"semgrep": 90.4, "bandit": 3.0, "radon": 0.2})
+        return [], focus is not None
+    monkeypatch.setattr(benchmark, "scan_and_gave_up", scan_and_gave_up)
+    logged = []
+
+    benchmark.scan_pair({"name": "pairs", "language": "python"}, {"id": "GHSA-x", "fix": "f"}, logged.append)
+
+    timings = [line.split("\t") for line in logged if line.startswith("timing\t")]
+    assert [t[1:4] for t in timings] == [["pairs", "GHSA-x", "fetch"], ["pairs", "GHSA-x", "before"],
+                                         ["pairs", "GHSA-x", "after"]]
+    assert timings[1][5] == "semgrep=90 bandit=3 gave_up"  # under a second is left out
+
+
+def test_the_timing_report_names_the_slowest_scans_and_the_cases_that_slowed():
+    now = ["pairs\tGHSA-a\tfetch\t5\t", "pairs\tGHSA-a\tbefore\t600\tsemgrep=500 prep=90 gave_up",
+           "pairs\tGHSA-a\tafter\t30\tsemgrep=25", "pairs\tGHSA-b\tbefore\t40\tsemgrep=35",
+           "snippets\t-\tscan\t120\tsemgrep=100 eslint=20"]
+    then = ["pairs\tGHSA-a\tbefore\t100\tsemgrep=90", "pairs\tGHSA-b\tbefore\t45\tsemgrep=40"]
+
+    report = benchmark.timing_report(now, then).splitlines()
+
+    assert report[0] == "13 min of scans summed over processes, 0 min of it fetching (previous run 2 min)"
+    assert report[1] == "by suite: pairs 11 min, snippets 2 min"
+    assert report[2] == "by analyzer: semgrep 11 min, prep 2 min, eslint 0 min"
+    assert report[4] == "  600s pairs GHSA-a before semgrep=500 prep=90 gave_up"
+    assert report[-2:] == ["moved most since the previous run:", "  100s -> 635s pairs GHSA-a"]

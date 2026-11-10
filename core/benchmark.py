@@ -10,6 +10,7 @@ import multiprocessing
 import os
 import re
 import subprocess
+import time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import UTC, datetime
@@ -47,15 +48,38 @@ def fetch(suite):
     return target
 
 
+def timing(log, label, seconds, parts=None, gave_up=False):
+    """Logs one line per fetch or scan: "timing", suite, case ("-" for a whole-repository suite), phase, seconds, then
+    its parts' seconds, slowest first (each analyzer, and "prep" for the template renderers and importers looked up
+    before them), and whether Semgrep gave up on some files. devtools.py bench writes them to
+    $CODEWATCH_BENCH_TIMINGS."""
+    parts = [f"{name}={sec:.0f}" for name, sec in sorted((parts or {}).items(), key=lambda kv: -kv[1]) if sec >= 1]
+    log("\t".join(["timing", *label, f"{seconds:.0f}", " ".join(parts + (["gave_up"] if gave_up else []))]))
+
+
+def fetch_and_scan(suite, log):
+    """A whole-repository suite's checkout and issues, with the time of each logged."""
+    start = time.monotonic()
+    root = fetch(suite)
+    timing(log, (suite["name"], "-", "fetch"), time.monotonic() - start)
+    start, tools = time.monotonic(), {}
+    issues, gave_up = scan_and_gave_up(root, log, tools=tools)
+    timing(log, (suite["name"], "-", "scan"), time.monotonic() - start, tools, gave_up=gave_up)
+    return root, issues
+
+
 def scan(root, log, paths=(), focus=None):
     return scan_and_gave_up(root, log, paths, focus)[0]
 
 
-def scan_and_gave_up(root, log, paths=(), focus=None):
-    """The scan's issues, and whether Semgrep gave up on some rules in some files (its only note is that one)."""
+def scan_and_gave_up(root, log, paths=(), focus=None, tools=None):
+    """The scan's issues, and whether Semgrep gave up on some rules in some files (its only note is that one).
+    tools, when given, is filled with each analyzer's seconds."""
     files = [f for f in git("ls-files", "-z", "--", *paths, cwd=root).split("\0") if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
     out = collect(cfg, ScanInput(root, files, "benchmark", focus=focus), log)
+    if tools is not None:
+        tools.update({name: tool.get("seconds") or 0 for name, tool in out["tools"].items()})
     # A suite scored without Semgrep would look like a run of misses and quiet fixed code.
     if (semgrep := out["tools"].get("semgrep", {})).get("status") == "error":
         raise RuntimeError(f"semgrep failed on {root}: {semgrep['detail']}")
@@ -414,7 +438,9 @@ def with_code(root, issues):
 
 
 def scan_pair(suite, case, log):
+    start = time.monotonic()
     root, parent = fetch_pair(suite, case)
+    timing(log, (suite["name"], case["id"], "fetch"), time.monotonic() - start)
     diff = git("diff", "-U0", "--no-renames", parent, case["fix"], cwd=root)
     spots = fix_spots(diff, SOURCE_EXTENSIONS[suite["language"]])
     # A fix in a template (dropping |safe) leaves the finding at the Python call that renders it, in a file the
@@ -423,13 +449,18 @@ def scan_pair(suite, case, log):
     spots["renders"], spots["gave_up"] = {}, {}
     sides = {}
     for side, commit in (("before", parent), ("after", case["fix"])):
+        start, tools = time.monotonic(), {}
         git("checkout", "-q", "--force", commit, cwd=root)
         renders = spots["renders"][side] = template_renderers(root, case.get("scope", []), templates)
         callers = importers(root, case.get("scope", []), set(spots[side]))
+        prep = time.monotonic() - start
         # Only findings in the changed files (and those render calls, and the changed modules' importers) are
         # scored, so Semgrep's per-file pass looks only at those files.
         found, spots["gave_up"][side] = scan_and_gave_up(root, log, case.get("scope", []),
-                                                         focus=sorted({*spots[side], *renders, *callers}))
+                                                         focus=sorted({*spots[side], *renders, *callers}),
+                                                         tools=tools)
+        timing(log, (suite["name"], case["id"], side), time.monotonic() - start, {"prep": prep, **tools},
+               spots["gave_up"][side])
         found = [i for i in found if i["type"] in SECURITY_TYPES]
         sides[side] = with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)
                                        or i["path"] in callers])
@@ -516,8 +547,7 @@ def run_suite(suite, log):
         log(f"== {suite['name']}: {len(suite['cases'])} fix commits")
         return score_cve_pairs(suite, log)
     log(f"== {suite['name']}: fetching {suite['commit'][:10]}")
-    root = fetch(suite)
-    return score_scanned_suite(suite, root, scan(root, log))
+    return score_scanned_suite(suite, *fetch_and_scan(suite, log))
 
 
 def score_scanned_suite(suite, root, issues):
@@ -539,8 +569,8 @@ def scan_job(suite, case=None):
     lines = []
     if case is None:
         lines.append(f"== {suite['name']}: fetching {suite['commit'][:10]}")
-        root = fetch(suite)
-        return suite["name"], None, (str(root), scan(root, lines.append)), lines
+        root, issues = fetch_and_scan(suite, lines.append)
+        return suite["name"], None, (str(root), issues), lines
     lines.append(f"   {suite['name']} {case['id']}: {case['repo']} {case['fix'][:10]}")
     return suite["name"], case["id"], scan_pair_or_none(suite, case, lines.append), lines
 
@@ -678,3 +708,58 @@ def render(suite, result):
     for mode in MODES:
         lines += renderer(mode, result[mode])
     return "\n".join(lines) + "\n"
+
+
+def parse_timings(lines):
+    """The `timing` lines a bench run wrote (without their "timing" word), as dicts."""
+    rows = []
+    for line in lines:
+        fields = line.rstrip("\n").split("\t")
+        if len(fields) < 4:
+            continue
+        extra = fields[4].split() if len(fields) > 4 else []
+        rows.append({"suite": fields[0], "case": fields[1], "phase": fields[2], "seconds": float(fields[3]),
+                     "parts": {k: float(v) for k, v in (p.split("=", 1) for p in extra if "=" in p)},
+                     "gave_up": "gave_up" in extra})
+    return rows
+
+
+def timing_report(lines, previous=(), top=10):
+    """Where a bench run's time went: per suite, per analyzer, the slowest scans, and (given the previous run's
+    lines) the cases whose time moved most. Times are summed over the parallel processes and are wall time inside
+    each, so they rise with the load of the other scans running beside them."""
+    rows, before = parse_timings(lines), parse_timings(previous)
+
+    def minutes(seconds):
+        return f"{seconds / 60:.0f} min"
+
+    def summed(key, rows, part=False):
+        totals = defaultdict(float)
+        for row in rows:
+            for name, seconds in (row["parts"].items() if part else [(row[key], row["seconds"])]):
+                totals[name] += seconds
+        return sorted(totals.items(), key=lambda kv: -kv[1])
+
+    total = sum(r["seconds"] for r in rows)
+    fetching = sum(r["seconds"] for r in rows if r["phase"] == "fetch")
+    out = [f"{minutes(total)} of scans summed over processes, {minutes(fetching)} of it fetching"
+           + (f" (previous run {minutes(sum(r['seconds'] for r in before))})" if before else ""),
+           "by suite: " + ", ".join(f"{name} {minutes(s)}" for name, s in summed("suite", rows)),
+           "by analyzer: " + ", ".join(f"{name} {minutes(s)}" for name, s in summed(None, rows, part=True)[:8]),
+           "slowest:"]
+    for row in sorted((r for r in rows if r["phase"] != "fetch"), key=lambda r: -r["seconds"])[:top]:
+        parts = " ".join(f"{k}={v:.0f}" for k, v in list(row["parts"].items())[:4])
+        out.append(f"  {row['seconds']:.0f}s {row['suite']} {row['case']} {row['phase']} {parts}"
+                   + (" gave_up" if row["gave_up"] else ""))
+    if before:
+        def per_case(rows):
+            totals = defaultdict(float)
+            for row in rows:
+                totals[row["suite"], row["case"]] += row["seconds"]
+            return totals
+        now, then = per_case(rows), per_case(before)
+        moved = sorted(((now[k] - then[k], k) for k in now.keys() & then.keys()
+                        if abs(now[k] - then[k]) >= max(60, then[k] / 2)), key=lambda d: -abs(d[0]))
+        out.append("moved most since the previous run:" if moved else "no case's time moved by half or more")
+        out += [f"  {then[k]:.0f}s -> {now[k]:.0f}s {k[0]} {k[1]}" for _, k in moved[:top]]
+    return "\n".join(out)

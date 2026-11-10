@@ -1759,3 +1759,12 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     rule files, `core/`, the tool locks and its own `suites.json` entry) gives the same results, so the nightly
     could reuse yesterday's. First find out why suite time went from 136 min (2026-11-04) to 315 min (2026-11-10)
     while the scanned cases grew 3%: the result files show no more Semgrep timeouts than before.
+64. **The nightly says where its time goes** (2026-11-10). Suite time went from 136 min (2026-11-04) to 315 min
+    (2026-11-10) and the run logged only the total. File times in the case clones put most of it in the Python
+    pairs (about 425 min of before-side scanning in cve-pairs-python and 278 in -frontend, summed over processes,
+    against 76 for every JS suite), led by a few whole-package cases: mlflow GHSA-wqmh 102 min with Semgrep giving
+    up on both sides, airflow GHSA-52gm 51, weblate GHSA-6wxc 34. Now every fetch and scan logs a `timing` line
+    (suite, case, phase, seconds, each analyzer's seconds, "prep" for the template renderers and importers, and
+    whether Semgrep gave up); `devtools.py bench` writes them to $CODEWATCH_BENCH_TIMINGS, nightly.sh keeps them as
+    DATE/timings.tsv and adds a "== time" section to the summary (`devtools.py timings`: per suite, per analyzer,
+    the slowest scans, the cases whose time moved by half or more since the previous night, the slowest apps).
