@@ -182,8 +182,9 @@ def test_pair_mode_counts_detection_and_fixed_code_alarms(cwes):
     assert "| GHSA-2 | 89 | missed | quiet |" in text
 
 
-def test_run_skips_blind_suites_unless_named(tmp_path, monkeypatch):
-    suites = [{"name": "open", "kind": "x"}, {"name": "blind", "kind": "x", "blind": True}]
+def test_run_skips_blind_and_deferred_suites_unless_named(tmp_path, monkeypatch):
+    suites = [{"name": "open", "kind": "x"}, {"name": "blind", "kind": "x", "blind": True},
+              {"name": "php", "kind": "x", "deferred": True}]
     (tmp_path / "suites.json").write_text(json.dumps({"suites": suites}))
     monkeypatch.setattr(benchmark, "ROOT", tmp_path)
     ran = []
@@ -192,7 +193,8 @@ def test_run_skips_blind_suites_unless_named(tmp_path, monkeypatch):
     monkeypatch.setattr(benchmark, "MODES", {})
     benchmark.run(log=lambda *a: None)
     benchmark.run(["blind"], log=lambda *a: None)
-    assert ran == ["open", "blind"]
+    benchmark.run(["php"], log=lambda *a: None)
+    assert ran == ["open", "blind", "php"]
 
 
 def test_a_python_web_apps_templates_and_scripts_count_as_its_source():

@@ -1718,3 +1718,28 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     batches (300 read, 66 accepted by the agent, `held` status) stay held until a review session takes them, and
     so do the PHP cases deferred at step 53 (LimeSurvey GHSA-wj23 and one blind Tainacan case). Still no PHP rules:
     these suites are ground truth for the PHP rule work that comes after them.
+62. **PHP ground truth reviewed: cve-pairs-php (deferred) and 15 blind PHP suites** (2026-11-10). Topic 4's five held
+    batches of 2026-11-05 and topic 10's ten batches of 2026-11-09/10: 900 read by the agent, 181 accepted (124
+    open, 57 blind). Each open fix diff was pre-screened by deepseek-v4.1-flash against the agent's stated flow
+    (19 flagged); the flagged ones were read here and the rest checked from the screen's one-line reasons.
+    Rejected at review: Kirby GHSA-fw82 and GHSA-x275 (the snippet or collection name reaches the sink only if a
+    site's own template passes request data in: a framework API), Kirby GHSA-9p3p (the router of PHP's built-in
+    development server), Open-Web-Analytics GHSA-6w8r and VuFind GHSA-wx24 (denylist fixes), AzuraCast GHSA-q4ph
+    (a bypassable sanitizer swapped for a stricter one), and four advisories whose fix commit is another accepted
+    case's (Ecommerce-CodeIgniter GHSA-pgmp and GHSA-mxrp share GHSA-pj54's, FrontAccounting GHSA-8ccm shares
+    GHSA-w5j4's, OpenCart GHSA-pqhq shares GHSA-qx44's) plus one blind duplicate (GHSA-78fv, GHSA-6q4c's commit).
+    Accepted although flagged as Composer packages: CMS cores and plugins handling their own requests (Sulu,
+    Pimcore, Craft Commerce, TypiCMS, Contao cookiebar, the SimpleSAMLphp CAS server module), which the topic
+    includes; and fixes that also harden something unrelated within the size limit (wp-downloadmanager, pureblog,
+    moneymanagerex). Added: 114 to a new cve-pairs-php plus LimeSurvey GHSA-wj23 (deferred at step 53), 56 blind
+    into cve-pairs-blind-php-1..15 as the batches named them plus Tainacan GHSA-37g4 (deferred unread at step 53)
+    into -1. codewatch has no PHP rules, so cve-pairs-php carries `"deferred": true`: `benchmark.run()` now skips
+    deferred suites, like blind ones, unless they are named (test_run_skips_blind_and_deferred_suites_unless_named).
+    The research runner's waiting-batch limit (CODEWATCH_RESEARCH_MAX_PENDING in its systemd drop-in) was 12, which
+    let ten batches pile up overnight; it is 4 now.
+    Nightlies of 2026-11-09 and -10 (steps 57-61): n8n GHSA-c8hm found and quiet at the fix; no suite moved
+    otherwise; the six step-60 cases: meta-ads-mcp GHSA-45gf found (codewatch SSRF), the rest missed in verdict mode.
+    New app findings were actual's proxy (expected, step 59) and label-studio's storage proxy (proxy_api.py:368: a
+    stored object served inline with its stored or extension-guessed type, through the Python Content-Type sink of
+    step 56). Triage calls it real (the stored-upload XSS shape), but it is a stored type, which step 59 made quiet
+    for wiki's assets: left reported for now, to settle when the Content-Type sinks get a stored-type policy.

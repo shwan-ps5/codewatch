@@ -583,10 +583,12 @@ def score_cases(ids, log=print, workers=1):
 
 
 def run(names=None, log=print, workers=1):
-    """Score the named suites, or every suite except blind ones, which run only when named. With workers > 1 the
-    scans run in that many processes; scoring and the order of the results are the same."""
+    """Score the named suites, or every suite except blind and deferred ones, which run only when named (a deferred
+    suite is ground truth kept for rules that don't exist yet, such as PHP's). With workers > 1 the scans run in
+    that many processes; scoring and the order of the results are the same."""
     suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
-              if not ((names and suite["name"] not in names) or (not names and suite.get("blind")))]
+              if not ((names and suite["name"] not in names)
+                      or (not names and (suite.get("blind") or suite.get("deferred"))))]
     scanned = scan_parallel(suites, log, workers) if workers > 1 else {}
     out = {}
     for suite in suites:

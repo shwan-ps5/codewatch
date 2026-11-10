@@ -5677,6 +5677,2633 @@
           ]
         }
       ]
+    },
+    {
+      "name": "cve-pairs-php",
+      "language": "php",
+      "kind": "cve-pairs",
+      "deferred": true,
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. codewatch has no PHP rules yet, so this is ground truth for that work and is marked deferred: the nightly run skips it until it has them (run it by name). Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day.",
+      "cases": [
+        {
+          "id": "GHSA-p9m5-xwgx-8j69",
+          "cve": "CVE-2026-103662",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "9619083c8cea496fd3ddbad5bf9be57c91fd2118",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP contains a reflected cross-site scripting (XSS) vulnerability in the legacy taxonomy tag management confirmation forms (add tag and disable tag).",
+          "scope": [
+            "app/View/Taxonomies"
+          ]
+        },
+        {
+          "id": "GHSA-m473-fq7f-v95f",
+          "cve": "CVE-2026-102292",
+          "repo": "https://github.com/coolbeans1212/MateisHomePage-Website.git",
+          "fix": "6406308df9771d2fd477b56dafe4878dd846df6e",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A flaw has been found in coolbeans1212 MateisHomePage-Website up to ea2a4226deeca27ab1fb9df0552ec76444547811. Affected by this issue is some unknown functionality of the file users.php. This manipulation of the argument Search causes cross site scripting. The attack can be initiated remotely. The ex",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-3m75-rwwr-268p",
+          "cve": "CVE-2026-95661",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "95b8f21f6be9e20323dd101e7d085fc34765c7b7",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP contains a reflected cross-site scripting (XSS) vulnerability in the attribute histogram view. The $selectedTypes variable, which is derived from the URL path segment , was interpolated directly into a JavaScript array literal inside an onClick HTML attribute without any encoding or escaping. A",
+          "scope": [
+            "app/View/Elements"
+          ]
+        },
+        {
+          "id": "GHSA-2jvm-986q-589g",
+          "cve": "CVE-2026-94401",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "d5f247b91ad3e8ea86feaaa587bf0466c95ea996",
+          "cwe": [
+            73
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP has a file-handling vulnerability that could let certain authenticated users make the server read files or access internal network services.",
+          "scope": [
+            "app/Model"
+          ]
+        },
+        {
+          "id": "GHSA-mj6h-p8f5-39rh",
+          "cve": "CVE-2026-85227",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "de51a16dbd1f1dd0e70e37fbf7fee6173b50caf8",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP contains a reflected Cross-Site Scripting (XSS) vulnerability in the event attribute filtering query builder. The taggedAttributes and galaxyAttachedAttributes URL parameters were inserted into the query-builder rules without HTML escaping before being serialized as JSON and embedded inside a <",
+          "scope": [
+            "app/View/Elements/Events/View"
+          ]
+        },
+        {
+          "id": "GHSA-pmmj-hr44-h52v",
+          "cve": "CVE-2026-82877",
+          "repo": "https://github.com/ILIAS-eLearning/ILIAS.git",
+          "fix": "e9acd3f8d498279f6c26a145ca32ce85152496a4",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "ILIAS versions before 9.22, 10.0 through 10.9, and 11.0 through 11.2 contain an arbitrary file read vulnerability in the SOAP addFile method that allows authenticated users to read server files by supplying crafted XML with COPY-mode imports. Attackers can construct absolute file paths through an un",
+          "scope": [
+            "components/ILIAS/File/classes"
+          ]
+        },
+        {
+          "id": "GHSA-j8xc-7c27-7wj4",
+          "cve": "CVE-2026-81728",
+          "repo": "https://github.com/Dolibarr/dolibarr.git",
+          "fix": "24b1b99c89c79a3fe2d1e83b22dc1810cf0fa6e1",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Dolibarr before 24.0.0 contains a SQL injection in its CSV and XLSX import wizard. The wizard reads its update keys with GETPOST('updatekeys', 'array') in htdocs/imports/import.php, which applies only the generic alphanohtml filter: that strips HTML but leaves SQL keywords, comment markers, parenthe",
+          "scope": [
+            "htdocs/core/modules/import",
+            "htdocs/imports/class"
+          ]
+        },
+        {
+          "id": "GHSA-6c4p-988c-4wgf",
+          "cve": "CVE-2026-71503",
+          "repo": "https://github.com/Dolibarr/dolibarr.git",
+          "fix": "3094b0aa3b500ff51020b660a7e66ffcb9d1cd91",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Dolibarr before 24.0.0 contains a reflected cross-site scripting vulnerability in the extra fields administration template where the type request parameter is echoed without JavaScript-context encoding into an inline script block and no Content-Security-Policy header is emitted. An unauthenticated a",
+          "scope": [
+            "htdocs/core/tpl"
+          ]
+        },
+        {
+          "id": "GHSA-qrrp-6pvj-xfvf",
+          "cve": "CVE-2026-64826",
+          "repo": "https://github.com/rconfig/rconfig.git",
+          "fix": "d133a466a2df9d065177de9a8ed50f1bfe438aee",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "rConfig before 8.2.13 contains a path traversal vulnerability that allows authenticated attackers to read arbitrary files by supplying unsanitized directory traversal sequences in the filename GET parameter of the download_export() method. Attackers can craft requests with ../ sequences to escape th",
+          "scope": [
+            "app/Http/Controllers"
+          ]
+        },
+        {
+          "id": "GHSA-7979-v6f7-5r6j",
+          "cve": "CVE-2026-49132",
+          "repo": "https://github.com/opnsense/core.git",
+          "fix": "12b021ff11db38705e92ac4c9af5e07d602da6ba",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "OPNsense before 26.1.9 contains a stored cross-site scripting vulnerability that allows authenticated attackers to inject arbitrary HTML or JavaScript by embedding payloads in the certificate description field via the trust certificate API. The unsanitized description value is persisted and later re",
+          "scope": [
+            "src/opnsense/www/js/widgets"
+          ]
+        },
+        {
+          "id": "GHSA-2wfc-8j3p-p6cp",
+          "cve": "CVE-2026-49131",
+          "repo": "https://github.com/opnsense/core.git",
+          "fix": "b11d6b340716e240868ab19a369e058a46f0876f",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "OPNsense before 26.1.9 contains a stored cross-site scripting vulnerability that allows authenticated attackers with firewall rule management privileges to inject arbitrary HTML or JavaScript by embedding payloads in the firewall rule description field via the filter API endpoint. The unsanitized de",
+          "scope": [
+            "src/www"
+          ]
+        },
+        {
+          "id": "GHSA-8879-fh4f-q3qm",
+          "cve": "CVE-2026-41453",
+          "repo": "https://github.com/krayin/laravel-crm.git",
+          "fix": "2a3724cb7e9e65ab98f2b42c8ca2c98dede48f62",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Krayin CRM before 2.2.4 contains a blind SQL injection vulnerability in the leads DataGrid that allows authenticated users with leads access to inject arbitrary SQL into a HAVING clause by manipulating the rotten_lead[in] query parameter, which is concatenated without parameterized binding directly ",
+          "scope": [
+            "packages/Webkul/Admin/src/DataGrids/Lead"
+          ]
+        },
+        {
+          "id": "GHSA-7793-hmg3-gh57",
+          "cve": "CVE-2026-61343",
+          "repo": "https://github.com/LibreBooking/librebooking.git",
+          "fix": "cb9b7ad9da0243bd105809f6a4a8a6b9147c71ea",
+          "cwe": [
+            23
+          ],
+          "license": "GPL-3.0",
+          "summary": "LibreBooking's email template editor save action passes the submitted template name directly into the destination file path, allowing a remote attacker with administrator credentials to write an arbitrary file outside the template directory and execute code. Fixed in 5.1.0.",
+          "scope": [
+            "Presenters/Admin"
+          ]
+        },
+        {
+          "id": "GHSA-r56h-8xf5-wf6h",
+          "cve": "CVE-2026-14634",
+          "repo": "https://github.com/kirilkirkov/Ecommerce-CodeIgniter-Bootstrap.git",
+          "fix": "23105f25dadf57b4314fc015a63a7c6e910c89df",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was identified in kirilkirkov Ecommerce-CodeIgniter-Bootstrap up to 213babdbaa949e94557246414db0130e01394517. This vulnerability affects the function checkForPostRequests of the file application/core/MY_Controller.php of the component Subscribed Emails Admin Page. Such manipulation o",
+          "scope": [
+            "application/core",
+            "application/modules/admin/views/settings"
+          ]
+        },
+        {
+          "id": "GHSA-jf5m-wm8f-5pq9",
+          "cve": "CVE-2026-14632",
+          "repo": "https://github.com/kirilkirkov/Ecommerce-CodeIgniter-Bootstrap.git",
+          "fix": "213babdbaa949e94557246414db0130e01394517",
+          "cwe": [
+            601
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was found in kirilkirkov Ecommerce-CodeIgniter-Bootstrap up to 95dfa8cebbb87ab46ae450643a07241274a74dce. Affected by this issue is the function setReferrer of the file application/core/MY_Controller.php of the component Trusted Backend Interface. The manipulation of the argument href",
+          "scope": [
+            "application/core",
+            "application/modules/admin/views/ecommerce"
+          ]
+        },
+        {
+          "id": "GHSA-233w-5rfj-8hmj",
+          "cve": "CVE-2026-12195",
+          "repo": "https://github.com/myvesta/vesta.git",
+          "fix": "95d7e43bf286d6881ca753dac93cb42d98cc7422",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-3.0",
+          "summary": "myVesta is affected by an authenticated remote code execution vulnerability. Low privileged users can insert arbitrary commands as a part of the v_ftp_user parameter when deleting FTP usernames. This could result in the execution of commands as the admin user or takevoer of the admin user in myVesta",
+          "scope": [
+            "web/edit/web"
+          ]
+        },
+        {
+          "id": "GHSA-2852-jv28-2mv8",
+          "cve": "CVE-2026-58376",
+          "repo": "https://github.com/Dolibarr/dolibarr.git",
+          "fix": "14db36e8486ef725b0d493d97abb2950a54358d3",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Dolibarr through 23.0.3, fixed in commit 14db36e, contains a sql injection vulnerability that allows authenticated API users to exfiltrate arbitrary database contents by supplying malicious values to the sqlfilters query parameter in the setup dictionary and multicurrencies REST API endpoints. The a",
+          "scope": [
+            "htdocs/api/class",
+            "htdocs/multicurrency/class"
+          ]
+        },
+        {
+          "id": "GHSA-w5j4-x499-pfwp",
+          "cve": "CVE-2026-40524",
+          "repo": "https://github.com/FrontAccountingERP/FA.git",
+          "fix": "647a18196caad27f96ea852e993c9e30f815357f",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "FrontAccounting before 2.4.20 contains a SQL injection vulnerability in the get_gl_transactions() function where the filter_type parameter is concatenated directly into a SQL IN() clause without parameterization. Attackers with SA_GLANALYTIC permission can inject arbitrary SQL by supplying a closing",
+          "scope": [
+            "gl/includes/db",
+            "reporting"
+          ]
+        },
+        {
+          "id": "GHSA-9fmm-h59x-wr53",
+          "cve": "CVE-2026-40521",
+          "repo": "https://github.com/FrontAccountingERP/FA.git",
+          "fix": "701fea6848da4a02fb83d30f07a9c0473d6b7e33",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "FrontAccounting before 2.4.20 contains a path traversal vulnerability in the attachment upload handler that allows authenticated attackers to execute arbitrary code by uploading files with traversal sequences in the unique_name parameter. Attackers can supply path traversal sequences ../../../shell.",
+          "scope": [
+            "includes/ui"
+          ]
+        },
+        {
+          "id": "GHSA-pfvx-ccc8-f3hr",
+          "cve": "CVE-2026-11982",
+          "repo": "https://github.com/getgrav/grav-plugin-api.git",
+          "fix": "b8ca62eddb7dbea92075a78b1c0a507f03d66d4a",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Grav 2.0.0-rc.9 with Admin2 2.0.0-rc.14 contains a stored cross-site scripting (XSS) vulnerability in the Admin2 Pages API save flow.",
+          "scope": [
+            "classes/Api/Controllers"
+          ]
+        },
+        {
+          "id": "GHSA-qrw9-xj5g-qxw8",
+          "cve": "CVE-2026-40455",
+          "repo": "https://github.com/chilek/lms.git",
+          "fix": "4cb30a70e7e3d8a0ea53afa2dbef19d5243d449b",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "An SQL Injection vulnerability exists in LMS (LAN Management System) before commit\u00a04cb30a7\u00a0within the \"tarifflist.php\" module due to insufficient sanitization of the POST \"tg[]\" parameter. The application directly concatenates user-supplied array values into an SQL query using \"implode()\", allowing ",
+          "scope": [
+            "modules"
+          ]
+        },
+        {
+          "id": "GHSA-765c-7qf8-cw9w",
+          "cve": "CVE-2026-40456",
+          "repo": "https://github.com/chilek/lms.git",
+          "fix": "9fcb4de19b7d76394898dbc124252b86b07ac0ed",
+          "cwe": [
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "An OS Command Injection vulnerability exists in LMS (LAN Management System)\u00a0before commit 9fcb4de due to an IP address parameter being passed to the \"exec()\" function without proper validation, allowing attackers to execute arbitrary operating system commands.",
+          "scope": [
+            "modules"
+          ]
+        },
+        {
+          "id": "GHSA-3vrh-xvg4-68rm",
+          "cve": "CVE-2026-40457",
+          "repo": "https://github.com/chilek/lms.git",
+          "fix": "9c5651b39bfd086cc34fc9a78ddaa8c0815af114",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A Reflected Cross-Site Scripting (XSS) vulnerability exists in LMS (LAN Management System)\u00a0before commit 9c5651b in the \"dbrecover.php\" and \"netremap.php\" modules where unsanitized GET parameters are directly embedded into HTML output. This allows an attacker to inject arbitrary JavaScript when an a",
+          "scope": [
+            "modules"
+          ]
+        },
+        {
+          "id": "GHSA-4hg7-5g9q-5922",
+          "cve": "CVE-2026-54393",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "d4733ca5d2fcceb12abc72ec6069f2484e3b8ec2",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A stored cross-site scripting vulnerability exists in MISP when the Overmind theme is used. The setHomePage endpoint previously saved the user-controlled path value through setSettingInternal(), bypassing the normal setSetting() validation logic, including validate_homepage, which requires homepage ",
+          "scope": [
+            "app/Controller",
+            "app/View/News"
+          ]
+        },
+        {
+          "id": "GHSA-9gjj-gmcx-6fhj",
+          "cve": "CVE-2026-10861",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "ae760b7bf534f2798810d59a1f961b31adb3443e",
+          "cwe": [
+            601
+          ],
+          "license": "AGPL-3.0",
+          "summary": "An open redirect vulnerability existed in MISP UsersController::routeafterlogin() because the value stored in the pre_login_requested_url session key was used as the post-login redirect destination without sufficiently enforcing that it was a local application path.",
+          "scope": [
+            "app/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-93rv-mf2v-vv2r",
+          "cve": "CVE-2026-10273",
+          "repo": "https://github.com/php-censor/php-censor.git",
+          "fix": "cd68d102601320bd319d590b75f7652e66f0685f",
+          "cwe": [
+            77
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "A vulnerability was found in php-censor up to 2.1.6. This affects an unknown function of the file src/Model/Build/GitBuild.php of the component Webhook Endpoint. Performing a manipulation of the argument commitId results in os command injection. The attack can be initiated remotely. The exploit has ",
+          "scope": [
+            "src/Model/Build"
+          ]
+        },
+        {
+          "id": "GHSA-pmmv-883q-cfwq",
+          "cve": "CVE-2026-8802",
+          "repo": "https://github.com/opensourcepos/opensourcepos.git",
+          "fix": "def0c27a0e252668df8d942fc31e16d1edfd7323",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability was detected in opensourcepos Open Source Point of Sale up to 3.4.2. This issue affects the function getPicThumb of the file app/Controllers/Items.php. The manipulation of the argument pic_filename results in path traversal. The attack may be launched remotely. The patch is identifie",
+          "scope": [
+            "app/Controllers"
+          ]
+        },
+        {
+          "id": "GHSA-h957-4jfh-qc3p",
+          "cve": "CVE-2026-27760",
+          "repo": "https://github.com/opencats/OpenCATS.git",
+          "fix": "3002a29f4c3cada1aa2c4f3d4ae4e189906606b6",
+          "cwe": [
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "OpenCATS prior to commit 3002a29 contains a PHP code injection vulnerability in the installer AJAX endpoint that allows unauthenticated attackers to execute arbitrary code by injecting PHP statements into the databaseConnectivity action parameter. Attackers can break out of the define() string conte",
+          "scope": [
+            ".",
+            "modules/install/ajax"
+          ]
+        },
+        {
+          "id": "GHSA-w2w8-j4gc-v26q",
+          "cve": "CVE-2026-2426",
+          "repo": "https://github.com/lesterchan/wp-downloadmanager.git",
+          "fix": "d3470a8971d9043438c8aad281cf37d14fefa208",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "The WP-DownloadManager plugin for WordPress is vulnerable to Path Traversal in all versions up to, and including, 1.69 via the 'file' parameter in the file deletion functionality. This is due to insufficient validation of user-supplied file paths, allowing directory traversal sequences. This makes i",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-q7wp-4j7p-g4vj",
+          "cve": "CVE-2026-2419",
+          "repo": "https://github.com/lesterchan/wp-downloadmanager.git",
+          "fix": "416b9f5459496166c0395f9e055d4c4cf872404a",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "The WP-DownloadManager plugin for WordPress is vulnerable to Path Traversal in all versions up to, and including, 1.69 via the 'download_path' configuration parameter. This is due to insufficient validation of the download path setting, which allows directory traversal sequences to bypass the WP_CON",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-vjrq-m6qm-rjgr",
+          "cve": "CVE-2025-13700",
+          "repo": "https://github.com/dreamfactorysoftware/df-core.git",
+          "fix": "404a1783927f95999c71a0ff8f14130d385087fb",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "DreamFactory saveZipFile Command Injection Remote Code Execution Vulnerability. This vulnerability allows remote attackers to execute arbitrary code on affected installations of DreamFactory. Authentication is required to exploit this vulnerability.",
+          "scope": [
+            "src/Components/Package"
+          ]
+        },
+        {
+          "id": "GHSA-w7p3-5r7j-j9pc",
+          "cve": "CVE-2025-66386",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "7f4a0386d38672eddc139f5735d71c3b749623ce",
+          "cwe": [
+            23
+          ],
+          "license": "AGPL-3.0",
+          "summary": "app/Model/EventReport.php in MISP before 2.5.27 allows path traversal in view picture for a site-admin.",
+          "scope": [
+            "app/Model"
+          ]
+        },
+        {
+          "id": "GHSA-x2hm-rp6m-pffv",
+          "cve": "CVE-2025-12092",
+          "repo": "https://github.com/toolstack/cyan-backup.git",
+          "fix": "4a79d23e8ba330b5cb655a083c6a00ef32a7b249",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "The CYAN Backup plugin for WordPress is vulnerable to arbitrary file deletion due to insufficient file path validation in the 'delete' functionality in all versions up to, and including, 2.5.4. This makes it possible for authenticated attackers, with Administrator-level access and above, to delete a",
+          "scope": [
+            "includes"
+          ]
+        },
+        {
+          "id": "GHSA-rqj4-c9gx-xx38",
+          "cve": "CVE-2025-12137",
+          "repo": "https://github.com/importwp/importwp.git",
+          "fix": "94cc524aa0c81be6463a9e8d154b00220e34709c",
+          "cwe": [
+            73
+          ],
+          "license": null,
+          "summary": "The Import WP \u2013 Export and Import CSV and XML files to WordPress plugin for WordPress is vulnerable to Arbitrary File Read in all versions up to, and including, 2.14.16. This is due to the plugin's REST API endpoint accepting arbitrary absolute file paths without proper validation in the 'attach_fil",
+          "scope": [
+            "class/Common/Importer"
+          ]
+        },
+        {
+          "id": "GHSA-4f9c-3v6f-46qp",
+          "cve": "CVE-2025-8081",
+          "repo": "https://github.com/elementor/elementor.git",
+          "fix": "6af3551ee4213fb4003338743e22f41aa2a09c01",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "The Elementor plugin for WordPress is vulnerable to Arbitrary File Read in all versions up to, and including, 3.30.2 via the Import_Images::import() function due to insufficient controls on the filename specified. This makes it possible for authenticated attackers, with administrator-level access an",
+          "scope": [
+            "includes/template-library/classes"
+          ]
+        },
+        {
+          "id": "GHSA-jcmg-5j8j-35mp",
+          "cve": "CVE-2025-8510",
+          "repo": "https://github.com/portabilis/i-educar.git",
+          "fix": "82c288b9a4abb084bdfa1c0c4ef777ed45f98b46",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability classified as problematic has been found in Portabilis i-Educar 2.10. This affects the function Gerar of the file ieducar/intranet/educar_matricula_lst.php. The manipulation of the argument ref_cod_aluno leads to cross site scripting. It is possible to initiate the attack remotely. T",
+          "scope": [
+            "ieducar/intranet"
+          ]
+        },
+        {
+          "id": "GHSA-83qw-mxg2-hgpx",
+          "cve": "CVE-2025-5007",
+          "repo": "https://github.com/Part-DB/Part-DB-server.git",
+          "fix": "2c4f44e808500db19c391159b30cb6142896d415",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A vulnerability was found in Part-DB up to 1.17.0. It has been declared as problematic. Affected by this vulnerability is the function handleUpload of the file src/Services/Attachments/AttachmentSubmitHandler.php of the component Profile Picture Feature. The manipulation of the argument attachment l",
+          "scope": [
+            "src/Services/Attachments"
+          ]
+        },
+        {
+          "id": "GHSA-xjqw-3pxc-hgh8",
+          "cve": "CVE-2024-55093",
+          "repo": "https://github.com/phpipam/phpipam.git",
+          "fix": "d0caaeba885364fd0521f094511c5d7b11f9da8f",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "phpIPAM through 1.7.3 has a reflected Cross-Site Scripting (XSS) vulnerability in the install scripts.",
+          "scope": [
+            "install",
+            "upgrade"
+          ]
+        },
+        {
+          "id": "GHSA-mrh3-5w6m-2g2x",
+          "cve": "CVE-2026-92098",
+          "repo": "https://github.com/coreyt808/webheadcoder-multi-step-forms-for-contact-form-7.git",
+          "fix": "16f71561797b71548021dc9c4e30b0456e718cd3",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "The Webheadcoder Multi-Step Forms for Contact Form 7 plugin for WordPress is vulnerable to Reflected Cross-Site Scripting via the 'l10n_print_after' parameter in all versions up to, and including, 4.7 due to insufficient input sanitization and output escaping. This makes it possible for unauthentica",
+          "scope": [
+            "assets-src/js",
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-xq8g-94p2-h527",
+          "cve": "CVE-2026-116892",
+          "repo": "https://github.com/SemanticMediaWiki/SemanticMediaWiki.git",
+          "fix": "a77e592320707499769c9386a33d97bc966d9418",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "SemanticMediaWiki from 3.1.0 before 7.3.1 contains a reflected cross-site scripting vulnerability that allows unauthenticated attackers to inject markup through the search parameter of the extended Special:Search profile. Attackers can send visitors crafted URLs using the smw profile with SVG event ",
+          "scope": [
+            "src/MediaWiki/Search/ProfileForm"
+          ]
+        },
+        {
+          "id": "GHSA-m4jj-h65f-p4xj",
+          "cve": "CVE-2026-116218",
+          "repo": "https://github.com/Dolibarr/dolibarr.git",
+          "fix": "19991c8ffa9b4fd7338b7ef2585fadb554b86735",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Dolibarr ERP CRM 19.0.0 before 23.0.4 contains an SQL injection vulnerability that allows authenticated API users to inject SQL via the type field of the third-party bankaccounts REST endpoint. Attackers with only societe/creer permission can break out of the unescaped type value in CompanyBankAccou",
+          "scope": [
+            "htdocs/societe/class"
+          ]
+        },
+        {
+          "id": "GHSA-f9fh-3wgw-qrqr",
+          "cve": "CVE-2016-20103",
+          "repo": "https://github.com/CherryFramework/cherry-plugin.git",
+          "fix": "69a3f7be453e0aa87e0312bc939c5891e8feb56a",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cherry Plugin for WordPress before 1.2.7 contains a path traversal vulnerability that allows unauthenticated attackers to download arbitrary files via the 'file' parameter. Attackers can send GET requests to /admin/import-export/download-content.php with traversal sequences like ../../../../../wp-co",
+          "scope": [
+            "admin/import-export"
+          ]
+        },
+        {
+          "id": "GHSA-xq4h-vhg9-4x8m",
+          "cve": "CVE-2026-109221",
+          "repo": "https://github.com/groundhoggwp/groundhogg.git",
+          "fix": "e319e4a849bfbb07cccfbac8558ad6bf07a7fdc0",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "The Groundhogg \u2014 CRM, Newsletters, and Marketing Automation plugin for WordPress is vulnerable to arbitrary file deletion due to insufficient file path validation in the copy_file function in all versions up to, and including, 4.9.3 This makes it possible for authenticated attackers, with Sales Repr",
+          "scope": [
+            "includes/classes/traits",
+            "includes"
+          ]
+        },
+        {
+          "id": "GHSA-2rmx-qf8h-6p5c",
+          "cve": "CVE-2026-105263",
+          "repo": "https://github.com/shaarli/Shaarli.git",
+          "fix": "8ca4de8e7c932a684481f5fbb1229fe16de1f4d2",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "A security flaw has been discovered in Shaarli up to 0.16.3. The affected element is the function MetadataController of the file application/front/controller/admin/MetadataController.php of the component Admin Metadata Endpoint. Performing a manipulation of the argument url results in server-side re",
+          "scope": [
+            "application/front/controller/admin",
+            "application/http",
+            "assets/common/js"
+          ]
+        },
+        {
+          "id": "GHSA-996f-334j-67g7",
+          "cve": "CVE-2026-52838",
+          "repo": "https://github.com/alextselegidis/easyappointments.git",
+          "fix": "629a0415f54f75556c17f4f5d9c77fda1fdbdeae",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Easy!Appointments disable_booking_message rendered as raw HTML on public booking page \u2014 Stored XSS",
+          "scope": [
+            "application/controllers",
+            "application/views/pages"
+          ]
+        },
+        {
+          "id": "GHSA-vcrw-4xvv-jh49",
+          "cve": "CVE-2026-52881",
+          "repo": "https://github.com/mantisbt/mantisbt.git",
+          "fix": "297773fbb238c39a153bd888431b41a176132098",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "MantisBT: Reflected XSS in admin/install.php via unescaped printf ",
+          "scope": [
+            "admin"
+          ]
+        },
+        {
+          "id": "GHSA-9369-69wj-7m2f",
+          "cve": "CVE-2026-52777",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "8f70a8d6b8befa0e644d03c785701dbbc55b8fd0",
+          "cwe": [
+            502
+          ],
+          "license": "AGPL-3.0",
+          "summary": "YesWiki Vulnerable to Authenticated PHP Object Injection in BazarImportAction via unserialize",
+          "scope": [
+            "tools/bazar/actions",
+            "tools/bazar/services",
+            "tools/bazar/templates"
+          ]
+        },
+        {
+          "id": "GHSA-4pf7-cc4r-g63h",
+          "cve": "CVE-2026-52775",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "90ca54fb518e1c43a1ead6e4f5bf9f0389789841",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "YesWiki has Authenticated SQL Injection via ReactionManager ",
+          "scope": [
+            "includes/services"
+          ]
+        },
+        {
+          "id": "GHSA-8f2v-2qhj-gfwg",
+          "cve": "CVE-2026-52771",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "23d3cc124613b9428ab963b31807c08879a9c631",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "YesWiki: Second-Order SQL Injection in Page Delete API via Unescaped Page Tag (`ApiController::deletePage`)",
+          "scope": [
+            "handlers/page",
+            "includes/controllers",
+            "tools/tags/handlers/page"
+          ]
+        },
+        {
+          "id": "GHSA-89v6-j5x6-cmj3",
+          "cve": "CVE-2026-52763",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "5da27474c3ee62270c8a6b9d7055d494cdbd38e5",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "YesWiki: SQL injection via the `recentchanges` action `period` argument leads to arbitrary DB read",
+          "scope": [
+            "actions",
+            "includes/services"
+          ]
+        },
+        {
+          "id": "GHSA-c43v-4cr8-6mvp",
+          "cve": "CVE-2026-56394",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "30f5f1a8d6edf0f3a00be72c42c78d9dc7d72d5c",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS has authenticated path traversal in `assets/icon`, allowing local `.svg` file read",
+          "scope": [
+            "src/helpers"
+          ]
+        },
+        {
+          "id": "GHSA-jvc5-6g7q-c843",
+          "cve": "CVE-2026-48030",
+          "repo": "https://github.com/pheditor/pheditor.git",
+          "fix": "62b43df7cb8956a9b0deb9bec278ca8676c890c5",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Pheditor: OS Command Injection in terminal handler via unsanitized 'dir' parameter",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-x7m9-mwc2-g6w2",
+          "cve": "CVE-2026-45697",
+          "repo": "https://github.com/verbb/formie.git",
+          "fix": "f690d5623163ce2a95da305238d6367575486ee3",
+          "cwe": [
+            94,
+            1336
+          ],
+          "license": "NOASSERTION",
+          "summary": "Formie: Pre-authenticated server-side template injection in Hidden fields",
+          "scope": [
+            "src/fields/formfields"
+          ]
+        },
+        {
+          "id": "GHSA-jrrg-99xh-5j2q",
+          "cve": "CVE-2026-46491",
+          "repo": "https://github.com/simplesamlphp/simplesamlphp-module-casserver.git",
+          "fix": "b84f3e4ed57c4d97e0dc73df102e7eff831a681f",
+          "cwe": [
+            22
+          ],
+          "license": "LGPL-2.1",
+          "summary": "SimpleSAMLphp casserver FileSystemTicketStore path traversal allows out-of-ticket-directory read/unserialize and conditional deletion",
+          "scope": [
+            "src/Cas/Ticket",
+            "src/Controller",
+            "src/Controller/Traits"
+          ]
+        },
+        {
+          "id": "GHSA-p6fr-rxq7-xcg8",
+          "cve": "CVE-2026-44657",
+          "repo": "https://github.com/mantisbt/mantisbt.git",
+          "fix": "26647b2e68ba30b9d7987d4e03d7a16416684bc2",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "MantisBT Vulnerable to Stored XSS in File Download",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-w4rc-p66m-x6qq",
+          "cve": "CVE-2026-42845",
+          "repo": "https://github.com/getgrav/grav-plugin-form.git",
+          "fix": "48bacc4187e1cff815000e526d5ca2878484867f",
+          "cwe": [
+            73
+          ],
+          "license": "MIT",
+          "summary": "Grav Form Plugin has an Anonymous Page Content Overwrite via Form File Upload filename Override",
+          "scope": [
+            "classes"
+          ]
+        },
+        {
+          "id": "GHSA-gc9w-cc93-rjv8",
+          "cve": "CVE-2026-41229",
+          "repo": "https://github.com/froxlor/froxlor.git",
+          "fix": "3589ddf93ab59eb2a8971f0f56cbf6266d03c4ae",
+          "cwe": [
+            94
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Froxlor has a PHP Code Injection via Unescaped Single Quotes in userdata.inc.php Generation (MysqlServer API)",
+          "scope": [
+            "lib/Froxlor",
+            "lib/Froxlor/Api/Commands"
+          ]
+        },
+        {
+          "id": "GHSA-95wr-3f2v-v2wh",
+          "cve": "CVE-2026-41130",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "ebe7e85f1c89700d64332f72492be2e9a594e783",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS has a host header injection leading to SSRF via resource-js endpoint",
+          "scope": [
+            "src/controllers",
+            "src/helpers",
+            "src/web"
+          ]
+        },
+        {
+          "id": "GHSA-875v-7m49-8x88",
+          "cve": "CVE-2026-32271",
+          "repo": "https://github.com/craftcms/commerce.git",
+          "fix": "6d2d24b3a2b0c06593856d05446f82bd8af92d72",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft Commerce has a SQL Injection can lead to Remote Code Execution via TotalRevenue Widget",
+          "scope": [
+            "src/stats",
+            "src/widgets"
+          ]
+        },
+        {
+          "id": "GHSA-6j68-gcc3-mq73",
+          "cve": "CVE-2026-32812",
+          "repo": "https://github.com/Admidio/admidio.git",
+          "fix": "f6b7a966abe4d75e9f707d665d7b4b5570e3185a",
+          "cwe": [
+            918
+          ],
+          "license": "GPL-2.0",
+          "summary": "Admidio Vulnerable to SSRF and Local File Read via Unrestricted URL Fetch in SSO Metadata Endpoint",
+          "scope": [
+            "modules/sso"
+          ]
+        },
+        {
+          "id": "GHSA-fp5j-j7j4-mcxc",
+          "cve": "CVE-2026-31857",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "8d4903647dcfd31b8d40ed027e27082013347a80",
+          "cwe": [
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "CraftCMS has an RCE vulnerability via relational conditionals in the control panel",
+          "scope": [
+            "src/base/conditions"
+          ]
+        },
+        {
+          "id": "GHSA-fvwq-45qv-xvhv",
+          "cve": "CVE-2026-31859",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "cc9921c14897ee2b592a431c2356af8a04ce4cfe",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "CraftCMS vulnerable to reflective XSS via incomplete return URL sanitization",
+          "scope": [
+            "src/web"
+          ]
+        },
+        {
+          "id": "GHSA-m4q3-832v-44j6",
+          "cve": "CVE-2025-14675",
+          "repo": "https://github.com/wpmetabox/meta-box.git",
+          "fix": "08c6511607b9cc9fe8d0de7a7e91c9d5d415f831",
+          "cwe": [
+            22
+          ],
+          "license": null,
+          "summary": "Meta Box Plugin for WordPress: Authenticated (Contributor+) Arbitrary File Deletion via ajax_delete_file",
+          "scope": [
+            "inc"
+          ]
+        },
+        {
+          "id": "GHSA-xfvg-8v67-j7wp",
+          "cve": "CVE-2026-27621",
+          "repo": "https://github.com/TypiCMS/Core.git",
+          "fix": "d480a0be1e8e7c0600bb9a325bb11920ee66497d",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "TypiCMS Core has Stored Cross-Site Scripting (XSS) via SVG File Upload",
+          "scope": [
+            "src/Services"
+          ]
+        },
+        {
+          "id": "GHSA-vxg3-v4p6-f3fp",
+          "cve": "CVE-2026-27461",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "1c3925fbec4895abeb21e5c244a83679c4e4a6f4",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pimcore vulnerable to SQL injection via unsanitized filter value in Dependency Dao RLIKE clause",
+          "scope": [
+            "models/Dependency"
+          ]
+        },
+        {
+          "id": "GHSA-ggxq-2mg9-8966",
+          "cve": "CVE-2026-26045",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "566054ba11f609a6d48d09b32e85d435d49927da",
+          "cwe": [
+            94
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle has a Remote Code Execution risk via file restore",
+          "scope": [
+            "public/repository"
+          ]
+        },
+        {
+          "id": "GHSA-8jr8-7hr4-vhfx",
+          "cve": "CVE-2026-25493",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "0974055634af68998f67850ab2045d8aaa19fa98",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS Vulnerable to SSRF in GraphQL Asset Mutation via HTTP Redirect",
+          "scope": [
+            "src/gql/resolvers/mutations"
+          ]
+        },
+        {
+          "id": "GHSA-m7gw-rffq-rxjm",
+          "cve": "CVE-2026-22254",
+          "repo": "https://github.com/wintercms/winter.git",
+          "fix": "8a7f74b004fcd19721764fc63af0cdb339d9fb65",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Winter CMS has Stored Cross-site Scripting (XSS) in Asset Manager",
+          "scope": [
+            "modules/cms/widgets"
+          ]
+        },
+        {
+          "id": "GHSA-qv78-6gpp-hm68",
+          "cve": "CVE-2025-67852",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "fa1624c8c9e3efa917f0e9d2666bb59d8be2a975",
+          "cwe": [
+            601
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle Open Redirect vulnerability",
+          "scope": [
+            "public/auth/oauth2"
+          ]
+        },
+        {
+          "id": "GHSA-g6w2-q45f-xrp4",
+          "cve": "CVE-2026-23476",
+          "repo": "https://github.com/NeoRazorX/facturascripts.git",
+          "fix": "2afd98cecd26c5f8357e0e321d86063ad1012fc3",
+          "cwe": [
+            79
+          ],
+          "license": "LGPL-3.0",
+          "summary": "FacturaScripts is Vulnerable to Reflected XSS",
+          "scope": [
+            "Core/View/Macro"
+          ]
+        },
+        {
+          "id": "GHSA-2mwc-h2mg-v6p8",
+          "cve": "CVE-2026-21451",
+          "repo": "https://github.com/bagisto/bagisto.git",
+          "fix": "f533b1cd9c80896792da60976179c95573d78b79",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Bagisto has HTML Filter Bypass that Enables Stored XSS",
+          "scope": [
+            "packages/Webkul/Product/src/Repositories"
+          ]
+        },
+        {
+          "id": "GHSA-6mp4-q625-mxjp",
+          "cve": "",
+          "repo": "https://github.com/YOURLS/YOURLS.git",
+          "fix": "b1c6100e0aa6fef58c9c1a394ccc19352c3a480a",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "YOURLS is vulnerable to XSS through JSONP and Callback request parameters",
+          "scope": [
+            "includes"
+          ]
+        },
+        {
+          "id": "GHSA-mgr9-6c2j-jxrq",
+          "cve": "",
+          "repo": "https://github.com/pterodactyl/panel.git",
+          "fix": "1570ff250939b75b3ba8cd03e5025d8293544ed4",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pterodactyl has a Reflected XSS vulnerability in \u201cCreate New Database Host\u201d",
+          "scope": [
+            "app/Models",
+            "resources/views/layouts"
+          ]
+        },
+        {
+          "id": "GHSA-x6vr-q3vf-vqgq",
+          "cve": "CVE-2025-66026",
+          "repo": "https://github.com/redaxo/redaxo.git",
+          "fix": "58929062312cf03e344ab04067a365e6b6ee66aa",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "REDAXO CMS is vulnerable to Reflected XSS in Mediapool Info Banner via args[types]",
+          "scope": [
+            ".tools/psalm",
+            "redaxo/src/addons/mediapool/lib",
+            "redaxo/src/addons/mediapool/pages"
+          ]
+        },
+        {
+          "id": "GHSA-mrmx-jfw8-qhgv",
+          "cve": "CVE-2025-10351",
+          "repo": "https://github.com/melisplatform/melis-cms.git",
+          "fix": "42d36326d9f6400b91db574483add2747af1db21",
+          "cwe": [
+            89
+          ],
+          "license": "OSL-3.0",
+          "summary": "Melis Platform CMS SQL Injection",
+          "scope": [
+            "src/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-hq25-vp56-qr86",
+          "cve": "CVE-2025-45346",
+          "repo": "https://github.com/bacula-web/bacula-web.git",
+          "fix": "ad5d94809f17994a61496ecfec9cd3a16ac14a5f",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "Bacula-web SQL Injection Vulnerability",
+          "scope": [
+            "application/Table"
+          ]
+        },
+        {
+          "id": "GHSA-277f-37gw-9gmq",
+          "cve": "CVE-2025-44163",
+          "repo": "https://github.com/RaspAP/raspap-webgui.git",
+          "fix": "eb53c46c336384d78336b021adea94d9257e1d67",
+          "cwe": [
+            22,
+            23
+          ],
+          "license": "GPL-3.0",
+          "summary": "raspap-webgui has a Directory Traversal vulnerability",
+          "scope": [
+            "ajax/networking"
+          ]
+        },
+        {
+          "id": "GHSA-f6rx-hf55-4255",
+          "cve": "CVE-2025-47778",
+          "repo": "https://github.com/sulu/sulu.git",
+          "fix": "02f52fca04eb9495b9b4a0c5cc64cf23bc27f544",
+          "cwe": [
+            611
+          ],
+          "license": "MIT",
+          "summary": "Sulu vulnerable to XXE in SVG File upload Inspector",
+          "scope": [
+            "src/Sulu/Bundle/MediaBundle/FileInspector"
+          ]
+        },
+        {
+          "id": "GHSA-2f8p-qqx2-gwr2",
+          "cve": "CVE-2025-46349",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "0dac9e2fb2a5e69f13a3c9f761ecae6ed9676206",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "YesWiki Vulnerable to Unauthenticated Reflected Cross-site Scripting",
+          "scope": [
+            "tools/attach/libs"
+          ]
+        },
+        {
+          "id": "GHSA-cg4f-cq8h-3ch8",
+          "cve": "CVE-2025-46350",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "e2603176a4607b83659635a0c517550d4a171cb9",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Yeswiki Vulnerable to Authenticated Reflected Cross-site Scripting",
+          "scope": [
+            "handlers/page"
+          ]
+        },
+        {
+          "id": "GHSA-ggqx-43h2-55jp",
+          "cve": "CVE-2025-46550",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "4e9e51d80cd024ed2ac5c12c820817e6d8c2655a",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Yeswiki Vulnerable to Unauthenticated Reflected Cross-site Scripting",
+          "scope": [
+            "includes/services",
+            "tools/bazar/templates/forms"
+          ]
+        },
+        {
+          "id": "GHSA-f3gw-9ww9-jmc3",
+          "cve": "CVE-2025-32432",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "e1c85441fa47eeb7c688c2053f25419bc0547b47",
+          "cwe": [
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS Allows Remote Code Execution",
+          "scope": [
+            "src/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-w34w-fvp3-68xm",
+          "cve": "CVE-2025-31131",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "f78c915369a60c74ab8f38561ae93a4aaca9b989",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Yeswiki Path Traversal vulnerability allows arbitrary read of files",
+          "scope": [
+            "includes/services"
+          ]
+        },
+        {
+          "id": "GHSA-qjpx-5m2p-5pgh",
+          "cve": "CVE-2025-27617",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "19a8520895484e68fd254773e32476565d91deea",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pimcore Vulnerable to SQL Injection in getRelationFilterCondition",
+          "scope": [
+            "models/DataObject/ClassDefinition/Data/Extension"
+          ]
+        },
+        {
+          "id": "GHSA-26xq-m8xw-6373",
+          "cve": "CVE-2025-48958",
+          "repo": "https://github.com/froxlor/Froxlor.git",
+          "fix": "fde43f80600f1035e1e3d2297411b666d805549a",
+          "cwe": [
+            79
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Froxlor has an HTML Injection Vulnerability",
+          "scope": [
+            "lib/Froxlor/Api/Commands"
+          ]
+        },
+        {
+          "id": "GHSA-8jcm-2rmf-8v5r",
+          "cve": "CVE-2026-124636",
+          "repo": "https://github.com/kevquirk/pureblog.git",
+          "fix": "71f5b0de2ecb2bb2934048ed40e1155c107484e3",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "A security flaw has been discovered in kevquirk PureBlog up to 3.7.2. The affected element is the function save_page of the file includes/lib/content.php of the component Page Editor. Performing a manipulation of the argument page slug results in path traversal. Remote exploitation of the attack is ",
+          "scope": [
+            "admin",
+            "includes/lib"
+          ]
+        },
+        {
+          "id": "GHSA-6vfx-w7q3-42gq",
+          "cve": "CVE-2026-96633",
+          "repo": "https://github.com/adminneo-org/adminneo.git",
+          "fix": "26fcef2f32922629751cbea6c0bb593fbf1e957d",
+          "cwe": [
+            73
+          ],
+          "license": "NOASSERTION",
+          "summary": "AdminNeo SQLite Database-List Drop Arbitrary File Deletion",
+          "scope": [
+            "admin/drivers"
+          ]
+        },
+        {
+          "id": "GHSA-79wv-8rh2-9vp2",
+          "cve": "CVE-2026-96631",
+          "repo": "https://github.com/adminneo-org/adminneo.git",
+          "fix": "aa6f2544a8a65cf5e8317f1a902f74181e136d64",
+          "cwe": [
+            113
+          ],
+          "license": "NOASSERTION",
+          "summary": "AdminNeo has Cookie Attribute Injection via Unsanitized X-Forwarded-Prefix in Set-Cookie Headers",
+          "scope": [
+            "admin/include"
+          ]
+        },
+        {
+          "id": "GHSA-mrvp-7wmx-5m4h",
+          "cve": "CVE-2026-107844",
+          "repo": "https://github.com/contao/contao.git",
+          "fix": "867c055122fdf12220f973f862082037b695b9bd",
+          "cwe": [
+            22
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Contao: Path traversal in the images controller",
+          "scope": [
+            "core-bundle/src/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-pgwp-vc7q-cvj3",
+          "cve": "CVE-2026-56736",
+          "repo": "https://github.com/thorsten/phpMyFAQ.git",
+          "fix": "24b68068747ad632398e3b3bab2989e76e43ef82",
+          "cwe": [
+            79
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ has Stored XSS in Admin FAQ Editor via HTML Entity Bypass in Frontend FAQ Submission",
+          "scope": [
+            "phpmyfaq/assets/templates/admin/content",
+            "phpmyfaq/src/phpMyFAQ/Controller/Frontend/Api"
+          ]
+        },
+        {
+          "id": "GHSA-396x-xmvh-p563",
+          "cve": "CVE-2026-63498",
+          "repo": "https://github.com/grokability/snipe-it.git",
+          "fix": "e929b31f0b183c5810bd2b833c1f6f643cbe5284",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Snipe-IT: Stored XSS via Inline XML Rendering in the Uploaded Files API",
+          "scope": [
+            "app/Helpers",
+            "app/Http/Controllers/Api",
+            "config"
+          ]
+        },
+        {
+          "id": "GHSA-gxrg-x694-283w",
+          "cve": "CVE-2026-73858",
+          "repo": "https://github.com/solspace/craft-freeform.git",
+          "fix": "5f7555320635f1cd3b4c478aa0b58e8c3144313b",
+          "cwe": [
+            1336
+          ],
+          "license": "NOASSERTION",
+          "summary": "Solspace Freeform: Limited Twig template injection via submitted field values",
+          "scope": [
+            "packages/plugin/src/Library/Attributes"
+          ]
+        },
+        {
+          "id": "GHSA-pp4x-ccxq-6r33",
+          "cve": "CVE-2026-82396",
+          "repo": "https://github.com/sulu/sulu.git",
+          "fix": "d061094f5b7bb1d5e974544fce30bede9c7adf8e",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Sulu: Stored XSS via media download inline-disposition override",
+          "scope": [
+            "src/Sulu/Bundle/MediaBundle/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-9x44-4gxf-8c25",
+          "cve": "CVE-2026-55634",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "a4f8c3cfee58b7d5fe4873d67782eff58dae9b9d",
+          "cwe": [
+            89,
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pimcore Vulnerable to Remote Code Execution via DataObject Class-Definition Field Name",
+          "scope": [
+            "models/DataObject/ClassDefinition",
+            "models/DataObject/ClassDefinition/Helper"
+          ]
+        },
+        {
+          "id": "GHSA-w27m-rmmf-g5w4",
+          "cve": "CVE-2026-54348",
+          "repo": "https://github.com/froxlor/froxlor.git",
+          "fix": "a1eaca5a1601c8a30e00814a4fc73ad0c185f89e",
+          "cwe": [
+            89
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Froxlor: Second-Order SQL Injection via `Admins.add` `ipaddress` Parameter Allows Full Database Exfiltration",
+          "scope": [
+            "lib/Froxlor/Api/Commands"
+          ]
+        },
+        {
+          "id": "GHSA-2mhj-fhvg-v428",
+          "cve": "CVE-2026-55072",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "33a0e1887e1e31b4283b016ac5440c35ea5697b4",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pimcore: ClassDefinition UID regex missing end anchor allows SQL injection via Block.php unquoted table name",
+          "scope": [
+            "models/DataObject",
+            "models/DataObject/ClassDefinition/Data"
+          ]
+        },
+        {
+          "id": "GHSA-v7w9-63xh-6r3w",
+          "cve": "CVE-2024-50351",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "6a14a9bd767c6e452e4df77a24126c3eeb93dcbf",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS has a Reflected XSS ('Cross-site Scripting') in librenms/includes/functions.php",
+          "scope": [
+            "includes"
+          ]
+        },
+        {
+          "id": "GHSA-fpg3-c7pp-9cgh",
+          "cve": "CVE-2022-1226",
+          "repo": "https://github.com/phpipam/phpipam.git",
+          "fix": "50e36b9e4fff5eaa51dc6e42bc684748da378002",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A Cross-Site Scripting (XSS) vulnerability in phpipam/phpipam versions prior to 1.4.7 allows attackers to execute arbitrary JavaScript code in the browser of a victim. This vulnerability affects the import Data set feature via a spreadsheet file upload. The affected endpoints include import-vlan-pre",
+          "scope": [
+            "app/admin/import-export"
+          ]
+        },
+        {
+          "id": "GHSA-crcx-wcr8-prj5",
+          "cve": "CVE-2024-41618",
+          "repo": "https://github.com/moneymanagerex/web-money-manager-ex.git",
+          "fix": "f2850b295ee21bc299799343a3bc4d004d05651d",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "Money Manager EX WebApp (web-money-manager-ex) 1.2.2 is vulnerable to SQL Injection in the `transaction_delete_group` function. The vulnerability is due to improper sanitization of user input in the `TrDeleteArr` parameter, which is directly incorporated into an SQL query.",
+          "scope": [
+            "WebApp"
+          ]
+        },
+        {
+          "id": "GHSA-9hfc-v7j8-8744",
+          "cve": "CVE-2024-9007",
+          "repo": "https://github.com/jeanmarc77/123solar.git",
+          "fix": "94bf9ab7ad0ccb7fbdc02f172f37f0e2ea08d48f",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability classified as problematic has been found in jeanmarc77 123solar 1.8.4.5. This affects an unknown part of the file /detailed.php. The manipulation of the argument date1 leads to cross site scripting. It is possible to initiate the attack remotely. The exploit has been disclosed to the",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-4p75-5p53-65m9",
+          "cve": "CVE-2024-45604",
+          "repo": "https://github.com/contao/contao.git",
+          "fix": "63409c6bdfd95197d9906e229d765b630d45742e",
+          "cwe": [
+            22
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Contao affected by directory traversal in the file selector widget",
+          "scope": [
+            "core-bundle/src/Resources/contao/widgets"
+          ]
+        },
+        {
+          "id": "GHSA-296q-rj83-g9rq",
+          "cve": "CVE-2024-47069",
+          "repo": "https://github.com/oveleon/contao-cookiebar.git",
+          "fix": "1d57470be5878f66d5e1e23f624dd387564b9b8d",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Reflected Cross Site-Scripting (XSS) in Oveleon Cookiebar",
+          "scope": [
+            "src/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-qx44-885h-7p56",
+          "cve": "CVE-2024-21515",
+          "repo": "https://github.com/opencart/opencart.git",
+          "fix": "c546199e8f100c1f3797a7a9d3cf4db1887399a2",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross site scripting in opencart",
+          "scope": [
+            "upload/admin/controller/common",
+            "upload/admin/view/template/common"
+          ]
+        },
+        {
+          "id": "GHSA-pj54-fm22-6g5p",
+          "cve": "CVE-2024-31820",
+          "repo": "https://github.com/kirilkirkov/Ecommerce-CodeIgniter-Bootstrap.git",
+          "fix": "d22b54e8915f167a135046ceb857caaf8479c4da",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "An issue in Ecommerce-CodeIgniter-Bootstrap commit v. d22b54e8915f167a135046ceb857caaf8479c4da allows a remote attacker to execute arbitrary code via the getLangFolderForEdit method of the Languages.php component.",
+          "scope": [
+            "application/modules/admin/controllers/advanced_settings",
+            "application/modules/admin/controllers/ecommerce",
+            "application/modules/admin/models"
+          ]
+        },
+        {
+          "id": "GHSA-jh57-j3vq-h438",
+          "cve": "CVE-2024-32480",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "83fe4b10c440d69a47fe2f8616e290ba2bd3a27c",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS vulnerable to a Time-Based Blind SQL injection leads to database extraction",
+          "scope": [
+            "includes/html"
+          ]
+        },
+        {
+          "id": "GHSA-fhcx-f7jg-jx3f",
+          "cve": "CVE-2022-25774",
+          "repo": "https://github.com/mautic/mautic.git",
+          "fix": "e6d58de241b8c34126042dcb314d60eb5fc7b151",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Mautic vulnerable to cross-site scripting in notifications via saving Dashboards",
+          "scope": [
+            "app/bundles/DashboardBundle/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-gfwf-8f5m-89hq",
+          "cve": "CVE-2020-36828",
+          "repo": "https://github.com/codersclub/DiscuzX.git",
+          "fix": "4a9673624f46f7609486778ded9653733020c567",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability was found in DiscuzX up to 3.4-20200818. It has been classified as problematic. Affected is the function show_next_step of the file upload/install/include/install_function.php. The manipulation of the argument uchidden leads to cross site scripting. It is possible to launch the attac",
+          "scope": [
+            "upload/install/include"
+          ]
+        },
+        {
+          "id": "GHSA-2grw-mc9r-822r",
+          "cve": "CVE-2024-28107",
+          "repo": "https://github.com/thorsten/phpMyFAQ.git",
+          "fix": "d0fae62a72615d809e6710861c1a7f67ac893007",
+          "cwe": [
+            89
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ SQL injections at insertentry & saveentry",
+          "scope": [
+            "phpmyfaq/src/phpMyFAQ"
+          ]
+        },
+        {
+          "id": "GHSA-48vw-jpf8-hwqh",
+          "cve": "CVE-2024-28108",
+          "repo": "https://github.com/thorsten/phpMyFAQ.git",
+          "fix": "4fed1d9602f0635260f789fe85995789d94d6634",
+          "cwe": [
+            79
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ Stored HTML Injection at contentLink",
+          "scope": [
+            "phpmyfaq"
+          ]
+        },
+        {
+          "id": "GHSA-qgxx-4xv5-6hcw",
+          "cve": "CVE-2024-27299",
+          "repo": "https://github.com/thorsten/phpMyFAQ.git",
+          "fix": "1b68a5f89fb65996c56285fa636b818de8608011",
+          "cwe": [
+            89
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ SQL Injection at \"Save News\"",
+          "scope": [
+            "phpmyfaq/src/phpMyFAQ"
+          ]
+        },
+        {
+          "id": "GHSA-66c2-p8rh-qx87",
+          "cve": "CVE-2023-44379",
+          "repo": "https://github.com/baserproject/basercms.git",
+          "fix": "18549396e5a9b8294306a54a876af164b0b57da4",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "baserCMS Cross-site Scripting vulnerability in Site search Feature",
+          "scope": [
+            "plugins/BcColumn/templates/element",
+            "plugins/bc-front/templates/plugin/BcSearchIndex/SearchIndexes"
+          ]
+        },
+        {
+          "id": "GHSA-4755-g2xw-m698",
+          "cve": "CVE-2025-26520",
+          "repo": "https://github.com/Cacti/cacti.git",
+          "fix": "7fa60c03ad4a69c701ac6b77c85a8927df7acd51",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cacti through 1.2.29 allows SQL injection in the template function in host_templates.php via the graph_template parameter. NOTE: this issue exists because of an incomplete fix for CVE-2024-54146.",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-x684-96hh-833x",
+          "cve": "CVE-2025-23209",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "e59e22b30c9dd39e5e2c7fe02c147bcbd004e603",
+          "cwe": [
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS has a potential RCE with a compromised security key",
+          "scope": [
+            "src/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-x224-xv84-w37j",
+          "cve": "CVE-2024-13515",
+          "repo": "https://github.com/webzunft/image-source-control.git",
+          "fix": "d1461b886ed2991281c2eb95e98c9b211e737a93",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "The Image Source Control Lite \u2013 Show Image Credits and Captions plugin for WordPress is vulnerable to Reflected Cross-Site Scripting via the 'path' parameter in all versions up to, and including, 2.28.0 due to insufficient input sanitization and output escaping. This makes it possible for unauthenti",
+          "scope": [
+            "admin/assets/js",
+            "admin/templates/settings/preview"
+          ]
+        },
+        {
+          "id": "GHSA-wj23-9h6j-cj83",
+          "cve": "CVE-2025-70797",
+          "repo": "https://github.com/limesurvey/limesurvey.git",
+          "fix": "7eb822a70f553eba2b097abf678ec96918464998",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross Site Scripting vulnerability in Limesurvey v.6.15.20+251021 allows a remote attacker to execute arbitrary code via the Box[title] and box[url] parameters.",
+          "scope": [
+            "application/extensions/SideBarWidget/views",
+            "application/models"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-1",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet. Tainacan GHSA-37g4, deferred unread at PLAN.md step 53, added here.",
+      "cases": [
+        {
+          "id": "GHSA-97v2-f3v8-3cfx",
+          "cve": "CVE-2026-121731",
+          "repo": "https://github.com/francoisjacquet/rosariosis.git",
+          "fix": "1b809f9761b50c3f6faf9e1b2b5f5e74d63509c1",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "RosarioSIS before 12.9 contains a sql injection vulnerability that allows authenticated non-student users, including parents, to inject SQL via the unquoted period_id parameter in StudentSummary.php. Attackers can supply payloads without single quotes into IN() clauses to extract administrator passw",
+          "scope": [
+            "modules/Attendance/includes"
+          ]
+        },
+        {
+          "id": "GHSA-j2m8-rg5v-vvqc",
+          "cve": "CVE-2026-119714",
+          "repo": "https://github.com/joedolson/my-calendar.git",
+          "fix": "de875c25d9651abb041b2dfe32f60a4320c66496",
+          "cwe": [
+            94
+          ],
+          "license": "GPL-3.0",
+          "summary": "My Calendar WordPress plugin 3.8.8 before 3.8.11 contains a shortcode injection vulnerability that allows unauthenticated attackers to execute registered shortcodes via the mcs search parameter. The mcs value reaches mc_search_results() in src/my-calendar-search.php without bracket encoding before d",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-p567-rgff-v7fc",
+          "cve": "CVE-2026-116217",
+          "repo": "https://github.com/francoisjacquet/rosariosis.git",
+          "fix": "08c871da7f9d8478e0e72d104b310b98630fc755",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "RosarioSIS before 12.9.2 contains a reflected cross-site scripting vulnerability in modules/Food_Service/MenuReports.php that allows unauthenticated attackers to inject attributes via unescaped menu_id and modname parameters. Attackers can lure a logged-in administrator to a crafted Modules.php link",
+          "scope": [
+            "modules/Food_Service"
+          ]
+        },
+        {
+          "id": "GHSA-rpw4-h7x3-j495",
+          "cve": "CVE-2026-112299",
+          "repo": "https://github.com/smrealms/smr.git",
+          "fix": "cb402e7f4e70b617b59d8c55dbe926b951ceb4a8",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A vulnerability was determined in smrealms smr up to f40380c017bc35cd8db6ffdb9d4e78bf65b9d43d. Affected is the function isUrlReachable of the file src/pages/Account/AlbumEditProcessor.php of the component Album Website. Executing a manipulation of the argument Website can lead to server-side request",
+          "scope": [
+            "src/pages/Account",
+            "src/lib/Smr"
+          ]
+        },
+        {
+          "id": "GHSA-cwp7-9356-rvxx",
+          "cve": "CVE-2026-108100",
+          "repo": "https://github.com/danielbrendel/hortusfox-web.git",
+          "fix": "c0c0f4057dd8376b63c34028de36c8c6b6288fee",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "HortusFox (hortusfox-web) before 6.2 contains an SQL injection vulnerability that allows API token holders to inject SQL by supplying crafted include_info values to the /api/locations/list endpoint. Attackers can place subqueries in include_info, which PlantsModel::getSpecificInfo() concatenates int",
+          "scope": [
+            "app/models"
+          ]
+        },
+        {
+          "id": "GHSA-4v26-phwj-4v5r",
+          "cve": "CVE-2026-104478",
+          "repo": "https://github.com/getformwork/formwork.git",
+          "fix": "89e7821a6fcee89474cd401b3dde0c1dccb0687f",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Formwork before 2.3.13 contains a path traversal vulnerability in BackupController that allows authenticated panel users to read or delete arbitrary files. Attackers with backup download or delete permission can supply a base64-encoded backslash-separated traversal payload that bypasses PHP basename",
+          "scope": [
+            "formwork/src/Panel/Controllers",
+            "formwork/src/Utils"
+          ]
+        },
+        {
+          "id": "GHSA-37g4-vx3r-j5q5",
+          "cve": "CVE-2025-12746",
+          "repo": "https://github.com/tainacan/tainacan.git",
+          "fix": "8468fb4ec76c709d5ae2852d1fc64986b1dc73cf",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "The Tainacan plugin for WordPress is vulnerable to Reflected Cross-Site Scripting via the 'search' parameter in all versions up to, and including, 1.0.0 due to insufficient input sanitization and output escaping. This makes it possible for unauthenticated attackers to inject arbitrary web scripts in",
+          "scope": [
+            "src/classes/theme-helper"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-2",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-f496-75v4-rv5q",
+          "cve": "CVE-2026-95693",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "9a2a4acfe71eaacfe9305a89483d45772edf16b4",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "In MISP, the EventReport::uploadPicture method in processed a caller-supplied tmp_name field by invoking file_exists(), mime_content_type(), and exif_imagetype() on the supplied path before verifying that the value was a genuine PHP upload via is_uploaded_file(). An authenticated user holding the pe",
+          "scope": [
+            "app/Model"
+          ]
+        },
+        {
+          "id": "GHSA-24x5-fh5v-x5g9",
+          "cve": "CVE-2026-95665",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "ad4ff238df978d459ac6efe0a58038748fa4a649",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP contains a reflected cross-site scripting (XSS) vulnerability in the event REST search export confirmation form. The view template app/View/Events/ajax/eventRestSearchExportConfirmationForm.ctp renders a URL-supplied event ID list into a single-quoted JavaScript string literal using PHP's json_",
+          "scope": [
+            "app/View/Events/ajax"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-3",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-xvw4-236w-442q",
+          "cve": "CVE-2026-40508",
+          "repo": "https://github.com/openemr/openemr.git",
+          "fix": "ba316dd1d8de1291102da3f20f64240729ff899e",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "OpenEMR before 8.3.0 contains a stored cross-site scripting vulnerability in the patient portal template import handler that allows authenticated attackers with Forms Administration permissions to upload template files containing arbitrary HTML or JavaScript. Attackers can inject malicious scripts t",
+          "scope": [
+            "portal",
+            "src/Services/DocumentTemplates"
+          ]
+        },
+        {
+          "id": "GHSA-5fp2-v633-2824",
+          "cve": "CVE-2026-53992",
+          "repo": "https://github.com/projectsend/projectsend.git",
+          "fix": "b4ad95b1bd3d18b23261b7c3496bfbac8ebfe324",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "ProjectSend r2029 contains a reflected cross-site scripting vulnerability in thumbnails-regenerate.php that allows remote attackers to inject arbitrary HTML and JavaScript by supplying unsanitized values in the start_date and end_date GET parameters, which are echoed unescaped into HTML attribute va",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-qfr5-75q5-g2c7",
+          "cve": "CVE-2026-14636",
+          "repo": "https://github.com/kirilkirkov/Ecommerce-CodeIgniter-Bootstrap.git",
+          "fix": "de1c9e73ccf3bd032d9a0525c4752290d959dd8b",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "A weakness has been identified in kirilkirkov Ecommerce-CodeIgniter-Bootstrap up to 23105f25dadf57b4314fc015a63a7c6e910c89df. Impacted is the function do_upload_others_images of the file application/modules/vendor/controllers/AddProduct.php of the component Vendor Image Manager. Executing a manipula",
+          "scope": [
+            "application/modules/vendor/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-r5xq-x4r6-7g6x",
+          "cve": "CVE-2026-14635",
+          "repo": "https://github.com/kirilkirkov/Ecommerce-CodeIgniter-Bootstrap.git",
+          "fix": "2a9497ff11f36e573ad99e1c357ff0e6ded49745",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "A security flaw has been discovered in kirilkirkov Ecommerce-CodeIgniter-Bootstrap up to 222ff31c06687b1c6d0e1ab63953f82c3674c52b. This issue affects some unknown processing of the file application/modules/vendor/controllers/AddProduct.php of the component Vendor Multi-Image Endpoint. Performing a m",
+          "scope": [
+            "application/modules/vendor/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-mv7w-qwqh-w2g9",
+          "cve": "CVE-2026-58451",
+          "repo": "https://github.com/horde/imp.git",
+          "fix": "fba972fab72ee6871e5d56e6390bee38593085de",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "Horde IMP before 7.0.1 contains a path traversal vulnerability in lib/Compose.php that allows authenticated attackers to read arbitrary files from the server filesystem by embedding traversal sequences after a CKEditor path prefix in img src URLs. Attackers can bypass the stripos() prefix validation",
+          "scope": [
+            "lib"
+          ]
+        },
+        {
+          "id": "GHSA-53gc-pj4j-m2pq",
+          "cve": "CVE-2026-54395",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "b865deb036ca82dab272be260798f562034ba9ae",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP contains a reflected cross-site scripting vulnerability in the UiBeta event index view. The urlparams value is inserted into an inline JavaScript handler using HTML escaping inside a single-quoted JavaScript string. Because browsers HTML-decode attribute values before JavaScript parsing, a craf",
+          "scope": [
+            "app/Controller",
+            "app/View/Themed/UiBeta/Events"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-4",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-h2vx-h73q-6q6w",
+          "cve": "CVE-2026-40520",
+          "repo": "https://github.com/FreePBX/api.git",
+          "fix": "5f194e39a47e5481e8947f9694304d32724175f6",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-3.0",
+          "summary": "FreePBX api module version 17.0.8 and prior contain a command injection vulnerability in the initiateGqlAPIProcess() function where GraphQL mutation input fields are passed directly to shell_exec() without sanitization or escaping. An authenticated user with a valid bearer token can send a GraphQL m",
+          "scope": [
+            "."
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-5",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-5 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-6q4c-4x29-76qv",
+          "cve": "CVE-2026-2035",
+          "repo": "https://github.com/opnsense/core.git",
+          "fix": "cb15c935137d05c86a1e6cf12af877e9c32a23af",
+          "cwe": [
+            78
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "Deciso OPNsense diag_backup.php filename Command Injection Remote Code Execution Vulnerability. This vulnerability allows network-adjacent attackers to execute arbitrary code on affected installations of Deciso OPNsense. Authentication is required to exploit this vulnerability.",
+          "scope": [
+            "src/etc/inc",
+            "src/www"
+          ]
+        },
+        {
+          "id": "GHSA-m598-vr3f-944r",
+          "cve": "CVE-2025-11452",
+          "repo": "https://github.com/Asgaros/asgaros-forum.git",
+          "fix": "41e499f26cb534c55587c35496e6f9056753b942",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "The Asgaros Forum plugin for WordPress is vulnerable to SQL Injection via the '$_COOKIE['asgarosforum_unread_exclude']' cookie in all versions up to, and including, 3.1.0 due to insufficient escaping on the user supplied parameter and lack of sufficient preparation on the existing SQL query.  This m",
+          "scope": [
+            ".",
+            "includes"
+          ]
+        },
+        {
+          "id": "GHSA-fvmg-22f6-q6vj",
+          "cve": "CVE-2025-12450",
+          "repo": "https://github.com/litespeedtech/lscache_wp.git",
+          "fix": "3d473f44d37ec2a834162ff1d86c017e9ae67db3",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "The LiteSpeed Cache plugin for WordPress is vulnerable to Reflected Cross-Site Scripting via URLs in all versions up to, and including, 7.5.0.1 due to insufficient input sanitization and output escaping. This makes it possible for unauthenticated attackers to inject arbitrary web scripts in pages th",
+          "scope": [
+            ".",
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-8jqw-6cf4-5pfv",
+          "cve": "CVE-2025-7435",
+          "repo": "https://github.com/LiveHelperChat/lhc-php-resque.git",
+          "fix": "542aa8449b5aa889b3a54f419e794afe19f56d5d",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in LiveHelperChat lhc-php-resque Extension up to ee1270b35625f552425e32a6a3061cd54b5085c4. It has been classified as problematic. This affects an unknown part of the file /site_admin/lhcphpresque/list/ of the component List Handler. The manipulation of the argument queue na",
+          "scope": [
+            "lhcphpresque/design/lhcphpresquetheme/tpl/lhcphpresque",
+            "lhcphpresque/modules/lhlhcphpresque"
+          ]
+        },
+        {
+          "id": "GHSA-6578-p64m-wjxr",
+          "cve": "CVE-2025-52207",
+          "repo": "https://github.com/mikopbx/Core.git",
+          "fix": "3ee785429d3f1b33c9ab387ef4221127c9b8c5f3",
+          "cwe": [
+            23
+          ],
+          "license": "GPL-3.0",
+          "summary": "PBXCoreREST/Controllers/Files/PostController.php in MikoPBX through 2024.1.114 allows uploading a PHP script to an arbitrary directory.",
+          "scope": [
+            "src/PBXCoreREST/Controllers/Files"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-6",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-vgcq-732g-5fp8",
+          "cve": "CVE-2026-124474",
+          "repo": "https://github.com/meeting-room-booking-system/mrbs-code.git",
+          "fix": "83b8253853359964f850208c28036b2bfa202466",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "MRBS (Meeting Room Booking System) before 1.12.3 contains a reflected cross-site scripting vulnerability that allows unauthenticated attackers to inject script via the error parameter of view_entry.php. Attackers can send crafted links to logged-in users to read CSRF tokens, modify or delete booking",
+          "scope": [
+            "web/lib/MRBS"
+          ]
+        },
+        {
+          "id": "GHSA-rw77-vq4g-x3hp",
+          "cve": "CVE-2026-56738",
+          "repo": "https://github.com/thorsten/phpMyFAQ.git",
+          "fix": "d56ef5d75c3c007de095bc4c13b470c7ac783f0f",
+          "cwe": [
+            89
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ has SQL Injection in `StopWords::add()` \u2014 Unescaped Stop Word Insertion",
+          "scope": [
+            "phpmyfaq/src/phpMyFAQ"
+          ]
+        },
+        {
+          "id": "GHSA-jg26-q8hg-3pq4",
+          "cve": "CVE-2026-92692",
+          "repo": "https://github.com/sulu/sulu.git",
+          "fix": "d19c01487af8c3de2fb3aa145856707a6367392c",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Sulu: JCR-SQL2 injection via `categories` query parameter (unauthenticated)",
+          "scope": [
+            "src/Sulu/Component/Content/SmartContent"
+          ]
+        },
+        {
+          "id": "GHSA-g4c3-4g96-6g4m",
+          "cve": "CVE-2026-45140",
+          "repo": "https://github.com/chamilo/chamilo-lms.git",
+          "fix": "4bdba1b9a8820bd70c0809317775d7f6eaa79844",
+          "cwe": [
+            22,
+            94
+          ],
+          "license": "GPL-3.0",
+          "summary": "Chamilo LMS CStudio upload flow allows unauthenticated remote code execution",
+          "scope": [
+            "public/plugin/CStudio/editor/import-project/inc",
+            "public/plugin/CStudio/editor/import-project/js"
+          ]
+        },
+        {
+          "id": "GHSA-xr9m-gphc-9p63",
+          "cve": "CVE-2026-55469",
+          "repo": "https://github.com/grokability/snipe-it.git",
+          "fix": "abc4363e8393b29a5566b8c50144426af72bbc97",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Snipe-IT has a path traversal vulnerability via CSV import `image` field",
+          "scope": [
+            "app/Http/Controllers/Assets",
+            "app/Importer"
+          ]
+        },
+        {
+          "id": "GHSA-hq84-x37p-j6q5",
+          "cve": "",
+          "repo": "https://github.com/wintercms/winter.git",
+          "fix": "1b6397654124fb44a6abf6f3782b6a1d746cef14",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Winter: Reflected XSS through the search query parameter in the backend Table widget",
+          "scope": [
+            "modules/backend/widgets/table/partials"
+          ]
+        },
+        {
+          "id": "GHSA-59xm-4m8c-g3xj",
+          "cve": "CVE-2026-55224",
+          "repo": "https://github.com/mineadmin/MineAdmin.git",
+          "fix": "ca41902a2a5422676227e5088f4cc1dec06044f1",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "MineAdmin Vulnerable to Path Traversal via Unsanitized identifier in Plugin Install/Uninstall",
+          "scope": [
+            "plugin/mine-admin/app-store/src/Controller",
+            "plugin/mine-admin/app-store/src/Service"
+          ]
+        },
+        {
+          "id": "GHSA-m7jc-g4rc-jmvh",
+          "cve": "CVE-2026-32593",
+          "repo": "https://github.com/wintercms/winter.git",
+          "fix": "50713de95adf5298536d93f4d999652525d36d43",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Winter: SQL Injection in Backend Filter Widget numberrange Scope via numbersFromAjax",
+          "scope": [
+            "modules/backend/widgets"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-7",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-vx89-p3j7-8xqc",
+          "cve": "CVE-2026-71435",
+          "repo": "https://github.com/statamic/cms.git",
+          "fix": "4ad1335e818a67249d0617f0f167a1198fb96a2c",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Statamic: Stored Cross-Site Scripting in Automagic Form Notification Email Template",
+          "scope": [
+            "resources/views/forms"
+          ]
+        },
+        {
+          "id": "GHSA-qg78-vmvc-fhjw",
+          "cve": "CVE-2026-52770",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "f3b0dd093a7ace47dc29a515faeb02635baceae2",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "YesWiki: SQL Injection possible through public Bazar entry-listing APIs via numeric `query`/`queries` filters",
+          "scope": [
+            "tools/bazar/services"
+          ]
+        },
+        {
+          "id": "GHSA-r2f4-ff2p-xc64",
+          "cve": "CVE-2026-5394",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "6df625ff74015dc11f4bbe76170ce45bbd5dd61d",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pimcore Platform - SQL Injection in DataObject composite index handling during class definition import/save",
+          "scope": [
+            "models/DataObject",
+            "models/DataObject/Traits"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-8",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-6jh4-47v2-4g37",
+          "cve": "CVE-2026-40598",
+          "repo": "https://github.com/mantisbt/mantisbt.git",
+          "fix": "b1ebc57763f104eb5f541b7b4d1ce6948168abd9",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "MantisBT has Potential Referer-Based Reflected HTML Injection / XSS in Tag Update Page",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-3m9m-24vh-39wx",
+          "cve": "CVE-2026-41129",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "d20aecfaa0eae076c4154be3b17e1f9fa05ce46f",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "Server-Side Request Forgery (SSRF) in Craft CMS with Asset Uploads Mutations",
+          "scope": [
+            "src/gql/resolvers/mutations"
+          ]
+        },
+        {
+          "id": "GHSA-2fr7-cc4f-wh98",
+          "cve": "CVE-2026-35168",
+          "repo": "https://github.com/devcode-it/openstamanager.git",
+          "fix": "43970676bcd6636ff8663652fd82579f737abb74",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "OpenSTAManager: SQL Injection via Aggiornamenti Module",
+          "scope": [
+            "modules/aggiornamenti"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-9",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-472v-j2g4-g9h2",
+          "cve": "CVE-2026-32262",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "c997efbe4c66c14092714233aeebff15cdbfcf11",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS has a Path Traversal Vulnerability in AssetsController",
+          "scope": [
+            "src/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-g7j6-fmwx-7vp8",
+          "cve": "CVE-2026-31858",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "e1a3dd669ae31491b86ad996e88a1d30d33d9a42",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "CraftCMS's `ElementSearchController` Affected by Blind SQL Injection",
+          "scope": [
+            "src/controllers"
+          ]
+        },
+        {
+          "id": "GHSA-fqx6-693c-f55g",
+          "cve": "CVE-2026-27016",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "3bea263e02441690c01dea7fa3fe6ffec94af335",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS has a Stored XSS in Custom OID - unit parameter missing strip_tags()",
+          "scope": [
+            "includes/html/forms"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-10",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-5 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-x27p-wfqw-hfcc",
+          "cve": "CVE-2025-68437",
+          "repo": "https://github.com/craftcms/cms.git",
+          "fix": "013db636fdb38f3ce5657fd196b6d952f98ebc52",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "Craft CMS vulnerable to Server-Side Request Forgery (SSRF) via GraphQL Asset Upload Mutation",
+          "scope": [
+            "src/gql/resolvers/mutations"
+          ]
+        },
+        {
+          "id": "GHSA-c89f-8g7g-59wj",
+          "cve": "CVE-2025-68614",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "ebe6c79bf4ce0afeb575c1285afe3934e44001f1",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS Alert Rule API Cross-Site Scripting Vulnerability",
+          "scope": [
+            "includes/html",
+            "includes/html/modal"
+          ]
+        },
+        {
+          "id": "GHSA-424m-fj2q-g7vg",
+          "cve": "CVE-2025-66468",
+          "repo": "https://github.com/aimeos/ai-cms-grapesjs.git",
+          "fix": "2214f71ac27cdea25f11c8adf6bb5816db47a042",
+          "cwe": [
+            79
+          ],
+          "license": "LGPL-2.1",
+          "summary": "Aimeos GrapesJS CMS extension has possible stored XSS that's exploitable by authenticated editors",
+          "scope": [
+            "src/Admin/JQAdm/Cms/Content"
+          ]
+        },
+        {
+          "id": "GHSA-46v4-5mc8-q2cf",
+          "cve": "CVE-2025-57407",
+          "repo": "https://github.com/gp247net/core.git",
+          "fix": "e9848706b41d835ca3d668cb1554650403e86da1",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "GP247 and S-Cart have a stored cross-site scripting (XSS) vulnerability",
+          "scope": [
+            "src/Controllers",
+            "src/Middleware"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-11",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-6 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-24wv-6c99-f843",
+          "cve": "CVE-2025-49132",
+          "repo": "https://github.com/pterodactyl/panel.git",
+          "fix": "24c82b0e335fb5d7a844226b08abf9f176e592f0",
+          "cwe": [
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pterodactyl Panel Allows Unauthenticated Arbitrary Remote Code Execution",
+          "scope": [
+            "app/Http/Controllers/Base",
+            "app/Http/Requests/Base"
+          ]
+        },
+        {
+          "id": "GHSA-r9gv-qffm-xw6f",
+          "cve": "CVE-2025-46549",
+          "repo": "https://github.com/YesWiki/yeswiki.git",
+          "fix": "107d43056adebaa0c731230f9fd010898e88f3f5",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Yeswiki Vulnerable to Unauthenticated Reflected Cross-site Scripting",
+          "scope": [
+            "tools/bazar/actions"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-12",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-rg56-94j7-hjx9",
+          "cve": "CVE-2025-26533",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "1310e64699807ead6c38ee89354ac57c503c2836",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle has a SQL injection risk in course search module list filter",
+          "scope": [
+            "course/classes"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-13",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-28p7-f6h6-3jh3",
+          "cve": "CVE-2024-51496",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "aef739a438ffb507e927a4ec87b359164a7a053a",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS has a Reflected XSS ('Cross-site Scripting') in librenms/includes/html/pages/wireless.inc.php",
+          "scope": [
+            "includes/html/pages"
+          ]
+        },
+        {
+          "id": "GHSA-hjgc-jxjc-8v9j",
+          "cve": "CVE-2024-43439",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "c7d9026715a107ee16b9f9b2134ed4e6f667af99",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle reflected XSS via H5P error message",
+          "scope": [
+            "h5p/templates"
+          ]
+        },
+        {
+          "id": "GHSA-m2m3-8mcw-w486",
+          "cve": "CVE-2024-41347",
+          "repo": "https://github.com/jpatokal/openflights.git",
+          "fix": "36733f430b11a78404457a5dfc295ab1182292c0",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "openflights commit 5234b5b is vulnerable to Cross-Site Scripting (XSS) via php/settings.php",
+          "scope": [
+            "php"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-14",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-r96m-mwvr-946h",
+          "cve": "CVE-2024-37384",
+          "repo": "https://github.com/roundcube/roundcubemail.git",
+          "fix": "cde4522c5c95f13c6aeeb1600ab17e5067a536f7",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Roundcube Webmail before 1.5.7 and 1.6.x before 1.6.7 allows XSS via list columns from user preferences.",
+          "scope": [
+            "program/actions/mail"
+          ]
+        },
+        {
+          "id": "GHSA-hv2j-6654-x74q",
+          "cve": "CVE-2024-34051",
+          "repo": "https://github.com/Dolibarr/dolibarr.git",
+          "fix": "3a3ccc253b8eceddee84f158b2c262a4033b9402",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Reflected Cross-Site Scripting (XSS) in Dolibarr",
+          "scope": [
+            "htdocs/accountancy/admin",
+            "htdocs/compta/paiement"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-15",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-2pg6-vw9c-qhjv",
+          "cve": "CVE-2024-33670",
+          "repo": "https://github.com/passbolt/passbolt_api.git",
+          "fix": "5c537849040990086dcd5013b5bb009e1dad3fb6",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Passbolt API allows HTML injection",
+          "scope": [
+            "templates/Error"
+          ]
+        },
+        {
+          "id": "GHSA-cwx6-cx7x-4q34",
+          "cve": "CVE-2024-32461",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "d29201fce134347f891102699fbde7070debee33",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS vulnerable to SQL injection time-based leads to database extraction",
+          "scope": [
+            "includes/html/pages/search"
+          ]
+        },
+        {
+          "id": "GHSA-vqhg-mqww-h64x",
+          "cve": "CVE-2020-25730",
+          "repo": "https://github.com/ZoneMinder/zoneminder.git",
+          "fix": "9268db14a79c4ccd444c2bf8d24e62b13207b413",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross Site Scripting (XSS) vulnerability in ZoneMinder before version 1.34.21, allows remote attackers execute arbitrary code, escalate privileges, and obtain sensitive information via PHP_SELF component in classic/views/download.php.",
+          "scope": [
+            "web/skins/classic/views"
+          ]
+        },
+        {
+          "id": "GHSA-mmh6-5cpf-2c72",
+          "cve": "CVE-2024-29196",
+          "repo": "https://github.com/thorsten/phpMyFAQ.git",
+          "fix": "7ae2559f079cd5fc9948b6fdfb87581f93840f62",
+          "cwe": [
+            22
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ Path Traversal in Attachments",
+          "scope": [
+            "phpmyfaq/admin"
+          ]
+        },
+        {
+          "id": "GHSA-9q37-6mpp-rv7v",
+          "cve": "CVE-2024-28662",
+          "repo": "https://github.com/Piwigo/Piwigo.git",
+          "fix": "5069610aaeb1da6d96d389651a5ba9b38690c580",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "A Cross Site Scripting vulnerability exists in Piwigo before 14.3.0 script because of missing sanitization in create_tag in admin/include/functions.php.",
+          "scope": [
+            "admin/include"
+          ]
+        },
+        {
+          "id": "GHSA-jjxq-m8h3-4vw5",
+          "cve": "CVE-2024-26128",
+          "repo": "https://github.com/baserproject/basercms.git",
+          "fix": "18f426d63e752b4d22c40e9ea8d1f6e692ef601c",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "baserCMS Cross-site Scripting vulnerability in Content Management",
+          "scope": [
+            "plugins/baser-core/src/View/Helper"
+          ]
+        },
+        {
+          "id": "GHSA-mhh5-gvh7-h426",
+          "cve": "CVE-2019-25159",
+          "repo": "https://github.com/mpedraza2020/IESMONTEROSOINTRANET.git",
+          "fix": "678190bee1dfd64b54a2b0e88abfd009e78adce8",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability was found in mpedraza2020 Intranet del Monterroso up to 4.50.0. It has been classified as critical. This affects an unknown part of the file config/cargos.php. The manipulation of the argument dni_profe leads to sql injection. Upgrading to version 4.51.0 is able to address this issue",
+          "scope": [
+            "config"
+          ]
+        }
+      ]
     }
   ]
 }
