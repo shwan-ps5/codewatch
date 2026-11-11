@@ -1768,3 +1768,13 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     whether Semgrep gave up); `devtools.py bench` writes them to $CODEWATCH_BENCH_TIMINGS, nightly.sh keeps them as
     DATE/timings.tsv and adds a "== time" section to the summary (`devtools.py timings`: per suite, per analyzer,
     the slowest scans, the cases whose time moved by half or more since the previous night, the slowest apps).
+    One case timed at both commits (pgAdmin GHSA-g73c, 4,726 files, 2-3 of them scored; one CPU): 969 s at
+    3cea097 (the 2026-11-04 run's code) and 1,480 s now. Semgrep is about 95% of it (846 s then, 1,372 s now; every
+    other analyzer together about 40 s a side), and it now gives up on 2 files where it gave up on none. Its time
+    is the summary rounds over the whole package (summaries, passes, returners, fields), which this week's
+    cross-file work made heavier; only the final pass is limited to the scored files. So restricting the
+    single-file analyzers would save nothing worth having. Next, once the "== time" section confirms the case is
+    typical: limit the summary rounds to the scored files, the modules they import (transitively) and the modules
+    importing them. The risk is code reached without an import (handlers registered by name, plugin hooks), so
+    the gate is every non-blind pair scanned both ways with identical scores before it is switched on. Reusing a
+    night's results when a suite's inputs haven't changed (step 63) comes after that.
