@@ -805,6 +805,34 @@ def test_import_resolution_for_summaries():
     assert not visible("mods/web/server.py", {"mods/other/logs.py"}, texts.get)
 
 
+def test_summary_rounds_limited_to_what_the_focus_imports(tmp_path, monkeypatch):
+    from core.analyzers.base import Context
+    from core.analyzers.summaries import import_closure
+
+    texts = {"pkg/views.py": "from .helpers import load\n", "pkg/helpers.py": "from pkg.deep import fetch\n",
+             "pkg/deep.py": "import os\n", "pkg/unrelated.py": "from .helpers import load\n",
+             "mods/web/server.py": "from dagster._core.logs import Manager\n",
+             "mods/dagster/dagster/_core/logs.py": "", "web/a.ts": "import { q } from './lib/db'\n",
+             "web/lib/db.ts": "", "web/other.ts": ""}
+    # Transitively through helpers, not the module that imports helpers too, nor seeds outside the targets.
+    assert import_closure(set(texts), {"pkg/views.py", "gone.py"}, texts.get) == {
+        "pkg/views.py", "pkg/helpers.py", "pkg/deep.py"}
+    assert import_closure(set(texts), {"mods/web/server.py", "web/a.ts"}, texts.get) == {
+        "mods/web/server.py", "mods/dagster/dagster/_core/logs.py", "web/a.ts", "web/lib/db.ts"}
+    # Only with a focus and the switch on (PLAN step 64).
+    for rel, text in texts.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text)
+    ctx = Context(tmp_path, sorted(texts), focus=["pkg/views.py"])
+    targets = [str(tmp_path / rel) for rel in sorted(texts)]
+    assert Semgrep.summary_targets(ctx, targets, {}) == targets
+    monkeypatch.setenv("CODEWATCH_SUMMARY_SCOPE", "imports")
+    assert Semgrep.summary_targets(ctx, targets, {}) == [str(tmp_path / f"pkg/{m}.py") for m in ("deep", "helpers",
+                                                                                                    "views")]
+    ctx.focus = None
+    assert Semgrep.summary_targets(ctx, targets, {}) == targets
+
+
 def test_weak_hash_is_a_vulnerability_only_where_it_protects_something(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")

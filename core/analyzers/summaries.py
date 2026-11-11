@@ -642,6 +642,35 @@ def visible(path, defining_paths, read_text):
     return any(defining.endswith(tuple(f"/{m}" for m in modules)) for defining in defining_paths) if modules else False
 
 
+def import_closure(paths, seeds, read_text):
+    """seeds plus every file among paths that they import, transitively, resolved as visible() does (relative and
+    every-ancestor-root imports, package-qualified absolute imports under another folder, relative JS imports).
+    The summary rounds need only these when findings are scored in seeds alone: a function reached from a seed is
+    defined in a file the seed imports, directly or through others (step 64). Code reached without an import
+    (handlers registered by name, plugin hooks) is what this can miss."""
+    known = set(paths)
+    by_suffix = {}
+    for path in known:
+        if path.endswith(".py"):
+            parts = path.split("/")
+            for k in range(1, len(parts)):
+                by_suffix.setdefault("/".join(parts[-k:]), []).append(path)
+    found = {s for s in seeds if s in known}
+    todo = list(found)
+    while todo:
+        path = todo.pop()
+        text = read_text(path) or ""
+        if path.endswith(".py"):
+            targets = {Path(p).as_posix().removeprefix("./") for p in python_imports(path, text)}
+            targets |= {d for m in set(python_absolute_modules(text)) for d in by_suffix.get(m, ())}
+        else:
+            targets = set(js_imports(path, text))
+        for target in (targets & known) - found:
+            found.add(target)
+            todo.append(target)
+    return found
+
+
 def returner_rules(rules, returners=None, base=True):
     """Pass 3: every taint rule with `return` as its sink, reporting the function that returns request data.
 

@@ -129,17 +129,18 @@ class Semgrep(Analyzer):
         self.timeouts, self.first_found = set(), []
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
+            near = self.summary_targets(ctx, targets, originals)
             # The first round of pass_rules shares pass 1's first scan.
-            signatures = self.signatures(ctx, targets)
-            js_functions = self.js_functions(ctx, targets)
+            signatures = self.signatures(ctx, near)
+            js_functions = self.js_functions(ctx, near)
             self.first_rules = (summaries_module.pass_rules(custom_rules, set(signatures))
                                 + summaries_module.js_pass_rules(custom_rules, js_functions))
-            summaries, hits = self.summarise(ctx, custom_rules, targets, originals, Path(work))
-            passes = self.find_passes(ctx, custom_rules, (targets, originals, Path(work)), signatures)
-            summaries, hits = self.resummarise(ctx, custom_rules, (targets, originals, Path(work)),
+            summaries, hits = self.summarise(ctx, custom_rules, near, originals, Path(work))
+            passes = self.find_passes(ctx, custom_rules, (near, originals, Path(work)), signatures)
+            summaries, hits = self.resummarise(ctx, custom_rules, (near, originals, Path(work)),
                                                (summaries, hits), (signatures, js_functions, passes))
             returners, fields = self.find_returners(
-                ctx, summaries_module.with_arguments(custom_rules, signatures, passes), targets, originals, Path(work))
+                ctx, summaries_module.with_arguments(custom_rules, signatures, passes), near, originals, Path(work))
             final = summaries_module.with_pass_through(
                 summaries_module.with_arguments(custom_rules, signatures, passes, summaries),
                 {False: set(signatures), True: js_functions}, passes, summaries, returners)
@@ -214,6 +215,18 @@ class Semgrep(Analyzer):
         result.findings = [f for f in result.findings if not (derived(f) and (f.rule, f.path, f.line) in direct)]
         result.findings += self.uncalled_entry_points(ctx, custom_rules, hits, result.findings)
         return result
+
+    @staticmethod
+    def summary_targets(ctx, targets, originals):
+        """The targets the summary rounds scan: all of them, or with a focus and CODEWATCH_SUMMARY_SCOPE=imports,
+        the focus files and what they import (summaries.import_closure). Off by default until every non-blind
+        pair scores the same both ways (PLAN step 64)."""
+        if ctx.focus is None or os.environ.get("CODEWATCH_SUMMARY_SCOPE") != "imports":
+            return targets
+        rels = {t: ctx.rel(originals.get(t, t)) for t in targets}
+        near = summaries_module.import_closure(set(rels.values()), ctx.focus,
+                                               lambda rel: read_source(ctx.root / rel))
+        return [t for t in targets if rels[t] in near]
 
     def uncalled_entry_points(self, ctx, custom_rules, hits, findings):
         """A parameter that reaches a sink in a function nothing in the project calls: the data comes from
