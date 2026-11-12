@@ -218,10 +218,10 @@ class Semgrep(Analyzer):
 
     @staticmethod
     def summary_targets(ctx, targets, originals):
-        """The targets the summary rounds scan: all of them, or with a focus and CODEWATCH_SUMMARY_SCOPE=imports,
-        the focus files and what they import (summaries.import_closure). Off by default until every non-blind
-        pair scores the same both ways (PLAN step 64)."""
-        if ctx.focus is None or os.environ.get("CODEWATCH_SUMMARY_SCOPE") != "imports":
+        """The targets the summary rounds scan: with a focus, the focus files and what they import
+        (summaries.import_closure; PLAN step 64), otherwise all of them. CODEWATCH_SUMMARY_SCOPE=all scans all
+        of them anyway, to compare the two."""
+        if ctx.focus is None or os.environ.get("CODEWATCH_SUMMARY_SCOPE") == "all":
             return targets
         rels = {t: ctx.rel(originals.get(t, t)) for t in targets}
         near = summaries_module.import_closure(set(rels.values()), ctx.focus,

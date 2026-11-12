@@ -813,22 +813,28 @@ def test_summary_rounds_limited_to_what_the_focus_imports(tmp_path, monkeypatch)
              "pkg/deep.py": "import os\n", "pkg/unrelated.py": "from .helpers import load\n",
              "mods/web/server.py": "from dagster._core.logs import Manager\n",
              "mods/dagster/dagster/_core/logs.py": "", "web/a.ts": "import { q } from './lib/db'\n",
-             "web/lib/db.ts": "", "web/other.ts": ""}
+             "web/lib/db.ts": "", "web/other.ts": "",
+             "site/settings.py": 'ROOT_URLCONF = "site.urls"\nMIDDLEWARE = ["site.middleware.Check"]\n',
+             "site/urls.py": "", "site/middleware.py": "", "site/unused.py": ""}
     # Transitively through helpers, not the module that imports helpers too, nor seeds outside the targets.
     assert import_closure(set(texts), {"pkg/views.py", "gone.py"}, texts.get) == {
         "pkg/views.py", "pkg/helpers.py", "pkg/deep.py"}
     assert import_closure(set(texts), {"mods/web/server.py", "web/a.ts"}, texts.get) == {
         "mods/web/server.py", "mods/dagster/dagster/_core/logs.py", "web/a.ts", "web/lib/db.ts"}
-    # Only with a focus and the switch on (PLAN step 64).
+    # Modules named in dotted strings are loaded without an import: a module, or a name inside one.
+    assert import_closure(set(texts), {"site/settings.py"}, texts.get) == {
+        "site/settings.py", "site/urls.py", "site/middleware.py"}
+    # Only with a focus, unless switched off (PLAN step 64).
     for rel, text in texts.items():
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).write_text(text)
     ctx = Context(tmp_path, sorted(texts), focus=["pkg/views.py"])
     targets = [str(tmp_path / rel) for rel in sorted(texts)]
-    assert Semgrep.summary_targets(ctx, targets, {}) == targets
-    monkeypatch.setenv("CODEWATCH_SUMMARY_SCOPE", "imports")
     assert Semgrep.summary_targets(ctx, targets, {}) == [str(tmp_path / f"pkg/{m}.py") for m in ("deep", "helpers",
                                                                                                     "views")]
+    monkeypatch.setenv("CODEWATCH_SUMMARY_SCOPE", "all")
+    assert Semgrep.summary_targets(ctx, targets, {}) == targets
+    monkeypatch.delenv("CODEWATCH_SUMMARY_SCOPE")
     ctx.focus = None
     assert Semgrep.summary_targets(ctx, targets, {}) == targets
 

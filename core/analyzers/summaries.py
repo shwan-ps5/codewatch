@@ -642,18 +642,34 @@ def visible(path, defining_paths, read_text):
     return any(defining.endswith(tuple(f"/{m}" for m in modules)) for defining in defining_paths) if modules else False
 
 
+DOTTED_STRING_RE = re.compile(r"""["']([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)(?::\w+)?["']""")
+
+
+def python_string_modules(text):
+    """Module files named in a dotted string: what's loaded without an import statement, such as Django's
+    MIDDLEWARE and ROOT_URLCONF, include("app.urls"), importlib.import_module("pkg.mod") and entry points
+    ("pkg.mod:func"). The string may end in a name inside the module, so its parent is tried too."""
+    for match in DOTTED_STRING_RE.finditer(text):
+        parts = match.group(1).split(".")
+        for stem in ("/".join(parts), "/".join(parts[:-1])):
+            if "/" in stem:
+                yield f"{stem}.py"
+                yield f"{stem}/__init__.py"
+
+
 def import_closure(paths, seeds, read_text):
     """seeds plus every file among paths that they import, transitively, resolved as visible() does (relative and
     every-ancestor-root imports, package-qualified absolute imports under another folder, relative JS imports).
     The summary rounds need only these when findings are scored in seeds alone: a function reached from a seed is
-    defined in a file the seed imports, directly or through others (step 64). Code reached without an import
-    (handlers registered by name, plugin hooks) is what this can miss."""
+    defined in a file the seed imports, directly or through others (step 64). Modules named in dotted strings
+    count as imported (python_string_modules); what this can still miss is code reached by neither, such as a
+    method called on an object whose class comes from a module nobody here imports."""
     known = set(paths)
     by_suffix = {}
     for path in known:
         if path.endswith(".py"):
             parts = path.split("/")
-            for k in range(1, len(parts)):
+            for k in range(1, len(parts) + 1):
                 by_suffix.setdefault("/".join(parts[-k:]), []).append(path)
     found = {s for s in seeds if s in known}
     todo = list(found)
@@ -662,7 +678,8 @@ def import_closure(paths, seeds, read_text):
         text = read_text(path) or ""
         if path.endswith(".py"):
             targets = {Path(p).as_posix().removeprefix("./") for p in python_imports(path, text)}
-            targets |= {d for m in set(python_absolute_modules(text)) for d in by_suffix.get(m, ())}
+            targets |= {d for m in set(python_absolute_modules(text)) | set(python_string_modules(text))
+                        for d in by_suffix.get(m, ())}
         else:
             targets = set(js_imports(path, text))
         for target in (targets & known) - found:
