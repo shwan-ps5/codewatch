@@ -1778,3 +1778,27 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     importing them. The risk is code reached without an import (handlers registered by name, plugin hooks), so
     the gate is every non-blind pair scanned both ways with identical scores before it is switched on. Reusing a
     night's results when a suite's inputs haven't changed (step 63) comes after that.
+65. **Summary rounds limited to the focus and its imports, on by default** (2026-11-12, commits d81d3ba, 97e742c).
+    With a focus (benchmark pairs), Semgrep's summary, pass, resummary and returner rounds scan only the focus
+    files (the changed files, their render calls and the changed modules' importers) and the project files they
+    import, transitively (`summaries.import_closure`, resolved as `visible()` is). Modules named in dotted strings
+    (ROOT_URLCONF, MIDDLEWARE, `include()`, `import_module()`, entry points) count as imported, for the risk step 64
+    named. `CODEWATCH_SUMMARY_SCOPE=all` scans every file again, to compare. App scans have no focus and are
+    unchanged. Across the non-blind Python pairs the closure keeps 7,155 of 31,939 Python files; the dotted
+    strings add 335 of them (mlflow's lazy `import_module("mlflow...")` loads most). A depth limit was measured
+    and dropped: mlflow GHSA-wqmh keeps 916 of 958 files at three imports deep (the summary rounds' MAX_DEPTH),
+    and the other slow cases are already small. Same idea elsewhere: Infer's reactive mode (changed code and its
+    dependencies), CodeQL's diff-informed analysis (alerts limited to changed lines, filtered again afterwards, as
+    the scorer does), demanded summarization (TOPLAS 2024: summaries computed only where a query needs them).
+    Gate, the five non-blind pair suites (458 case scores, verdict and review) against the nightly at the same
+    code with the scope off: imports only (2026-11-11) 168 min instead of 312 for every suite, 724 worker-minutes
+    of pair scans instead of 1,668, Semgrep giving up on 23 scans instead of 64-66; with dotted strings
+    (2026-11-12) 184 min, 751 worker-minutes, 23, and the same scores as without them. The one score that moved
+    is a gain: pgAdmin GHSA-cr8c, found and quiet at its fix (path-traversal@992) now that neither side gives up
+    (135 s a side instead of 1,250), as step 4's rules meant it to be. Nothing lost. Arches GHSA-gmpq's lines
+    behind its detection differed between the nightlies of 2026-11-11 and -12 (four sql-injection lines missing
+    on the 12th) on the same code with no Semgrep timeout either night; the gates match the 11th. Unexplained,
+    worth a look. Also seen: netbox's seven open-redirects in dcim/views.py went missing on 2026-11-11 and came
+    back on the 12th: a case scan running alongside the nightly's app scans slowed netbox from 1,422 s to 1,884 s.
+    Don't run scans while the nightly runs. Still slow: mlflow GHSA-wqmh (3,800-4,800 s a side, Semgrep giving
+    up), its time in per-file rule time on large files rather than the number of files.
