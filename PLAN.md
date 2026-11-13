@@ -1797,11 +1797,15 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     is a gain: pgAdmin GHSA-cr8c, found and quiet at its fix (path-traversal@992) now that neither side gives up
     (135 s a side instead of 1,250), as step 4's rules meant it to be. Nothing lost. Arches GHSA-gmpq's lines
     behind its detection differed between the nightlies of 2026-11-11 and -12 (four sql-injection lines missing
-    on the 12th) on the same code with no Semgrep timeout either night; the gates match the 11th. Unexplained,
-    worth a look. Also seen: netbox's seven open-redirects in dcim/views.py went missing on 2026-11-11 and came
+    on the 12th) on the same code with no Semgrep timeout either night; the gates match the 11th, and so does
+    the nightly of 2026-11-13 (scope on), so the 12th is the odd one out, not the scope change. Still
+    unexplained. Also seen: netbox's seven open-redirects in dcim/views.py went missing on 2026-11-11 and came
     back on the 12th: a case scan running alongside the nightly's app scans slowed netbox from 1,422 s to 1,884 s.
     Don't run scans while the nightly runs. Still slow: mlflow GHSA-wqmh (3,800-4,800 s a side, Semgrep giving
-    up), its time in per-file rule time on large files rather than the number of files.
+    up), its time in per-file rule time on large files rather than the number of files. First nightly with the
+    scope on (2026-11-13, commit b200e1d): suites 184 min instead of 312, the whole run 3 h 45 min instead of
+    5 h 55 min, 764 worker-minutes of scans instead of 1,682; the same scores as the gate (cr8c the one gain,
+    GHSA-gmpq as on the 11th), the same 207 app findings. mlflow GHSA-wqmh is now a sixth of all scan time.
 66. **Topic 10's batches of 2026-11-11 reviewed** (2026-11-13). 240 read by the agent, 92 accepted (64 open, 28 blind),
     a higher rate than step 63's (21%). No fix commit repeats within the batches or any suite. The open fix diffs
     were pre-screened by deepseek-v4.1-flash against step 22's rules and the agent's stated flow (14 flagged); the
