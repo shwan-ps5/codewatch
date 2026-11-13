@@ -1825,3 +1825,14 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     flagged three sound fixes: worth reading the WordPress and `$_SERVER` cases by hand next time too. Added: 51 to
     cve-pairs-php (197 now), 28 blind into cve-pairs-blind-php-18..21 as the batches named them (97 blind PHP).
     Blind diffs were not read.
+67. **Research: topic 11, Python app CVEs with no GitHub advisory, ahead of PHP** (2026-11-13). The nightly of
+    2026-11-13 (review mode, a case caught when found before its fix and quiet after) shows where the non-blind
+    suites miss most: Python template and front-end XSS 6 of 31 (cve-pairs-python-frontend) and 1 of 7, Python SSRF
+    1 of 6, Python open redirect 4 of 11; JavaScript path traversal 1 of 24, SSRF 0 of 7, open redirect 0 of 5,
+    and 1 of 27 outside HTTP handlers. Those are rule work, but the Python ones also have too few cases, and
+    GitHub's advisory database is nearly mined out for them (topic 8: 1 of 240). Topic 11 reads the CVE list
+    (cvelistV5) instead, for Python web app CVEs with one GitHub fix commit and no GitHub advisory or PYSEC entry,
+    the pool CVEfixes and MoreFixes draw on; ids are CVE ids. PHP (topic 10, 1,062 candidates left) waits behind it,
+    since codewatch has no PHP rules yet. Also proposed and not queued: fixes using sanitizers codewatch doesn't
+    recognise (cve-pairs-python's verdict false-alarm rate is 15%), and more open-source Django, Flask and FastAPI
+    apps for the nightly's false-alarm check.

@@ -215,7 +215,8 @@ npm advisories (step 29). Those pools are nearly used up.
    Suites as topic 5 (`cve-pairs-python`, or `cve-pairs-python-nonhttp`). Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-nosql.{tsv,json}`.
 
-10. **PHP web apps, carried on from topic 4.** Topic 4's five batches of 2026-11-05
+10. **PHP web apps, carried on from topic 4.** (behind topic 11 from 2026-11-13: carry on with it only when topic 11 is
+   done or paused, then take it up again from here.) Topic 4's five batches of 2026-11-05
    (`cve-candidates-2026-11-05-php-unreviewed*`, 300 read, held for review) left about 800 candidates. Same source, filter and rules as topic 4: GitHub
    advisories (reviewed and unreviewed) whose one fix commit is in a non-archived repository with PHP as its primary
    language; applications and CMSs (Laravel, Symfony, CodeIgniter, Yii, Slim, CakePHP, WordPress/Drupal/Joomla
@@ -231,6 +232,32 @@ npm advisories (step 29). Those pools are nearly used up.
    batch, numbered on from the highest `cve-pairs-blind-php-N` already in `suites.json` (17 on 2026-11-10).
    Files: `benchmarks/cve-candidates-YYYY-MM-DD-php.{tsv,json}`. When
    the list is used up, mark this topic done as usual.
+
+11. **Python web app CVEs with no GitHub advisory.** (2026-11-13; take this before topic 10.) Every earlier Python
+   topic read GitHub's advisory database and PYSEC, and topic 8 found that pool nearly used up (1 accepted of 240).
+   Many CVEs in Python apps never got a GitHub advisory, and datasets such as CVEfixes and MoreFixes (2024) collect
+   their fix commits from NVD's references. Source: the CVE list as a git repository, filtered locally with no API
+   calls:
+   ```
+   git clone --depth 1 https://github.com/CVEProject/cvelistV5 ~/cvelistV5
+   ```
+   The files are `cves/YEAR/*/CVE-*.json` (CVE JSON 5). Keep CVEs published since 2021 whose references (in
+   `containers.cna` and any `containers.adp`) hold exactly one `https://github.com/OWNER/REPO/commit/SHA` URL, and
+   drop every CVE that is an alias of a GitHub advisory or PYSEC entry: collect the `aliases` of all
+   `advisories/**/GHSA-*.json` in a fresh clone of `github/advisory-database` (topic 1) and of PyPA's
+   `advisory-database` (`vulns/**/PYSEC-*.yaml`), and skip any CVE named there. Write the filter in
+   `~/codewatch-research/`, never in the repository. Then drop anything `reviewed.py` already knows, by id or fix
+   SHA. Get each repository's language with GraphQL as topic 1 does (100 per query, one at a time, two seconds
+   apart), keep non-archived Python repositories, and confirm one of topic 8's frameworks (Django, Flask, FastAPI,
+   Starlette, Litestar, Quart, Falcon, Pyramid, Bottle; declared anywhere in the tree, as in topic 8) at the fix
+   commit. CWEs: any section 3 takes (the CVE's `problemTypes`, or its description when it has none); the gaps
+   this topic is for are XSS in templates and front-end JS, SSRF, open redirect and command injection, so say in
+   the TSV when a case is one of them. Reject library code as always. The id is the CVE id (`CVE-YYYY-NNNNN`):
+   `reviewed.py --split CVE-...` splits it as it does an advisory, and the suite entry's `id` and `cve` are both
+   the CVE id. Suites as topic 5 (`cve-pairs-python`, `cve-pairs-python-frontend` or `cve-pairs-python-nonhttp`);
+   blind ones in the next unused `cve-pairs-blind-python-N`, one per batch. If the first full filter leaves fewer
+   than 30 candidates, read them all, say so in the JSON's `method` and mark the topic done. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-python-nvd.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
