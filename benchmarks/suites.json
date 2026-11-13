@@ -5683,7 +5683,7 @@
       "language": "php",
       "kind": "cve-pairs",
       "deferred": true,
-      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. codewatch has no PHP rules yet, so this is ground truth for that work and is marked deferred: the nightly run skips it until it has them (run it by name). Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv.",
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. codewatch has no PHP rules yet, so this is ground truth for that work and is marked deferred: the nightly run skips it until it has them (run it by name). Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv.",
       "cases": [
         {
           "id": "GHSA-p9m5-xwgx-8j69",
@@ -7772,6 +7772,731 @@
           "scope": [
             "bundles/AdminBundle/Controller/Admin/Asset"
           ]
+        },
+        {
+          "id": "GHSA-p9g7-73wv-cwgh",
+          "cve": "CVE-2026-126563",
+          "repo": "https://github.com/SemanticMediaWiki/SemanticMediaWiki.git",
+          "fix": "01cb81a6da7af743d2a5eb334db10e52b7318c56",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Semantic MediaWiki 2.4.0 before 7.4.1 contains a reflected cross-site scripting vulnerability in TimeValueFormatter::getCaptionFromFreeFormat(), which emits free-format date captions in HTML without escaping. Unauthenticated attackers can craft a Special:Ask URL with HTML markup in a date printout f",
+          "scope": [
+            "src/DataValues/ValueFormatters"
+          ]
+        },
+        {
+          "id": "GHSA-2mv3-mwwf-9mrv",
+          "cve": "CVE-2013-10021",
+          "repo": "https://github.com/dd32/debug-bar.git",
+          "fix": "0842af8f8a556bc3e39b9ef758173b0a8a9ccbfc",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in dd32 Debug Bar Plugin up to 0.8. It has been declared as problematic. Affected by this vulnerability is the function render of the file panels/class-debug-bar-queries.php. The manipulation leads to cross site scripting. The attack can be launched remotely. Upgrading to v",
+          "scope": [
+            "panels"
+          ]
+        },
+        {
+          "id": "GHSA-qj56-r3xc-5qwh",
+          "cve": "CVE-2023-1318",
+          "repo": "https://github.com/osticket/osticket.git",
+          "fix": "343a2b47e164dd9090a3c9477ef273f0efa16a7d",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross-site Scripting (XSS) - Generic in GitHub repository osticket/osticket prior to v1.16.6.",
+          "scope": [
+            "include"
+          ]
+        },
+        {
+          "id": "GHSA-726f-x7cp-crqc",
+          "cve": "CVE-2023-1315",
+          "repo": "https://github.com/osticket/osticket.git",
+          "fix": "ec6043935b4e30b5c0dfa544e256717182808a2e",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross-site Scripting (XSS) - Reflected in GitHub repository osticket/osticket prior to v1.16.6.",
+          "scope": [
+            "include",
+            "include/staff/templates"
+          ]
+        },
+        {
+          "id": "GHSA-r774-qpmp-3xv2",
+          "cve": "CVE-2023-1106",
+          "repo": "https://github.com/flatpressblog/flatpress.git",
+          "fix": "5f23b4c2eac294cc0ba5e541f83a6f8a26f9fed1",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross-site Scripting (XSS) - Reflected in GitHub repository flatpressblog/flatpress prior to 1.3.",
+          "scope": [
+            "setup/lib"
+          ]
+        },
+        {
+          "id": "GHSA-2qf9-qchx-rh67",
+          "cve": "CVE-2023-1105",
+          "repo": "https://github.com/flatpressblog/flatpress.git",
+          "fix": "5d5c7f6d8f072d14926fc2c3a97cdd763802f170",
+          "cwe": [
+            73
+          ],
+          "license": "GPL-2.0",
+          "summary": "External Control of File Name or Path in GitHub repository flatpressblog/flatpress prior to 1.3.",
+          "scope": [
+            "fp-plugins/mediamanager/panels"
+          ]
+        },
+        {
+          "id": "GHSA-9wj6-jwh4-mxcv",
+          "cve": "CVE-2015-10086",
+          "repo": "https://github.com/OpenCycleCompass/server-php.git",
+          "fix": "fa0d9bcf81c711a88172ad0d37a842f029ac3782",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "A vulnerability, which was classified as critical, was found in OpenCycleCompass server-php. Affected is an unknown function of the file api1/login.php. The manipulation of the argument user leads to sql injection. It is possible to launch the attack remotely. This product is using a rolling release",
+          "scope": [
+            "api1"
+          ]
+        },
+        {
+          "id": "GHSA-49j4-f5fv-cc2w",
+          "cve": "CVE-2019-25105",
+          "repo": "https://github.com/lgommans/dro.pm.git",
+          "fix": "fa73c3a42bc5c246a1b8f815699ea241aef154bb",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability, which was classified as problematic, was found in dro.pm. This affects an unknown part of the file web/fileman.php. The manipulation of the argument secret/key leads to cross site scripting. It is possible to initiate the attack remotely. This product does not use versioning. This i",
+          "scope": [
+            "web"
+          ]
+        },
+        {
+          "id": "GHSA-wj5x-h527-5hh4",
+          "cve": "CVE-2016-15027",
+          "repo": "https://github.com/meta4creations/post-duplicator.git",
+          "fix": "ca67c05e490c0cf93a1e9b2d93bfeff3dd96f594",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in meta4creations Post Duplicator Plugin 2.18. It has been classified as problematic. Affected is the function mtphr_post_duplicator_notice of the file includes/notices.php. The manipulation of the argument post-duplicated leads to cross site scripting. It is possible to la",
+          "scope": [
+            "includes",
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-4v3f-x74x-h275",
+          "cve": "CVE-2012-10007",
+          "repo": "https://github.com/madgicweb/buddystream.git",
+          "fix": "7d5b9a89a27711aad76fd55ab4cc4185b545a1d0",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in madgicweb BuddyStream Plugin up to 3.2.7. It has been declared as problematic. Affected by this vulnerability is an unknown functionality of the file ShareBox.php. The manipulation of the argument content/link/shares leads to cross site scripting. The attack can be launc",
+          "scope": [
+            ".",
+            "extensions/default/templates"
+          ]
+        },
+        {
+          "id": "GHSA-qcj5-62mc-73xh",
+          "cve": "CVE-2023-0771",
+          "repo": "https://github.com/ampache/ampache.git",
+          "fix": "c456e66ef6fd8d11390181a40c66910ae01fbf4c",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "SQL Injection in GitHub repository ampache/ampache prior to 5.5.7,develop.",
+          "scope": [
+            "src/Module/Statistics",
+            "src/Repository/Model"
+          ]
+        },
+        {
+          "id": "GHSA-63wm-9592-3668",
+          "cve": "CVE-2017-20177",
+          "repo": "https://github.com/joseconti/WangGuard.git",
+          "fix": "88414951e30773c8d2ec13b99642688284bf3189",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability, which was classified as problematic, has been found in WangGuard Plugin 1.8.0. Affected by this issue is the function wangguard_users_info of the file wangguard-user-info.php of the component WGG User List Handler. The manipulation of the argument userIP leads to cross site scriptin",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-4vf7-8qf6-f3f9",
+          "cve": "CVE-2017-20176",
+          "repo": "https://github.com/ciubotaru/share-on-diaspora.git",
+          "fix": "fb6fae2f8a9b146471450b5b0281046a17d1ac8d",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability classified as problematic was found in ciubotaru share-on-diaspora 0.7.9. This vulnerability affects unknown code of the file new_window.php. The manipulation of the argument title/url leads to cross site scripting. The attack can be initiated remotely. The name of the patch is fb6fa",
+          "scope": [
+            "trunk"
+          ]
+        },
+        {
+          "id": "GHSA-wx4g-2jhx-899v",
+          "cve": "CVE-2023-0677",
+          "repo": "https://github.com/phpipam/phpipam.git",
+          "fix": "8fbf87e19a6098972abc7521554db5757c3edd89",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "Cross-site Scripting (XSS) - Reflected in GitHub repository phpipam/phpipam prior to v1.5.1.",
+          "scope": [
+            "app/subnets/addresses",
+            "app/tools/temp-shares"
+          ]
+        },
+        {
+          "id": "GHSA-f6p2-2572-4pjp",
+          "cve": "CVE-2023-0676",
+          "repo": "https://github.com/phpipam/phpipam.git",
+          "fix": "94ec73ff1d33926b75b811ded6f0b4a46088a7ec",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "Cross-site Scripting (XSS) - Reflected in GitHub repository phpipam/phpipam prior to 1.5.1.",
+          "scope": [
+            "app/tools/ip-calculator"
+          ]
+        },
+        {
+          "id": "GHSA-9v32-c484-vc8x",
+          "cve": "CVE-2013-10018",
+          "repo": "https://github.com/fanzila/WebFinance.git",
+          "fix": "165dfcaa0520ee0179b7c1282efb84f5a03df114",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in fanzila WebFinance 0.5. It has been declared as critical. Affected by this vulnerability is an unknown functionality of the file htdocs/prospection/save_contact.php. The manipulation of the argument nom/prenom/email/tel/mobile/client/fonction/note leads to sql injection.",
+          "scope": [
+            "htdocs/prospection"
+          ]
+        },
+        {
+          "id": "GHSA-crvg-xv76-f4pq",
+          "cve": "CVE-2023-0607",
+          "repo": "https://github.com/projectsend/projectsend.git",
+          "fix": "698be4ade1db6ae0eaf27c843a03ffc9683cca0a",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross-site Scripting (XSS) - Stored in GitHub repository projectsend/projectsend prior to r1606.",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-995h-6wg6-p6f7",
+          "cve": "CVE-2016-15023",
+          "repo": "https://github.com/sitefusion/server.git",
+          "fix": "49fff155c303d6cd06ce8f97bba56c9084bf08ac",
+          "cwe": [
+            22
+          ],
+          "license": null,
+          "summary": "A vulnerability, which was classified as problematic, was found in SiteFusion Application Server up to 6.6.6. This affects an unknown part of the file getextension.php of the component Extension Handler. The manipulation leads to path traversal. Upgrading to version 6.6.7 is able to address this iss",
+          "scope": [
+            ".",
+            "www"
+          ]
+        },
+        {
+          "id": "GHSA-5vpv-xmcj-9q85",
+          "cve": "CVE-2021-41143",
+          "repo": "https://github.com/OpenMage/magento-lts.git",
+          "fix": "45330ff50439984e806992fa22c3f96c4d660f91",
+          "cwe": [
+            22,
+            77
+          ],
+          "license": "OSL-3.0",
+          "summary": "Fix for arbitrary file deletion in customer media allows for remote code execution",
+          "scope": [
+            "app/code/core/Mage/Cms/Model/Wysiwyg/Images"
+          ]
+        },
+        {
+          "id": "GHSA-p8fp-578x-89v2",
+          "cve": "CVE-2023-24070",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "f7238fe5e71ac065daa43c8607d02f8ac682f18f",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "app/View/AuthKeys/authkey_display.ctp in MISP through 2.4.167 has an XSS in authkey add via a Referer field.",
+          "scope": [
+            "app/Controller/Component",
+            "app/View/AuthKeys"
+          ]
+        },
+        {
+          "id": "GHSA-v57q-v4p2-v4p5",
+          "cve": "CVE-2010-10009",
+          "repo": "https://github.com/frioux/ptome.git",
+          "fix": "26829bba67858ca0bd4ce49ad50e7ce653914276",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in frioux ptome. It has been rated as critical. This issue affects some unknown processing. The manipulation leads to sql injection. The name of the patch is 26829bba67858ca0bd4ce49ad50e7ce653914276. It is recommended to apply a patch to fix this issue. The associated ident",
+          "scope": [
+            "OpenSiteAdmin/scripts/classes"
+          ]
+        },
+        {
+          "id": "GHSA-8h56-r5w9-2prx",
+          "cve": "CVE-2017-20173",
+          "repo": "https://github.com/AlexRed/contentmap.git",
+          "fix": "dd265d23ff4abac97422835002c6a47f45ae2a66",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in AlexRed contentmap. It has been rated as critical. Affected by this issue is the function Load of the file contentmap.php. The manipulation of the argument contentid leads to sql injection. The name of the patch is dd265d23ff4abac97422835002c6a47f45ae2a66. It is recommen",
+          "scope": [
+            "extras/lib_contentmap/json",
+            "site/views/smartloader"
+          ]
+        },
+        {
+          "id": "GHSA-xvv5-7cf4-2v4c",
+          "cve": "CVE-2020-36654",
+          "repo": "https://github.com/GENI-NSF/geni-portal.git",
+          "fix": "39a96fb4b822bd3497442a96135de498d4a81337",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability classified as problematic has been found in GENI Portal. This affects the function no_invocation_id_error of the file portal/www/portal/sliceresource.php. The manipulation of the argument invocation_id/invocation_user leads to cross site scripting. It is possible to initiate the atta",
+          "scope": [
+            "portal/www/portal"
+          ]
+        },
+        {
+          "id": "GHSA-66rw-9q89-rr6x",
+          "cve": "CVE-2015-10066",
+          "repo": "https://github.com/tynx/wuersch.git",
+          "fix": "66d4718750a741d1053d327a79e285fd50372519",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in tynx wuersch and classified as critical. Affected by this issue is the function packValue/getByCustomQuery of the file backend/base/Store.class.php. The manipulation leads to sql injection. The name of the patch is 66d4718750a741d1053d327a79e285fd50372519. It is recommen",
+          "scope": [
+            "backend/base"
+          ]
+        },
+        {
+          "id": "GHSA-gjw6-4ppg-h3xg",
+          "cve": "CVE-2021-4313",
+          "repo": "https://github.com/NethServer/nethserver-phonehome.git",
+          "fix": "759c30b0ddd7d493836bbdf695cf71624b377391",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability was found in NethServer phonenehome. It has been rated as critical. This issue affects the function get_info/get_country_coor of the file server/index.php. The manipulation leads to sql injection. The name of the patch is 759c30b0ddd7d493836bbdf695cf71624b377391. It is recommended to",
+          "scope": [
+            "server"
+          ]
+        },
+        {
+          "id": "GHSA-m9xr-8cx7-53pj",
+          "cve": "CVE-2023-0314",
+          "repo": "https://github.com/thorsten/phpmyfaq.git",
+          "fix": "3872e7eac2ddeac182fc1335cc312d1392d56f98",
+          "cwe": [
+            79
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ Reflected Cross-site Scripting vulnerability",
+          "scope": [
+            "phpmyfaq/admin"
+          ]
+        },
+        {
+          "id": "GHSA-gw2r-m9xw-9gvr",
+          "cve": "CVE-2015-10041",
+          "repo": "https://github.com/Dovgalyuk/AIBattle-disabled-.git",
+          "fix": "e3aa4d0900167641d41cbccf53909229f00381c9",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "** UNSUPPPORTED WHEN ASSIGNED **** UNSUPPORTED WHEN ASSIGNED ** A vulnerability classified as critical has been found in Dovgalyuk AIBattle. Affected is the function sendComments of the file site/procedures.php. The manipulation of the argument text leads to sql injection. The name of the patch is e",
+          "scope": [
+            "site"
+          ]
+        },
+        {
+          "id": "GHSA-cpj5-8p43-2gqc",
+          "cve": "CVE-2014-125076",
+          "repo": "https://github.com/NoxxieNl/Criminals.git",
+          "fix": "0a60b31271d4cbf8babe4be993d2a3a1617f0897",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in NoxxieNl Criminals. It has been classified as critical. Affected is an unknown function of the file ingame/roulette.php. The manipulation of the argument gambleMoney leads to sql injection. The name of the patch is 0a60b31271d4cbf8babe4be993d2a3a1617f0897. It is recommen",
+          "scope": [
+            "ingame"
+          ]
+        },
+        {
+          "id": "GHSA-7h3q-5g85-47vw",
+          "cve": "CVE-2015-10032",
+          "repo": "https://github.com/StevenElberger/HealthMateWeb.git",
+          "fix": "472776c25b1046ecaf962c46fed7c713c72c28e3",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "A vulnerability was found in HealthMateWeb. It has been declared as problematic. Affected by this vulnerability is an unknown functionality of the file createaccount.php. The manipulation of the argument username/password/first_name/last_name/company/phone leads to cross site scripting. The attack c",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-3356-grh4-xpc8",
+          "cve": "CVE-2016-15016",
+          "repo": "https://github.com/mrtnmtth/joomla_mod_einsatz_stats.git",
+          "fix": "27c1b443cff45c81d9d7d926a74c76f8b6ffc6cb",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in mrtnmtth joomla_mod_einsatz_stats up to 0.2. It has been classified as critical. This affects the function getStatsByType of the file helper.php. The manipulation of the argument year leads to sql injection. Upgrading to version 0.3 is able to address this issue. The nam",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-x38j-4h5h-pvg6",
+          "cve": "CVE-2007-10002",
+          "repo": "https://github.com/web-cyradm/web-cyradm.git",
+          "fix": "2bcbead3bdb5f118bf2c38c541eaa73c29dcc90f",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability, which was classified as critical, has been found in web-cyradm. Affected by this issue is some unknown functionality of the file auth.inc.php. The manipulation of the argument login/login_password/LANG leads to sql injection. The attack may be launched remotely. The name of the patc",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-3j3x-f853-j95p",
+          "cve": "CVE-2016-15013",
+          "repo": "https://github.com/ForumHulp/searchresults.git",
+          "fix": "dd8a312bb285ad9735a8e1da58e9e955837b7322",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in ForumHulp searchresults. It has been rated as critical. Affected by this issue is the function list_keywords of the file event/listener.php. The manipulation of the argument word leads to sql injection. The name of the patch is dd8a312bb285ad9735a8e1da58e9e955837b7322. I",
+          "scope": [
+            "event"
+          ]
+        },
+        {
+          "id": "GHSA-2rwp-q9wg-42qm",
+          "cve": "CVE-2019-25099",
+          "repo": "https://github.com/Arthmoor/QSF-Portal.git",
+          "fix": "ea4f61e23ecb83247d174bc2e2cbab521c751a7d",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability classified as critical was found in Arthmoor QSF-Portal. This vulnerability affects unknown code of the file index.php. The manipulation of the argument a leads to path traversal. The name of the patch is ea4f61e23ecb83247d174bc2e2cbab521c751a7d. It is recommended to apply a patch to",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-68hv-8926-j34c",
+          "cve": "CVE-2015-10018",
+          "repo": "https://github.com/DBRisinajumi/d2files.git",
+          "fix": "b5767f2ec9d0f3cbfda7f13c84740e2179c90574",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "DBRisinajumi d2files SQL Injection vulnerability",
+          "scope": [
+            "controllers"
+          ]
+        },
+        {
+          "id": "GHSA-p576-j8jp-6qr7",
+          "cve": "CVE-2020-36642",
+          "repo": "https://github.com/trampgeek/jobe.git",
+          "fix": "8f43daf50c943b98eaf0c542da901a4a16e85b02",
+          "cwe": [
+            77
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was found in trampgeek jobe up to 1.6.x and classified as critical. This issue affects the function run_in_sandbox of the file application/libraries/LanguageTask.php. The manipulation leads to command injection. Upgrading to version 1.7.0 is able to address this issue. The name of th",
+          "scope": [
+            "application/libraries"
+          ]
+        },
+        {
+          "id": "GHSA-5g4x-5gfw-cp2f",
+          "cve": "CVE-2014-125045",
+          "repo": "https://github.com/Miesvanderlippe/meol1.git",
+          "fix": "82441e413f87920d1e8f866e8ef9d7f353a7c583",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability has been found in meol1 and classified as critical. Affected by this vulnerability is the function GetAnimal of the file opdracht4/index.php. The manipulation of the argument where leads to sql injection. The name of the patch is 82441e413f87920d1e8f866e8ef9d7f353a7c583. It is recomm",
+          "scope": [
+            "opdracht4"
+          ]
+        },
+        {
+          "id": "GHSA-99j7-w4jf-xqq8",
+          "cve": "CVE-2018-25065",
+          "repo": "https://github.com/wikimedia/mediawiki-extensions-I18nTags.git",
+          "fix": "b4bc3cbbb099eab50cf2b544cf577116f1867b94",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in Wikimedia mediawiki-extensions-I18nTags and classified as problematic. This issue affects some unknown processing of the file I18nTags_body.php of the component Unlike Parser. The manipulation leads to cross site scripting. The attack may be initiated remotely. The name ",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-64wv-c7jw-jw2q",
+          "cve": "CVE-2021-4303",
+          "repo": "https://github.com/shannah/xataface.git",
+          "fix": "94143a4299e386f33bf582139cd4702571d93bde",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Xataface vulnerable to Cross-site Scripting",
+          "scope": [
+            "install"
+          ]
+        },
+        {
+          "id": "GHSA-35g7-p3m9-m7r9",
+          "cve": "CVE-2022-4871",
+          "repo": "https://github.com/ummmmm/nflpick-em.com.git",
+          "fix": "dd77a35942f527ea0beef5e0ec62b92e8b93211e",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability classified as problematic was found in ummmmm nflpick-em.com up to 2.2.x. This vulnerability affects the function _Load_Users of the file html/includes/runtime/admin/JSON/LoadUsers.php. The manipulation of the argument sort leads to sql injection. The attack can be initiated remotely",
+          "scope": [
+            "html/includes/runtime/admin/JSON"
+          ]
+        },
+        {
+          "id": "GHSA-fq95-rx4q-qgg2",
+          "cve": "CVE-2023-2341",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "66f1089fb1b9bcd575bfce9b1d4abb0f0499df11",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross-site Scripting (XSS) in Admin Login too many attempts notice",
+          "scope": [
+            "bundles/AdminBundle/Controller/Admin"
+          ]
+        },
+        {
+          "id": "GHSA-jwg4-qcgv-5wg6",
+          "cve": "CVE-2023-30850",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "7e32cc28145274ddfc30fb791012d26c1278bd38",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQL Injection in Admin Translations API",
+          "scope": [
+            "bundles/AdminBundle/Controller/Admin"
+          ]
+        },
+        {
+          "id": "GHSA-xmg8-w465-mr56",
+          "cve": "CVE-2023-30849",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "c6c80905e58c7724c776f980570a56df7016c6d1",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQL Injection in Translation Export API",
+          "scope": [
+            "bundles/AdminBundle/Controller/Admin"
+          ]
+        },
+        {
+          "id": "GHSA-fp7q-xhhw-6rj3",
+          "cve": "CVE-2023-29200",
+          "repo": "https://github.com/contao/contao.git",
+          "fix": "6f3e705f4ff23f4419563d09d8485793569f31df",
+          "cwe": [
+            22
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Path traversal vulnerability in the file manager",
+          "scope": [
+            "core-bundle/src/Resources/contao/drivers"
+          ]
+        },
+        {
+          "id": "GHSA-hxpr-67mw-jh59",
+          "cve": "CVE-2009-10004",
+          "repo": "https://github.com/Turante/sandbox-theme.git",
+          "fix": "8045b1e10970342f558b2c5f360e0bd135af2b10",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in Turante Sandbox Theme up to 1.5.2. It has been classified as problematic. This affects the function sandbox_body_class of the file functions.php. The manipulation of the argument page leads to cross site scripting. It is possible to initiate the attack remotely. Upgradin",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-qw96-mrmv-h5qw",
+          "cve": "CVE-2022-31890",
+          "repo": "https://github.com/osTicket/osTicket-plugins.git",
+          "fix": "0b59afbd2d4ccd0522552198a9aaf1ec05b5071e",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "SQL Injection vulnerability in audit/class.audit.php in osTicket osTicket-plugins before commit a7842d494889fd5533d13deb3c6a7789768795ae via the order parameter to the getOrder function.",
+          "scope": [
+            "audit"
+          ]
+        },
+        {
+          "id": "GHSA-m8q9-7v2f-qjx9",
+          "cve": "CVE-2023-1880",
+          "repo": "https://github.com/thorsten/phpmyfaq.git",
+          "fix": "bbc5d4aa4a4375c14e34dd9fcad2042066fe476d",
+          "cwe": [
+            79
+          ],
+          "license": "MPL-2.0",
+          "summary": "thorsten/phpmyfaq vulnerable to stored cross-site scripting (XSS) via artlang parameter",
+          "scope": [
+            "phpmyfaq",
+            "phpmyfaq/src/phpMyFAQ/Export"
+          ]
+        },
+        {
+          "id": "GHSA-9wmw-wg92-52h9",
+          "cve": "CVE-2023-28883",
+          "repo": "https://github.com/cerebrate-project/cerebrate.git",
+          "fix": "5f1c99cd534442ec40c2129769608e3e61ff8be3",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "In Cerebrate 1.13, a blind SQL injection exists in the searchAll API endpoint.",
+          "scope": [
+            "src/Controller",
+            "src/Model/Table"
+          ]
+        },
+        {
+          "id": "GHSA-ghwg-ghc8-5p6j",
+          "cve": "CVE-2023-28884",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "b94c7978e5e6b1db369abeedbbf00bca975b08b7",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "In MISP 2.4.169, app/Lib/Tools/CustomPaginationTool.php allows XSS in the community index.",
+          "scope": [
+            "app/Lib/Tools"
+          ]
+        },
+        {
+          "id": "GHSA-vphm-x46m-jwvr",
+          "cve": "CVE-2015-10097",
+          "repo": "https://github.com/grinnellplans/grinnellplans-php.git",
+          "fix": "57e4409e19203a94495140ff1b5a697734d17cfb",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability was found in grinnellplans-php up to 3.0. It has been declared as critical. Affected by this vulnerability is the function interface_disp_page/interface_disp_page of the file read.php. The manipulation leads to sql injection. The attack can be launched remotely. The name of the patch",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-42c3-wvww-gcqj",
+          "cve": "CVE-2023-1578",
+          "repo": "https://github.com/pimcore/pimcore.git",
+          "fix": "367b74488808d71ec3f66f4ca9e8df5217c2c8d2",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Pimcore Remote Code Execution vulnerability in Search function",
+          "scope": [
+            "bundles/AdminBundle/Controller/Searchadmin"
+          ]
+        },
+        {
+          "id": "GHSA-ppxm-q2h4-v7mm",
+          "cve": "CVE-2023-1545",
+          "repo": "https://github.com/nilsteampassnet/teampass.git",
+          "fix": "4780252fdb600ef2ec2758f17a37d738570cbe66",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Teampass SQL Injection vulnerability",
+          "scope": [
+            "api/Model"
+          ]
         }
       ]
     },
@@ -8927,6 +9652,445 @@
           "summary": "Froxlor vulnerable to Path Traversal",
           "scope": [
             "."
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-18",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-5wx7-h6ww-mx8h",
+          "cve": "CVE-2022-31889",
+          "repo": "https://github.com/osTicket/osTicket-plugins.git",
+          "fix": "047a1c3ae4f12f8952bbdad8143d5b74fdac14b1",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross Site Scripting (XSS) vulnerability in audit/templates/auditlogs.tmpl.php in osTicket osTicket-plugins before commit a7842d494889fd5533d13deb3c6a7789768795ae.",
+          "scope": [
+            "audit/templates"
+          ]
+        },
+        {
+          "id": "GHSA-w3m5-m73f-fm2c",
+          "cve": "CVE-2016-15030",
+          "repo": "https://github.com/Arno0x/TwoFactorAuth.git",
+          "fix": "8549ad3cf197095f783643e41333586d6a4d0e54",
+          "cwe": [
+            601
+          ],
+          "license": null,
+          "summary": "A vulnerability classified as problematic has been found in Arno0x TwoFactorAuth. This affects an unknown part of the file login/login.php. The manipulation of the argument from leads to open redirect. It is possible to initiate the attack remotely. This product does not use versioning. This is why ",
+          "scope": [
+            "login"
+          ]
+        },
+        {
+          "id": "GHSA-72w2-j52c-7682",
+          "cve": "CVE-2023-28329",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "81e74af17f419f7910f81279efecf5c7af09f38d",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle SQL Injection vulnerability",
+          "scope": [
+            "availability/condition/profile/classes",
+            "availability/condition/profile/lang/en"
+          ]
+        },
+        {
+          "id": "GHSA-7gv5-g759-m6m7",
+          "cve": "CVE-2023-27130",
+          "repo": "https://github.com/typecho/typecho.git",
+          "fix": "f9ede542c9052ba22a6096d8412e2f02d9de872b",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross Site Scripting vulnerability found in Typecho v.1.2.0 allows a remote attacker to execute arbitrary code via an arbitrarily supplied URL parameter.",
+          "scope": [
+            "var/Widget"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-19",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-3q24-rrgq-j66h",
+          "cve": "CVE-2023-1317",
+          "repo": "https://github.com/osticket/osticket.git",
+          "fix": "daee20fdd8ac926d9aee700b201ac2cb35d448ca",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross-site Scripting (XSS) - Reflected in GitHub repository osticket/osticket prior to v1.16.6.",
+          "scope": [
+            "include"
+          ]
+        },
+        {
+          "id": "GHSA-7f4r-97fv-4hvj",
+          "cve": "CVE-2008-10003",
+          "repo": "https://github.com/iGamingModules/flashgames.git",
+          "fix": "6e57683704885be32eea2ea614f80c9bb8f012c5",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in iGamingModules flashgames 1.1.0. It has been classified as critical. Affected is an unknown function of the file game.php. The manipulation of the argument lid leads to sql injection. It is possible to launch the attack remotely. The name of the patch is 6e57683704885be3",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-32gr-x76g-267w",
+          "cve": "CVE-2015-10077",
+          "repo": "https://github.com/webbuilders-group/silverstripe-kapost-bridge.git",
+          "fix": "2e14b0fd0ea35034f90890f364b130fb4645ff35",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQL injection in webbuilders-group silverstripe-kapost-bridge",
+          "scope": [
+            "code/control"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-20",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-vw4j-wqq5-5pv6",
+          "cve": "CVE-2014-125084",
+          "repo": "https://github.com/gimmie/vbulletin-v4.git",
+          "fix": "7194a09353dd24a274678383a4418f2fd3fce6f7",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability, which was classified as critical, has been found in Gimmie Plugin 1.2.2. This issue affects some unknown processing of the file trigger_referral.php. The manipulation of the argument referrername leads to sql injection. Upgrading to version 1.3.0 is able to address this issue. The n",
+          "scope": [
+            "Upload/plugins/gimmie"
+          ]
+        },
+        {
+          "id": "GHSA-vcf7-32c8-3rmw",
+          "cve": "CVE-2014-125085",
+          "repo": "https://github.com/gimmie/vbulletin-v4.git",
+          "fix": "f11a136e9cbd24997354965178728dc22a2aa2ed",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability, which was classified as critical, was found in Gimmie Plugin 1.2.2. Affected is an unknown function of the file trigger_ratethread.php. The manipulation of the argument t/postusername leads to sql injection. Upgrading to version 1.3.0 is able to address this issue. The name of the p",
+          "scope": [
+            "Upload/plugins/gimmie"
+          ]
+        },
+        {
+          "id": "GHSA-q7cp-j38g-p4xp",
+          "cve": "CVE-2013-10017",
+          "repo": "https://github.com/fanzila/WebFinance.git",
+          "fix": "6cfeb2f6b35c1b3a7320add07cd0493e4f752af3",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in fanzila WebFinance 0.5. It has been classified as critical. Affected is an unknown function of the file htdocs/admin/save_roles.php. The manipulation of the argument id leads to sql injection. The name of the patch is 6cfeb2f6b35c1b3a7320add07cd0493e4f752af3. It is recom",
+          "scope": [
+            "htdocs/admin"
+          ]
+        },
+        {
+          "id": "GHSA-h632-p764-pjqm",
+          "cve": "CVE-2021-41231",
+          "repo": "https://github.com/OpenMage/magento-lts.git",
+          "fix": "d16fc6c5a1e66c6f0d9f82020f11702a7ddd78e4",
+          "cwe": [
+            77
+          ],
+          "license": "OSL-3.0",
+          "summary": "DataFlow upload remote code execution vulnerability",
+          "scope": [
+            "app/code/core/Mage/Catalog/Model/Product/Attribute/Backend",
+            "lib/Varien/Io"
+          ]
+        },
+        {
+          "id": "GHSA-5j2g-3ph4-rgvm",
+          "cve": "CVE-2021-41144",
+          "repo": "https://github.com/OpenMage/magento-lts.git",
+          "fix": "06c45940ba3256cdfc9feea12a3c0ca56d23acf8",
+          "cwe": [
+            77
+          ],
+          "license": "OSL-3.0",
+          "summary": "Fix for authenticated remote code execution through layout update",
+          "scope": [
+            "app/code/core/Mage/Core/Block",
+            "app/code/core/Mage/Core/Helper"
+          ]
+        },
+        {
+          "id": "GHSA-x93q-r423-95pv",
+          "cve": "CVE-2023-23010",
+          "repo": "https://github.com/kirilkirkov/Ecommerce-CodeIgniter-Bootstrap.git",
+          "fix": "d5904379ca55014c5df34c67deda982c73dc7fe5",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "Cross Site Scripting (XSS) vulnerability in Ecommerce-CodeIgniter-Bootstrap thru commit d5904379ca55014c5df34c67deda982c73dc7fe5 (on Dec 27, 2022), allows attackers to execute arbitrary code via the languages and trans_load parameters in file add_product.php.",
+          "scope": [
+            "application/modules/vendor/views"
+          ]
+        },
+        {
+          "id": "GHSA-pppv-h92f-88xc",
+          "cve": "CVE-2015-10070",
+          "repo": "https://github.com/copperwall/twiddit.git",
+          "fix": "2203d4ce9810bdaccece5c48ff4888658a01acfc",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was found in copperwall Twiddit. It has been rated as critical. This issue affects some unknown processing of the file index.php. The manipulation leads to sql injection. The name of the patch is 2203d4ce9810bdaccece5c48ff4888658a01acfc. It is recommended to apply a patch to fix this",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-g64c-rxmq-vwm7",
+          "cve": "CVE-2015-10063",
+          "repo": "https://github.com/saemorris/TheRadSystem.git",
+          "fix": "bfba26bd34af31648a11af35a0bb66f1948752a6",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "A vulnerability was found in saemorris TheRadSystem and classified as critical. This issue affects the function redirect of the file _login.php. The manipulation of the argument user/pass leads to sql injection. The attack may be initiated remotely. The name of the patch is bfba26bd34af31648a11af35a",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-9447-mqqf-hxwj",
+          "cve": "CVE-2022-40704",
+          "repo": "https://github.com/phoronix-test-suite/phoronix-test-suite.git",
+          "fix": "d3880d9d3ba795138444da83f1153c3c3ac27640",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "A XSS vulnerability was found in phoromatic_r_add_test_details.php in phoronix-test-suite.",
+          "scope": [
+            "pts-core/phoromatic"
+          ]
+        },
+        {
+          "id": "GHSA-8x5q-8c77-vq49",
+          "cve": "CVE-2014-125080",
+          "repo": "https://github.com/frontaccounting/faplanet.git",
+          "fix": "a5dcd87f46080a624b1a9ad4b0dd035bbd24ac50",
+          "cwe": [
+            22
+          ],
+          "license": null,
+          "summary": "A vulnerability has been found in frontaccounting faplanet and classified as critical. This vulnerability affects unknown code. The manipulation leads to path traversal. The name of the patch is a5dcd87f46080a624b1a9ad4b0dd035bbd24ac50. It is recommended to apply a patch to fix this issue. VDB-21839",
+          "scope": [
+            "admin",
+            "includes"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-21",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "cases": [
+        {
+          "id": "GHSA-97q8-3wfg-pv8m",
+          "cve": "CVE-2015-10045",
+          "repo": "https://github.com/tutrantta/project_todolist.git",
+          "fix": "194a0411bbe11aa4813f13c66b9e8ea403539141",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability, which was classified as critical, was found in tutrantta project_todolist. Affected is the function getAffectedRows/where/insert/update in the library library/Database.php. The manipulation leads to sql injection. The name of the patch is 194a0411bbe11aa4813f13c66b9e8ea403539141. It",
+          "scope": [
+            "library"
+          ]
+        },
+        {
+          "id": "GHSA-fx39-w9qr-mppw",
+          "cve": "CVE-2015-10042",
+          "repo": "https://github.com/Dovgalyuk/AIBattle-disabled-.git",
+          "fix": "448e9880aac18ae7832f8d065e03e46ce0f1d3e3",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "** UNSUPPPORTED WHEN ASSIGNED **** UNSUPPORTED WHEN ASSIGNED ** A vulnerability classified as critical was found in Dovgalyuk AIBattle. Affected by this vulnerability is the function registerUser of the file site/procedures.php. The manipulation of the argument postLogin leads to sql injection. The ",
+          "scope": [
+            "site"
+          ]
+        },
+        {
+          "id": "GHSA-56x3-c65v-wgm6",
+          "cve": "CVE-2017-20169",
+          "repo": "https://github.com/GGGGGGGG/ToN-MasterServer.git",
+          "fix": "3a4c7e6d51bf95760820e3245e06c6e321a7168a",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability, which was classified as critical, has been found in GGGGGGGG ToN-MasterServer. Affected by this issue is some unknown functionality of the file public_html/irc_updater/svr_request_pub.php. The manipulation leads to sql injection. The name of the patch is 3a4c7e6d51bf95760820e3245e06",
+          "scope": [
+            "common",
+            "public_html/irc_updater"
+          ]
+        },
+        {
+          "id": "GHSA-cwwc-wx48-34j4",
+          "cve": "CVE-2021-4310",
+          "repo": "https://github.com/01-Scripts/01-Artikelsystem.git",
+          "fix": "ae849b347a58c2cb1be38d04bbe56fc883d5d84a",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in 01-Scripts 01-Artikelsystem. It has been classified as problematic. Affected is an unknown function of the file 01article.php. The manipulation of the argument $_SERVER['PHP_SELF'] leads to cross site scripting. It is possible to launch the attack remotely. The name of t",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-rcv3-qv45-hfcc",
+          "cve": "CVE-2019-25100",
+          "repo": "https://github.com/happyman/twmap.git",
+          "fix": "babbec79b3fa4efb3bd581ea68af0528d11bba0c",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in happyman twmap. It has been declared as critical. Affected by this vulnerability is an unknown functionality of the file twmap3/data/ajaxCRUD/pointdata2.php. The manipulation of the argument id leads to sql injection. Upgrading to version v2.9_v4.31 is able to address th",
+          "scope": [
+            "twmap3/data/ajaxCRUD",
+            "twmap3/data/ajaxCRUD_old"
+          ]
+        },
+        {
+          "id": "GHSA-wm32-3r4m-jvcc",
+          "cve": "CVE-2017-20164",
+          "repo": "https://github.com/symbiote/silverstripe-seed.git",
+          "fix": "b065ebd82da53009d273aa7e989191f701485244",
+          "cwe": [
+            601
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "Symbiote Seed Open Redirect vulnerability",
+          "scope": [
+            "code/extensions"
+          ]
+        },
+        {
+          "id": "GHSA-9432-j67m-gv59",
+          "cve": "CVE-2014-125062",
+          "repo": "https://github.com/ananich/bitstorm.git",
+          "fix": "ea8da92f94cdb78ee7831e1f7af6258473ab396a",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "A vulnerability classified as critical was found in ananich bitstorm. Affected by this vulnerability is an unknown functionality of the file announce.php. The manipulation of the argument event leads to sql injection. The name of the patch is ea8da92f94cdb78ee7831e1f7af6258473ab396a. It is recommend",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-5rx9-6x57-42f7",
+          "cve": "CVE-2014-125053",
+          "repo": "https://github.com/Piwigo/Piwigo-Guest-Book.git",
+          "fix": "0cdd1c388edf15089c3a7541cefe7756e560581d",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability was found in Piwigo-Guest-Book up to 1.3.0. It has been declared as critical. This vulnerability affects unknown code of the file include/guestbook.inc.php of the component Navigation Bar. The manipulation of the argument start leads to sql injection. Upgrading to version 1.3.1 is ab",
+          "scope": [
+            "include"
+          ]
+        },
+        {
+          "id": "GHSA-249j-645x-c97w",
+          "cve": "CVE-2017-20163",
+          "repo": "https://github.com/RedSnapper/NView.git",
+          "fix": "cbd255f55d476b29e5680f66f48c73ddb3d416a8",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability has been found in Red Snapper NView and classified as critical. This vulnerability affects the function mutate of the file src/Session.php. The manipulation of the argument session leads to sql injection. The name of the patch is cbd255f55d476b29e5680f66f48c73ddb3d416a8. It is recomm",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-77vx-pjqc-36vf",
+          "cve": "CVE-2014-125040",
+          "repo": "https://github.com/stevejagodzinski/DevNewsAggregator.git",
+          "fix": "b9de907e7a8c9ca9d75295da675e58c5bf06b172",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in stevejagodzinski DevNewsAggregator. It has been rated as critical. Affected by this issue is the function getByName of the file php/data_access/RemoteHtmlContentDataAccess.php. The manipulation of the argument name leads to sql injection. The name of the patch is b9de907",
+          "scope": [
+            "php/data_access"
+          ]
+        },
+        {
+          "id": "GHSA-qr7g-c8hf-wr2j",
+          "cve": "CVE-2010-10003",
+          "repo": "https://github.com/gesellix/titlelink.git",
+          "fix": "b4604e523853965fa981a4e79aef4b554a535db0",
+          "cwe": [
+            89
+          ],
+          "license": "LGPL-3.0",
+          "summary": "A vulnerability classified as critical was found in gesellix titlelink. Affected by this vulnerability is an unknown functionality of the file plugin_content_title.php. The manipulation of the argument phrase leads to sql injection. The name of the patch is b4604e523853965fa981a4e79aef4b554a535db0. ",
+          "scope": [
+            "j_1_5_x/plugin",
+            "j_1_5_x/plugin/titlelink_plugins"
           ]
         }
       ]

@@ -1802,3 +1802,22 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     back on the 12th: a case scan running alongside the nightly's app scans slowed netbox from 1,422 s to 1,884 s.
     Don't run scans while the nightly runs. Still slow: mlflow GHSA-wqmh (3,800-4,800 s a side, Semgrep giving
     up), its time in per-file rule time on large files rather than the number of files.
+66. **Topic 10's batches of 2026-11-11 reviewed** (2026-11-13). 240 read by the agent, 92 accepted (64 open, 28 blind),
+    a higher rate than step 63's (21%). No fix commit repeats within the batches or any suite. The open fix diffs
+    were pre-screened by deepseek-v4.1-flash against step 22's rules and the agent's stated flow (14 flagged); the
+    14 were read here, and the other 50 checked from their flows, with the WordPress URL builders, the escape-only
+    SQL fixes (escaping only helps inside quotes) and one `$_SERVER` source read too. Rejected (13): Drupal
+    email_registration GHSA-gx8c (already escaped by db_query's placeholder before the fix), phpIPAM GHSA-vmmw,
+    WebFinance GHSA-9fp7 and web-cyradm GHSA-54q9 (incomplete fixes: fieldType, column names, a third query),
+    WebFinance GHSA-9jjr (escaping in an unquoted context), vBulletin Gimmie GHSA-fh9m (a session user id),
+    yii2-gii GHSA-3mpg (an unanchored check), froxlor GHSA-w7w4 (filed as XSS, sink in the cron writer),
+    resend-welcome-email GHSA-gwq5 and mark-user-as-spammer GHSA-4mx9 (wp_nonce_url() already esc_html()s the
+    URL), weblabyrinth GHSA-q542 (the fixed query reads unset properties), BigTree events GHSA-9mvr (a new feature
+    in the same commit), cimage GHSA-6hv3 (SERVER_SOFTWARE). Kept although flagged: FlatPress GHSA-2qf9 and
+    QSF-Portal GHSA-2rwp (separators stripped or refused from a single name, so it can't leave its folder, as
+    step 22's sanitizers), OpenMage GHSA-5vpv (NUL and `..` segments refused). Kept after a closer look: debug-bar
+    GHSA-2mv3 (add_query_arg() with no base builds on the raw REQUEST_URI) and web-cyradm GHSA-x38j (the escaped
+    login is quoted in lib/crypto.php's query). The flash screen missed two of the 13 (GHSA-4mx9, GHSA-6hv3) and
+    flagged three sound fixes: worth reading the WordPress and `$_SERVER` cases by hand next time too. Added: 51 to
+    cve-pairs-php (197 now), 28 blind into cve-pairs-blind-php-18..21 as the batches named them (97 blind PHP).
+    Blind diffs were not read.
