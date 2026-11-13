@@ -193,6 +193,35 @@ rule):
 4. Then continue the steps below, re-running the CVE suites after each.
 
 
+## Open items (2026-11-13; keep this list current)
+
+The numbered steps below are a log, finished as written; this is what they leave open. Strike an item when it
+closes and name the step that closed it.
+
+Measured gaps (nightly 2026-11-13, non-blind suites, review mode, found before the fix and quiet after):
+- Python front-end XSS: 6 of 31 in cve-pairs-python-frontend, 1 of 7 in cve-pairs-python. Not done from step 32:
+  a hotspot for template values in event handlers, unquoted attributes and script strings.
+- Python SSRF 1 of 6 (0 of 2 with path traversal), open redirect 4 of 11 (a bare `reverse("index") + x` still
+  open, step 13).
+- JavaScript path traversal 1 of 24, SSRF 0 of 7, open redirect 0 of 5, outside HTTP handlers 1 of 27. Step 25's
+  open question: a one-line `require('fs').createReadStream(req.query.f).pipe(res)` missed in one probe file.
+- False alarms: cve-pairs-python verdict 15% of fixed versions still flagged (12 of 79).
+
+Analysis:
+- Step 42 D (project checks trusted by name: `*safe*`, `*sanitize*`, `*valid*`) and E (dispatch the summaries
+  can't follow: a plugin loaded by name, a handler passed as a value): not started.
+- Step 32's left-overs: pygeoapi GHSA-f6pr (E), Lektor GHSA-wv28.
+
+Speed and stability:
+- mlflow GHSA-wqmh: Semgrep gives up on both sides, a sixth of all scan time (steps 64, 65); being profiled.
+- Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
+
+Ground truth:
+- Research topic 11 (Python app CVEs with no GitHub advisory) queued, topic 10 (PHP) behind it (step 67).
+- PHP: 197 open cases and 97 blind in cve-pairs-php and -blind-php-1..21, no PHP rules yet (steps 62-66).
+- Proposed, not queued: fixes using sanitizers codewatch doesn't recognise; more open-source Django, Flask and
+  FastAPI apps for the nightly's false-alarm check (step 67).
+
 ## Next steps, in order
 
 1. **Real-world measurement sets** (done, see above):
