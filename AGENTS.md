@@ -233,7 +233,7 @@ npm advisories (step 29). Those pools are nearly used up.
    Files: `benchmarks/cve-candidates-YYYY-MM-DD-php.{tsv,json}`. When
    the list is used up, mark this topic done as usual.
 
-11. **Python web app CVEs with no GitHub advisory.** (2026-11-13; take this before topic 10.) Every earlier Python
+11. **Python web app CVEs with no GitHub advisory.** (done 2026-11-13 after 4 batches, cve-candidates-2026-11-13-python-nvd-4.*; it was taken before topic 10.) Every earlier Python
    topic read GitHub's advisory database and PYSEC, and topic 8 found that pool nearly used up (1 accepted of 240).
    Many CVEs in Python apps never got a GitHub advisory, and datasets such as CVEfixes and MoreFixes (2024) collect
    their fix commits from NVD's references. Source: the CVE list as a git repository, filtered locally with no API
