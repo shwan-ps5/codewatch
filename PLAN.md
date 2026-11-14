@@ -219,9 +219,10 @@ Speed and stability:
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
-- Research: topic 12 (JS/TS app CVEs with no GitHub advisory) queued 2026-11-14, then topic 10 (PHP, about 1,000
-  candidates left); runner cap 12 (step 70).
-  The 9 new cve-pairs-python/-nonhttp cases are first scanned by the nightly of 2026-11-15.
+- Research: topic 12 (JS/TS app CVEs with no GitHub advisory), five batches reviewed in step 72, about 550
+  candidates left; then topic 10 (PHP, about 950 left); runner cap 12 (step 70).
+  The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
+  committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
 - PHP (step 70): verdict 30 of 197 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
   passes across functions and files (most misses), templates (Twig |raw, Blade {!! !!}, Smarty), helpers given
   'escape' => false (baserCMS GHSA-66c2), lookup results (a record fetched by a request id), a PHP learning set
@@ -1974,3 +1975,27 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     mode finds far more in both languages, at the cost of findings left on fixed code. Answer to the question:
     codewatch is not chasing something GitHub already has for Python; for JavaScript CodeQL's taint tracking is
     as good and cleaner, and its misses show where codewatch's should go next.
+72. **Batches of 2026-11-14 reviewed: topic 12's five and topic 10's PHP batch** (2026-11-14). 360 read by the
+    agents, 33 accepted (18 open, 15 blind). The 18 open fix diffs were read here; 7 rejected:
+    Chartbrew CVE-2026-65980 and CVE-2026-85726 (escaping changed inside a shared variable-substitution helper,
+    request source and query execution both outside the changed file), Joplin CVE-2026-59814 (the MIME type served
+    is stored metadata; the fix hardens response headers), nterchange GHSA-cp2p (quote escaping swapped for base64
+    in generated PHP), contact_app GHSA-gpxg (escaping added inside a view helper, no request source visible),
+    FlatPress GHSA-mpfm (the posted name becomes a gallery folder shown later: stored), w2wiki GHSA-q3hj (saved wiki
+    pages: stored). Kept: SparkyFitness CVE-2026-92263 (an upload's originalname into a shell tar command in
+    another file; its own repository advisory GHSA-jh96 was new to reviewed.py), Portabase CVE-2026-67449 (a
+    request header into path.join and rename), Markdown Preview Enhanced CVE-2026-54703 (-nonhttp: a VS Code
+    webview's message forwarded to a file-writing command; a release commit, its one unrelated hunk a preview-tab
+    fix), SQLBot CVE-2026-53556 (a request body's table name into an f-string query; FastAPI), and in PHP OpenMage
+    GHSA-qxw7 (scope widened to errors/, where processor.php reads SCRIPT_NAME), go-with-me GHSA-52gv ($_POST into
+    oci_parse), TBDev GHSA-88jc ($_GET echoed into input values; the file isn't UTF-8), MISP GHSA-x452 (CakePHP view
+    variables echoed unescaped; the controller is outside the scope), CRMx GHSA-h8mf ($_POST['id'] into an UPDATE
+    through the app's own db()), oc-server3 GHSA-w8rr (a Smarty template's {$username} without |escape; the source
+    is outside the scope) and phpMyFAQ GHSA-cp9c (an action read with FILTER_UNSAFE_RAW printed into admin links).
+    Added: 2 to cve-pairs-javascript, 1 to -javascript-nonhttp, 1 to cve-pairs-python, 7 to cve-pairs-php. Blind,
+    as the batches named them except one: cve-pairs-blind-python-20..23 (Docat and Browsertrix FastAPI, Redash
+    Flask, Plane Django, from their dependency files), cve-pairs-blind-php-22/-23, cve-pairs-blind-javascript-17/-18,
+    and 2 into cve-pairs-blind-javascript-nonhttp: Chartbrew's AI tool case, and JupyterLab Desktop CVE-2026-86044,
+    moved there from -15 because its advisory's title is an Electron app's one-click link, not an HTTP request. No
+    blind diff was read. Topic 12's yield: 18 of 300 (6%), half Python or PHP code in repositories GitHub calls
+    JavaScript.

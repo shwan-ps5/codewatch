@@ -115,7 +115,7 @@
       "language": "python",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-02 in a third batch (PLAN.md step 24) widen that rule: CWE 23, 36, 73, 77, 90, 113, 643, 943 and 1333 as well, fixes of up to five non-test source files and 200 lines when the flow is still clear, Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps counted as Flask/FastAPI, and pre-2021 advisories; decisions are in benchmarks/cve-candidates-2026-11-02-batch3.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-03 in a fourth batch (PLAN.md step 27) follow the third batch's rule, read from OSV's export of GitHub's reviewed PyPI advisories: one open case (Arches GHSA-gmpq, 147 changed lines ignoring re-indented SQL, within step 24's widened limits; Modoboa GHSA-wwv8 was rejected at review for touching 10 files) and three blind in cve-pairs-blind-python-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03.tsv. None used for rules yet. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 6 open, 5 blind in cve-pairs-blind-python-6 here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet. Cases added 2026-11-03 from the second batch of unreviewed advisories (PLAN.md step 30): agent-zero GHSA-8j45 and pyLoad GHSA-3mmf here, 3 blind in cve-pairs-blind-python-7; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed-2.tsv. None used for rules yet. On 2026-11-04 GHSA-3864-rp2m-2qfj (libre-chat) and GHSA-v9w6-9hq9-33ch (LightRAG) were used to make a FastAPI route's UploadFile parameters (and lists of them) a source through their .filename, and LightRAG to rewrite match statements whose case patterns span lines. Also on 2026-11-04: pgAdmin GHSA-v395-x24j-4r3g to make its driver's execute_scalar/execute_dict/execute_2darray/execute_void SQL sinks; GHSA-cr8c-972v-rmp3 to make req.form/args/values/files/get_json() a source, to stop a Path built for a relative_to() check being a sink, and to accept a normalised path's relative_to() in a try that returns on ValueError as a containment check; GHSA-7r93-vp6c-cw5m to accept a named safe-URL check that replaces the value (unless an `and` can skip it) and Flask-Login's login_url() as an internal URL; psiturk GHSA-9mq4-9556-6qxq to stop a key-presence check on request.args clearing the whole request. GHSA-fghj-qqgj-7rxf (SQLBot, added 2026-11-04) was used the same day to accept os.path.commonpath() containment checks; its scope was widened to include its request model. GHSA-2689 (Whoogle) is filed as CWE-78, but its fix replaces pickle with json for the preferences cookie: CWE-502 added on 2026-11-05 (PLAN.md step 43), with no rule changed. Cases added 2026-11-09 from topic 8 and topic 9 (PLAN.md step 60): moonraker GHSA-3jqf (LDAP filter), mcp-atlassian GHSA-7r34 (SSRF from request headers) and cve-search GHSA-3fmp (a form field names the MongoDB collection, column names the projection). GHSA-3fmp is filed as CWE-20; CWE-943 added at review so it can be scored as NoSQL injection. Decisions in benchmarks/cve-candidates-2026-11-08-python-thin*.tsv and -python-nosql.tsv. None used for rules yet. Topic 11's batches of 2026-11-13 (Python app CVEs with no GitHub advisory) reviewed 2026-11-14 (PLAN.md step 69); decisions in benchmarks/cve-candidates-2026-11-13-python-nvd*.tsv.",
+      "about": "Python CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-9x43-5qcq-h79q (Grappelli) was used on 2026-10-31 to accept url_has_allowed_host_and_scheme(url=...) as a redirect check; GHSA-f2mf-q878-gh58 (Parsl), GHSA-h6m6-jj8v-94jj (litellm) and GHSA-8whx-v8qq-pq64 (changedetection.io) to add Flask route and FastAPI text parameters as request sources, pandas and Prisma raw-SQL sinks, and typed Flask converters; GHSA-6rmf-cv6p-4h27 (django-termsandconditions) and GHSA-g3cm-qg2v-2hj5 (pyLoad), at their fix commits, to add values used inside a passing is_safe/is_valid-style check, request.url_root/host_url as redirect bases, and calls to project functions that can't return a parameter as clean (this loses GHSA-g3cm's vulnerable commit, whose flaw is its own is_safe_url). Cases added 2026-11-02 were chosen from GitHub's reviewed pip advisories since 2021 (CWE 22, 79, 89, 94, 502, 601, 611, 78, 918, 1336) by fix size, then read one by one; the decisions and reasons are in PLAN.md step 22. On 2026-11-02 (PLAN.md step 22, first round) GHSA-527m-2xhr-j27g, GHSA-wc6j-5g83-xfm6, GHSA-48rp-jc79-2264 and GHSA-vwhf-3v6x-wff8 at their fixes were used to accept raising validators named for what they check, base + os.sep prefix checks on resolved paths, Flask make_response of a dict or list, and lookups through a store; GHSA-h454-rq3m-89rc (Django URL arguments), GHSA-9jj8-v89v-xjvw (route parameters tainted where declared, name-only re.sub), GHSA-r25m-cr6v-p9hq (FileResponse, sanitise_ names) and GHSA-g53g-q539-93cv (requests url=) to add sources and sinks. Cases added 2026-11-02 in a second batch (PLAN.md step 23) follow the same rule, read from OSV's export of GitHub's reviewed PyPI advisories (GitHub's advisory API was not reachable from the session), with three pre-2021 advisories added under the same size rule (two here, one blind); decisions and reasons are in benchmarks/cve-candidates-2026-11-02.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-02 in a third batch (PLAN.md step 24) widen that rule: CWE 23, 36, 73, 77, 90, 113, 643, 943 and 1333 as well, fixes of up to five non-test source files and 200 lines when the flow is still clear, Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps counted as Flask/FastAPI, and pre-2021 advisories; decisions are in benchmarks/cve-candidates-2026-11-02-batch3.tsv. None of them has been used to write or adjust rules. Cases added 2026-11-03 in a fourth batch (PLAN.md step 27) follow the third batch's rule, read from OSV's export of GitHub's reviewed PyPI advisories: one open case (Arches GHSA-gmpq, 147 changed lines ignoring re-indented SQL, within step 24's widened limits; Modoboa GHSA-wwv8 was rejected at review for touching 10 files) and three blind in cve-pairs-blind-python-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03.tsv. None used for rules yet. Cases added 2026-11-03 from GitHub's unreviewed advisories (Python web apps not on PyPI; research by a separate agent per AGENTS.md, reviewed here, PLAN.md step 30): 6 open, 5 blind in cve-pairs-blind-python-6 here; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed.tsv. None used for rules yet. Cases added 2026-11-03 from the second batch of unreviewed advisories (PLAN.md step 30): agent-zero GHSA-8j45 and pyLoad GHSA-3mmf here, 3 blind in cve-pairs-blind-python-7; decisions in benchmarks/cve-candidates-2026-11-03-python-unreviewed-2.tsv. None used for rules yet. On 2026-11-04 GHSA-3864-rp2m-2qfj (libre-chat) and GHSA-v9w6-9hq9-33ch (LightRAG) were used to make a FastAPI route's UploadFile parameters (and lists of them) a source through their .filename, and LightRAG to rewrite match statements whose case patterns span lines. Also on 2026-11-04: pgAdmin GHSA-v395-x24j-4r3g to make its driver's execute_scalar/execute_dict/execute_2darray/execute_void SQL sinks; GHSA-cr8c-972v-rmp3 to make req.form/args/values/files/get_json() a source, to stop a Path built for a relative_to() check being a sink, and to accept a normalised path's relative_to() in a try that returns on ValueError as a containment check; GHSA-7r93-vp6c-cw5m to accept a named safe-URL check that replaces the value (unless an `and` can skip it) and Flask-Login's login_url() as an internal URL; psiturk GHSA-9mq4-9556-6qxq to stop a key-presence check on request.args clearing the whole request. GHSA-fghj-qqgj-7rxf (SQLBot, added 2026-11-04) was used the same day to accept os.path.commonpath() containment checks; its scope was widened to include its request model. GHSA-2689 (Whoogle) is filed as CWE-78, but its fix replaces pickle with json for the preferences cookie: CWE-502 added on 2026-11-05 (PLAN.md step 43), with no rule changed. Cases added 2026-11-09 from topic 8 and topic 9 (PLAN.md step 60): moonraker GHSA-3jqf (LDAP filter), mcp-atlassian GHSA-7r34 (SSRF from request headers) and cve-search GHSA-3fmp (a form field names the MongoDB collection, column names the projection). GHSA-3fmp is filed as CWE-20; CWE-943 added at review so it can be scored as NoSQL injection. Decisions in benchmarks/cve-candidates-2026-11-08-python-thin*.tsv and -python-nosql.tsv. None used for rules yet. Topic 11's batches of 2026-11-13 (Python app CVEs with no GitHub advisory) reviewed 2026-11-14 (PLAN.md step 69); decisions in benchmarks/cve-candidates-2026-11-13-python-nvd*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
       "cases": [
         {
           "id": "GHSA-f2mf-q878-gh58",
@@ -1338,6 +1338,20 @@
             "core/clients/file_storage/classes",
             "core/schemas"
           ]
+        },
+        {
+          "id": "CVE-2026-53556",
+          "cve": "CVE-2026-53556",
+          "repo": "https://github.com/dataease/SQLBot.git",
+          "fix": "76b5176b0e394740fd07c0d1769c0c792e8cb3b4",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "SQLBot: Authenticated SQL Injection in previewData Resulting in Arbitrary File Read",
+          "scope": [
+            "backend/apps/datasource/crud"
+          ]
         }
       ]
     },
@@ -1346,7 +1360,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv). GHSA-c8hm (n8n) was used on 2026-11-09 to add a request-chosen Content-Type as an XSS sink (PLAN.md step 59).",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv). GHSA-c8hm (n8n) was used on 2026-11-09 to add a request-chosen Content-Type as an XSS sink (PLAN.md step 59). Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -2391,6 +2405,36 @@
           "scope": [
             "."
           ]
+        },
+        {
+          "id": "CVE-2026-92263",
+          "cve": "CVE-2026-92263",
+          "repo": "https://github.com/CodeWithCJ/SparkyFitness.git",
+          "fix": "724730b6de5f2ca46856e0cbf113cc34f9c0689d",
+          "cwe": [
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "SparkyFitness: Authenticated OS command injection (host RCE) via backup-restore filename in POST /api/admin/backup/restore",
+          "scope": [
+            "SparkyFitnessServer/routes",
+            "SparkyFitnessServer/services"
+          ]
+        },
+        {
+          "id": "CVE-2026-67449",
+          "cve": "CVE-2026-67449",
+          "repo": "https://github.com/Portabase/portabase.git",
+          "fix": "8dcb406790728fbdbf758ec88bf000af79498fc1",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "Portabase: Unauthenticated path traversal in TUS webhook overwrites AES-256-GCM master key",
+          "scope": [
+            "app/api/tus/hooks",
+            "docker/nginx"
+          ]
         }
       ]
     },
@@ -2399,7 +2443,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers, chat commands, MCP tool arguments, peer and feed content rendered in a desktop or browser client. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet. Added 2026-11-04 (PLAN.md step 31): Leon GHSA-5jhh, FlyEnv GHSA-w92g, spec-workflow-mcp GHSA-xgwr, lettura GHSA-6fpp, MiroTalk GHSA-rcjf; their blind half is cve-pairs-blind-javascript-nonhttp.",
+      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers, chat commands, MCP tool arguments, peer and feed content rendered in a desktop or browser client. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet. Added 2026-11-04 (PLAN.md step 31): Leon GHSA-5jhh, FlyEnv GHSA-w92g, spec-workflow-mcp GHSA-xgwr, lettura GHSA-6fpp, MiroTalk GHSA-rcjf; their blind half is cve-pairs-blind-javascript-nonhttp. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
       "cases": [
         {
           "id": "GHSA-ffwf-47x2-jpr8",
@@ -2782,6 +2826,20 @@
           "summary": "wong2 mcp-cli Command Injection Vulnerability",
           "scope": [
             "src/oauth"
+          ]
+        },
+        {
+          "id": "CVE-2026-54703",
+          "cve": "CVE-2026-54703",
+          "repo": "https://github.com/shd101wyy/vscode-markdown-preview-enhanced.git",
+          "fix": "8bc848b6cbb42b9f35a0f95f7c3bf29b8302970e",
+          "cwe": [
+            73
+          ],
+          "license": "NOASSERTION",
+          "summary": "Markdown Preview Enhanced: Arbitrary File Write via updateMarkdown Command Without Path Validation",
+          "scope": [
+            "src"
           ]
         }
       ]
@@ -3553,6 +3611,34 @@
           "summary": "BigBlueButton before 2.2.4 allows XSS via closed captions because dangerouslySetInnerHTML in React is used.",
           "scope": [
             "bigbluebutton-html5/imports/ui/components/captions"
+          ]
+        },
+        {
+          "id": "CVE-2026-61852",
+          "cve": "CVE-2026-61852",
+          "repo": "https://github.com/chartbrew/chartbrew.git",
+          "fix": "8c8412edce56093e81b524e0235a796c7dd42336",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "Chartbrew: SQL Injection via row_limit Parameter in AI runQuery Tool",
+          "scope": [
+            "server/modules/ai/orchestrator"
+          ]
+        },
+        {
+          "id": "CVE-2026-86044",
+          "cve": "CVE-2026-86044",
+          "repo": "https://github.com/jupyterlab/jupyterlab-desktop.git",
+          "fix": "7f8f64ae796efae77d106612c95f0edd6c5dc273",
+          "cwe": [
+            601
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "JupyterLab Desktop: One-Click Jupyter Server Token Leak leading to Remote Code Execution",
+          "scope": [
+            "src/main"
           ]
         }
       ]
@@ -5815,7 +5901,7 @@
       "name": "cve-pairs-php",
       "language": "php",
       "kind": "cve-pairs",
-      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv.",
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
       "cases": [
         {
           "id": "GHSA-p9m5-xwgx-8j69",
@@ -8629,6 +8715,104 @@
           "scope": [
             "api/Model"
           ]
+        },
+        {
+          "id": "GHSA-qxw7-h2wh-cqrv",
+          "cve": "CVE-2026-128053",
+          "repo": "https://github.com/OpenMage/magento-lts.git",
+          "fix": "0bcec215c25941f900d46657d63fd0862960edf6",
+          "cwe": [
+            79
+          ],
+          "license": "OSL-3.0",
+          "summary": "OpenMage magento-lts before 20.18.2 and 21.0.0-beta1 before 21.0.0-beta3 contains a reflected cross-site scripting vulnerability in its error pages, which print SCRIPT_NAME-derived URLs built by errors/processor.php without escaping. Unauthenticated attackers can craft links that trigger uncaught ex",
+          "scope": [
+            "errors"
+          ]
+        },
+        {
+          "id": "GHSA-52gv-22v4-2jg6",
+          "cve": "CVE-2014-125032",
+          "repo": "https://github.com/porpeeranut/go-with-me.git",
+          "fix": "b92451e4f9e85e26cf493c95ea0a69e354c35df9",
+          "cwe": [
+            89
+          ],
+          "license": null,
+          "summary": "A vulnerability was found in porpeeranut go-with-me. It has been declared as critical. Affected by this vulnerability is an unknown functionality of the file module/frontend/add.php. The manipulation leads to sql injection. The name of the patch is b92451e4f9e85e26cf493c95ea0a69e354c35df9. It is rec",
+          "scope": [
+            "module/frontend"
+          ]
+        },
+        {
+          "id": "GHSA-88jc-7q78-58rq",
+          "cve": "CVE-2014-125027",
+          "repo": "https://github.com/yunasc/tbdev.git",
+          "fix": "0ba3fd4be29dd48fa4455c236a9403b3149a4fd4",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability has been found in Yuna Scatari TBDev up to 2.1.17 and classified as problematic. Affected by this vulnerability is the function get_user_icons of the file usersearch.php. The manipulation of the argument n/r/r2/em/ip/co/ma/d/d2/ul/ul2/ls/ls2/dl/dl2 leads to cross site scripting. The ",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-x452-92r9-f88f",
+          "cve": "CVE-2022-47928",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "684d3e51398d4ea032b06fa4a1cd2bdf7d8b0ede",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "In MISP before 2.4.167, there is XSS in the template file uploads in app/View/Templates/upload_file.ctp.",
+          "scope": [
+            "app/View/Templates"
+          ]
+        },
+        {
+          "id": "GHSA-h8mf-8qf9-cg8w",
+          "cve": "CVE-2022-4592",
+          "repo": "https://github.com/luckyshot/CRMx.git",
+          "fix": "8c62d274986137d6a1d06958a6f75c3553f45f8f",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability was found in luckyshot CRMx and classified as critical. This issue affects the function get/save/delete/comment/commentdelete of the file index.php. The manipulation leads to sql injection. The attack may be initiated remotely. The name of the patch is 8c62d274986137d6a1d06958a6f75c3",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-w8rr-xg77-6mj9",
+          "cve": "CVE-2022-4587",
+          "repo": "https://github.com/OpencachingDeutschland/oc-server3.git",
+          "fix": "3296ebd61e7fe49e93b5755d5d7766d6e94a7667",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability, which was classified as problematic, has been found in Opencaching Deutschland oc-server3. This issue affects some unknown processing of the file htdocs/templates2/ocstyle/login.tpl of the component Login Page. The manipulation of the argument username leads to cross site scripting.",
+          "scope": [
+            "htdocs/templates2/ocstyle"
+          ]
+        },
+        {
+          "id": "GHSA-cp9c-phxx-55xm",
+          "cve": "CVE-2022-4407",
+          "repo": "https://github.com/thorsten/phpmyfaq.git",
+          "fix": "1d73af34bf42764f9f9491c7ba5e9495d70e3ca5",
+          "cwe": [
+            79
+          ],
+          "license": "MPL-2.0",
+          "summary": "phpMyFAQ vulnerable to Cross-site Scripting",
+          "scope": [
+            "phpmyfaq/admin"
+          ]
         }
       ]
     },
@@ -10452,6 +10636,276 @@
           "summary": "OnboardLite: open redirect in the Discord OAuth redir parameter",
           "scope": [
             "app"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-17",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-59976",
+          "cve": "CVE-2026-59976",
+          "repo": "https://github.com/C4illin/ConvertX.git",
+          "fix": "0965928949319e2839770fbf57a8337440d42630",
+          "cwe": [
+            22,
+            73
+          ],
+          "license": "AGPL-3.0",
+          "summary": "ConvertX: path traversal in the conversion output path through the convert_to parameter",
+          "scope": [
+            "src/converters",
+            "src/pages"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-18",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-59816",
+          "cve": "CVE-2026-59816",
+          "repo": "https://github.com/laurent22/joplin.git",
+          "fix": "d97a5091a35c2923984d3777320500b594afcdce",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Joplin: Path traversal in transcribe proxy endpoint via URL-encoded slash",
+          "scope": [
+            "packages/server/src/routes/api"
+          ]
+        },
+        {
+          "id": "CVE-2026-76820",
+          "cve": "CVE-2026-76820",
+          "repo": "https://github.com/OpenCTI-Platform/opencti.git",
+          "fix": "6c1114ce8ce8f3a9d9b8c82dfff3a3a462e5dc1f",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "OpenCTI: Synchronizer SSRF: stream fetch has no URL validation",
+          "scope": [
+            "opencti-platform/opencti-graphql/src/domain"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-22",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-xw87-v2j3-vcw2",
+          "cve": "CVE-2022-4820",
+          "repo": "https://github.com/flatpressblog/flatpress.git",
+          "fix": "229752b51025e678370298284d42f8ebb231f67f",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "A vulnerability classified as problematic has been found in FlatPress. This affects an unknown part of the file admin/panels/entry/admin.entry.list.php of the component Admin Area. The manipulation leads to cross site scripting. It is possible to initiate the attack remotely. The name of the patch i",
+          "scope": [
+            "admin/panels/entry"
+          ]
+        },
+        {
+          "id": "GHSA-w6w2-4fv4-9gj2",
+          "cve": "CVE-2021-4251",
+          "repo": "https://github.com/andrewsauder/as.git",
+          "fix": "4acad1e3d2c34c017473ceea442fb3e3e078b2bd",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "A vulnerability classified as problematic was found in as. This vulnerability affects the function getFullURL of the file include.cdn.php. The manipulation leads to cross site scripting. The attack can be initiated remotely. The name of the patch is 4acad1e3d2c34c017473ceea442fb3e3e078b2bd. It is re",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-x4rq-x9vx-hmx3",
+          "cve": "CVE-2022-4586",
+          "repo": "https://github.com/OpencachingDeutschland/oc-server3.git",
+          "fix": "a9f79c7da78cd24a7ef1d298e6bc86006972ea73",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability classified as problematic was found in Opencaching Deutschland oc-server3. This vulnerability affects unknown code of the file htdocs/templates2/ocstyle/cachelists.tpl of the component Cachelist Handler. The manipulation of the argument name_filter/by_filter leads to cross site scrip",
+          "scope": [
+            "htdocs/templates2/ocstyle"
+          ]
+        },
+        {
+          "id": "GHSA-6rrr-cv38-85fp",
+          "cve": "CVE-2022-4585",
+          "repo": "https://github.com/OpencachingDeutschland/oc-server3.git",
+          "fix": "c720f2777a452186c67ef30db3679dd409556544",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "A vulnerability classified as problematic has been found in Opencaching Deutschland oc-server3. This affects an unknown part of the file htdocs/templates2/ocstyle/start.tpl of the component Cookie Handler. The manipulation of the argument usercountryCode leads to cross site scripting. It is possible",
+          "scope": [
+            "htdocs/lib2",
+            "htdocs/templates2/ocstyle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-23",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-62664",
+          "cve": "CVE-2026-62664",
+          "repo": "https://github.com/error311/FileRise.git",
+          "fix": "3bd5144b4bfdd03f059de18a4d106c235cf70685",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "FileRise: Authenticated path traversal in createFolder allows arbitrary directory creation outside the upload root",
+          "scope": [
+            "src/FileRise/Domain"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-20",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-61645",
+          "cve": "CVE-2026-61645",
+          "repo": "https://github.com/docat-org/docat.git",
+          "fix": "85fc40e8348c6328f488395d03c779517a0913fd",
+          "cwe": [
+            434,
+            22
+          ],
+          "license": "MIT",
+          "summary": "Docat has Arbitrary File Upload exists in Upload API",
+          "scope": [
+            "docat/docat"
+          ]
+        },
+        {
+          "id": "CVE-2026-76083",
+          "cve": "CVE-2026-76083",
+          "repo": "https://github.com/getredash/redash.git",
+          "fix": "2be9552d7e87bc3be76016e183a9f593e33073c7",
+          "cwe": [
+            918
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "Redash: JSON data source query URL can bypass base URL restriction",
+          "scope": [
+            "redash/query_runner"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-21",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-42093",
+          "cve": "CVE-2026-42093",
+          "repo": "https://github.com/getredash/redash.git",
+          "fix": "048bcd9fe7208e42f2f0cdf007d7e9dcb82829d8",
+          "cwe": [
+            89
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "Redash: SQL injection in the Query Results parameter substitution",
+          "scope": [
+            "redash/query_runner"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-22",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-104956",
+          "cve": "CVE-2026-104956",
+          "repo": "https://github.com/makeplane/plane.git",
+          "fix": "d3d3de44cf13991025783c598d8b34229fb47729",
+          "cwe": [
+            943
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Plane: Unauthenticated ORM field-name injection via `group_by`/`sub_group_by` on public deploy boards (DoS + blind oracle)",
+          "scope": [
+            "apps/api/plane/utils"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-23",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-14 (topic 12's JS/TS-repository CVEs with no GitHub advisory, or topic 10's PHP advisories; PLAN.md step 72) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-54501",
+          "cve": "CVE-2026-54501",
+          "repo": "https://github.com/webrecorder/browsertrix.git",
+          "fix": "a306afc3893a74ed0ec2407bdf0515ed52da8e46",
+          "cwe": [
+            20,
+            77,
+            78,
+            88,
+            250
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Browsertrix: Arbitrary Command Injection due to Improper Command Sanitization in Git URLs specified as Custom Behaviors",
+          "scope": [
+            "backend/btrixcloud"
           ]
         }
       ]
