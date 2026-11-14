@@ -305,6 +305,9 @@ SOURCE_EXTENSIONS = {"python": (".py",), "javascript": (".js", ".mjs", ".cjs", "
 # A Python web app's own templates and front-end scripts (cve-pairs-python-frontend).
 SOURCE_EXTENSIONS["python-web"] = (*SOURCE_EXTENSIONS["python"], *SOURCE_EXTENSIONS["javascript"],
                                    ".vue", ".html", ".htm", ".jinja", ".jinja2", ".j2")
+# PHP apps and CMSs: their code, templates (Twig, Smarty, Latte, Blade is .blade.php) and the JS they ship.
+SOURCE_EXTENSIONS["php"] = (".php", ".phtml", ".inc", ".module", ".install", ".theme", ".twig", ".tpl", ".latte",
+                            *SOURCE_EXTENSIONS["javascript"], ".vue", ".html", ".htm")
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|spec|e2e)/|(^|/)(test_[^/]*|[^/]*_test\.py|tests?\.py)$"
                           r"|\.(test|spec)\.[cm]?[jt]sx?$|\.d\.ts$")
 HUNK_RE = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")

@@ -466,7 +466,8 @@ class Semgrep(Analyzer):
         return bool(defining) and summaries_module.visible(path, defining, lambda rel: read_source(ctx.root / rel))
 
 
-LANGUAGE_SUFFIXES = {"python": [".py"], "javascript": [".js", ".jsx", ".mjs", ".cjs"], "typescript": [".ts", ".tsx"]}
+LANGUAGE_SUFFIXES = {"python": [".py"], "javascript": [".js", ".jsx", ".mjs", ".cjs"], "typescript": [".ts", ".tsx"],
+                     "php": [".php"]}
 CWE_RE = re.compile(r"CWE-(\d+)")
 
 

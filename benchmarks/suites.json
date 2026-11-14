@@ -5815,8 +5815,7 @@
       "name": "cve-pairs-php",
       "language": "php",
       "kind": "cve-pairs",
-      "deferred": true,
-      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. codewatch has no PHP rules yet, so this is ground truth for that work and is marked deferred: the nightly run skips it until it has them (run it by name). Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv.",
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv.",
       "cases": [
         {
           "id": "GHSA-p9m5-xwgx-8j69",
@@ -8639,7 +8638,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet. Tainacan GHSA-37g4, deferred unread at PLAN.md step 53, added here.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Tainacan GHSA-37g4, deferred unread at PLAN.md step 53, added here.",
       "cases": [
         {
           "id": "GHSA-97v2-f3v8-3cfx",
@@ -8749,7 +8748,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-f496-75v4-rv5q",
@@ -8787,7 +8786,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-xvw4-236w-442q",
@@ -8883,7 +8882,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-h2vx-h73q-6q6w",
@@ -8907,7 +8906,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-5 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-05-php-unreviewed-5 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-6q4c-4x29-76qv",
@@ -8991,7 +8990,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-vgcq-732g-5fp8",
@@ -9117,7 +9116,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-vx89-p3j7-8xqc",
@@ -9170,7 +9169,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-6jh4-47v2-4g37",
@@ -9222,7 +9221,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-472v-j2g4-g9h2",
@@ -9274,7 +9273,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-5 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-5 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-x27p-wfqw-hfcc",
@@ -9342,7 +9341,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-6 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-09-php-6 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-24wv-6c99-f843",
@@ -9381,7 +9380,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-rg56-94j7-hjx9",
@@ -9405,7 +9404,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-2 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-28p7-f6h6-3jh3",
@@ -9457,7 +9456,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-3 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-r96m-mwvr-946h",
@@ -9496,7 +9495,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs, split from cve-candidates-2026-11-10-php-4 before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-2pg6-vw9c-qhjv",
@@ -9604,7 +9603,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-10, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-10, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-hj4c-vfc4-5f9c",
@@ -9771,7 +9770,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-10, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-10, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-ghqq-jfx7-f6m9",
@@ -9795,7 +9794,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-5wx7-h6ww-mx8h",
@@ -9862,7 +9861,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-3q24-rrgq-j66h",
@@ -9914,7 +9913,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-vw4j-wqq5-5pv6",
@@ -10067,7 +10066,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. codewatch has no PHP rules yet.",
+      "about": "Blind PHP CVE fix pairs from topic 10's batches of 2026-11-11, split before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-97q8-3wfg-pv8m",

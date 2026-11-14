@@ -221,7 +221,10 @@ Speed and stability:
 Ground truth:
 - Research: topic 11 done (step 69); topic 10 (PHP, about 1,000 candidates left) is next in the queue.
   The 9 new cve-pairs-python/-nonhttp cases are first scanned by the nightly of 2026-11-15.
-- PHP: 197 open cases and 97 blind in cve-pairs-php and -blind-php-1..21, no PHP rules yet (steps 62-66).
+- PHP (step 70): verdict 30 of 197 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
+  passes across functions and files (most misses), templates (Twig |raw, Blade {!! !!}, Smarty), helpers given
+  'escape' => false (baserCMS GHSA-66c2), lookup results (a record fetched by a request id), a PHP learning set
+  of ordinary apps for false alarms.
 - Proposed, not queued: fixes using sanitizers codewatch doesn't recognise; more open-source Django, Flask and
   FastAPI apps for the nightly's false-alarm check (step 67).
 
@@ -1907,3 +1910,32 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     from their dependency files (Flask, FastAPI, Django, Quart), not their diffs; no blind diff was read. Ids are
     CVE ids; nothing in the scorer or reviewed.py assumed GHSA. Yield: 12% of what passed the filters, against
     topic 8's 0.4%, so CVE-only fixes are a richer Python pool than the advisory database now is.
+70. **PHP rules: catalog/codewatch/rules/php-web.yml** (2026-11-14). cve-pairs-php (197 cases) had never been
+    scanned: the benchmark had no PHP source extensions, so every case failed before its scan; they are now .php,
+    .phtml, .inc, Drupal's .module/.install/.theme, Twig/Smarty/Latte templates and the JS a PHP app ships. Eight
+    taint rules, each `interprocedural: false` (summaries.py's patterns are Python and JavaScript, and every summary
+    function filters through taint_rules()): xss, sql-injection, path-traversal (include/require too),
+    command-injection, code-injection (eval, assert, create_function, a variable as the function or class name),
+    ssrf, open-redirect, unsafe-deserialization. Sources: the superglobals ($_SERVER only for REQUEST_URI, PHP_SELF,
+    PATH_INFO, QUERY_STRING and HTTP_*), filter_input, php://input, and the request objects of Laravel, Symfony,
+    CakePHP, CodeIgniter, Yii, Craft, Slim/PSR-7, Joomla and PrestaShop. Sanitizers: casts, numeric and boolean
+    results (arithmetic and dates included), the escapers of PHP, WordPress, Laravel, CakePHP and Yii, escapers
+    called by name as functions or methods (Strings::htmlentities, escape_input; not a bare `escape`, which is also
+    a database escaper), CakePHP view helpers, filter_var/filter_input's HTML-escaping filters, SQL escaping and
+    $wpdb->prepare (escaping only holds inside quotes, but flagging every escaped value would bury the rest),
+    basename/realpath, escapeshellarg, and two guard shapes after the Python ones: inside `if (isLocalUrl($x))`,
+    and after `if (!isSafe($x)) { ...; exit/return/die/throw/wp_die }`. SQL sinks exclude query-builder methods
+    that take arrays (where, select) and PDOStatement::execute, whose argument is the bound values. First run:
+    verdict 31 of 197 found, 15 still flagged; Semgrep's registry rules alone found 0 in verdict mode (4 in review).
+    The 15 read: 6 real incomplete fixes (WP Download Manager GHSA-w2w8's upload folder, cherry-plugin GHSA-f9fh's
+    strpos() path check, pheditor GHSA-jvc5's prefix-only command allowlist, read.php GHSA-vphm's searchnum, an SQL
+    error echoed in GHSA-7h3q, phpIPAM GHSA-xjqw's `escape_input(print ...)`), 9 false alarms of five shapes, fixed
+    as above. Second run: verdict 30 found (XSS 10 of 86, SQL 4 of 54, path 2 of 24, command 1 of 4), 9 still
+    flagged (4.6%; review 34 found, 16 still flagged); the one lost, baserCMS GHSA-66c2, was found by chance on the
+    line beside its bug (a form helper given 'escape' => false fills itself from the request, which no taint rule
+    sees). The 4 false alarms left: LMS GHSA-3vrh (a page title from a record looked up by a request id),
+    Admidio GHSA-6j68 (the SSRF check is on the resolved IP, not the URL), WP SMS GHSA-q2g5 (an allowlisted ORDER BY
+    through a custom prepare), and a codewatch.js.xss hit in GHSA-x224. 85 worker-minutes for the suite, the
+    slowest scan 23 s, so cve-pairs-php is no longer deferred: the nightly runs it from 2026-11-15. Tests:
+    tests/test_php_web.py. The research runner's cap (CODEWATCH_RESEARCH_MAX_PENDING in its systemd drop-in) is
+    12 again, the maintainer's choice: at 4 (step 61) it sat idle for days waiting on reviews.
