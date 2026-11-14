@@ -219,7 +219,8 @@ Speed and stability:
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
-- Research topic 11 (Python app CVEs with no GitHub advisory) queued, topic 10 (PHP) behind it (step 67).
+- Research: topic 11 done (step 69); topic 10 (PHP, about 1,000 candidates left) is next in the queue.
+  The 9 new cve-pairs-python/-nonhttp cases are first scanned by the nightly of 2026-11-15.
 - PHP: 197 open cases and 97 blind in cve-pairs-php and -blind-php-1..21, no PHP rules yet (steps 62-66).
 - Proposed, not queued: fixes using sanitizers codewatch doesn't recognise; more open-source Django, Flask and
   FastAPI apps for the nightly's false-alarm check (step 67).
@@ -1888,3 +1889,21 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     test_keyword_comparisons_filtered_by_name_in_projects_with_many_functions, test_detection
     test_final_scan_of_the_focus_is_never_cut_short. To read on the next nightly: suite times, and any finding
     new to a focus file that used to time out.
+69. **Topic 11 reviewed: Python app CVEs with no GitHub advisory** (2026-11-14). Four batches of 2026-11-13 read
+    the whole pool: 3,937 CVEs since 2021 with one GitHub fix commit and no GHSA or PYSEC alias, 227 of them in
+    non-archived Python repositories using a listed framework; 27 accepted (14 open, 13 blind), 200 rejected.
+    The open fix diffs were read here (no flash pre-screen: few enough). Rejected (5): SABnzbd CVE-2026-62965
+    (CherryPy, not a listed framework; the agent said Flask), YETI CVE-2026-63500 (to_archive writes objects
+    loaded from the database: stored data), Dify CVE-2025-58747 (window.open of a URL a remote MCP server returns,
+    no request source in the change), JumpServer CVE-2025-58044 (a Referer redirect, safe by design since step
+    13, fixed by a global middleware), EverOS CVE-2026-58499 (source and sink both touched, the flow between
+    them in the memory-extraction pipeline outside the diff). Kept: Roxy-WI CVE-2026-33076/-33077/-33078 (one
+    fix commit, three weaknesses: path traversal by server_ip and by oldconfig, SQL injection by server_ip;
+    a shared commit has precedent, GHSA-g3cm and -3mmf) and CVE-2026-22265 (a raw grep into an ssh command),
+    openedX CVE-2026-35404 (open redirect), Aperi'Solve CVE-2026-34977 (command injection), CVAT CVE-2024-47064
+    (XSS in a 404), YETI CVE-2026-63502 (path traversal), UFO CVE-2026-105793 (MCP tool argument to adb:
+    -nonhttp). Added: 8 to cve-pairs-python, 1 to cve-pairs-python-nonhttp; 13 blind into
+    cve-pairs-blind-python-16..19 as the batches named them. The blind repositories' frameworks were checked
+    from their dependency files (Flask, FastAPI, Django, Quart), not their diffs; no blind diff was read. Ids are
+    CVE ids; nothing in the scorer or reviewed.py assumed GHSA. Yield: 12% of what passed the filters, against
+    topic 8's 0.4%, so CVE-only fixes are a richer Python pool than the advisory database now is.
