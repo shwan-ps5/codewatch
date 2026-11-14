@@ -47,6 +47,9 @@ from .template_sinks import TEMPLATE_EXTENSIONS, with_template_sinks
 SEMGREP_SEVERITY = {"ERROR": CRITICAL, "WARNING": MAJOR, "INFO": MINOR}
 JS_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"}
 RETURNER_MAX_JS_BYTES = 200_000
+# Seconds a rule may take on one focus file in the final scan (Semgrep's default is 5, then skips the file after
+# three rules time out).
+FOCUS_TIMEOUT = 60
 SEMGREP_TYPE = {"security": VULNERABILITY, "correctness": BUG}
 
 CPPCHECK_SEVERITY = {
@@ -155,8 +158,11 @@ class Semgrep(Analyzer):
             # in those files; the summaries above still saw every file.
             focus = None if ctx.focus is None else set(ctx.focus)
             main_targets = targets if focus is None else [t for t in targets if ctx.rel(originals.get(t, t)) in focus]
-            # Semgrep given no targets scans the working directory.
-            data = self.scan(ctx, configs, main_targets) if main_targets else {"results": []}
+            # Semgrep given no targets scans the working directory. The focus is the only place findings count,
+            # and a few files: there each rule gets FOCUS_TIMEOUT and no file is skipped for its timeouts (mlflow
+            # GHSA-wqmh's file_store.py and handlers.py were skipped at the default 5 s; PLAN.md step 68).
+            limits = [] if focus is None else ["--timeout", str(FOCUS_TIMEOUT), "--timeout-threshold", "0"]
+            data = self.scan(ctx, configs, main_targets, limits) if main_targets else {"results": []}
         result = Result()
         if self.timeouts:
             paths = sorted({ctx.rel(originals.get(p, p)) for p in self.timeouts})
@@ -255,11 +261,11 @@ class Semgrep(Analyzer):
                                message, path, line, line))
         return out
 
-    def scan(self, ctx, configs, targets):
+    def scan(self, ctx, configs, targets, limits=()):
         # Several scans at once (parallel benchmarks) share the CPUs: Semgrep's default, a job per CPU each,
         # stretched every rule past its timeout and dropped findings without an error.
         jobs = ["--jobs", os.environ["CODEWATCH_SEMGREP_JOBS"]] if os.environ.get("CODEWATCH_SEMGREP_JOBS") else []
-        args = ["scan", *configs, *jobs, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
+        args = ["scan", *configs, *jobs, *limits, "--json", "--metrics=off", "--quiet", "--disable-version-check", *targets]
         data = json.loads(self.exec(args, ctx, ok_codes=(0, 1)))
         # A timeout skips that rule on that file, silently unless it's reported.
         self.timeouts.update(e["path"] for e in data.get("errors", []) if e.get("type") == "Timeout" and e.get("path"))

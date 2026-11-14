@@ -213,7 +213,9 @@ Analysis:
 - Step 32's left-overs: pygeoapi GHSA-f6pr (E), Lektor GHSA-wv28.
 
 Speed and stability:
-- mlflow GHSA-wqmh: Semgrep gives up on both sides, a sixth of all scan time (steps 64, 65); being profiled.
+- mlflow GHSA-wqmh: still missed and slow (step 68). Next: a round that gives up on a file keeps that file's
+  earlier pass and summary answers; the focus files get FOCUS_TIMEOUT in the summary rounds too; why the
+  resummary rounds' matching is slow (with_pass_through's sanitizers, likely).
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
@@ -1865,3 +1867,24 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     since codewatch has no PHP rules yet. Also proposed and not queued: fixes using sanitizers codewatch doesn't
     recognise (cve-pairs-python's verdict false-alarm rate is 15%), and more open-source Django, Flask and FastAPI
     apps for the nightly's false-alarm check.
+68. **mlflow GHSA-wqmh profiled: keyword sanitizers behind a name filter, the focus never cut short** (2026-11-13).
+    Each Semgrep round of the case's before side timed at 6 jobs (`--time`): pass 1 440 s, passes 622 s,
+    resummaries 941 s, returners 207 s, the final scan of its 6 focus files 36 s; 2,246 s in all. The passes and
+    resummary rounds took a median file 10-15 times pass 1's, a 44 KB file as long as a 400 KB one: the rules,
+    not the files. argument_sanitizers' keyword comparisons (one `re.match(...) and re.match(...)` per function and
+    keyword set, slow to evaluate) sat behind a name filter only when the project had at most NAME_BATCH (400)
+    functions; mlflow's closure has 3,282, so every keyword argument in every file ran up to 2,000 comparisons.
+    Now each batch of functions gets its own sanitizer and filter (the same question asked): passes 339 s, Semgrep
+    giving up 18 times instead of 112. Resummaries barely moved (850 s): their time is matching (1,213 s of
+    1,505 against 18 s of taint), not yet explained. The final scan gave up on file_store.py and handlers.py, the
+    fix's files, on both sides: the focus now gets FOCUS_TIMEOUT (60 s a rule) and no file is skipped for its
+    timeouts (`--timeout-threshold 0`), the only scan where findings count and a few files. Both sides now
+    complete it (202 s, the slowest rule 25 s on handlers.py); app scans are unchanged. The case is still missed:
+    the flow (DeleteTraces' request_ids through `_get_request_message()` to FileStore.delete_traces, os.path.join
+    and shutil.rmtree) needs summaries of handlers.py and file_store.py, and the summary rounds still give up on
+    them. Worse, a passes or resummary round that gives up on a file drops its functions' earlier answers: a
+    function with no pass entry counts as handing nothing back (its result clean), a stale summary not found
+    again is gone. Both err towards missing flows, in any project. Tests: test_units
+    test_keyword_comparisons_filtered_by_name_in_projects_with_many_functions, test_detection
+    test_final_scan_of_the_focus_is_never_cut_short. To read on the next nightly: suite times, and any finding
+    new to a focus file that used to time out.

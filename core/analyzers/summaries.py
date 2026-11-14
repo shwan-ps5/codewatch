@@ -1089,27 +1089,31 @@ def argument_sanitizers(signatures, passing, excluded=frozenset(), mixed_only=Tr
         ]} for regex in name_regexes(funcs)]
     # One sanitizer for every keyword, its comparison pairing each function with its own keywords: a pattern per
     # keyword made the final scan half as slow again (djangoproject.com).
-    groups = {}
-    for func, names in by_names.items():
-        groups.setdefault(frozenset(names), set()).add(func)
-    terms = [f're.match("{f}", str($PT_FUNC)) and re.match("{k}", str($PT_KW))'
-             for names, funcs in sorted(groups.items(), key=lambda item: sorted(item[1]))
-             for f in name_regexes(funcs) for k in name_regexes(names)]
-    # The comparison is slow: plain name filters first.
-    funcs_filter = [{"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": regex}}
-                    for regex in name_regexes(by_names)][:1] if len(by_names) <= NAME_BATCH else []
-    names = set().union(*by_names.values())
-    names_filter = [{"metavariable-regex": {"metavariable": "$PT_KW", "regex": regex}}
-                    for regex in name_regexes(names)][:1] if len(names) <= NAME_BATCH else []
-    for i in range(0, len(terms), NAME_BATCH):
-        sanitizers.append({"patterns": [
-            {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}(..., $PT_KW=$PT_ARG, ...)"}
-                                for r in ("", "self.", "cls.")]},
-            *funcs_filter, *names_filter,
-            {"metavariable-comparison": {"comparison": " or ".join(f"({t})" for t in terms[i:i + NAME_BATCH])}},
-            PLAIN_ARGUMENT,
-            {"focus-metavariable": "$PT_ARG"},
-        ]})
+    # The comparison is slow, so plain name filters come first, and each sanitizer covers one batch of functions,
+    # its filter naming them: with one filter over every function, a project with more than a batch (mlflow,
+    # 3,282) had none, and every keyword argument in every file ran thousands of comparisons (PLAN.md step 68).
+    funcs = sorted(by_names)
+    for start in range(0, len(funcs), NAME_BATCH):
+        batch = {func: by_names[func] for func in funcs[start:start + NAME_BATCH]}
+        groups = {}
+        for func, names in batch.items():
+            groups.setdefault(frozenset(names), set()).add(func)
+        terms = [f're.match("{f}", str($PT_FUNC)) and re.match("{k}", str($PT_KW))'
+                 for names, group in sorted(groups.items(), key=lambda item: sorted(item[1]))
+                 for f in name_regexes(group) for k in name_regexes(names)]
+        funcs_filter = {"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": name_regexes(batch)[0]}}
+        names = set().union(*batch.values())
+        names_filter = [{"metavariable-regex": {"metavariable": "$PT_KW", "regex": regex}}
+                        for regex in name_regexes(names)][:1] if len(names) <= NAME_BATCH else []
+        for i in range(0, len(terms), NAME_BATCH):
+            sanitizers.append({"patterns": [
+                {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}(..., $PT_KW=$PT_ARG, ...)"}
+                                    for r in ("", "self.", "cls.")]},
+                funcs_filter, *names_filter,
+                {"metavariable-comparison": {"comparison": " or ".join(f"({t})" for t in terms[i:i + NAME_BATCH])}},
+                PLAIN_ARGUMENT,
+                {"focus-metavariable": "$PT_ARG"},
+            ]})
     return sanitizers
 
 

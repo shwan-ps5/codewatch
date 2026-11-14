@@ -512,6 +512,25 @@ def test_only_arguments_no_def_of_the_name_hands_back_are_cleaned():
     assert argument_sanitizers(signatures, {"one": {"*"}, "two": {"*"}, "three": {"*"}, "four": {"*"}}) == []
 
 
+def test_keyword_comparisons_filtered_by_name_in_projects_with_many_functions():
+    # More functions than a name batch (mlflow, 3,282): each keyword comparison is still behind a name filter
+    # naming exactly the functions it compares, so a call to anything else never runs it (PLAN.md step 68).
+    signatures = {f"func_{i:04d}": [(("a", "b"), (), 0)] for i in range(2 * NAME_BATCH + 5)}
+    keyword = [s for s in argument_sanitizers(signatures, {}, mixed_only=False)
+               if any("metavariable-comparison" in p for p in s["patterns"])]
+    assert len(keyword) == 3
+    covered = []
+    for sanitizer in keyword:
+        regex = next(p["metavariable-regex"]["regex"] for p in sanitizer["patterns"]
+                     if p.get("metavariable-regex", {}).get("metavariable") == "$PT_FUNC")
+        filtered = set(regex.strip("^$()").split("|"))
+        compared = set(re.findall(r'"\^\(([^)]*)\)\$", str\(\$PT_FUNC\)',
+                                  sanitizer["patterns"][-3]["metavariable-comparison"]["comparison"]))
+        assert {name for names in compared for name in names.split("|")} == filtered
+        covered += filtered
+    assert sorted(covered) == sorted(signatures)
+
+
 def test_deeper_passes_use_only_what_the_last_pass_added():
     rule = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
             "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "eval(...)"}]}

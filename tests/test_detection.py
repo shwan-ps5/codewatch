@@ -839,6 +839,30 @@ def test_summary_rounds_limited_to_what_the_focus_imports(tmp_path, monkeypatch)
     assert Semgrep.summary_targets(ctx, targets, {}) == targets
 
 
+def test_final_scan_of_the_focus_is_never_cut_short(tmp_path, monkeypatch):
+    # Semgrep skips a file once three rules take over 5 s on it: mlflow GHSA-wqmh's file_store.py and handlers.py,
+    # the files its fix changes. Only the focus, where findings count, gets the longer limit (PLAN.md step 68).
+    from core.analyzers import multi_tools
+
+    (tmp_path / "app.py").write_text("x = 1\n")
+    (tmp_path / "other.py").write_text("y = 2\n")
+    rules = yaml.safe_dump({"rules": [{"id": "r", "languages": ["python"], "message": "m", "severity": "ERROR",
+                                       "pattern": "eval(...)"}]})
+    calls = []
+
+    def scan(self, ctx, configs, targets, limits=()):
+        calls.append((sorted(t.rsplit("/", 1)[-1] for t in targets), list(limits)))
+        return {"results": []}
+
+    monkeypatch.setattr(multi_tools.Semgrep, "scan", scan)
+    for focus, limits in ((["app.py"], ["--timeout", str(multi_tools.FOCUS_TIMEOUT), "--timeout-threshold", "0"]),
+                          (None, [])):
+        calls.clear()
+        Semgrep().run(Context(tmp_path, ["app.py", "other.py"], semgrep_config="", custom_rules=rules, focus=focus))
+        assert calls[-1] == (["app.py"] if focus else ["app.py", "other.py"], limits)
+        assert all(not lim for _targets, lim in calls[:-1])
+
+
 def test_weak_hash_is_a_vulnerability_only_where_it_protects_something(tmp_path):
     if not Semgrep().available():
         pytest.skip("semgrep not installed")
