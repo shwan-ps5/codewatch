@@ -215,7 +215,7 @@ npm advisories (step 29). Those pools are nearly used up.
    Suites as topic 5 (`cve-pairs-python`, or `cve-pairs-python-nonhttp`). Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-nosql.{tsv,json}`.
 
-10. **PHP web apps, carried on from topic 4.** (behind topic 11 from 2026-11-13: carry on with it only when topic 11 is
+10. **PHP web apps, carried on from topic 4.** (behind topic 12 from 2026-11-14: carry on with it only when topic 12 is
    done or paused, then take it up again from here.) Topic 4's five batches of 2026-11-05
    (`cve-candidates-2026-11-05-php-unreviewed*`, 300 read, held for review) left about 800 candidates. Same source, filter and rules as topic 4: GitHub
    advisories (reviewed and unreviewed) whose one fix commit is in a non-archived repository with PHP as its primary
@@ -258,6 +258,24 @@ npm advisories (step 29). Those pools are nearly used up.
    blind ones in the next unused `cve-pairs-blind-python-N`, one per batch. If the first full filter leaves fewer
    than 30 candidates, read them all, say so in the JSON's `method` and mark the topic done. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-nvd.{tsv,json}`.
+
+12. **JavaScript/TypeScript app CVEs with no GitHub advisory.** (2026-11-14; take this before topic 10.) Topic 11's
+   method for JavaScript: it accepted 12% of what it read, against well under 1% for the advisory database's last
+   topics, and JavaScript is where codewatch misses most (path traversal, SSRF and open redirect in web apps;
+   anything outside an HTTP handler). Source, filter and id handling as topic 11: CVEs since 2021 in
+   `CVEProject/cvelistV5` with exactly one `https://github.com/OWNER/REPO/commit/SHA` reference, no alias of a
+   GitHub advisory, dropped when `reviewed.py` knows the id or fix SHA; write the filter in
+   `~/codewatch-research/`. Get each repository's language with GraphQL as topic 1 does and keep non-archived
+   JavaScript or TypeScript repositories. Keep apps as topics 2 and 3 describe them: a web server (Express, Koa,
+   Fastify, Nest, Next, Hapi, plain `http.createServer`), a Vue/React/Angular/Svelte front end, an Electron or
+   Tauri app, a browser or VS Code extension, a bot, an agent or MCP server; reject libraries and CLI tools whose
+   input is the user's own arguments or files (section 3), as before. CWEs: any section 3 takes; say in the TSV
+   when a case is path traversal, SSRF, open redirect or command injection, the gaps this topic is for. The id is
+   the CVE id (`reviewed.py --split CVE-...`). Suites: `cve-pairs-javascript` (web apps) or
+   `cve-pairs-javascript-nonhttp` (desktop, extension, bot, agent and MCP tool input); blind ones in the next unused
+   `cve-pairs-blind-javascript-N`, one per batch. If the first full filter leaves fewer than 30 candidates, read
+   them all, say so in the JSON's `method` and mark the topic done. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-javascript-nvd.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 

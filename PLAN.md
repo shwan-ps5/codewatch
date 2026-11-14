@@ -219,7 +219,8 @@ Speed and stability:
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
-- Research: topic 11 done (step 69); topic 10 (PHP, about 1,000 candidates left) is next in the queue.
+- Research: topic 12 (JS/TS app CVEs with no GitHub advisory) queued 2026-11-14, then topic 10 (PHP, about 1,000
+  candidates left); runner cap 12 (step 70).
   The 9 new cve-pairs-python/-nonhttp cases are first scanned by the nightly of 2026-11-15.
 - PHP (step 70): verdict 30 of 197 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
   passes across functions and files (most misses), templates (Twig |raw, Blade {!! !!}, Smarty), helpers given
