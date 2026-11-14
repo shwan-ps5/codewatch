@@ -193,7 +193,7 @@ rule):
 4. Then continue the steps below, re-running the CVE suites after each.
 
 
-## Open items (2026-11-13; keep this list current)
+## Open items (2026-11-14; keep this list current)
 
 The numbered steps below are a log, finished as written; this is what they leave open. Strike an item when it
 closes and name the step that closed it.
@@ -228,6 +228,12 @@ Ground truth:
   of ordinary apps for false alarms.
 - Proposed, not queued: fixes using sanitizers codewatch doesn't recognise; more open-source Django, Flask and
   FastAPI apps for the nightly's false-alarm check (step 67).
+
+Comparison (step 71):
+- CodeQL measured once on the five non-blind CVE-pair suites. Not yet: the 8 new cve-pairs-python cases against
+  codewatch's nightly of 2026-11-15; the cases only CodeQL finds (4 JS path traversal, 2 Python open redirects)
+  read as ordinary misses of codewatch's, from the cases' own fixes and not CodeQL's queries; Semgrep Pro, Snyk
+  Code and SonarQube (paid; later, if at all).
 
 ## Next steps, in order
 
@@ -1940,3 +1946,31 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     slowest scan 23 s, so cve-pairs-php is no longer deferred: the nightly runs it from 2026-11-15. Tests:
     tests/test_php_web.py. The research runner's cap (CODEWATCH_RESEARCH_MAX_PENDING in its systemd drop-in) is
     12 again, the maintainer's choice: at 4 (step 61) it sat idle for days waiting on reviews.
+71. **CodeQL on the CVE pairs, as a comparison** (2026-11-14). The question: is codewatch rebuilding what GitHub
+    already gives away? benchmarks/codeql_compare.py runs CodeQL 2.27.4 (GitHub's bundle, in
+    ~/.cache/codewatch/codeql) on both sides of each case and scores it with core.benchmark's own fix spots and
+    score_pair; each finding's CWEs come from its query's tags. Verdict: the queries GitHub's code scanning runs by
+    default; review: all of security-extended. Python suites get a Python database, plus JavaScript when the
+    checkout has any. CodeQL's terms allow it only on code under an OSI-approved licence (paid GitHub Advanced
+    Security for anything else, private code included), so a case is scanned only when GitHub's SPDX id is OSI or,
+    for NOASSERTION, its licence files read as one; 16 of 229 skipped (mostly open-core repositories with
+    commercial terms beside the open licence). Results in ~/.cache/codewatch/codeql-compare, not
+    benchmarks/results; no blind suite. 311 worker-minutes, 50 minutes at 6 workers.
+    Against codewatch's nightly of 2026-11-14, on the cases both scored (found, then still flagged after the fix):
+
+    | Suite | Cases | CodeQL verdict | codewatch verdict | CodeQL review | codewatch review |
+    |---|---|---|---|---|---|
+    | cve-pairs-python | 76 | 23, 11 | 47, 12 | 23, 11 | 49, 16 |
+    | cve-pairs-python-frontend | 31 | 4, 1 | 4, 0 | 4, 1 | 14, 8 |
+    | cve-pairs-javascript | 65 | 8, 1 | 8, 6 | 8, 1 | 23, 19 |
+    | cve-pairs-python-nonhttp | 8 | 0, 0 | 1, 0 | 0, 0 | 3, 1 |
+    | cve-pairs-javascript-nonhttp | 24 | 2, 2 | 1, 0 | 3, 2 | 6, 5 |
+
+    Python: codewatch finds twice what CodeQL does (19 both, 28 codewatch only, 4 CodeQL only: two open redirects
+    in one project's two advisories, GHSA-3mmf and GHSA-g3cm; path traversal in GHSA-hwv5; reflected XSS in
+    GHSA-rv25) with about the same false alarms. JavaScript verdict: a tie at 8 with 2 in common, CodeQL quieter
+    (1 still flagged to 6); its 6 are path traversal (GHSA-5c4f, -5pph, -p3h2, -x8qg), regex injection and
+    prototype pollution, where codewatch's JS path traversal is weakest (1 of 24 in review). codewatch's review
+    mode finds far more in both languages, at the cost of findings left on fixed code. Answer to the question:
+    codewatch is not chasing something GitHub already has for Python; for JavaScript CodeQL's taint tracking is
+    as good and cleaner, and its misses show where codewatch's should go next.

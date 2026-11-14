@@ -159,6 +159,19 @@ A route parameter is request data where it's declared, so `name = secure_filenam
 
 Most SecurityEval samples are plain functions with no request source, which caps verdict-mode detection there; much of the rest is design flaws (off-by-one, missing authentication, race conditions) outside what pattern and taint rules can see. Log injection is reported as a hotspot rather than a vulnerability, because whether a forged log line matters depends on the log format. Other known limits: Juice Shop measures detection only, since its unmarked code isn't labelled safe, and many of its challenges are business-logic flaws (missing ownership checks, weak security questions) that no static analyzer can recognise.
 
+### Compared with CodeQL
+
+GitHub's CodeQL (2.27.4, its default code-scanning queries for verdict and security-extended for review) was run once on the same CVE pairs, scored by the same fix spots, on 2026-11-14. Cases found, then still flagged after the fix; only cases both tools scored, and only under an OSI-approved licence (16 of 229 skipped):
+
+| Suite | Cases | CodeQL | codewatch verdict | codewatch review |
+|---|---|---|---|---|
+| Python web apps | 76 | 23 found, 11 still flagged | 47 found, 12 still flagged | 49 found, 16 still flagged |
+| Python front end | 31 | 4, 1 | 4, 0 | 14, 8 |
+| JS/TS web apps | 65 | 8, 1 | 8, 6 | 23, 19 |
+| Input that isn't an HTTP request (Python, JS/TS) | 32 | 2, 2 (review 3) | 2, 0 | 9, 6 |
+
+On Python web apps codewatch finds about twice as many (19 found by both, 28 by codewatch only, 4 by CodeQL only) with about as many false alarms. On JavaScript the two tie in verdict mode with different cases (2 in common), and CodeQL leaves fewer findings on fixed code; the six only it finds are mostly path traversal, codewatch's weakest JavaScript area. CodeQL's results are a measurement only: no rule was written from them. CodeQL's terms allow it only on code under an OSI-approved licence (anything else needs a paid GitHub licence), so `benchmarks/codeql_compare.py` scans a case only when its licence is one; CodeQL itself is not part of codewatch and has to be installed separately (the script's docstring says how). Details in `PLAN.md`, step 71.
+
 ## Claude / MCP
 
 Create a token for Claude on your Account page (a **read** token lets it list and resolve issues; a **scan** token can also start server-side scans), then:
