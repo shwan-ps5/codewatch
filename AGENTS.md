@@ -259,7 +259,7 @@ npm advisories (step 29). Those pools are nearly used up.
    than 30 candidates, read them all, say so in the JSON's `method` and mark the topic done. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-nvd.{tsv,json}`.
 
-12. **JavaScript/TypeScript app CVEs with no GitHub advisory.** (2026-11-14; take this before topic 10.) Topic 11's
+12. **JavaScript/TypeScript app CVEs with no GitHub advisory.** (done 2026-11-15, cve-candidates-2026-11-15-javascript-nvd-2.*; it was taken before topic 10.) Topic 11's
    method for JavaScript: it accepted 12% of what it read, against well under 1% for the advisory database's last
    topics, and JavaScript is where codewatch misses most (path traversal, SSRF and open redirect in web apps;
    anything outside an HTTP handler). Source, filter and id handling as topic 11: CVEs since 2021 in
