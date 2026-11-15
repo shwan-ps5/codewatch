@@ -219,8 +219,9 @@ Speed and stability:
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
-- Research: topic 12 (JS/TS app CVEs with no GitHub advisory), five batches reviewed in step 72, about 550
-  candidates left; then topic 10 (PHP, about 950 left); runner cap 12 (step 70).
+- Research: topic 12 (JS/TS app CVEs with no GitHub advisory), batches reviewed in steps 72 and 74; then topic 10
+  (PHP, about 950 left); runner cap 12 (step 70). Step 74's 24 open cases are first scanned by the nightly of
+  2026-11-16.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
   committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
 - PHP (steps 70, 73): verdict 35 of 203 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
@@ -2038,3 +2039,30 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     today). Still missed among the template cases: stored values (facturascripts GHSA-g6w2's log messages,
     phpMyFAQ GHSA-pgwp's FAQ content, MISP GHSA-4hg7's homepage setting), panel GHSA-mgr9's flash message, and the
     items in Open items. Tests: tests/test_php_templates.py.
+74. **Topic 12's batches 6-12 and the 2026-11-15 batch reviewed** (2026-11-15). 480 read by the agents, 54
+    accepted (37 open, 17 blind). The 37 open fix diffs were read here; 13 rejected: tarkov-data-manager
+    CVE-2026-21856 (a missing bound-parameter argument, no request value in the query text), AnythingLLM
+    CVE-2026-32719 (adm-zip extractAllTo on the whole archive; the fix is a validation loop before it, no flow
+    changes), SiYuan CVE-2026-59855 (an asset path from a note: stored), openmcp-client CVE-2025-58062 (a method
+    parameter whose source is an MCP server's authorization URL inside the SDK), LibreChat CVE-2026-22252 (stdio
+    dropped from an input schema union; the command runs elsewhere), VDO.Ninja CVE-2025-62613 (a demo page under
+    examples/), The Scratch Channel CVE-2025-53903 (posted profiles rendered later: stored), Dokploy
+    CVE-2026-72875 and -72884 (stored app names and compose paths into shell commands), PeerTube CVE-2026-73211 (a
+    federated actor's stored inbox URL), Firecrawl CVE-2026-72904 (json-schema-ref-parser's external $ref
+    resolution, the request schema arriving through a controller outside the diff), Homarr CVE-2025-64759 (a stored
+    SVG upload, plus header and sandbox hardening) and Twenty CVE-2026-73069 (stored field metadata into DDL).
+    Kept, cve-pairs-javascript (15): dbgate CVE-2025-50184, Docmost CVE-2026-22249 (an import zip's entry names),
+    WeKan CVE-2026-52891 (an upload's file name into exec in another file), Plunk CVE-2026-32096, Blinko
+    CVE-2026-23485 (tRPC input), Vertex CVE-2024-40646, Activepieces CVE-2026-73084 (JSON.stringify inside a
+    <script>), Dokploy CVE-2025-53375 (scope widened to packages/server/src/utils/traefik, where readConfigInPath
+    reads the path) and CVE-2026-72736 (tRPC input into docker commands), FastGPT CVE-2026-34163, Kan
+    CVE-2026-32255, Audiobookshelf CVE-2025-57800 (a callback stored in a cookie and redirected to), Grist
+    CVE-2026-55665 (location.search's next into a link) and CVE-2026-55659 (request values through
+    String.replace into an inline script), Jellystat CVE-2026-41167. cve-pairs-javascript-nonhttp (9): AnythingLLM
+    CVE-2026-32626 and -41318 (LLM replies and chart captions rendered as HTML) and CVE-2026-48116 (agent tool
+    arguments into ripgrep without "--"), electerm CVE-2026-73225 and -73224 (remote SFTP names into local paths
+    and shell commands), Tabby CVE-2026-72903 (the same, SFTP), Zero CVE-2025-52557 (email HTML), appium-mcp
+    CVE-2026-58500 (a device's UI element data into an MCP UI page), Anchorr CVE-2026-32890 (Discord avatars into
+    innerHTML). Blind, as the batches named them: cve-pairs-blind-javascript-19..24 (new), 2 into
+    cve-pairs-blind-javascript-nonhttp, and cve-pairs-blind-python-24 (new). No blind diff was read. Yield 24 of
+    480 (5%); 6 of the 13 rejections are stored data, the agents' commonest miss.

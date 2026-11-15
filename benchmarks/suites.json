@@ -1360,7 +1360,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv). GHSA-c8hm (n8n) was used on 2026-11-09 to add a request-chosen Content-Type as an XSS sink (PLAN.md step 59). Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv). GHSA-c8hm (n8n) was used on 2026-11-09 to add a request-chosen Content-Type as an XSS sink (PLAN.md step 59). Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Topic 12 batches 6-12 and the 2026-11-15 batch (JS/TS app CVEs from NVD) reviewed 2026-11-15 (PLAN.md step 74); decisions in benchmarks/cve-candidates-2026-11-1[45]-javascript-nvd*.tsv.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -2435,6 +2435,226 @@
             "app/api/tus/hooks",
             "docker/nginx"
           ]
+        },
+        {
+          "id": "CVE-2026-41167",
+          "cve": "CVE-2026-41167",
+          "repo": "https://github.com/CyferShepard/Jellystat.git",
+          "fix": "735fe7c6eb0e3e34e92a8a82fd21914d76693665",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Jellystat: SQL injection through request-body fields in the user and library API endpoints",
+          "scope": [
+            "backend/routes"
+          ]
+        },
+        {
+          "id": "CVE-2026-34163",
+          "cve": "CVE-2026-34163",
+          "repo": "https://github.com/labring/FastGPT.git",
+          "fix": "bc7eae2ed61481a5e322208829be291faec58c00",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "FastGPT: SSRF in the MCP tools endpoints through the user-supplied MCP server URL",
+          "scope": [
+            "projects/app/src/pages/api/core/app"
+          ]
+        },
+        {
+          "id": "CVE-2026-23485",
+          "cve": "CVE-2026-23485",
+          "repo": "https://github.com/blinkospace/blinko.git",
+          "fix": "9d6fa80a3e11a99886f90e048657443335fd3e7d",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Blinko: path traversal and file enumeration through the musicMetadata filePath parameter",
+          "scope": [
+            "server/routerTrpc"
+          ]
+        },
+        {
+          "id": "CVE-2026-32255",
+          "cve": "CVE-2026-32255",
+          "repo": "https://github.com/kanbn/kan.git",
+          "fix": "53397d8e81dc1494d94132848c1f0416f1152bd7",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Kan: unauthenticated SSRF in the attachment download endpoint through the url query parameter",
+          "scope": [
+            "apps/web/src/pages/api/download"
+          ]
+        },
+        {
+          "id": "CVE-2026-32096",
+          "cve": "CVE-2026-32096",
+          "repo": "https://github.com/useplunk/plunk.git",
+          "fix": "b8f1ad9ab53c78f8ef063fdc125f397c8bfc7652",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Plunk: SSRF in the SNS webhook subscription confirmation through SubscribeURL",
+          "scope": [
+            "apps/api/src/controllers"
+          ]
+        },
+        {
+          "id": "CVE-2026-22249",
+          "cve": "CVE-2026-22249",
+          "repo": "https://github.com/docmost/docmost.git",
+          "fix": "c3b350d943108552e20654580005cd6f6c78ab05",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Docmost: arbitrary file write through the ZIP import feature (Zip Slip)",
+          "scope": [
+            "apps/server/src/integrations/import/utils"
+          ]
+        },
+        {
+          "id": "CVE-2026-73084",
+          "cve": "CVE-2026-73084",
+          "repo": "https://github.com/activepieces/activepieces.git",
+          "fix": "8be4c8d5e6a79ccbaa74815027432a3c8c311385",
+          "cwe": [
+            79,
+            94
+          ],
+          "license": "Other",
+          "summary": "Activepieces: /api/redirect code query parameter breaks out of the inline script (XSS)",
+          "scope": [
+            "packages/server/api/src/app"
+          ]
+        },
+        {
+          "id": "CVE-2026-72736",
+          "cve": "CVE-2026-72736",
+          "repo": "https://github.com/Dokploy/dokploy.git",
+          "fix": "df2779eaeb4a58f0c85d4caa713c776c790fa708",
+          "cwe": [
+            77
+          ],
+          "license": "Apache-2.0",
+          "summary": "Dokploy: OS command injection in registry credential testing and Swarm cluster management",
+          "scope": [
+            "apps/dokploy/server/api/routers",
+            "packages/server/src/utils"
+          ]
+        },
+        {
+          "id": "CVE-2026-52891",
+          "cve": "CVE-2026-52891",
+          "repo": "https://github.com/wekan/wekan.git",
+          "fix": "a4c74a5980e9f778eb444fd346f32aa3d16786a9",
+          "cwe": [
+            78,
+            88
+          ],
+          "license": "MIT",
+          "summary": "Wekan: OS command injection through avatar filenames in MIME detection",
+          "scope": [
+            "models"
+          ]
+        },
+        {
+          "id": "CVE-2026-55665",
+          "cve": "CVE-2026-55665",
+          "repo": "https://github.com/gristlabs/grist-core.git",
+          "fix": "5d0a90a162b5125fce7e8a86fb137eee5199dbde",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "Grist: cross-site scripting through unsanitized link URLs on the welcome page and in document tours",
+          "scope": [
+            "app/client/ui"
+          ]
+        },
+        {
+          "id": "CVE-2026-55659",
+          "cve": "CVE-2026-55659",
+          "repo": "https://github.com/gristlabs/grist-core.git",
+          "fix": "4ced8064b7ea0e1763d5a6a2588b22774ce7efbc",
+          "cwe": [
+            79,
+            116
+          ],
+          "license": "Apache-2.0",
+          "summary": "Grist: cross-site scripting in server-rendered pages and the OAuth2 end-of-flow page",
+          "scope": [
+            "app/common",
+            "app/server/lib"
+          ]
+        },
+        {
+          "id": "CVE-2024-40646",
+          "cve": "CVE-2024-40646",
+          "repo": "https://github.com/vertex-app/vertex.git",
+          "fix": "fbde301b97986d5913fc4bc95f5445750d282e11",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Vertex: path traversal in the static asset route",
+          "scope": [
+            "app/routes"
+          ]
+        },
+        {
+          "id": "CVE-2025-57800",
+          "cve": "CVE-2025-57800",
+          "repo": "https://github.com/advplyr/audiobookshelf.git",
+          "fix": "99a3867ce934b797e21e6ba5390d4b679e35f7cb",
+          "cwe": [
+            523,
+            598,
+            601
+          ],
+          "license": "GPL-3.0",
+          "summary": "Audiobookshelf vulnerable to OIDC token exfiltration and account takeover",
+          "scope": [
+            "server",
+            "server/auth"
+          ]
+        },
+        {
+          "id": "CVE-2025-50184",
+          "cve": "CVE-2025-50184",
+          "repo": "https://github.com/dbgate/dbgate.git",
+          "fix": "18b11df672b5a887bc17a6b9fdd13f9742c8f98e",
+          "cwe": [
+            29
+          ],
+          "license": "GPL-3.0",
+          "summary": "DbGate allows for File Traversal via file parameter",
+          "scope": [
+            "packages/api/src/controllers"
+          ]
+        },
+        {
+          "id": "CVE-2025-53375",
+          "cve": "CVE-2025-53375",
+          "repo": "https://github.com/Dokploy/dokploy.git",
+          "fix": "e42f6bc61050cd438726921fced64477cbf8f8e6",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Dokploy allows attackers to read any file that the Traefik process user can access",
+          "scope": [
+            "apps/dokploy/server/api/routers",
+            "packages/server/src/db/schema",
+            "packages/server/src/utils/traefik"
+          ]
         }
       ]
     },
@@ -2443,7 +2663,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers, chat commands, MCP tool arguments, peer and feed content rendered in a desktop or browser client. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet. Added 2026-11-04 (PLAN.md step 31): Leon GHSA-5jhh, FlyEnv GHSA-w92g, spec-workflow-mcp GHSA-xgwr, lettura GHSA-6fpp, MiroTalk GHSA-rcjf; their blind half is cve-pairs-blind-javascript-nonhttp. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
+      "about": "JavaScript/TypeScript CVE fix pairs whose input is not an HTTP request: repository configuration read by a bot, a desktop app's file operations, chat-protocol identifiers, chat commands, MCP tool arguments, peer and feed content rendered in a desktop or browser client. Same limits and scoring as cve-pairs-javascript, kept apart so they don't weigh on the web-app numbers: codewatch has no sources for these inputs yet, so misses here are expected. Split from the 2026-11-03 batches (non-HTTP batch and the third npm batch); the blind half of the non-HTTP batch is cve-pairs-blind-javascript-5. Not held out; none used for rules yet. Added 2026-11-04 (PLAN.md step 31): Leon GHSA-5jhh, FlyEnv GHSA-w92g, spec-workflow-mcp GHSA-xgwr, lettura GHSA-6fpp, MiroTalk GHSA-rcjf; their blind half is cve-pairs-blind-javascript-nonhttp. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Topic 12 batches 6-12 and the 2026-11-15 batch (JS/TS app CVEs from NVD) reviewed 2026-11-15 (PLAN.md step 74); decisions in benchmarks/cve-candidates-2026-11-1[45]-javascript-nvd*.tsv.",
       "cases": [
         {
           "id": "GHSA-ffwf-47x2-jpr8",
@@ -2840,6 +3060,139 @@
           "summary": "Markdown Preview Enhanced: Arbitrary File Write via updateMarkdown Command Without Path Validation",
           "scope": [
             "src"
+          ]
+        },
+        {
+          "id": "CVE-2026-41318",
+          "cve": "CVE-2026-41318",
+          "repo": "https://github.com/Mintplex-Labs/anything-llm.git",
+          "fix": "f5fa03f4728e483949f6360093bc3ea1ef555535",
+          "cwe": [
+            79,
+            116,
+            1336
+          ],
+          "license": "MIT",
+          "summary": "AnythingLLM: cross-site scripting in the chat markdown renderer through unescaped image alt text and link hrefs",
+          "scope": [
+            "frontend/src/components/WorkspaceChat/ChatContainer/ChatHistory/Chartable",
+            "frontend/src/utils/chat"
+          ]
+        },
+        {
+          "id": "CVE-2026-32890",
+          "cve": "CVE-2026-32890",
+          "repo": "https://github.com/openVESSL/Anchorr.git",
+          "fix": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+          "cwe": [
+            79,
+            200
+          ],
+          "license": "Unlicense",
+          "summary": "Anchorr: stored cross-site scripting in the user-mapping dropdown through Discord member profile fields",
+          "scope": [
+            "web"
+          ]
+        },
+        {
+          "id": "CVE-2026-32626",
+          "cve": "CVE-2026-32626",
+          "repo": "https://github.com/Mintplex-Labs/anything-llm.git",
+          "fix": "9e2d144dc8be6fab29f560f5bcdaa9ef7dbb4214",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "AnythingLLM Desktop: cross-site scripting in the streaming chat reply renderer",
+          "scope": [
+            "frontend/src/components/WorkspaceChat/ChatContainer/ChatHistory/PromptReply"
+          ]
+        },
+        {
+          "id": "CVE-2026-73225",
+          "cve": "CVE-2026-73225",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "deee11ffe558eaee5cad5822949ba3a7f87ae56a",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "electerm: FTP/SFTP recursive transfer filenames escape the download directory",
+          "scope": [
+            "src/client/components/file-transfer"
+          ]
+        },
+        {
+          "id": "CVE-2026-73224",
+          "cve": "CVE-2026-73224",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "36b16fb66936bb7c65fbcdf706dfd1b77f0750a7",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "electerm: SFTP folder name reaches a du -sh shell command (command injection)",
+          "scope": [
+            "src/app/lib",
+            "src/client/components/sftp"
+          ]
+        },
+        {
+          "id": "CVE-2026-72903",
+          "cve": "CVE-2026-72903",
+          "repo": "https://github.com/Eugeny/tabby.git",
+          "fix": "3a4a41431a61d41dd51d4119e60cad9bf13c3399",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Tabby: SFTP filename escapes the download/temp directory (path traversal)",
+          "scope": [
+            "tabby-electron/src"
+          ]
+        },
+        {
+          "id": "CVE-2026-58500",
+          "cve": "CVE-2026-58500",
+          "repo": "https://github.com/appium/appium-mcp.git",
+          "fix": "e222bbbd6fe2b656a320efcd143563f08061a83d",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "MCP Appium: HTML and JavaScript injection in the locator generator UI resource",
+          "scope": [
+            "src/ui"
+          ]
+        },
+        {
+          "id": "CVE-2026-48116",
+          "cve": "CVE-2026-48116",
+          "repo": "https://github.com/Mintplex-Labs/anything-llm.git",
+          "fix": "94ed62d320df1a06c229e4bc3ee09c2cb5111b33",
+          "cwe": [
+            77,
+            88
+          ],
+          "license": "MIT",
+          "summary": "AnythingLLM: argument injection in the filesystem search agent skill via ripgrep",
+          "scope": [
+            "server/utils/agents/aibitat/plugins/filesystem"
+          ]
+        },
+        {
+          "id": "CVE-2025-52557",
+          "cve": "CVE-2025-52557",
+          "repo": "https://github.com/Mail-0/Zero.git",
+          "fix": "48d1df65b62c9c57897b72b241081f447140342f",
+          "cwe": [
+            1384
+          ],
+          "license": "MIT",
+          "summary": "Mail-0 Zero Session Hijacking Via Email",
+          "scope": [
+            "apps/mail/components/mail",
+            "apps/mail/app/(routes)/mail"
           ]
         }
       ]
@@ -3639,6 +3992,34 @@
           "summary": "JupyterLab Desktop: One-Click Jupyter Server Token Leak leading to Remote Code Execution",
           "scope": [
             "src/main"
+          ]
+        },
+        {
+          "id": "CVE-2026-73227",
+          "cve": "CVE-2026-73227",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "451bf3000672c00b0c3b148fbf3c148c205ce350",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "electerm: RDP clipboard download filename escapes the save directory (path traversal)",
+          "scope": [
+            "src/client/components/rdp"
+          ]
+        },
+        {
+          "id": "CVE-2026-73223",
+          "cve": "CVE-2026-73223",
+          "repo": "https://github.com/electerm/electerm.git",
+          "fix": "32ea29365762b3451b1f2fcc0ef78104384db282",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "electerm: SFTP filename escapes the temporary directory when editing with a custom editor",
+          "scope": [
+            "src/client/components/sftp"
           ]
         }
       ]
@@ -10911,6 +11292,325 @@
           "summary": "Browsertrix: Arbitrary Command Injection due to Improper Command Sanitization in Git URLs specified as Custom Behaviors",
           "scope": [
             "backend/btrixcloud"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-19",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-46682",
+          "cve": "CVE-2026-46682",
+          "repo": "https://github.com/bigbluebutton/bigbluebutton.git",
+          "fix": "3365e340e0c102de0f8ea007c05053b562b6fa2b",
+          "cwe": [
+            89
+          ],
+          "license": "LGPL-3.0",
+          "summary": "BigBlueButton: SQL injection in breakout room visibility queries via meetingId/userId",
+          "scope": [
+            "akka-bbb-apps/src/main/scala/org/bigbluebutton/core/db"
+          ]
+        },
+        {
+          "id": "CVE-2026-68560",
+          "cve": "CVE-2026-68560",
+          "repo": "https://github.com/wekan/wekan.git",
+          "fix": "1a222c4477e68c76fd6a866954b535fba0a78d05",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Wekan: shell injection (RCE) via a malicious upload filename in the external scanner command",
+          "scope": [
+            "models"
+          ]
+        },
+        {
+          "id": "CVE-2026-50186",
+          "cve": "CVE-2026-50186",
+          "repo": "https://github.com/RARgames/4gaBoards.git",
+          "fix": "654151d7cc7739e43fd32d368e47bc4090cc65f5",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "4gaBoards: path traversal leading to arbitrary file read and deletion in board export",
+          "scope": [
+            "server/api"
+          ]
+        },
+        {
+          "id": "CVE-2026-58192",
+          "cve": "CVE-2026-58192",
+          "repo": "https://github.com/appium/appium.git",
+          "fix": "5fee01752f2782e96fbe64fd13520b433d4a7535",
+          "cwe": [
+            22,
+            73
+          ],
+          "license": "Apache-2.0",
+          "summary": "Appium storage plugin: path traversal in POST /storage/delete",
+          "scope": [
+            "packages/storage-plugin/lib"
+          ]
+        },
+        {
+          "id": "CVE-2026-54607",
+          "cve": "CVE-2026-54607",
+          "repo": "https://github.com/labring/FastGPT.git",
+          "fix": "1d7b8768aecd53ae59372fd68b10af0e80722c79",
+          "cwe": [
+            918
+          ],
+          "license": "NOASSERTION",
+          "summary": "FastGPT: SSRF in the OpenAPI schema importer through remote $ref resolution",
+          "scope": [
+            "packages/global/common/string",
+            "packages/global/core/app",
+            "projects/app/src/pages/api/core/app/httpTools"
+          ]
+        },
+        {
+          "id": "CVE-2026-53662",
+          "cve": "CVE-2026-53662",
+          "repo": "https://github.com/immich-app/immich.git",
+          "fix": "4eb100327ea5da2e90381b96809f1f1cc51cc7e3",
+          "cwe": [
+            79,
+            601
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Immich: reflected XSS and open redirect through the continue parameter on the login page",
+          "scope": [
+            "web/src/lib",
+            "web/src/routes/auth"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-20",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-64657",
+          "cve": "CVE-2026-64657",
+          "repo": "https://github.com/Budibase/budibase.git",
+          "fix": "67572a82c3850964f388bfd969779dc025a80224",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Budibase: PostgreSQL datasource schema configuration reaches SET search_path as an unescaped SQL identifier",
+          "scope": [
+            "packages/server/src/integrations"
+          ]
+        },
+        {
+          "id": "CVE-2026-72902",
+          "cve": "CVE-2026-72902",
+          "repo": "https://github.com/Dokploy/dokploy.git",
+          "fix": "d3f522b7a6f5100fc0fc0bff5851e48d11d459e2",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "Dokploy: registry password interpolated into a remote shell command in testRegistry",
+          "scope": [
+            "apps/dokploy/server/api/routers"
+          ]
+        },
+        {
+          "id": "CVE-2026-72885",
+          "cve": "CVE-2026-72885",
+          "repo": "https://github.com/Dokploy/dokploy.git",
+          "fix": "cba0b253c7de4157dd932de7f16a2ad247c7cee9",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "Dokploy: dockerContextPath interpolated into the docker build shell command",
+          "scope": [
+            "packages/server/src/utils/builders",
+            "packages/server/src/utils/providers"
+          ]
+        },
+        {
+          "id": "CVE-2026-72881",
+          "cve": "CVE-2026-72881",
+          "repo": "https://github.com/Dokploy/dokploy.git",
+          "fix": "ccd2e83c57d99f725220d37e0152270e0827d71b",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "Dokploy: database names, users and passwords interpolated into backup/restore shell commands",
+          "scope": [
+            "packages/server/src/utils/backups",
+            "packages/server/src/utils/restore"
+          ]
+        },
+        {
+          "id": "CVE-2026-72879",
+          "cve": "CVE-2026-72879",
+          "repo": "https://github.com/Dokploy/dokploy.git",
+          "fix": "1f4f94042f1d874349c42d8ae7fee51346cd086e",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "Dokploy: registry credentials interpolated into the swarm upload shell command",
+          "scope": [
+            "packages/server/src/services",
+            "packages/server/src/utils/cluster"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-21",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-23481",
+          "cve": "CVE-2026-23481",
+          "repo": "https://github.com/blinkospace/blinko.git",
+          "fix": "02a4205f1ad22d0e78dc2ab2967b551d0dbd0a06",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Blinko: arbitrary file write in saveAdditionalDevFile",
+          "scope": [
+            "server/routerTrpc"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-22",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-26029",
+          "cve": "CVE-2026-26029",
+          "repo": "https://github.com/akutishevsky/sf-mcp-server.git",
+          "fix": "99fba0171b8c22b5ee3c0405053ccfd2910a066d",
+          "cwe": [
+            78
+          ],
+          "license": "NOASSERTION",
+          "summary": "sf-mcp-server: command injection in an MCP tool",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "CVE-2026-24741",
+          "cve": "CVE-2026-24741",
+          "repo": "https://github.com/C4illin/ConvertX.git",
+          "fix": "7a936bdc0463936463616381ca257b13babc5e77",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "ConvertX: path traversal during file deletion",
+          "scope": [
+            "src/pages"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-23",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2025-66449",
+          "cve": "CVE-2025-66449",
+          "repo": "https://github.com/C4illin/ConvertX.git",
+          "fix": "550f472451755d095cf5802bc91f403e85b7129e",
+          "cwe": [
+            22,
+            73,
+            434
+          ],
+          "license": "AGPL-3.0",
+          "summary": "ConvertX: arbitrary file write through the uploaded filename",
+          "scope": [
+            "src/pages"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-24",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2025-54063",
+          "cve": "CVE-2025-54063",
+          "repo": "https://github.com/CherryHQ/cherry-studio.git",
+          "fix": "ff72c007c03ff47de21a4d0bf52a1ff1fb35cd89",
+          "cwe": [
+            94
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Cherry Studio One-click Remote Code Execution Vulnerability through Custom URL Handling",
+          "scope": [
+            "src/main/services/urlschema",
+            "src/renderer/src/pages/settings/ProviderSettings"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-24",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-14/15 (topic 12's JS/TS-repository CVEs from NVD; PLAN.md step 74) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-33213",
+          "cve": "CVE-2026-33213",
+          "repo": "https://github.com/getredash/redash.git",
+          "fix": "9e66f81673c482d9ae6c425afe009644114605d0",
+          "cwe": [
+            601
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "Redash: open redirect through multiple leading slashes in the post-login next parameter",
+          "scope": [
+            "redash/authentication"
           ]
         }
       ]
