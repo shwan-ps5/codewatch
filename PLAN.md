@@ -219,9 +219,8 @@ Speed and stability:
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
-- Research: topic 12 (JS/TS app CVEs with no GitHub advisory), batches reviewed in steps 72 and 74; then topic 10
-  (PHP, about 950 left); runner cap 12 (step 70). Step 74's 24 open cases are first scanned by the nightly of
-  2026-11-16.
+- Research: topic 12 (JS/TS app CVEs with no GitHub advisory) done (steps 72, 74, 75); topic 10 (PHP) continues;
+  runner cap 12 (step 70). Step 74's 24 and step 75's 38 open cases are first scanned by the nightly of 2026-11-16.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
   committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
 - PHP (steps 70, 73): verdict 35 of 203 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
@@ -2066,3 +2065,26 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     innerHTML). Blind, as the batches named them: cve-pairs-blind-javascript-19..24 (new), 2 into
     cve-pairs-blind-javascript-nonhttp, and cve-pairs-blind-python-24 (new). No blind diff was read. Yield 24 of
     480 (5%); 6 of the 13 rejections are stored data, the agents' commonest miss.
+75. **Topic 12's last batch and topic 10's five PHP batches of 2026-11-15 reviewed** (2026-11-15). 368 read by
+    the agents, 78 accepted (53 open, 25 blind); topic 12 is done. The 53 open fix diffs were read here; 15
+    rejected: OpenEMR GHSA-5376 (an encoded JSON response, no source shown), gnuboard GHSA-57g7 ($fm_id set from the
+    request by common.php), MantisBT GHSA-4rrc (filter values through the filter API), phpMyAdmin GHSA-x37v (a JS
+    page global), Froxlor GHSA-6fvw, podlove GHSA-2c3j and Everest Forms GHSA-4xpc (method or function arguments,
+    callers outside the diff), Contao GHSA-m8x6 (a service's values printed by a template outside the diff),
+    osTicket GHSA-v3wf (an upload served inline: stored), LibreNMS GHSA-325v (the same fix commit as GHSA-5229,
+    kept), Revive GHSA-4925 (a property set in another file), Cacti GHSA-7q49 (file names from an imported
+    package's XML), FileGator GHSA-rrhw (dots stripped inside a storage service), openmediavault GHSA-f68r (a
+    closure added beside create_function, which stays), Firecrawl CVE-2024-56800 (a dispatcher refusing private
+    addresses in a scraper whose job is fetching URLs). Kept: 3 in cve-pairs-javascript (Audiobookshelf
+    CVE-2025-46338, an id echoed in an error; binance-trading-bot CVE-2025-27106 and DumbDrop CVE-2025-24971, upload
+    names into shell commands) and 35 in cve-pairs-php, 15 of them FusionPBX's (mostly echoed $_GET/$_REQUEST values; its
+    own event_socket_request as a command sink in GHSA-gfg4, base64 request paths into unlink in GHSA-952f,
+    PHP_SELF in paging.php). The others: request values into SQL (Piwigo, LibreNMS customoid, Centreon, Contao's
+    tl_field, WP Statistics' page URI, OpenEMR eye_mag), into HTML (phpRedisAdmin, pfSense, Dolibarr's GETPOST,
+    DokuWiki's $INPUT, fecshop's Yii request, Chamilo, All-In-One WP Security, LibreNMS's YAML errors), MISP
+    GHSA-9wr9 (a CakePHP action parameter set into a view), Melis (a request value into unserialize), dotplant2
+    (XXE), BookStack (a route parameter into a file response). Scopes widened: Firefly III GHSA-mrc2
+    (+ app/Http/Controllers, whose controller passes the query to the Twig |raw) and Revive GHSA-r4jw (+ www/admin,
+    which assigns the Smarty $status). Blind, as the batches named them: cve-pairs-blind-javascript-25 and
+    cve-pairs-blind-php-24..27 (all new). No blind diff was read. Yield: topic 12's last batch 4 of 68 (3 kept),
+    the PHP batches 74 accepted of 300 (35 kept); FusionPBX is now a large share of cve-pairs-php (239 cases).

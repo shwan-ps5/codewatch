@@ -1360,7 +1360,7 @@
       "language": "javascript",
       "kind": "cve-pairs",
       "held_out": false,
-      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv). GHSA-c8hm (n8n) was used on 2026-11-09 to add a request-chosen Content-Type as an XSS sink (PLAN.md step 59). Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Topic 12 batches 6-12 and the 2026-11-15 batch (JS/TS app CVEs from NVD) reviewed 2026-11-15 (PLAN.md step 74); decisions in benchmarks/cve-candidates-2026-11-1[45]-javascript-nvd*.tsv.",
+      "about": "JavaScript/TypeScript CVE fix pairs. Reviewed GitHub advisories with exactly one fix commit that changes at most three non-test source files (120 lines or fewer) in web application code, i.e. request input reaching a sink in the project's own code rather than inside a framework or library. The commit before the fix is scanned for detection: a finding of the advisory's weakness near the changed lines, or one the fix makes go away. The fix commit is scanned for false alarms: such a finding that survives the fix or appears at it. Not held out: may be used to adjust rules (say so here when that happens). GHSA-v279-v2xm-whq9 (oils-js) was used on 2026-10-31 to stop flagging HTTPS-upgrade redirects to the request's own Host and path; GHSA-8wqc-v2q8-vff2 (mockoon) to add the path-prefix-check hotspot; on 2026-11-01 GHSA-p849-8hwh-84j9 (NocoBase) to add Sequelize.literal() as a SQL sink, NocoBase's ctx.action.params as a request source and names destructured with a default as request data, and GHSA-79wm-x847-7cvg (claude-code-templates) to treat the argument array of a spawn with shell: true as a command sink. GHSA-w6x9-28jw-hq7j (MagicMirror) is paired with a commit that fixes a different advisory (GHSA-w26r), so it can't be found as listed. Cases added 2026-11-03 from OSV's npm export: 17 app fixes read, 12 open here and 5 blind in cve-pairs-blind-javascript-2; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript.tsv. None used for rules yet. Cases added 2026-11-03 in a second npm batch (Next/React/Vue app code and DOM XSS): 13 app fixes read, 8 open here and 5 blind in cve-pairs-blind-javascript-3; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-2.tsv. None used for rules yet. Cases added 2026-11-03 in a third npm batch (long-tail app code, DOM XSS and protocol injection): 9 app fixes read, 6 open here and 3 blind in cve-pairs-blind-javascript-4; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-javascript-3.tsv. None used for rules yet. Cases added 2026-11-03 in the non-HTTP batch: 10 app fixes read, 6 open here and 4 blind in cve-pairs-blind-javascript-5; decisions and reasons are in benchmarks/cve-candidates-2026-11-03-nonhttp.tsv. None used for rules yet. Re-reviewed the same day before any scan: 10 of the 32 open cases were dropped (six fix commits over the size limits, three sanitizer-denylist or renderer-setting fixes, one DNS-rebinding race) and four whose input is not an HTTP request (Renovate repository config, Electerm desktop file operations, Matrix room ids) moved to cve-pairs-javascript-nonhttp; reasons are in the batches' TSV files. Cases added 2026-11-04 from unreviewed advisories (topic 2, Node web apps not on npm; PLAN.md step 31): 8 open here (Cloud Commander GHSA-3rxx and -cjr4, claude-sesh GHSA-rm8c, Postiz GHSA-2p7p, LobeHub GHSA-g4jq, PictureThisWebServer GHSA-45r7, whatismyudid GHSA-rc4g, OpenTrade GHSA-2w76), blind half in cve-pairs-blind-javascript-6; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv. None used for rules yet. Cases added 2026-11-05 from topic 3's batches 5-7 (PLAN.md step 40): 10 open here, 3 in cve-pairs-javascript-nonhttp, blind ones in cve-pairs-blind-javascript-9 and -10 and cve-pairs-blind-javascript-nonhttp; decisions and reasons are in benchmarks/cve-candidates-2026-11-04-javascript-noframework-5.tsv, cve-candidates-2026-11-05-javascript-noframework.tsv and -2.tsv. None used for rules yet. Topic 7's last batches, of 2026-11-08, added n8n GHSA-c8hm, github-readme-stats GHSA-jqwf, code-server GHSA-2gp3, browserless GHSA-8p9r and web-node-server GHSA-3fwq (PLAN.md step 55; decisions in benchmarks/cve-candidates-2026-11-08-javascript-skipped*.tsv). GHSA-c8hm (n8n) was used on 2026-11-09 to add a request-chosen Content-Type as an XSS sink (PLAN.md step 59). Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Topic 12 batches 6-12 and the 2026-11-15 batch (JS/TS app CVEs from NVD) reviewed 2026-11-15 (PLAN.md step 74); decisions in benchmarks/cve-candidates-2026-11-1[45]-javascript-nvd*.tsv. Topic 12's last batch and topic 10's PHP batches of 2026-11-15 reviewed 2026-11-15 (PLAN.md step 75); decisions in benchmarks/cve-candidates-2026-11-15-*.tsv.",
       "cases": [
         {
           "id": "GHSA-p849-8hwh-84j9",
@@ -2654,6 +2654,49 @@
             "apps/dokploy/server/api/routers",
             "packages/server/src/db/schema",
             "packages/server/src/utils/traefik"
+          ]
+        },
+        {
+          "id": "CVE-2025-46338",
+          "cve": "CVE-2025-46338",
+          "repo": "https://github.com/advplyr/audiobookshelf.git",
+          "fix": "35870a01583b2947030f4e3d4ac769c3ff298386",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Audiobookshelf Vulnerable to Cross-Site-Scripting Reflected via POST Request in /api/upload",
+          "scope": [
+            "server/controllers",
+            "client/pages/upload"
+          ]
+        },
+        {
+          "id": "CVE-2025-27106",
+          "cve": "CVE-2025-27106",
+          "repo": "https://github.com/chrisleekr/binance-trading-bot.git",
+          "fix": "99d464cf8ef858d441189993054ec5f5f86e6213",
+          "cwe": [
+            78
+          ],
+          "license": "Apache-2.0",
+          "summary": "Code injection in binance-trading-bot",
+          "scope": [
+            "app/frontend/webserver/handlers"
+          ]
+        },
+        {
+          "id": "CVE-2025-24971",
+          "cve": "CVE-2025-24971",
+          "repo": "https://github.com/DumbWareio/DumbDrop.git",
+          "fix": "4ff8469d69019d200046a67d326f51703bc4da63",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-3.0",
+          "summary": "OS Command Injection endpoint '/upload/init' parameter 'filename' (RCE) in DumpDrop",
+          "scope": [
+            "."
           ]
         }
       ]
@@ -6282,7 +6325,7 @@
       "name": "cve-pairs-php",
       "language": "php",
       "kind": "cve-pairs",
-      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Template support (PLAN.md step 73) was driven by MISP GHSA-p9m5 and -p8fp (CakePHP views, elements and set()), OpenCart GHSA-qx44 (Twig without autoescape, a filled $data array), oc-server3 GHSA-w8rr (Smarty) and FrontAccounting GHSA-9fmm (PHP in .inc files); scopes of GHSA-p9m5, -x452, -cr6c, -mj6h, -w8rr and -qx44 widened to their controllers.",
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Template support (PLAN.md step 73) was driven by MISP GHSA-p9m5 and -p8fp (CakePHP views, elements and set()), OpenCart GHSA-qx44 (Twig without autoescape, a filled $data array), oc-server3 GHSA-w8rr (Smarty) and FrontAccounting GHSA-9fmm (PHP in .inc files); scopes of GHSA-p9m5, -x452, -cr6c, -mj6h, -w8rr and -qx44 widened to their controllers. Topic 12's last batch and topic 10's PHP batches of 2026-11-15 reviewed 2026-11-15 (PLAN.md step 75); decisions in benchmarks/cve-candidates-2026-11-15-*.tsv.",
       "cases": [
         {
           "id": "GHSA-p9m5-xwgx-8j69",
@@ -9199,6 +9242,505 @@
           "scope": [
             "phpmyfaq/admin"
           ]
+        },
+        {
+          "id": "GHSA-3gg9-8j69-7cv4",
+          "cve": "CVE-2019-16971",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "c48a160af53352ad1a43518b7d0faab16b8dfbcc",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\messages\\messages_thread.php uses an unsanitized \"contact_uuid\" variable coming from the URL, which is reflected on 3 occasions in HTML, leading to XSS.",
+          "scope": [
+            "app/messages"
+          ]
+        },
+        {
+          "id": "GHSA-g66g-3vwf-hfgf",
+          "cve": "CVE-2021-3916",
+          "repo": "https://github.com/bookstackapp/bookstack.git",
+          "fix": "43830a372fc51a8793199d04a34c3f4ebdfccc7b",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "bookstack is vulnerable to Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+          "scope": [
+            "app/Http/Controllers/Images",
+            "app/Uploads"
+          ]
+        },
+        {
+          "id": "GHSA-m8vf-6qcj-hmj6",
+          "cve": "CVE-2021-32615",
+          "repo": "https://github.com/Piwigo/Piwigo.git",
+          "fix": "2ce1e5952238eba0fe5c5d6537ebdc76cb970b52",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "Piwigo 11.4.0 allows admin/user_list_backend.php order[0][dir] SQL Injection.",
+          "scope": [
+            "admin"
+          ]
+        },
+        {
+          "id": "GHSA-p3v4-fv9g-fjmg",
+          "cve": "CVE-2020-22808",
+          "repo": "https://github.com/fecshop/yii2_fecshop.git",
+          "fix": "8fac6455882333cfe3d81c4121d523813e28e31a",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "An issue was found in yii2_fecshop 2.x. There is a reflected XSS vulnerability in the check cart page.",
+          "scope": [
+            "app/appfront/theme/base/front/checkout/cart",
+            "app/apphtml5/theme/base/html5/checkout/cart"
+          ]
+        },
+        {
+          "id": "GHSA-r4jw-9g3r-5qh6",
+          "cve": "CVE-2021-22888",
+          "repo": "https://github.com/revive-adserver/revive-adserver.git",
+          "fix": "f472d890c6e46d9ba4c1863435af35bf5b9f619a",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Revive Adserver before v5.2.0 is vulnerable to a reflected XSS vulnerability in the `status` parameter of campaign-zone-zones.php. An attacker could trick a user with access to the user interface of a Revive Adserver instance into clicking on a specifically crafted URL and execute injected JavaScrip",
+          "scope": [
+            "lib/templates/admin",
+            "www/admin"
+          ]
+        },
+        {
+          "id": "GHSA-fmqx-vmh5-vr5v",
+          "cve": "CVE-2021-26746",
+          "repo": "https://github.com/chamilo/chamilo-lms.git",
+          "fix": "d939402d83bf68af5377b629883d8e5437d843ec",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Chamilo 1.11.14 allows XSS via a main/calendar/agenda_list.php?type= URI.",
+          "scope": [
+            "main/calendar"
+          ]
+        },
+        {
+          "id": "GHSA-6phg-5gjc-53gj",
+          "cve": "CVE-2020-29171",
+          "repo": "https://github.com/Arsenal21/all-in-one-wordpress-security.git",
+          "fix": "4130906bc049b195467b4fc6980d6d304fbe28d5",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross-site scripting (XSS) vulnerability in admin/wp-security-blacklist-menu.php in the Tips and Tricks HQ All In One WP Security & Firewall (all-in-one-wp-security-and-firewall) plugin before 4.4.6 for WordPress.",
+          "scope": [
+            "all-in-one-wp-security",
+            "all-in-one-wp-security/admin"
+          ]
+        },
+        {
+          "id": "GHSA-9wr9-qg9q-m8vj",
+          "cve": "CVE-2020-28947",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "626ca544ffb5604ea01bb291f69811668b6b5631",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "In MISP 2.4.134, XSS exists in the template element index view because the id parameter is mishandled.",
+          "scope": [
+            "app/Controller",
+            "app/Model",
+            "app/View/TemplateElements/ajax"
+          ]
+        },
+        {
+          "id": "GHSA-m99q-hwx4-94j5",
+          "cve": "CVE-2020-27163",
+          "repo": "https://github.com/erikdubbelboer/phpRedisAdmin.git",
+          "fix": "eddaa674536d2e76e6d0b4efeb00604e992eab8f",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "phpRedisAdmin before 1.13.2 allows XSS via the login.php username parameter.",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-c49v-35ff-q9f7",
+          "cve": "CVE-2020-25750",
+          "repo": "https://github.com/DevGroup-ru/dotplant2.git",
+          "fix": "fee86c7052c227762c7325eb5c2811d9323f8429",
+          "cwe": [
+            611
+          ],
+          "license": "NOASSERTION",
+          "summary": "DotPlant2 Improper Restriction of XML External Entity Reference",
+          "scope": [
+            "application/components/payment"
+          ]
+        },
+        {
+          "id": "GHSA-g5r6-vrmx-9gwj",
+          "cve": "CVE-2020-15873",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "8f3a29cde5bbd8608f9b42923a7d7e2598bcac4e",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS SQL Injection vulnerability",
+          "scope": [
+            "includes/html/forms"
+          ]
+        },
+        {
+          "id": "GHSA-m396-2x3h-v3v4",
+          "cve": "CVE-2020-14475",
+          "repo": "https://github.com/Dolibarr/dolibarr.git",
+          "fix": "22ca5e067189bffe8066df26df923a386f044c08",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Dolibarr reflected cross-site scripting (XSS) vulnerability",
+          "scope": [
+            "htdocs/public"
+          ]
+        },
+        {
+          "id": "GHSA-99h6-564f-82g4",
+          "cve": "CVE-2019-19366",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "f3047c83f3022a4780dca95ed7bccbf3a6fa868e",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A cross-site scripting (XSS) vulnerability in app/xml_cdr/xml_cdr_search.php in FusionPBX 4.4.1 allows remote attackers to inject arbitrary web script or HTML via the redirect parameter.",
+          "scope": [
+            "app/xml_cdr"
+          ]
+        },
+        {
+          "id": "GHSA-qmvw-fqg3-vfvx",
+          "cve": "CVE-2019-16976",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "d6ea02d896b2c57dec491ee3b36ec102639270be",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\destinations\\destination_imports.php uses an unsanitized \"query_string\" variable coming from the URL, which is reflected on 2 occasions in HTML, leading to XSS.",
+          "scope": [
+            "app/destinations"
+          ]
+        },
+        {
+          "id": "GHSA-cpw5-q2jj-vcm3",
+          "cve": "CVE-2019-16973",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "cc820b2eb12a3b7070afdcb7f977f70a1d49ce49",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\contacts\\contact_edit.php uses an unsanitized \"query_string\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-q48w-mcwc-m5hw",
+          "cve": "CVE-2019-16988",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "7fec1014ff0d08e36be6a3f7664edb3a9df7b4ac",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\basic_operator_panel\\resources\\content.php uses an unsanitized \"eavesdrop_dest\" variable coming from the URL, which is reflected on 3 occasions in HTML, leading to XSS.",
+          "scope": [
+            "app/basic_operator_panel/resources"
+          ]
+        },
+        {
+          "id": "GHSA-hp46-5f8h-j7p8",
+          "cve": "CVE-2019-16987",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "ccdb27536d3549b5c0c317e3665fff231631ec77",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\contacts\\contact_import.php uses an unsanitized \"query_string\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-g73p-cv3p-3r43",
+          "cve": "CVE-2019-16991",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "cd4632b46c62855f7e1c1c93d20ffd64edcb476e",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\edit\\filedelete.php uses an unsanitized \"file\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/edit"
+          ]
+        },
+        {
+          "id": "GHSA-9mmx-cmc3-wvg7",
+          "cve": "CVE-2019-16983",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "23581e56e9a4d1685ddf1c7d67137417d654e134",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file resources\\paging.php has a paging function (called by several pages of the interface), which uses an unsanitized \"param\" variable constructed partially from the URL args and reflected in HTML, leading to XSS.",
+          "scope": [
+            "resources"
+          ]
+        },
+        {
+          "id": "GHSA-952f-77pp-hgm6",
+          "cve": "CVE-2019-16985",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "284b0a91968f126fd6be0a486a84e065926905ca",
+          "cwe": [
+            22
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\xml_cdr\\xml_cdr_delete.php uses an unsanitized \"rec\" variable coming from the URL, which is base64 decoded and allows deletion of any file of the system.",
+          "scope": [
+            "app/xml_cdr"
+          ]
+        },
+        {
+          "id": "GHSA-xw4j-ccxf-69qr",
+          "cve": "CVE-2019-16979",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "a76d9637e31a70060ecc38786246a8b1c9178322",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\contacts\\contact_urls.php uses an unsanitized \"id\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-r5mc-mgcw-4qg3",
+          "cve": "CVE-2019-16974",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "bcc75d63aa5b721f699a2b416425943ad7707825",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\contacts\\contact_times.php uses an unsanitized \"id\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-8h69-7m9r-xmr7",
+          "cve": "CVE-2019-16978",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "83622c4ee1d9dd1913e9fb01ce8f060b46a5768a",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\devices\\device_settings.php uses an unsanitized \"id\" variable coming from the URL, which is reflected on 2 occasions in HTML, leading to XSS.",
+          "scope": [
+            "app/devices"
+          ]
+        },
+        {
+          "id": "GHSA-76hx-mpx5-4j3h",
+          "cve": "CVE-2019-16969",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "d3679bbeface57a21f6623cbc193b04a7fc0a885",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\fifo_list\\fifo_interactive.php uses an unsanitized \"c\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/fifo_list"
+          ]
+        },
+        {
+          "id": "GHSA-6j5c-c38q-4cr2",
+          "cve": "CVE-2019-16968",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "02378c54722d89f875c66ddb00ff06468dabbc6d",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "An issue was discovered in FusionPBX up to 4.5.7. In the file app\\conference_controls\\conference_control_details.php, an unsanitized id variable coming from the URL is reflected in HTML on 2 occasions, leading to XSS.",
+          "scope": [
+            "app/conference_controls"
+          ]
+        },
+        {
+          "id": "GHSA-97j6-v4p3-8f67",
+          "cve": "CVE-2019-16914",
+          "repo": "https://github.com/pfsense/pfsense.git",
+          "fix": "d31362b69d5d52dc196dc72f66e830cd1e6e9a4f",
+          "cwe": [
+            79
+          ],
+          "license": "Apache-2.0",
+          "summary": "An XSS issue was discovered in pfSense through 2.4.4-p3. In services_captiveportal_mac.php, the username and delmac parameters are displayed without sanitization.",
+          "scope": [
+            "src/usr/local/www"
+          ]
+        },
+        {
+          "id": "GHSA-mrc2-h7q2-pp97",
+          "cve": "CVE-2019-13646",
+          "repo": "https://github.com/firefly-iii/firefly-iii.git",
+          "fix": "f795cb07e1bb9ad3bd0dceeafbb0ece4ebe518d7",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Firefly III vulnerable to reflected cross-site scripting",
+          "scope": [
+            "resources/views/v1/search",
+            "app/Http/Controllers"
+          ]
+        },
+        {
+          "id": "GHSA-vq59-x6mq-4wgw",
+          "cve": "CVE-2019-11512",
+          "repo": "https://github.com/contao/contao.git",
+          "fix": "87d92f823b08b91a0aeb522284537c8afcdb8aba",
+          "cwe": [
+            89
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Contao SQL injection in the file manager",
+          "scope": [
+            "core-bundle/src/Resources/contao/drivers"
+          ]
+        },
+        {
+          "id": "GHSA-8ff5-r74w-ww6j",
+          "cve": "CVE-2019-13275",
+          "repo": "https://github.com/wp-statistics/wp-statistics.git",
+          "fix": "bd46721b97794a1b1520e24ff5023b6da738dd75",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "An issue was discovered in the VeronaLabs wp-statistics plugin before 12.6.7 for WordPress. The v1/hit endpoint of the API, when the non-default \"use cache plugin\" setting is enabled, is vulnerable to unauthenticated blind SQL Injection.",
+          "scope": [
+            "includes"
+          ]
+        },
+        {
+          "id": "GHSA-gfg4-38v6-p8x8",
+          "cve": "CVE-2019-11409",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "e43ca27ba2d9c0109a6bf198fe2f8d79f63e0611",
+          "cwe": [
+            78,
+            79
+          ],
+          "license": null,
+          "summary": "app/operator_panel/exec.php in the Operator Panel module in FreePBX 4.4.3 suffers from a command injection vulnerability due to a lack of input validation that allows authenticated non-administrative attackers to execute commands on the host. This can further lead to remote code execution when combi",
+          "scope": [
+            "app/operator_panel"
+          ]
+        },
+        {
+          "id": "GHSA-348r-6928-rfcr",
+          "cve": "CVE-2018-17179",
+          "repo": "https://github.com/openemr/openemr.git",
+          "fix": "3e22d11c7175c1ebbf3d862545ce6fee18f70617",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "An issue was discovered in OpenEMR before 5.0.1 Patch 7. There is SQL Injection in the make_task function in /interface/forms/eye_mag/php/taskman_functions.php via /interface/forms/eye_mag/taskman.php.",
+          "scope": [
+            "interface/forms/eye_mag/php"
+          ]
+        },
+        {
+          "id": "GHSA-j5wx-jvw3-j363",
+          "cve": "CVE-2022-3827",
+          "repo": "https://github.com/centreon/centreon.git",
+          "fix": "293b10628f7d9f83c6c82c78cf637cbe9b907369",
+          "cwe": [
+            89
+          ],
+          "license": "Apache-2.0",
+          "summary": "Centreon vulnerable to SQL Injection",
+          "scope": [
+            "www/include/configuration/configObject/contactgroup"
+          ]
+        },
+        {
+          "id": "GHSA-m3m3-6gww-7gj9",
+          "cve": "CVE-2022-39297",
+          "repo": "https://github.com/melisplatform/melis-cms.git",
+          "fix": "d124b2474699a679a24ec52620cadceb3d4cec11",
+          "cwe": [
+            502
+          ],
+          "license": "OSL-3.0",
+          "summary": "melisplatform/melis-cms vulnerable to deserialization of untrusted data",
+          "scope": [
+            "src/Controller"
+          ]
+        },
+        {
+          "id": "GHSA-g9j7-8vx6-5gr7",
+          "cve": "CVE-2022-3123",
+          "repo": "https://github.com/splitbrain/dokuwiki.git",
+          "fix": "63e9a247c072008a031f9db39fa496f6aca489b6",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "Cross-site Scripting (XSS) - Reflected in GitHub repository splitbrain/dokuwiki prior to 2022-07-31a.",
+          "scope": [
+            "inc/Ui"
+          ]
+        },
+        {
+          "id": "GHSA-5229-94p3-7wwq",
+          "cve": "CVE-2022-36745",
+          "repo": "https://github.com/librenms/librenms.git",
+          "fix": "e5c91a0f835d59e058d9d3e4956e079476d59ee6",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "LibreNMS vulnerable to Cross-Site Scripting (XSS)",
+          "scope": [
+            "includes/html",
+            "includes/html/pages/tools"
+          ]
         }
       ]
     },
@@ -11611,6 +12153,411 @@
           "summary": "Redash: open redirect through multiple leading slashes in the post-login next parameter",
           "scope": [
             "redash/authentication"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-25",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-15 (topic 12's JS/TS-repository CVEs from NVD, topic 10's PHP advisories; PLAN.md step 75) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2025-32778",
+          "cve": "CVE-2025-32778",
+          "repo": "https://github.com/Lissy93/web-check.git",
+          "fix": "0e4958aa10b2650d32439a799f6fc83a7cd46cef",
+          "cwe": [
+            78
+          ],
+          "license": "MIT",
+          "summary": "Web-Check allows command Injection via Unvalidated URL in Screenshot API",
+          "scope": [
+            "api"
+          ]
+        },
+        {
+          "id": "CVE-2024-53272",
+          "cve": "CVE-2024-53272",
+          "repo": "https://github.com/HabitRPG/habitica.git",
+          "fix": "946ade5da1f52a804ef2ba76d49416c43e8166bf",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "GHSL-2024-109: Reflected XSS in /login in habitica",
+          "scope": [
+            "website/client/src/components",
+            "website/client/src/mixins"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-24",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-15 (topic 12's JS/TS-repository CVEs from NVD, topic 10's PHP advisories; PLAN.md step 75) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-m8jx-mxf9-2rpw",
+          "cve": "CVE-2020-21809",
+          "repo": "https://github.com/nukeviet/module-shops.git",
+          "fix": "742c0e0f74364f7250c2a69f0a957d4e6317be68",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "NukeViet SQL Injection vulnerability",
+          "scope": [
+            "modules/shops/funcs"
+          ]
+        },
+        {
+          "id": "GHSA-52cx-vphc-jmjm",
+          "cve": "CVE-2021-33557",
+          "repo": "https://github.com/mantisbt/mantisbt.git",
+          "fix": "03dd37221e636f8959b8cb9fbad84f38f9582356",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "MantisBT allows XSS in manage_custom_field_edit_page.php",
+          "scope": [
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-w9pj-vvhp-w8m8",
+          "cve": "CVE-2020-21053",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "2ce613f1e9fe8ffab7a4cb9d1384444622285335",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "Cross Site Scriptiong (XSS) vulnerability exists in FusionPBX 4.5.7 allows remote malicious users to inject arbitrary web script or HTML via an unsanitized \"query_string\" variable in app\\devices\\device_imports.php.",
+          "scope": [
+            "app/devices"
+          ]
+        },
+        {
+          "id": "GHSA-xhfx-rm8q-c3xv",
+          "cve": "CVE-2021-20183",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "dc9de7b0d487b73c23c221dc0b8b6e01654921f3",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle Vulnerable to Reflected Cross-site Scripting",
+          "scope": [
+            "lib/templates"
+          ]
+        },
+        {
+          "id": "GHSA-qpx8-mq5g-ppwg",
+          "cve": "CVE-2021-3184",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "8283e0fbec551f45f3f181cdb2cf29cddc23df66",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP 2.4.136 has XSS via a crafted URL to the app/View/Elements/global_menu.ctp user homepage favourite button.",
+          "scope": [
+            "app/View/Elements"
+          ]
+        },
+        {
+          "id": "GHSA-49w9-82cj-xr48",
+          "cve": "CVE-2020-28413",
+          "repo": "https://github.com/mantisbt/mantisbt.git",
+          "fix": "3e37b4041bf76422541836a424ca71bc4a660247",
+          "cwe": [
+            89
+          ],
+          "license": "NOASSERTION",
+          "summary": "MantisBT SQL Injection via mc_project_get_users function",
+          "scope": [
+            "core"
+          ]
+        },
+        {
+          "id": "GHSA-6rjv-xxgr-v57x",
+          "cve": "CVE-2022-3869",
+          "repo": "https://github.com/froxlor/froxlor.git",
+          "fix": "3f10a4adede9df83408d60ded78b51b812a763a8",
+          "cwe": [
+            79,
+            94
+          ],
+          "license": "LGPL-3.0",
+          "summary": "Froxlor vulnerable to code injection",
+          "scope": [
+            ".",
+            "lng"
+          ]
+        },
+        {
+          "id": "GHSA-96wh-mr3w-3jfc",
+          "cve": "CVE-2022-3845",
+          "repo": "https://github.com/phpipam/phpipam.git",
+          "fix": "22c797c3583001211fe7d31bccd3f1d4aeeb3bbc",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "A vulnerability has been found in phpipam and classified as problematic. Affected by this vulnerability is an unknown functionality of the file app/admin/import-export/import-load-data.php of the component Import Preview Handler. The manipulation leads to cross site scripting. The attack can be laun",
+          "scope": [
+            "app/admin/import-export"
+          ]
+        },
+        {
+          "id": "GHSA-7fj2-rrq6-rphq",
+          "cve": "CVE-2022-39296",
+          "repo": "https://github.com/melisplatform/melis-asset-manager.git",
+          "fix": "a0f75918c049aff78953a0bc91c585153595d1bd",
+          "cwe": [
+            22
+          ],
+          "license": "OSL-3.0",
+          "summary": "melisplatform/melis-asset-manager vulnerable to Path Traversal",
+          "scope": [
+            "src"
+          ]
+        },
+        {
+          "id": "GHSA-fcpw-vqh5-6qwj",
+          "cve": "CVE-2020-14320",
+          "repo": "https://github.com/moodle/moodle.git",
+          "fix": "c6ffe9588ebb02b73c33a09e5d8061f58acc1701",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Moodle reflected XSS Vulnerability",
+          "scope": [
+            "admin"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-25",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-15 (topic 12's JS/TS-repository CVEs from NVD, topic 10's PHP advisories; PLAN.md step 75) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-86p4-m52q-r4qx",
+          "cve": "CVE-2021-3920",
+          "repo": "https://github.com/getgrav/grav-plugin-admin.git",
+          "fix": "6463135bf046d8131189c163158cd5db8f7a9675",
+          "cwe": [
+            79
+          ],
+          "license": "MIT",
+          "summary": "grav-plugin-admin is vulnerable to Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+          "scope": [
+            "classes/plugin",
+            "classes/plugin/Controllers"
+          ]
+        },
+        {
+          "id": "GHSA-fmp4-xp37-w9p6",
+          "cve": "CVE-2021-39302",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "20d9020b76d1f6790c4d84e020d0cc97c929f66b",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP 2.4.148, in certain configurations, allows SQL injection via the app/Model/Log.php $conditions['org'] value.",
+          "scope": [
+            "app/Model"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-26",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-15 (topic 12's JS/TS-repository CVEs from NVD, topic 10's PHP advisories; PLAN.md step 75) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-79xr-v794-wq35",
+          "cve": "CVE-2020-15883",
+          "repo": "https://github.com/munkireport/managedinstalls.git",
+          "fix": "708f6a2abc4b80a3751bcc9cf896f80d84250c55",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "MunkiReport Managed Installs module Reflected Cross-Site Scripting (XSS) vulnerability",
+          "scope": [
+            "js",
+            "."
+          ]
+        },
+        {
+          "id": "GHSA-8qfx-3f23-wmwp",
+          "cve": "CVE-2019-16975",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "80f2ce087ab1343f1ff3bf8a058eed9b5027eb8c",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\contacts\\contact_notes.php uses an unsanitized \"id\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-mxc5-wqq4-5j7m",
+          "cve": "CVE-2019-16977",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "fc8e4e2d278ce6bffff21b04248d469a59eb8cd4",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\extensions\\extension_imports.php uses an unsanitized \"query_string\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/extensions"
+          ]
+        },
+        {
+          "id": "GHSA-7w8f-v868-6mqw",
+          "cve": "CVE-2019-16972",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "913ad234cf145a55e5f2faaab08d776d83c1699b",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to 4.5.7, the file app\\contacts\\contact_addresses.php uses an unsanitized \"id\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/contacts"
+          ]
+        },
+        {
+          "id": "GHSA-xw9c-79j7-p3p6",
+          "cve": "CVE-2019-16989",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "83123e314a2e4c2dd0815446f89bcad97278d98d",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\conferences_active\\conference_interactive.php uses an unsanitized \"c\" variable coming from the URL, which is reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/conferences_active"
+          ]
+        },
+        {
+          "id": "GHSA-33r6-wr5p-6jqw",
+          "cve": "CVE-2019-16990",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "95ed18aa9d781f232f5686a9027bb6f677c9b8da",
+          "cwe": [
+            22
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app/music_on_hold/music_on_hold.php uses an unsanitized \"file\" variable coming from the URL, which takes any pathname (base64 encoded) and allows a download of it.",
+          "scope": [
+            "app/music_on_hold"
+          ]
+        },
+        {
+          "id": "GHSA-vgf9-rc5w-fw25",
+          "cve": "CVE-2019-16981",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "021ff8f8e51cd1254d19e88e7aedc4b795067f8d",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\conference_profiles\\conference_profile_params.php uses an unsanitized \"id\" variable coming from the URL, which is reflected on 2 occasions in HTML, leading to XSS.",
+          "scope": [
+            "app/conference_profiles"
+          ]
+        },
+        {
+          "id": "GHSA-gxg6-pmxp-9hw9",
+          "cve": "CVE-2019-16984",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "11f2dd2254dbeb1c41bf19b8c38e8fa9bc948efb",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "In FusionPBX up to v4.5.7, the file app\\recordings\\recording_play.php uses an unsanitized \"filename\" variable coming from the URL, which is base64 decoded and reflected in HTML, leading to XSS.",
+          "scope": [
+            "app/recordings"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-27",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-15 (topic 12's JS/TS-repository CVEs from NVD, topic 10's PHP advisories; PLAN.md step 75) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-2ghq-f5hx-5jwp",
+          "cve": "CVE-2019-16965",
+          "repo": "https://github.com/fusionpbx/fusionpbx.git",
+          "fix": "6baad9af1bc55c80b793af3bd1ac35b39c20b173",
+          "cwe": [
+            78
+          ],
+          "license": null,
+          "summary": "resources/cmd.php in FusionPBX up to 4.5.7 suffers from a command injection vulnerability due to a lack of input validation, which allows authenticated administrative attackers to execute any commands on the host as www-data.",
+          "scope": [
+            "resources"
+          ]
+        },
+        {
+          "id": "GHSA-34rj-f5pg-64rh",
+          "cve": "CVE-2019-16915",
+          "repo": "https://github.com/pfsense/pfsense.git",
+          "fix": "2c544ac61ce98f716d50b8e5961d7dfba66804b5",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "An issue was discovered in pfSense through 2.4.4-p3. widgets/widgets/picture.widget.php uses the widgetkey parameter directly without sanitization (e.g., a basename call) for a pathname to file_get_contents or file_put_contents.",
+          "scope": [
+            "src/usr/local/www/widgets/widgets"
+          ]
+        },
+        {
+          "id": "GHSA-3qv7-98vm-xx2v",
+          "cve": "CVE-2018-16514",
+          "repo": "https://github.com/mantisbt/mantisbt.git",
+          "fix": "66091a42626631a3063774eb0fb8a4218ab22fd4",
+          "cwe": [
+            79
+          ],
+          "license": null,
+          "summary": "MantisBT cross-site scripting (XSS) vulnerability through crafted PATH_INFO",
+          "scope": [
+            "core"
           ]
         }
       ]
