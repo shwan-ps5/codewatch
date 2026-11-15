@@ -11,6 +11,10 @@ PY = {".py"}
 JS = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"}
 C = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 CODE = PY | JS | C | {".java", ".go", ".rs", ".cs", ".rb", ".php", ".kt", ".swift"}
+# PHP in files Semgrep doesn't parse as PHP by their extension: views (.phtml, CakePHP 2's .ctp), includes, and
+# Drupal's .module/.install/.theme, and .tpl views written in PHP (OpenCart 2; a Smarty .tpl has no PHP tag). Semgrep
+# scans them as .php copies (multi_tools.analysis_copies).
+PHP_VIEWS = {".phtml", ".ctp", ".inc", ".module", ".install", ".theme", ".tpl"}
 
 BLOCKER, CRITICAL, MAJOR, MINOR, INFO = "blocker", "critical", "major", "minor", "info"
 BUG, VULNERABILITY, HOTSPOT, CODE_SMELL, ACCESSIBILITY = (

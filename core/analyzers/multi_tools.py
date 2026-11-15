@@ -18,6 +18,7 @@ from .base import (
     JS,
     MAJOR,
     MINOR,
+    PHP_VIEWS,
     PY,
     VULNERABILITY,
     Analyzer,
@@ -37,6 +38,9 @@ from .flask_resources import with_resource_sources
 from .inline_scripts import inline_scripts
 from .jinja_sandboxes import with_sandbox_sanitizers
 from .match_statements import match_as_if
+from .php_template_sinks import TEMPLATE_RULE as PHP_TEMPLATE_RULE
+from .php_template_sinks import tidy_message as tidy_php_template_message
+from .php_template_sinks import with_php_template_sinks
 from .python_tools import LineCache, complexity_severity, security_purpose
 from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
 from .slices import index_slices
@@ -100,7 +104,7 @@ class Semgrep(Analyzer):
     name = executable = "semgrep"
     # Templates are scanned as text by the generic template rules (|safe/autoescape off and Flask's non-autoescaped
     # extensions); the Python render calls are scanned by the generated taint rule.
-    extensions = CODE | {".yml", ".yaml"} | TEMPLATE_EXTENSIONS
+    extensions = CODE | {".yml", ".yaml"} | TEMPLATE_EXTENSIONS | PHP_VIEWS
 
     def __init__(self):
         self.timeouts = set()
@@ -129,6 +133,10 @@ class Semgrep(Analyzer):
         custom_rules = with_stored_sources(custom_rules, python_texts)
         custom_rules = with_template_sinks(custom_rules, {
             f: text for f in ctx.files_with(TEMPLATE_EXTENSIONS) if (text := read_source(ctx.root / f)) is not None})
+        php_texts = {f: text for f in ctx.files_with(PHP_TEMPLATE_CANDIDATES)
+                     if (text := read_source(ctx.root / f)) is not None}
+        custom_rules = with_php_template_sinks(custom_rules, php_texts,
+                                               [t for f, t in php_texts.items() if f.endswith(".php")])
         self.timeouts, self.first_found = set(), []
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
@@ -182,6 +190,8 @@ class Semgrep(Analyzer):
             # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
             custom_id = next((cid for cid in custom_ids if check_id.endswith(cid)), None)
             message, callee, keyword = summaries_module.split_keyword(extra["message"].strip())
+            if custom_id == PHP_TEMPLATE_RULE:
+                message = tidy_php_template_message(message)
             if not summaries_module.keyword_summarised(callee, keyword, summaries.get(custom_id, ())):
                 continue
             if via and not self.via_visible(ctx, path, message, summaries.get(custom_id, ())):
@@ -540,6 +550,9 @@ def analysis_copies(ctx, files, copies):
         if (ctx.root / rel).is_symlink():
             continue
         rewritten = None
+        if rel.endswith(".php"):
+            text = read_source(ctx.root / rel)
+            rewritten = php_copy_text(text) if text and "compact(" in text else None
         if rel.endswith(".py"):
             try:
                 rewritten = analysis_copy((ctx.root / rel).read_text(), url_views)
@@ -547,6 +560,9 @@ def analysis_copies(ctx, files, copies):
                 rewritten = None
         if Path(rel).suffix.lower() in TEMPLATE_EXTENSIONS:
             add_inline_scripts(ctx, rel, copies, targets, originals)
+        if Path(rel).suffix.lower() in PHP_VIEWS:
+            add_php_copy(ctx, rel, copies, targets, originals)
+            continue
         if rewritten is None:
             targets.append(rel)
             continue
@@ -556,6 +572,37 @@ def analysis_copies(ctx, files, copies):
         targets.append(str(copy))
         originals[str(copy)] = rel
     return targets, originals
+
+
+# Files read for PHP templates and their variables (php_template_sinks.py).
+PHP_TEMPLATE_CANDIDATES = {".php", ".ctp", ".phtml", ".tpl", ".twig", ".latte"}
+PHP_TAG_RE = re.compile(r"<\?(php\b|=)")
+COMPACT_RE = re.compile(r"\bcompact\(\s*((?:['\"]\w+['\"]\s*,\s*)*['\"]\w+['\"])\s*\)")
+
+
+def php_copy_text(text):
+    """PHP as Semgrep should see it: compact('a', 'b') written out as ['a' => $a, 'b' => $b], on the same line, so
+    the variables it passes to a view are seen (Laravel's view('x', compact('user')), CakePHP's
+    $this->set(compact('referer'))). None when nothing changes."""
+    def written(match):
+        keys = re.findall(r"['\"](\w+)['\"]", match.group(1))
+        return "[" + ", ".join(f"'{k}' => ${k}" for k in keys) + "]"
+    rewritten = COMPACT_RE.sub(written, text)
+    return None if rewritten == text else rewritten
+
+
+def add_php_copy(ctx, rel, copies, targets, originals):
+    """A PHP view or include (base.PHP_VIEWS) as a .php copy, mapped back to it: Semgrep picks a file's language by
+    its extension and skips these (MISP's CakePHP 2 views, GHSA-p9m5). A file with no PHP tag (an .inc of another
+    language) is left out."""
+    text = read_source(ctx.root / rel)
+    if not text or not PHP_TAG_RE.search(text):
+        return
+    copy = copies / f"{rel}.php"
+    copy.parent.mkdir(parents=True, exist_ok=True)
+    copy.write_text(php_copy_text(text) or text)
+    targets.append(str(copy))
+    originals[str(copy)] = rel
 
 
 def add_inline_scripts(ctx, rel, copies, targets, originals):

@@ -223,10 +223,13 @@ Ground truth:
   candidates left; then topic 10 (PHP, about 950 left); runner cap 12 (step 70).
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
   committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
-- PHP (step 70): verdict 30 of 197 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
-  passes across functions and files (most misses), templates (Twig |raw, Blade {!! !!}, Smarty), helpers given
-  'escape' => false (baserCMS GHSA-66c2), lookup results (a record fetched by a request id), a PHP learning set
-  of ordinary apps for false alarms.
+- PHP (steps 70, 73): verdict 35 of 203 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
+  passes across functions and files (most misses), helpers given 'escape' => false (baserCMS GHSA-66c2), lookup
+  results (a record fetched by a request id), CakePHP action parameters as request data (MISP GHSA-x452's
+  $elementId), values built through by-reference arguments (MISP GHSA-cr6c's $urlparams), Twig reading the request
+  itself (yeswiki GHSA-ggqx), old short open tags `<?` (TBDev GHSA-88jc, unparsed), oci_parse, a project's own db()
+  and Filter::filterInput (go-with-me, CRMx, phpMyFAQ GHSA-cp9c), and a PHP learning set of ordinary apps for false
+  alarms, which the template sinks' name matching (Smarty, CakePHP components) most needs.
 - Proposed, not queued: fixes using sanitizers codewatch doesn't recognise; more open-source Django, Flask and
   FastAPI apps for the nightly's false-alarm check (step 67).
 
@@ -1999,3 +2002,39 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     moved there from -15 because its advisory's title is an Electron app's one-click link, not an HTTP request. No
     blind diff was read. Topic 12's yield: 18 of 300 (6%), half Python or PHP code in repositories GitHub calls
     JavaScript.
+73. **PHP templates and views** (2026-11-14). Of cve-pairs-php's 203 cases, about 17 fix a template or a view:
+    Twig (5), Blade (1), CakePHP views (MISP's .ctp, about 8), Smarty (oc-server3). Three things were missing:
+    - PHP Semgrep never parsed: .ctp, .phtml, .inc, Drupal's .module/.install/.theme and PHP-written .tpl
+      (base.PHP_VIEWS) went unscanned, because the analyzer took .php only and Semgrep picks a language by
+      extension. They are scanned as .php copies mapped back (multi_tools.add_php_copy; a file with no PHP tag is
+      left out). FrontAccounting GHSA-9fmm, whose fix is in an .inc, is found by this alone.
+    - CakePHP 2's request properties: $this->request->data/query/pass/named/here/url, params['named'/'pass'] (not
+      ['action'] or ['controller'], which the router matched), $this->params['named'...], $this->passedArgs;
+      OpenCart's $this->request->get/post/cookie; CakePHP's referer() (a source for XSS, a sanitizer for
+      open-redirect, where going back to it is the idiom). The view-helper sanitizer no longer takes a
+      component's $this->Controller for a helper (MISP GHSA-p8fp).
+    - Template sinks (core/analyzers/php_template_sinks.py, rule codewatch.php.web.template.xss, a copy of the PHP
+      XSS rule), after the Python one (step 32): a variable a template prints unescaped makes the argument that
+      sets it a sink. Unescaped: Twig |raw and autoescape false blocks, or every print when the project builds
+      Twig with 'autoescape' => false (OpenCart); Blade {!! !!}; Latte |noescape; Smarty {$x} without an escaping
+      modifier (unless the project turns escape_html on); a PHP view's echo, print or <?= ?> of a variable outside
+      h()/htmlspecialchars()/esc_*()/a $this-> helper/a cast, per variable (a small scanner: MISP's genericForm
+      element prints $data['description'] beside h($data['title']) in one sprintf), not counting a variable the
+      view assigns itself. The call that sets it: one naming the template (render, renderView, display,
+      load->view, element, view(), View::make, ->with; also a $data array filled anywhere in the function that
+      renders it, OpenCart); a CakePHP controller's $this->set() in an action whose view (View/<Controller>/
+      <action>.ctp or templates/..., or a $this->render('other')) or its elements print the variable; by name
+      alone for Smarty's assign() and a component's $this->Controller->set(). compact('a') is written out as
+      ['a' => $a] in the scanned copy. The message names the template and variable; the scorer
+      (benchmark.php_template_renders, php_template_callers) adds the files that set a changed template's
+      variables to the scan's focus and credits a template fix with the finding at the controller. A first
+      version matched CakePHP's set() by variable name across all views: it reported MISP's populate action for a
+      $fileArray another view prints, hence the action matching.
+    Scopes widened (non-blind): MISP GHSA-p9m5 (+ the generic form element), GHSA-x452, -cr6c, -mj6h
+    (+ app/Controller), oc-server3 GHSA-w8rr (htdocs), OpenCart GHSA-qx44 (+ its Twig library). benchmark.git()
+    decodes with errors="replace" (TBDev GHSA-88jc's non-UTF-8 diff failed the case).
+    cve-pairs-php: verdict 35 of 203 found (was 30 of 197), 9 still flagged, the same 9 as step 70; review 41, 17.
+    New: FrontAccounting GHSA-9fmm, MISP GHSA-p9m5 and -p8fp, OpenCart GHSA-qx44, oc-server3 GHSA-w8rr (new
+    today). Still missed among the template cases: stored values (facturascripts GHSA-g6w2's log messages,
+    phpMyFAQ GHSA-pgwp's FAQ content, MISP GHSA-4hg7's homepage setting), panel GHSA-mgr9's flash message, and the
+    items in Open items. Tests: tests/test_php_templates.py.

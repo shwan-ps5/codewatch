@@ -64,6 +64,31 @@ rules:
                   metavariable: $GET
                   regex: ^(input|get|query|post|all|only|except|cookie|header|getParam|getParams|getQuery|getQueryParam|getQueryParams|getBodyParam|getBodyParams|getParsedBody|getQueryString|getRequestUri|getPathInfo|getData|getPost|getCookie|getHeader|getContent|getUri|getValue|param|params|data|segment|get_post|post_get|getVar|getString|getRaw|getHtml|getUserParam)$
           - pattern: Tools::getValue(...)
+          # CakePHP 2's request properties, in controllers and views (MISP GHSA-p9m5: $this->request->data echoed
+          # by a .ctp view), and OpenCart's ($this->request->get['route'], GHSA-qx44). Not a bare $this->data or
+          # $this->params, which other classes use for their own state.
+          - patterns:
+              - pattern: $THIS->request->$PROP
+              - metavariable-regex:
+                  metavariable: $PROP
+                  regex: ^(data|query|pass|named|here|url|get|post|cookie)$
+          # Routing's free text only: params['action'] and ['controller'] are names the router matched.
+          - patterns:
+              - pattern: $THIS->request->params[$KEY]
+              - metavariable-regex:
+                  metavariable: $KEY
+                  regex: ^['"](named|pass)['"]$
+          # CakePHP's Referer header (MISP GHSA-p8fp printed it into a link); not a source for open-redirect,
+          # where going back to it is the idiom.
+          - pattern: $this->referer(...)
+          - pattern: $this->Controller->referer(...)
+          - pattern: $this->controller->referer(...)
+          - patterns:
+              - pattern: $THIS->params[$KEY]
+              - metavariable-regex:
+                  metavariable: $KEY
+                  regex: ^['"](named|pass|url|form|data)['"]$
+          - pattern: $THIS->passedArgs
     pattern-sanitizers: &escaped
       - patterns:
           - pattern-either:
@@ -99,10 +124,11 @@ rules:
               - pattern: filter_var($X, FILTER_SANITIZE_SPECIAL_CHARS, ...)
               - pattern: filter_input($T, $N, FILTER_SANITIZE_FULL_SPECIAL_CHARS, ...)
               - pattern: filter_input($T, $N, FILTER_SANITIZE_SPECIAL_CHARS, ...)
-              # CakePHP's view helpers ($this->Html->link(), $this->Form->create()) escape what they are given.
+              # CakePHP's view helpers ($this->Html->link(), $this->Form->create()) escape what they are given; a
+              # component's $this->Controller is no helper (MISP GHSA-p8fp: ->referer() into ->set()).
               - patterns:
                   - pattern: $THIS->$HELPER->$METHOD(...)
-                  - metavariable-regex: {metavariable: $HELPER, regex: '^[A-Z][A-Za-z]*$'}
+                  - metavariable-regex: {metavariable: $HELPER, regex: '^(?!Controller$)[A-Z][A-Za-z]*$'}
       # An escaper called as a function or a method, named for what it does: Strings::htmlentities() (phpMyFAQ),
       # escape_input() (phpIPAM), $escaper->escapeHtml() (Laminas, Magento).
       - patterns:
@@ -640,6 +666,9 @@ rules:
       - pattern-either:
           - pattern: urlencode(...)
           - pattern: rawurlencode(...)
+          - pattern: $this->referer(...)
+          - pattern: $this->Controller->referer(...)
+          - pattern: $this->controller->referer(...)
           - pattern: wp_validate_redirect(...)
           - pattern: wp_sanitize_redirect(...)
     pattern-sinks:

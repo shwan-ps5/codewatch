@@ -19,6 +19,7 @@ from pathlib import Path
 import yaml
 
 from . import catalog
+from .analyzers import php_template_sinks
 from .analyzers.template_sinks import TEMPLATE_EXTENSIONS, TEMPLATE_RULE, XSS_RULE, template_name
 from .collect import ScanConfig, ScanInput, collect
 
@@ -35,7 +36,9 @@ NEARBY_LINES = 3
 
 
 def git(*args, cwd):
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
+    # errors="replace": a diff of a file that isn't UTF-8 (TBDev GHSA-88jc's Windows-1251 page) failed the case.
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True,
+                          errors="replace").stdout
 
 
 def fetch(suite):
@@ -94,7 +97,7 @@ def related(a, b, parents):
 
 
 # Rules built at scan time, which have no catalogue entry of their own: scored with the CWEs of the rule they copy.
-DERIVED_RULES = {TEMPLATE_RULE: XSS_RULE}
+DERIVED_RULES = {TEMPLATE_RULE: XSS_RULE, php_template_sinks.TEMPLATE_RULE: php_template_sinks.XSS_RULE}
 
 
 def issue_cwes(issue):
@@ -306,7 +309,7 @@ SOURCE_EXTENSIONS = {"python": (".py",), "javascript": (".js", ".mjs", ".cjs", "
 SOURCE_EXTENSIONS["python-web"] = (*SOURCE_EXTENSIONS["python"], *SOURCE_EXTENSIONS["javascript"],
                                    ".vue", ".html", ".htm", ".jinja", ".jinja2", ".j2")
 # PHP apps and CMSs: their code, templates (Twig, Smarty, Latte, Blade is .blade.php) and the JS they ship.
-SOURCE_EXTENSIONS["php"] = (".php", ".phtml", ".inc", ".module", ".install", ".theme", ".twig", ".tpl", ".latte",
+SOURCE_EXTENSIONS["php"] = (".php", ".phtml", ".ctp", ".inc", ".module", ".install", ".theme", ".twig", ".tpl", ".latte",
                             *SOURCE_EXTENSIONS["javascript"], ".vue", ".html", ".htm")
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|spec|e2e)/|(^|/)(test_[^/]*|[^/]*_test\.py|tests?\.py)$"
                           r"|\.(test|spec)\.[cm]?[jt]sx?$|\.d\.ts$")
@@ -422,9 +425,65 @@ def importers(root, paths, changed):
     return found
 
 
+PHP_KEY_RE = re.compile(r"template variable ['\"](\w+)['\"]")
+PHP_NAME_RE = re.compile(r"\(template ['\"]([^'\"]+)['\"]\)")
+
+
+def php_template_renders(root, changed, found):
+    """{path: [(line, line)]} of the PHP template rule's findings that set a variable one of the changed templates
+    prints unescaped, through a call naming that template or (Smarty's assign(), CakePHP's set()) naming none: a fix
+    in the template removes the finding at the controller, in a file the fix didn't change (oc-server3 GHSA-w8rr)."""
+    templates = {}
+    for path in changed:
+        text = (root / path).read_text(errors="replace") if (root / path).is_file() else ""
+        if (kind := php_template_sinks.kind(path, text)) is not None:
+            templates[path] = (kind, text)
+    if not templates:
+        return {}
+    joined = "\n".join(text for path, (_, text) in templates.items() if path.endswith(".php"))
+    settings = {"twig_off": bool(php_template_sinks.TWIG_OFF_RE.search(joined)), "smarty_escapes": False}
+    raw = {path: php_template_sinks.raw_variables(text, kind, settings) for path, (kind, text) in templates.items()}
+    renders = {}
+    for i in found:
+        if i["rule"] != php_template_sinks.TEMPLATE_RULE or not (key := PHP_KEY_RE.search(i.get("message") or "")):
+            continue
+        name = PHP_NAME_RE.search(i["message"])
+        if any(key.group(1) in raw[path] and (name is None
+                                              or name.group(1) in php_template_sinks.names(path, templates[path][0]))
+               for path in templates):
+            renders.setdefault(i["path"], []).append((i["line"], i["line"]))
+    return renders
+
+
+PHP_CALLER_SUFFIXES = (".php", ".ctp", ".phtml", ".inc", ".module", ".tpl")
+
+
+def php_template_callers(root, paths, changed):
+    """PHP files in the checkout that might set a variable a changed template prints unescaped: they name the
+    template, or quote the variable (assign('x', ...), set('x', ...)). The focus of the scan, so the template
+    rule's finding at the controller is seen."""
+    words = set()
+    for path in changed:
+        text = (root / path).read_text(errors="replace") if (root / path).is_file() else ""
+        if (kind := php_template_sinks.kind(path, text)) is None:
+            continue
+        variables = php_template_sinks.raw_variables(text, kind, {"twig_off": True, "smarty_escapes": False})
+        words |= {f"'{v}'" for v in variables} | {f'"{v}"' for v in variables} | {f"->{v} =" for v in variables}
+    if not words:
+        return set()
+    found = set()
+    for path in git("ls-files", "-z", "--", *paths, cwd=root).split("\0"):
+        if (path.endswith(PHP_CALLER_SUFFIXES) and path not in changed and not TEST_PATH_RE.search(path)
+                and (root / path).is_file()):
+            text = (root / path).read_text(errors="replace")
+            if any(w in text for w in words):
+                found.add(path)
+    return found
+
+
 def at_render(issue, renders):
     """A finding of the template rule inside a call that renders a changed template."""
-    return issue["rule"] == TEMPLATE_RULE and any(
+    return issue["rule"] in (TEMPLATE_RULE, php_template_sinks.TEMPLATE_RULE) and any(
         first <= (issue["line"] or 0) <= last for first, last in renders.get(issue["path"], ()))
 
 
@@ -456,12 +515,18 @@ def scan_pair(suite, case, log):
         git("checkout", "-q", "--force", commit, cwd=root)
         renders = spots["renders"][side] = template_renderers(root, case.get("scope", []), templates)
         callers = importers(root, case.get("scope", []), set(spots[side]))
+        # A PHP template's unescaped variable is set in a controller the fix may not touch.
+        php_callers = (php_template_callers(root, case.get("scope", []), set(spots[side]))
+                       if suite["language"] == "php" else set())
         prep = time.monotonic() - start
         # Only findings in the changed files (and those render calls, and the changed modules' importers) are
         # scored, so Semgrep's per-file pass looks only at those files.
         found, spots["gave_up"][side] = scan_and_gave_up(root, log, case.get("scope", []),
-                                                         focus=sorted({*spots[side], *renders, *callers}),
+                                                         focus=sorted({*spots[side], *renders, *callers,
+                                                                       *php_callers}),
                                                          tools=tools)
+        if suite["language"] == "php":
+            renders = spots["renders"][side] = php_template_renders(root, set(spots[side]), found)
         timing(log, (suite["name"], case["id"], side), time.monotonic() - start, {"prep": prep, **tools},
                spots["gave_up"][side])
         found = [i for i in found if i["type"] in SECURITY_TYPES]

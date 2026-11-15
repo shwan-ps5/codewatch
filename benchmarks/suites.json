@@ -5901,7 +5901,7 @@
       "name": "cve-pairs-php",
       "language": "php",
       "kind": "cve-pairs",
-      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv.",
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Template support (PLAN.md step 73) was driven by MISP GHSA-p9m5 and -p8fp (CakePHP views, elements and set()), OpenCart GHSA-qx44 (Twig without autoescape, a filled $data array), oc-server3 GHSA-w8rr (Smarty) and FrontAccounting GHSA-9fmm (PHP in .inc files); scopes of GHSA-p9m5, -x452, -cr6c, -mj6h, -w8rr and -qx44 widened to their controllers.",
       "cases": [
         {
           "id": "GHSA-p9m5-xwgx-8j69",
@@ -5914,7 +5914,8 @@
           "license": "AGPL-3.0",
           "summary": "MISP contains a reflected cross-site scripting (XSS) vulnerability in the legacy taxonomy tag management confirmation forms (add tag and disable tag).",
           "scope": [
-            "app/View/Taxonomies"
+            "app/View/Taxonomies",
+            "app/View/Elements/genericElements/Form"
           ]
         },
         {
@@ -5970,7 +5971,8 @@
           "license": "AGPL-3.0",
           "summary": "MISP contains a reflected Cross-Site Scripting (XSS) vulnerability in the event attribute filtering query builder. The taggedAttributes and galaxyAttachedAttributes URL parameters were inserted into the query-builder rules without HTML escaping before being serialized as JSON and embedded inside a <",
           "scope": [
-            "app/View/Elements/Events/View"
+            "app/View/Elements/Events/View",
+            "app/Controller"
           ]
         },
         {
@@ -7380,7 +7382,8 @@
           "summary": "Cross site scripting in opencart",
           "scope": [
             "upload/admin/controller/common",
-            "upload/admin/view/template/common"
+            "upload/admin/view/template/common",
+            "upload/system/library/template"
           ]
         },
         {
@@ -7792,7 +7795,8 @@
           "license": "AGPL-3.0",
           "summary": "MISP 2.4174 allows XSS in app/View/Events/index.ctp.",
           "scope": [
-            "app/View/Events"
+            "app/View/Events",
+            "app/Controller"
           ]
         },
         {
@@ -8769,7 +8773,8 @@
           "license": "AGPL-3.0",
           "summary": "In MISP before 2.4.167, there is XSS in the template file uploads in app/View/Templates/upload_file.ctp.",
           "scope": [
-            "app/View/Templates"
+            "app/View/Templates",
+            "app/Controller"
           ]
         },
         {
@@ -8797,7 +8802,7 @@
           "license": "NOASSERTION",
           "summary": "A vulnerability, which was classified as problematic, has been found in Opencaching Deutschland oc-server3. This issue affects some unknown processing of the file htdocs/templates2/ocstyle/login.tpl of the component Login Page. The manipulation of the argument username leads to cross site scripting.",
           "scope": [
-            "htdocs/templates2/ocstyle"
+            "htdocs"
           ]
         },
         {
