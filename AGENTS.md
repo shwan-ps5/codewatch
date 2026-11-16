@@ -277,7 +277,9 @@ npm advisories (step 29). Those pools are nearly used up.
    them all, say so in the JSON's `method` and mark the topic done. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-nvd.{tsv,json}`.
 
-13. **Front ends of Python web apps whose repository GitHub doesn't call Python.** (queued 2026-11-16) Every
+13. **Front ends of Python web apps whose repository GitHub doesn't call Python.** (done 2026-11-16,
+    cve-candidates-2026-11-16-python-frontend.*: the whole filtered list, 39 candidates, was read in one batch,
+    5 accepted; the list is used up) Every
    Python topic kept repositories whose primary language is Python, and the JavaScript topics kept JS/TS servers,
    so a Django, Flask or FastAPI app with a large front end (GitHub calls it TypeScript, JavaScript, Svelte, Vue or
    HTML) fell between them. Their templates and shipped JS are what `cve-pairs-python-frontend` measures, and it is
