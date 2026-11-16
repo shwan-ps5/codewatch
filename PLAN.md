@@ -219,9 +219,10 @@ Speed and stability:
 - Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
 
 Ground truth:
-- Research: topic 12 (JS/TS app CVEs with no GitHub advisory) done (steps 72, 74, 75); topic 10 (PHP) continues;
-  runner cap 12 (step 70). Step 74's 24 and step 75's 38 open cases are first scanned by the nightly of 2026-11-16,
-  step 76's 45 by the nightly of 2026-11-17.
+- Research: topics 12 (JS/TS app CVEs with no GitHub advisory) and 10 (PHP) done (steps 72-78); every topic in
+  AGENTS.md's queue is now done or paused, so the hourly runner stops until a new topic is queued. Runner cap 12
+  (step 70). The 62 open cases of steps 74 and 75 (their nightly of 2026-11-16 lost its suites to a DNS outage),
+  step 76's 45 and step 78's 26 are first scanned by the nightly of 2026-11-17.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
   committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
 - PHP (steps 70, 73): verdict 35 of 203 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
@@ -2129,3 +2130,25 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     (`test_a_jsonpath_find_is_not_xpath`); dispatch is back to the nightly's one finding (plugin.py:225 ssrf),
     fastapi-realworld-example-app and full-stack-fastapi-template unchanged. The nightly of 2026-11-17 measures
     the rest of the apps and suites.
+78. **Topic 10's last seven PHP batches, of 2026-11-16, reviewed** (2026-11-16); topic 10 is done. 408 read by the
+    agents, 94 accepted (59 open, 35 blind). The 59 open fix diffs were read here, with the fixed files where the
+    source was not in the diff; 33 rejected, reasons in the batch TSVs. Source outside the diff (13): arguments of
+    functions or methods whose callers are elsewhere (Symphony, MantisBT SOAP, Pimcore's grid helper, Fork CMS,
+    YOURLS' edit_link, Cachet, Mautic, phpMyAdmin x2, Shopware), Dolibarr's product properties, phpMyAdmin GHSA-mgpp
+    ($db from common.inc.php, as GHSA-xhqq), Pimcore GHSA-7hqr (unserialized data read back from a temp file the
+    request named). Stored (9): PrivateBin, Fork CMS module XML, Pimcore rule names, media2click, Flarum x2 (JS),
+    Moodle's content bank, Cerebrate's form descriptions, Contao's head bag. Sink outside the diff or scope (6):
+    FacturaScripts (Twig), GOsa (Smarty), Solr (template markers), php-proxy-app, emlog, e107 (values only compared).
+    Not flow fixes (4): phpsysinfo (basename() already there), LiveHelperChat's CSS proxy (fetching is its job),
+    phpMyAdmin GHSA-97x5 (where clauses are SQL by design), Firefly III GHSA-5fvx (the redirect is Laravel's own
+    handler). Duplicate (1): MODX GHSA-6gcw, the same header.tpl change as GHSA-jv4m on another branch. Kept 26 in
+    cve-pairs-php: direct request echoes (Dolibarr REQUEST_URI and GETPOST, Evolution CMS, GetSimple, wp-youtube-live's
+    var_export($_POST), Pi's markdown preview, YOURLS' upgrade page, phpMyAdmin GIS settings), request values into
+    SQL (GLPI, Pimcore x3 filter JSON and storeId, Dolibarr GETPOST arrays, phpIPAM), unserialize of cookies or
+    request (FreePBX, Subrion, Chamilo's hash), paths (tinyfilemanager, Pimcore exportFile, Revive's layerstyle
+    through MAX_commonRegisterGlobalsArray), MantisBT view_type, MISP's request params in a layout, BigTree upload
+    names, Adminer's REQUEST_URI through remove_from_uri into a script string, Moodle tag filter (s() into an
+    unquoted attribute) and Moodle GHSA-6jhm (an external function's sort parameter: a web-service entry point,
+    kept like a CakePHP action parameter). Blind, as the batches named them: cve-pairs-blind-php-30..34 (new). No
+    blind diff was read. Yield 26 kept of 408 read (6%); the agents' accepts were 44% right (step 76: 69%), lower at
+    the old end of the pool (2021 and earlier, more stored and argument-only fixes).
