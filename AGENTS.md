@@ -215,8 +215,8 @@ npm advisories (step 29). Those pools are nearly used up.
    Suites as topic 5 (`cve-pairs-python`, or `cve-pairs-python-nonhttp`). Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-nosql.{tsv,json}`.
 
-10. **PHP web apps, carried on from topic 4.** (behind topic 12 from 2026-11-14: carry on with it only when topic 12 is
-   done or paused, then take it up again from here.) Topic 4's five batches of 2026-11-05
+10. **PHP web apps, carried on from topic 4.** (done 2026-11-16, cve-candidates-2026-11-16-php-7.*: rebuilt and
+   filtered the list to 48 candidates, read all of them in one batch, 12 accepted; the list is used up.) Topic 4's five batches of 2026-11-05
    (`cve-candidates-2026-11-05-php-unreviewed*`, 300 read, held for review) left about 800 candidates. Same source, filter and rules as topic 4: GitHub
    advisories (reviewed and unreviewed) whose one fix commit is in a non-archived repository with PHP as its primary
    language; applications and CMSs (Laravel, Symfony, CodeIgniter, Yii, Slim, CakePHP, WordPress/Drupal/Joomla
