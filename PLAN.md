@@ -220,7 +220,8 @@ Speed and stability:
 
 Ground truth:
 - Research: topic 12 (JS/TS app CVEs with no GitHub advisory) done (steps 72, 74, 75); topic 10 (PHP) continues;
-  runner cap 12 (step 70). Step 74's 24 and step 75's 38 open cases are first scanned by the nightly of 2026-11-16.
+  runner cap 12 (step 70). Step 74's 24 and step 75's 38 open cases are first scanned by the nightly of 2026-11-16,
+  step 76's 45 by the nightly of 2026-11-17.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
   committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
 - PHP (steps 70, 73): verdict 35 of 203 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
@@ -2088,3 +2089,27 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     which assigns the Smarty $status). Blind, as the batches named them: cve-pairs-blind-javascript-25 and
     cve-pairs-blind-php-24..27 (all new). No blind diff was read. Yield: topic 12's last batch 4 of 68 (3 kept),
     the PHP batches 74 accepted of 300 (35 kept); FusionPBX is now a large share of cve-pairs-php (239 cases).
+76. **Topic 10's PHP batches php-6..9 of 2026-11-15 reviewed** (2026-11-16). 240 read by the agents, 87 accepted
+    (65 open, 22 blind). The 65 open fix diffs were read here, with the fixed files where the source was not in the
+    diff; 20 rejected. Source outside the diff (arguments or a value set elsewhere): SilverStripe GHSA-f93v, Pimcore
+    GHSA-g7pj, Exponent GHSA-w946, GOsa GHSA-7v8f, Revive GHSA-5j5m, BigTree GHSA-4xfw, OpenCart GHSA-w3h9, Piwigo
+    GHSA-5r63, phpMyAdmin GHSA-xhqq (common.inc.php's import, as gnuboard at step 75), MantisBT GHSA-46x9 (the
+    filter API, as GHSA-4rrc), Shibboleth GHSA-h754 (add_query_arg's default inside WordPress). Client-side values:
+    ownCloud GHSA-pmqr (a hidden input's DOM value), phpMyAdmin GHSA-jqmr (a JS page global). Stored: MyBB GHSA-7g92,
+    TYPO3 GHSA-xx7m, MISP GHSA-gr95. Sink outside the diff: Jojo GHSA-mwx5 (a Smarty template). Not flow fixes:
+    phpThumb GHSA-3747 (fetching src is its job; only schemes narrowed), Exponent GHSA-wjr7 (router-wide id
+    normalisation), MantisBT GHSA-x3h6 (an existence check away from the unchanged output). Kept 45 in
+    cve-pairs-php. Rule applied for app-wide request accessors: kept when the source is named as the request
+    (MantisBT gpc_get_*, Cacti get_nfilter_request_var, b2evolution param(), Moodle optional_param, Jojo/Spoon
+    getters, Zend getParam, Exponent's controller and router params, Serendipity's $serendipity['GET'], Saurus's
+    $site->fdat, Ushahidi's API $this->request); rejected when it is a plain variable or property filled elsewhere.
+    Kept shapes: direct $_GET/$_REQUEST/$_SERVER echoes (phpPgAdmin, gpEasy, tdm, BigTree, Cacti REQUEST_URI,
+    ownCloud print_r($_POST)), request values into SQL (Piwigo's check_input_parameter fixes x4, Exponent search,
+    notfound, pixidou and navigation, Ushahidi, Pragyan), unserialize of cookies or request data (SilverStripe,
+    MISP, MantisBT), paths (Pimcore, b2evolution, ForkCMS, WordPress upgrader, WonderCMS), redirects (Serendipity
+    Referer, WordPress wp_redirect, ILIAS return_to_url), templates (MODX Smarty $smarty.get, October Twig
+    form_value, MISP $this->here, ILIAS setVariable) and phpMyAdmin GHSA-jfjq (htmlspecialchars in a JS string,
+    the wrong encoder for the context). Scopes widened: ZfcUser GHSA-33rh (+ src/ZfcUser/Controller, which passes
+    the redirect query to the view) and OpenCart GHSA-c83f (+ the account templates, which echo zone_id into
+    script). Blind, as the batches named them: cve-pairs-blind-php-28 and -29 (new). No blind diff was read. Yield
+    45 kept of 240 read (19%).
