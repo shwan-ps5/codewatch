@@ -1987,6 +1987,51 @@ def test_request_body_models(tmp_path):
     }
 
 
+def test_request_body_models_nested_and_passed_whole(tmp_path):
+    """SQLBot CVE-2026-53556: a body model's field typed with another model holds text one level down
+    (data.table.table_name), and the model passed whole to a function in another file is request data there, so
+    the f-string query the callee builds is found at the call. A nested int field, and a model with no text fields
+    passed whole, aren't request text."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "models.py": (
+            "from pydantic import BaseModel\nfrom sqlmodel import SQLModel\n\n\n"
+            "class Table(SQLModel, table=True):\n"
+            "    id: int\n"
+            "    table_name: str\n\n\n"
+            "class TableObj(BaseModel):\n"
+            "    table: Table = None\n\n\n"
+            "class Page(BaseModel):\n"
+            "    size: int = 10\n"),
+        "crud.py": (
+            "def preview(session, data):\n"
+            "    sql = f'SELECT * FROM \"{data.table.table_name}\" LIMIT 100'\n"
+            "    return session.execute(sql)\n\n\n"
+            "def page(session, p):\n"
+            "    return session.execute(f'SELECT * FROM t LIMIT {p.size}')\n"),
+        "api.py": (
+            "from fastapi import APIRouter\n\nfrom crud import page, preview\nfrom models import Page, TableObj\n\n"
+            "router = APIRouter()\n\n\n"
+            "@router.post('/preview')\n"
+            "async def preview_data(session, data: TableObj):\n"
+            "    def inner():\n"
+            "        return preview(session, data)\n"
+            "    return inner()\n\n\n"
+            "@router.post('/count')\n"
+            "async def count(session, data: TableObj):\n"
+            "    session.execute(f'SELECT COUNT(*) FROM \"{data.table.table_name}\"')\n"
+            "    return session.execute(f'SELECT * FROM t WHERE id = {data.table.id}')\n\n\n"
+            "@router.post('/page')\n"
+            "async def paged(session, p: Page):\n"
+            "    return page(session, p)\n"),
+    })
+    assert {f for f in found if f[2] == "sql-injection"} == {
+        ("api.py", 12, "sql-injection"),
+        ("api.py", 18, "sql-injection"),
+    }
+
+
 def test_false_alarms_from_small_flask_apps(tmp_path):
     """Shapes from small Flask apps that were flagged once route parameters became sources: a function
     nested in a view, a record fetched by the id (get_clip), a video Response, a URL argv element for mpv, a
@@ -3596,6 +3641,24 @@ def test_a_regular_expression_find_is_not_xpath(tmp_path):
     assert not {f for f in found if f[2] == "xpath-injection" and f[1] in (10, 11)}
 
 
+def test_a_jsonpath_find_is_not_xpath(tmp_path):
+    """A compiled JSONPath's find() takes the document to search, not a path (dispatch's find_entities:
+    `jpath.find(signal_instance.raw)`, flagged once body models passed whole to a call were sources)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "from flask import Flask, request\nfrom jsonpath_ng import parse\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/a')\n"
+        "def a(tree, json_path):\n"
+        "    jpath = parse('$.user.name')\n"
+        "    jpath.find(request.get_json())\n"                               # 10
+        "    json_path.find(request.get_json())\n"                           # 11
+        "    tree.find(request.args['x'])\n"                                 # 12
+        "    return 'ok'\n")})
+    assert ("app.py", 12, "xpath-injection") in found
+    assert not {f for f in found if f[2] == "xpath-injection" and f[1] in (10, 11)}
+
+
 def test_a_helper_called_inside_an_f_string_is_asked_what_it_hands_back(tmp_path):
     """The pass-through analysis asks about calls whose result is assigned or returned, and now one interpolated
     into an f-string too (PostHog GHSA-jrwm at its fix: f"{get_base_url(region, subdomain)}resources/users", where
@@ -3644,6 +3707,26 @@ def test_a_summary_resting_on_a_helper_that_hands_back_some_parameters(tmp_path)
     found = semgrep_vulnerabilities(tmp_path, {"app/vitally.py": vitally, "app/views.py": views})
     # 12: the alias follows the function's summary once that loses region.
     assert found == {("app/views.py", 11, "ssrf")}
+
+
+def test_a_summary_resting_on_another_summarised_again_in_the_same_round(tmp_path):
+    """SQLBot CVE-2026-53556: preview() hands its query to exec_sql(), and both call a helper that hands back only
+    some parameters, so both are summarised again in one round, which scans them without each other as sinks.
+    exec_sql's summary comes back; preview's must come back too, in another round."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {
+        "helpers.py": "def audit(table=None, fields=None):\n    print(table)\n    return fields\n",
+        "runner.py": ("import os\n\nfrom helpers import audit\n\n\n"
+                      "def run(cmd, note):\n    seen = audit(table=note, fields=[])\n    os.system(cmd)\n"),
+        "work.py": ("from helpers import audit\nfrom runner import run\n\n\n"
+                    "def work(q, extra):\n    seen = audit(table=extra, fields=[])\n    run('grep ' + q, 'x')\n"),
+        "app.py": ("from flask import Flask, request\n\nfrom work import work\n\napp = Flask(__name__)\n\n\n"
+                   "@app.route('/x')\ndef x():\n    work(request.args['q'], 'y')\n"
+                   "    return work('q', request.args['e'])\n"),
+    })
+    # 11: extra only goes to audit, which doesn't hand back table.
+    assert found == {("app.py", 10, "command-injection")}
 
 
 STORED_MODELS = """from django.db import models

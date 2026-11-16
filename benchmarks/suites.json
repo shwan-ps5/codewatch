@@ -1350,7 +1350,10 @@
           "license": "NOASSERTION",
           "summary": "SQLBot: Authenticated SQL Injection in previewData Resulting in Arbitrary File Read",
           "scope": [
-            "backend/apps/datasource/crud"
+            "backend/apps/datasource/crud",
+            "backend/apps/datasource/api",
+            "backend/apps/datasource/models",
+            "backend/apps/db"
           ]
         }
       ]

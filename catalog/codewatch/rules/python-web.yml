@@ -1421,10 +1421,11 @@ rules:
               metavariable: $TREE
               regex: '^(?!(re|regex)$)(?!(?i:.*([._]|^)(re|rx|regex|regexp|pattern)$)).*$'
           # Nor a MongoDB collection's find({...}) (mongo.db.users, items_collection; nosql-injection's) or
-          # BeautifulSoup's find(tag name), which take no path.
+          # BeautifulSoup's find(tag name), which take no path. Nor a compiled JSONPath's find(document), whose
+          # argument is the data searched (dispatch's `jpath.find(signal_instance.raw)`).
           - metavariable-regex:
               metavariable: $TREE
-              regex: '^(?!(?i:((.*\.)?(db|mongo|database)(\.\w+|\[[^\]]+\])|(.*\.)?\w*(collection|coll|_col)s?)$))(?!(?i:.*soup)).*$'
+              regex: '^(?!(?i:((.*\.)?(db|mongo|database)(\.\w+|\[[^\]]+\])|(.*\.)?\w*(collection|coll|_col)s?)$))(?!(?i:.*soup))(?!(?i:(.*[._])?(jpath|jsonpath|json_path)$)).*$'
           - pattern-not: $TREE.find({...}, ...)
           - pattern-not: $TREE.findall({...}, ...)
           - focus-metavariable: $QUERY

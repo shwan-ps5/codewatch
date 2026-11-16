@@ -2113,3 +2113,19 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     the redirect query to the view) and OpenCart GHSA-c83f (+ the account templates, which echo zone_id into
     script). Blind, as the batches named them: cve-pairs-blind-php-28 and -29 (new). No blind diff was read. Yield
     45 kept of 240 read (19%).
+77. **SQLBot CVE-2026-53556 found; a JSONPath find is not XPath** (2026-11-15, finished 2026-11-16). The case was
+    missed in every nightly. Three changes: its scope widened (+ datasource/api, datasource/models, apps/db) so the
+    route and the request model are checked out; `core/analyzers/body_models.py` reads a body model's fields one
+    level down (`data.table.table_name`, a field typed with another model) and treats a model passed whole to a call
+    as request data there (a model with no text fields, even nested, stays out); `core/analyzers/multi_tools.py`
+    keeps a summary resting on another one summarised again in the same round (SQLBot's preview() and exec_sql()
+    both call a permission helper that hands back only some parameters, and preview() lost its summary). Tests:
+    `test_request_body_models_nested_and_passed_whole`, `test_a_summary_resting_on_another_summarised_again_in_the_same_round`,
+    each failing without its change. SQLBot is now found at the route's `preview(...)` call (api/datasource.py:232)
+    and quiet at its fix. On the three FastAPI apps of the learning set the change added one false alarm: dispatch's
+    `jpath.find(signal_instance.raw)` in find_entities (the entity type's body model passed whole to create()) as
+    xpath-injection, ElementTree's `$TREE.find($QUERY)` sink matching a compiled JSONPath, whose argument is the
+    document searched. The sink's receiver exclusion now also skips names ending jpath/jsonpath/json_path
+    (`test_a_jsonpath_find_is_not_xpath`); dispatch is back to the nightly's one finding (plugin.py:225 ssrf),
+    fastapi-realworld-example-app and full-stack-fastapi-template unchanged. The nightly of 2026-11-17 measures
+    the rest of the apps and suites.

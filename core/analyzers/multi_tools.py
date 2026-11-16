@@ -334,7 +334,10 @@ class Semgrep(Analyzer):
         functions = {False: set(signatures), True: js_functions}
         texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
         stale = summaries_module.stale_summaries(custom_rules, summaries, texts, (functions, passes, signatures))
-        for _ in range(summaries_module.MAX_DEPTH):
+        # A round scans its stale functions without their summaries as sinks, so one resting on another stale one
+        # (SQLBot's preview on exec_sql, CVE-2026-53556) is dropped though its callee comes back: such functions
+        # get another round, with the callees this round confirmed.
+        for _ in range(summaries_module.MAX_DEPTH + 1):
             if not stale:
                 break
             names = set().union(*stale.values())
@@ -359,10 +362,13 @@ class Semgrep(Analyzer):
             updated = summaries_module.merge(kept, again) or kept
             gone = {rule: {e[0] for e in summaries.get(rule, set()) - updated.get(rule, set())} for rule in stale}
             summaries = updated
-            # Callers summarised through a function that no longer is.
+            # Callers summarised through a function that no longer is, and functions this round dropped that call
+            # one it kept.
+            confirmed = {rule: {e[0] for e in entries} for rule, entries in again.items()}
             stale = {rule: callers for rule, names_gone in gone.items() if names_gone
-                     and (callers := set(summaries_module.python_callers(texts, names_gone))
-                          & {e[0] for e in summaries.get(rule, ())})}
+                     and (callers := (set(summaries_module.python_callers(texts, names_gone))
+                                      & {e[0] for e in summaries.get(rule, ())})
+                          | (names_gone & set(summaries_module.python_callers(texts, confirmed.get(rule, set())))))}
         summaries = summaries_module.realiased(summaries, self.aliases)
         live = {(rule, e[0], e[4]) for rule, entries in summaries.items() for e in entries}
         return summaries, [h for h in hits if (h[0], h[3], h[1]) in live]
