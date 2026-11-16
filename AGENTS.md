@@ -277,6 +277,30 @@ npm advisories (step 29). Those pools are nearly used up.
    them all, say so in the JSON's `method` and mark the topic done. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-javascript-nvd.{tsv,json}`.
 
+13. **Front ends of Python web apps whose repository GitHub doesn't call Python.** (queued 2026-11-16) Every
+   Python topic kept repositories whose primary language is Python, and the JavaScript topics kept JS/TS servers,
+   so a Django, Flask or FastAPI app with a large front end (GitHub calls it TypeScript, JavaScript, Svelte, Vue or
+   HTML) fell between them. Their templates and shipped JS are what `cve-pairs-python-frontend` measures, and it is
+   the weakest Python suite (PLAN.md, measured gaps). Sources, both filtered locally with no API calls, merged and
+   deduplicated (a CVE that is an alias of an advisory counts once, under the advisory's id): GitHub's advisory
+   database, reviewed and unreviewed (`advisories/**/GHSA-*.json`, as topic 1), and `CVEProject/cvelistV5` (as topic
+   11). Keep entries published since 2021 with a CWE from section 2 whose references hold exactly one
+   `https://github.com/OWNER/REPO/commit/SHA` URL; write the filter in `~/codewatch-research/`, then drop anything
+   `reviewed.py` knows by id or fix SHA. Get each repository's language with GraphQL as topic 1 does and keep
+   non-archived repositories whose primary language is TypeScript, JavaScript, Svelte, Vue, HTML or CSS. Keep a
+   candidate only when the tree at the fix commit declares a Python web framework (Django, Flask, FastAPI,
+   Starlette, Litestar, Quart, Falcon, Pyramid, Bottle; in `requirements*.txt`, `pyproject.toml`, `setup.py` or
+   `setup.cfg` anywhere in the tree, as topic 8), and the fix is in that app's own code: its templates (Django,
+   Jinja), its front-end JS/TS/Vue/Svelte, or its Python views. Reject vendored, bundled or minified files and
+   generated code, as always. Section 3 still decides: the value has to come from the request (query string, path,
+   form, headers, cookies, `location`, `postMessage`) in code the fix or its scope shows; a value from an API
+   response or the database is stored data. Say in the TSV which side the fix is on (`template`, `front-end JS`
+   or `Python view`). Suites: `cve-pairs-python-frontend` (templates and front-end JS) or `cve-pairs-python` (a
+   Python view); blind ones in the next unused `cve-pairs-blind-python-N`, one per batch. The id is the advisory's
+   GHSA id, or the CVE id when there is no advisory (`reviewed.py --split CVE-...`). If the first full filter leaves
+   fewer than 30 candidates, read them all, say so in the JSON's `method` and mark the topic done. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-python-frontend.{tsv,json}`.
+
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
 **Carrying on a topic** doesn't depend on anything an earlier session did. Rebuild the topic's candidate list from

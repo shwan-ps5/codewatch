@@ -220,7 +220,8 @@ Speed and stability:
 
 Ground truth:
 - Research: topics 12 (JS/TS app CVEs with no GitHub advisory) and 10 (PHP) done (steps 72-78); every topic in
-  AGENTS.md's queue is now done or paused, so the hourly runner stops until a new topic is queued. Runner cap 12
+  AGENTS.md's queue was then done or paused; topic 13 (front ends of Python web apps whose repository GitHub
+  doesn't call Python) queued 2026-11-16 (step 79). Runner cap 12
   (step 70). The 62 open cases of steps 74 and 75 (their nightly of 2026-11-16 lost its suites to a DNS outage),
   step 76's 45 and step 78's 26 are first scanned by the nightly of 2026-11-17.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
@@ -2152,3 +2153,9 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     kept like a CakePHP action parameter). Blind, as the batches named them: cve-pairs-blind-php-30..34 (new). No
     blind diff was read. Yield 26 kept of 408 read (6%); the agents' accepts were 44% right (step 76: 69%), lower at
     the old end of the pool (2021 and earlier, more stored and argument-only fixes).
+79. **Research topic 13 queued** (2026-11-16): front ends of Python web apps whose repository GitHub doesn't call
+    Python. Every Python topic kept repositories whose primary language is Python and the JavaScript topics kept
+    JS/TS servers, so a Django, Flask or FastAPI app with a large front end (TypeScript, JavaScript, Svelte, Vue or
+    HTML on GitHub) fell between them. Sources: GitHub's advisory database (reviewed and unreviewed) and cvelistV5,
+    since 2021, one fix commit; a Python web framework declared in the tree; fixes in the app's templates, shipped
+    JS or views. For cve-pairs-python-frontend (4 of 31 found in verdict mode), the weakest Python suite.
