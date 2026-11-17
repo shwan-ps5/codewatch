@@ -2159,3 +2159,12 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     HTML on GitHub) fell between them. Sources: GitHub's advisory database (reviewed and unreviewed) and cvelistV5,
     since 2021, one fix commit; a Python web framework declared in the tree; fixes in the app's templates, shipped
     JS or views. For cve-pairs-python-frontend (4 of 31 found in verdict mode), the weakest Python suite.
+80. **Nightly of 2026-11-17 read; README refreshed; main fast-forwarded** (2026-11-17). The 2026-11-16 run lost its
+    suite scores to a DNS outage, so the case-by-case check was against 2026-11-15: lint and 307 tests pass; no
+    existing case went from found to missed or became flagged after its fix, in either mode; six went from missed
+    to found (SQLBot CVE-2026-53556, step 77, and five PHP cases: GHSA-9fmm, -p8fp, -p9m5, -qx44, -w8rr); verdict
+    false alarms stay at 0% on OWASP, the SecurityEval Copilot/InCoder answers and vulnerable-node. Apps: nothing
+    new; taiga's github/api.py:89 SSRF, a false alarm since step 38, is gone. The 107 PHP, 18 JS/TS and 9
+    non-HTTP JS/TS cases added since 2026-11-15 were scored for the first time (PHP: 33 found, 12 still flagged in
+    verdict mode). Time-outs moved between cases (27 to 28) without changing any case's result. README: the
+    benchmark table from this run, a PHP row in the Languages table, and the current CVE and blind-suite counts.
