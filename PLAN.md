@@ -221,7 +221,8 @@ Speed and stability:
 Ground truth:
 - Research: topics 12 (JS/TS app CVEs with no GitHub advisory) and 10 (PHP) done (steps 72-78); every topic in
   AGENTS.md's queue was then done or paused; topic 13 (front ends of Python web apps whose repository GitHub
-  doesn't call Python) queued 2026-11-16 (step 79). Runner cap 12
+  doesn't call Python) queued 2026-11-16 (step 79) and done in one batch of 39 (step 81). The queue is empty
+  again: the hourly runner stops at once until a topic is added. Runner cap 12
   (step 70). The 62 open cases of steps 74 and 75 (their nightly of 2026-11-16 lost its suites to a DNS outage),
   step 76's 45 and step 78's 26 are first scanned by the nightly of 2026-11-17.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
@@ -2168,3 +2169,15 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     non-HTTP JS/TS cases added since 2026-11-15 were scored for the first time (PHP: 33 found, 12 still flagged in
     verdict mode). Time-outs moved between cases (27 to 28) without changing any case's result. README: the
     benchmark table from this run, a PHP row in the Languages table, and the current CVE and blind-suite counts.
+81. **Topic 13's only batch reviewed** (2026-11-17). The agent's filter (front-end repositories on GitHub whose
+    tree declares a Python web framework) left 39 candidates, all read in one batch, so the topic is done; 5
+    accepted, all fixed in Python views rather than templates or JS, so the open ones go to cve-pairs-python.
+    Kept: Horilla HR CVE-2026-41513 (request.GET['next'] into redirect() in four views of its own copy of
+    django-notifications, kept in the app tree, not vendored), Scout CVE-2024-47530 (request.args.get('next') into
+    redirect() after login; a different advisory from Scout's SSRF case GHSA-g53g), munhak-moa GHSA-4q38 (a
+    `<path:path>` route parameter joined onto the app directory and sent with send_file). Rejected: Tandoor
+    CVE-2026-25964 (the path is a stored RecipeImport.file_path passed in as an argument; the request that stored
+    it is outside the diff). Blind: Horilla CVE-2025-47789, in the new cve-pairs-blind-python-25. First scores
+    (`devtools.py cases`): Horilla and Scout found and quiet after the fix in both modes; munhak-moa missed: the
+    route parameter reaches os.path.join through a helper defined inside the view (`def get_absolute_path(path)`
+    nested in get_image), which the summary passes don't follow. Left for a rule session.
