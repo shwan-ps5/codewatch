@@ -848,14 +848,18 @@ ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)
 # Python only: a call interpolated into an f-string (PostHog GHSA-jrwm: f"{get_base_url(region, subdomain)}users",
 # where only subdomain reaches the URL and region is compared). In JavaScript `{` starts every block.
 FSTRING_CALL_RE = re.compile(r"\{\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
+# Python only: a call passed straight on as another call's positional argument (munhak-moa GHSA-4q38 at its fix:
+# send_file(get_absolute_path(f"./images/{path}")), the helper returning safe_join(...)). A keyword argument is
+# already `=`. In JavaScript the same shape is mostly callbacks and chains, and js_functions asks only about calls in
+# request-handling files.
+ARGUMENT_CALL_RE = re.compile(r"[(,]\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
 
 
-def assigned_calls(texts, fstrings=False):
-    """Names of functions whose result some code assigns to a variable or returns (or, with fstrings, puts in an
-    f-string)."""
-    if fstrings:
-        return {name for text in texts for regex in (ASSIGNED_CALL_RE, FSTRING_CALL_RE) for name in regex.findall(text)}
-    return {name for text in texts for name in ASSIGNED_CALL_RE.findall(text)}
+def assigned_calls(texts, python=False):
+    """Names of functions whose result some code assigns to a variable or returns (or, for Python, puts in an
+    f-string or passes straight to another call)."""
+    regexes = (ASSIGNED_CALL_RE, FSTRING_CALL_RE, ARGUMENT_CALL_RE) if python else (ASSIGNED_CALL_RE,)
+    return {name for text in texts for regex in regexes for name in regex.findall(text)}
 
 
 # Rules whose pass-through answer uses their own sanitizers rather than those every rule shares: a helper that

@@ -3682,6 +3682,28 @@ def test_a_helper_called_inside_an_f_string_is_asked_what_it_hands_back(tmp_path
     assert found == {("app.py", 20, "ssrf")}
 
 
+def test_a_helper_passed_straight_to_a_sink_is_asked_what_it_hands_back(tmp_path):
+    """A helper whose result goes straight into another call, never assigned, is asked about too: munhak-moa
+    GHSA-4q38 at its fix returns safe_join(...) from a helper nested in the view and passes it to send_file; before
+    the fix the helper returned os.path.join(...), which hands the path back."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import os\nfrom flask import Flask, send_file\nfrom werkzeug.utils import safe_join\n\n"
+        "app = Flask(__name__)\n\n\n"
+        "def joined(path):\n"
+        "    return os.path.join(os.path.dirname(__file__), path)\n\n\n"
+        "@app.route('/a/<path:path>')\n"
+        "def a(path):\n"
+        "    def contained(path):\n"
+        "        return safe_join(os.path.dirname(__file__), path)\n\n"
+        "    return send_file(contained(f'./images/{path}'), mimetype='image/png')\n\n\n"     # 17
+        "@app.route('/b/<path:path>')\n"
+        "def b(path):\n"
+        "    return send_file(joined(f'./images/{path}'), mimetype='image/png')\n")})            # 22
+    assert found == {("app.py", 22, "path-traversal")}
+
+
 def test_a_summary_resting_on_a_helper_that_hands_back_some_parameters(tmp_path):
     """A summarised function whose sink argument comes from a helper that hands back only some of its parameters is
     summarised again once the passes are known (PostHog GHSA-jrwm at its fix: validate_credentials(secret_token,

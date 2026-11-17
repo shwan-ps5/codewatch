@@ -2204,3 +2204,19 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     skip what an earlier day read. It is never marked done and is taken first once a day (when no
     cve-candidates-<today>-new file is on the branch), then the backlog topics. Expected yield: a handful of cases a
     week, all recent code.
+84. **A helper passed straight to another call is asked what it hands back** (2026-11-17). munhak-moa GHSA-4q38
+    (step 81) was "missed": not nested functions, as step 81 guessed. Before the fix codewatch reported the
+    send_file argument at line 274, four lines from the fixed line 270 (scored only within 3), and the same line
+    after the fix, so the finding didn't go away either. The fix moved safe_join into a helper,
+    `send_file(get_absolute_path(f"./images/{path}"))`, and pass_rules only asked about helpers whose result is
+    assigned, returned, a keyword argument (`=`) or in an f-string, so the helper got no answer and the call kept
+    its taint. The same miss held for a top-level helper. summaries.ARGUMENT_CALL_RE adds, for Python only, a call
+    passed positionally to another call (`(` or `,` before it); assigned_calls' `fstrings` flag became `python`.
+    It can only clear findings (a helper found to hand nothing back), never add one; the cost is more helpers asked
+    about in large apps, for the nightly to time (netbox, paperless-ngx, label-studio). Measured with
+    `devtools.py cases`: GHSA-4q38 found and quiet after the fix in both modes; Dagster GHSA-q93c, PostHog
+    GHSA-jrwm and Vibe-Trading GHSA-mjrq (earlier pass-through cases) unchanged. Tests:
+    test_a_helper_passed_straight_to_a_sink_is_asked_what_it_hands_back (fails without the change) and a unit
+    check in test_pass_rules_only_ask_about_functions_whose_result_is_assigned. A side note from the
+    investigation: a case scope of "." checks out only the repository's top-level files (cone-mode sparse
+    checkout); 80 cases use it, and none of last night's scans failed from it, but deeper files are absent.

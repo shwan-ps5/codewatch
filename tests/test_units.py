@@ -459,6 +459,11 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
               "return resolve(f)\n")
     assert assigned_calls([source]) >= {"build", "fetch", "make", "resolve"}
     assert "log" not in assigned_calls([source])
+    # Python also asks about a call passed straight to another one, positionally (munhak-moa GHSA-4q38).
+    passed = "send_file(get_path(a), mimetype=kind(b))\nprint(x, fmt(c))\nlog(d)\n"
+    assert assigned_calls([passed], python=True) >= {"get_path", "kind", "fmt"}
+    assert "get_path" not in assigned_calls([passed])
+    assert "log" not in assigned_calls([passed], python=True)
     rule = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
             "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "os.system(...)"}]}
     assert pass_rules([rule], set()) == []

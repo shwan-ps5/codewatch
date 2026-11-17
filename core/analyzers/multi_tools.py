@@ -375,9 +375,10 @@ class Semgrep(Analyzer):
 
     @staticmethod
     def signatures(ctx, targets):
-        """python_signatures of the functions whose result is assigned or returned: the ones pass_rules asks about."""
+        """python_signatures of the functions whose result is assigned, returned or passed on to another call: the
+        ones pass_rules asks about."""
         calls = summaries_module.assigned_calls(
-            (read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")), fstrings=True)
+            (read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")), python=True)
         return {name: defs for name, defs in summaries_module.python_signatures(
             read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})).items() if name in calls}
 
