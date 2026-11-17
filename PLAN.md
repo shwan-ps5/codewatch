@@ -222,7 +222,8 @@ Ground truth:
 - Research: topics 12 (JS/TS app CVEs with no GitHub advisory) and 10 (PHP) done (steps 72-78); every topic in
   AGENTS.md's queue was then done or paused; topic 13 (front ends of Python web apps whose repository GitHub
   doesn't call Python) queued 2026-11-16 (step 79) and done in one batch of 39 (step 81). Topics 14 (Python and JS/TS
-  web app CVEs from before 2021) and 15 (PHP, the same years) queued 2026-11-17 (step 82). Runner cap 12
+  web app CVEs from before 2021) and 15 (PHP, the same years) queued 2026-11-17 (step 82). Topic 16 (new arrivals:
+  the last 60 days, all three languages) is standing, taken first once a day (step 83). Runner cap 12
   (step 70). The 62 open cases of steps 74 and 75 (their nightly of 2026-11-16 lost its suites to a DNS outage),
   step 76's 45 and step 78's 26 are first scanned by the nightly of 2026-11-17.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
@@ -2195,3 +2196,11 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     open redirect and command injection, JS SSRF and path traversal); topic 15, PHP, starts after it. Together
     about 20 batches, more than the runner's cap of 12 batches waiting for review, so the cap rather than the
     queue limits them until the next review.
+83. **A standing research topic for new arrivals** (2026-11-17). Topics were marked done when read to the bottom,
+    and nothing went back for later advisories: about 100-140 a week pass the basic filters (a listed CWE, one fix
+    commit in one repository; all languages, libraries included), and about 190 from November and 150 from October
+    had never been read on 2026-11-17. Most CVEs are published once the fix is out; the delay that matters is NVD
+    adding the CWE and the fix link later, so topic 16 looks back 60 days each time and relies on reviewed.py to
+    skip what an earlier day read. It is never marked done and is taken first once a day (when no
+    cve-candidates-<today>-new file is on the branch), then the backlog topics. Expected yield: a handful of cases a
+    week, all recent code.

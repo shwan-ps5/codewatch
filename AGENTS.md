@@ -61,6 +61,12 @@ when its candidate list, rebuilt and filtered, is empty (one batch is not a topi
 with your batch. Don't start a topic that isn't
 listed. If you have an idea for a new one, write it at the end as `(proposed)` and stop.
 
+One exception to "the first one": topic 16 (new arrivals) is standing and is never marked done. Take it first
+once a day: when no `benchmarks/cve-candidates-YYYY-MM-DD-new.*` file for today's date is on the branch, do topic
+16; otherwise take the first topic not marked done or paused as usual, and topic 16 again when there is none. If
+topic 16's filtered list is empty, write and commit nothing for it, and carry on with the next topic in the same
+session.
+
 Already mined, don't repeat: GitHub-reviewed PyPI advisories since 2021 (PLAN.md steps 22-27) and GitHub-reviewed
 npm advisories (step 29). Those pools are nearly used up.
 
@@ -350,6 +356,31 @@ npm advisories (step 29). Those pools are nearly used up.
    PHP rules now (PLAN.md step 73 on), but this is still ground truth: no scans. Read newest first. Suites:
    `cve-pairs-php`; blind ones in `cve-pairs-blind-php-N`, one per batch, numbered on from the highest already in
    `suites.json` (34 on 2026-11-17). Files: `benchmarks/cve-candidates-YYYY-MM-DD-php-old.{tsv,json}`.
+
+16. **New arrivals (standing; never marked done).** (queued 2026-11-17) Each topic was marked done the day its list
+   was read to the bottom, and nothing went back for what was published after. GitHub publishes about 100-140
+   advisories a week with a section 2 CWE and one fix commit in one repository (all languages, libraries
+   included), and on 2026-11-17 about 190 from November and 150 from October had never been read. Take this topic
+   as the exception above says. Sources, both filtered locally with no API calls after a `git pull` of each clone,
+   merged and deduplicated (a CVE that is an alias of an advisory counts once, under the advisory's id): GitHub's
+   advisory database, reviewed and unreviewed (as topic 1), and `CVEProject/cvelistV5` (as topic 11). Keep entries
+   published in the **last 60 days** (NVD often adds the CWE and the fix-commit link days or weeks after a CVE is
+   published, so a fixed window that looks back catches them; `reviewed.py` drops what an earlier day read), with
+   a CWE from section 2 (or none but a description naming one, as topic 6's "cwe by text") and references in one
+   repository: one commit URL, one pull request or several commits, resolved as in topic 5. Drop anything
+   `reviewed.py` knows by id or fix SHA. Get each repository's language with GraphQL as topic 1 does and keep
+   non-archived repositories whose primary language is Python, JavaScript, TypeScript, Vue, Svelte, HTML, CSS or
+   PHP. Then judge each by the topic that owns its kind, with that topic's rules, suites and blind suites:
+   - Python apps (a framework from topic 8 declared anywhere in the tree), and JS/TS/HTML repositories that
+     declare one: topic 13 (`cve-pairs-python`, `cve-pairs-python-frontend`, `cve-pairs-python-nonhttp`; blind in
+     the next unused `cve-pairs-blind-python-N`);
+   - JS/TS apps: topic 12 (`cve-pairs-javascript`, `cve-pairs-javascript-nonhttp`; blind in the next unused
+     `cve-pairs-blind-javascript-N`);
+   - PHP apps: topic 10 (`cve-pairs-php`; blind in the next unused `cve-pairs-blind-php-N`).
+   One blind suite per language per batch. Read Python first, then JS/TS, then PHP; within each, newest first; at
+   most about 60, as any batch. Say in the TSV which language group each came from and in the JSON's `method`
+   the window's dates and how many candidates were left per language. Files:
+   `benchmarks/cve-candidates-YYYY-MM-DD-new.{tsv,json}`.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
