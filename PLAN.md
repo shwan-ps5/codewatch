@@ -221,8 +221,8 @@ Speed and stability:
 Ground truth:
 - Research: topics 12 (JS/TS app CVEs with no GitHub advisory) and 10 (PHP) done (steps 72-78); every topic in
   AGENTS.md's queue was then done or paused; topic 13 (front ends of Python web apps whose repository GitHub
-  doesn't call Python) queued 2026-11-16 (step 79) and done in one batch of 39 (step 81). The queue is empty
-  again: the hourly runner stops at once until a topic is added. Runner cap 12
+  doesn't call Python) queued 2026-11-16 (step 79) and done in one batch of 39 (step 81). Topics 14 (Python and JS/TS
+  web app CVEs from before 2021) and 15 (PHP, the same years) queued 2026-11-17 (step 82). Runner cap 12
   (step 70). The 62 open cases of steps 74 and 75 (their nightly of 2026-11-16 lost its suites to a DNS outage),
   step 76's 45 and step 78's 26 are first scanned by the nightly of 2026-11-17.
   The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
@@ -2181,3 +2181,17 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     (`devtools.py cases`): Horilla and Scout found and quiet after the fix in both modes; munhak-moa missed: the
     route parameter reaches os.path.join through a helper defined inside the view (`def get_absolute_path(path)`
     nested in get_image), which the summary passes don't follow. Left for a rule session.
+82. **Research usage log fixed; topics 14 and 15 queued** (2026-11-17). Since 2026-11-08 every run's usage line
+    was an error: opencode 2.x moved `export` to `opencode session export` and flattened its messages (`type`,
+    `model.id`, `tokens` and a `content` list on each message; a tool's text under `state.content` instead of
+    `state.output`). tools/research_usage.py now reads both formats (checked on the runs of 2026-11-16/17: topic
+    13's batch was 34 min, 416k characters read, about $0.07). Research only, not rules. The research queue had been
+    empty since topic 13 closed after its one batch, and every topic so far kept entries published since 2021, whose
+    Python and JS/TS pools are read to the bottom. Counted locally on 2026-11-17 for the years before (cvelistV5
+    records with one GitHub fix commit and a listed weakness, plus GitHub-reviewed advisories), unread: about 45
+    Python, 150 JS/TS and 30 HTML/CSS repositories' CVEs, 150 in repositories not yet looked up, 55 PyPI and 205
+    npm reviewed advisories (mostly libraries); about 530 PHP CVEs and 45 Packagist advisories. Topic 14 takes the
+    Python and JS/TS ones, Python first, aimed at the measured gaps (XSS in Python front ends and JS apps, Python
+    open redirect and command injection, JS SSRF and path traversal); topic 15, PHP, starts after it. Together
+    about 20 batches, more than the runner's cap of 12 batches waiting for review, so the cap rather than the
+    queue limits them until the next review.

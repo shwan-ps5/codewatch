@@ -303,6 +303,54 @@ npm advisories (step 29). Those pools are nearly used up.
    fewer than 30 candidates, read them all, say so in the JSON's `method` and mark the topic done. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-frontend.{tsv,json}`.
 
+14. **Python and JavaScript/TypeScript web app CVEs from before 2021.** (queued 2026-11-17) Every topic so far kept
+   entries published since 2021, and the GitHub and CVE-list pools since then are read to the bottom for Python and
+   JS/TS apps (topic 13's whole filtered list was 39). The years before are untouched apart from topic 5's
+   reviewed PyPI advisories with one commit URL. The gaps this topic is for, measured on 2026-11-17 (PLAN.md step
+   80): XSS in Python templates and front-end JS (cve-pairs-python-frontend 4 of 31 found) and in JS/TS apps (2 of
+   18), open redirect and command injection in Python apps, SSRF and path traversal in JS/TS apps. Say in the TSV
+   when a case is one of them. Sources, both filtered locally with no API calls, merged and deduplicated (a CVE that
+   is an alias of an advisory counts once, under the advisory's id):
+   - `CVEProject/cvelistV5` (as topic 11): CVEs with `datePublished` before 2021-01-01 (the oldest are about 2014)
+     whose references (`containers.cna` and any `containers.adp`) hold exactly one
+     `https://github.com/OWNER/REPO/commit/SHA` URL, with a CWE from section 2 in `problemTypes`, or none but a
+     description naming one of section 2's weaknesses (as topic 6's "cwe by text"). Counted on 2026-11-17: about
+     1,300 in all languages, of which roughly 45 in Python, 150 in JS/TS and 30 in HTML/CSS repositories, and 150
+     whose repository language nobody has looked up yet.
+   - GitHub-reviewed advisories (`advisories/github-reviewed/**`) published before 2021 for the PyPI and npm
+     ecosystems, with a CWE from section 2 and references in one repository (one commit URL, one pull request or
+     several commits, resolved as in topic 5). About 55 PyPI and 205 npm that nobody has read, mostly library
+     code: reject those as section 3 says.
+   Write the filter in `~/codewatch-research/`, then drop anything `reviewed.py` knows by id or fix SHA. Get each
+   repository's language with GraphQL as topic 1 does (100 per query, one at a time, two seconds apart) and keep
+   non-archived repositories whose primary language is Python, or JavaScript, TypeScript, Vue, Svelte, HTML or CSS.
+   **Python first**: read every Python candidate (and every JS/TS/HTML repository that declares a Python web
+   framework, as topic 13 checks) before any JavaScript one; within each group, newest first. Keep apps only:
+   - Python: one of topic 8's frameworks (Django, Flask, FastAPI, Starlette, Litestar, Quart, Falcon, Pyramid,
+     Bottle) declared anywhere in the tree at the fix commit, as topic 8 checks. Suites as topic 13
+     (`cve-pairs-python`, `cve-pairs-python-frontend`, or `cve-pairs-python-nonhttp`); blind ones in the next
+     unused `cve-pairs-blind-python-N`, one per batch.
+   - JS/TS: apps as topics 2, 3 and 12 describe them (a web server, a front end, Electron, an extension, a bot, an
+     agent or MCP server). Suites as topic 12 (`cve-pairs-javascript` or `cve-pairs-javascript-nonhttp`); blind
+     ones in the next unused `cve-pairs-blind-javascript-N`, one per batch.
+   Old code is fine when its framework still works the same way (Django 1.x views and templates, Express 4,
+   jQuery front ends). Reject a fix that only bumps a bundled library, or that touches only minified or generated
+   files, as always. A batch may mix Python and JS/TS once the Python candidates run out; the id is the GHSA id or,
+   with no advisory, the CVE id (`reviewed.py --split CVE-...`). Say in the JSON's `method` how many candidates of
+   each language were left. Files: `benchmarks/cve-candidates-YYYY-MM-DD-oldweb.{tsv,json}`.
+
+15. **PHP web app CVEs from before 2021.** (queued 2026-11-17; start only when topic 14 is done) Topic 10's
+   method for the years it didn't read: CVEs in `CVEProject/cvelistV5` with `datePublished` before 2021-01-01, and
+   GitHub-reviewed Packagist advisories published before 2021, filtered exactly as topic 14 (one GitHub commit, a
+   section 2 CWE or a description naming one; references in one repository for advisories), dropped when
+   `reviewed.py` knows the id or fix SHA. Counted on 2026-11-17: about 530 CVEs in repositories whose primary
+   language is PHP that nobody has read, and about 45 Packagist advisories. Keep non-archived PHP repositories and
+   apply topic 10's rules: applications, CMSs and their themes and plugins, not libraries; request input as topic 10
+   lists it; the size limit for other languages (3 source files, 120 lines); the same weaknesses. codewatch has
+   PHP rules now (PLAN.md step 73 on), but this is still ground truth: no scans. Read newest first. Suites:
+   `cve-pairs-php`; blind ones in `cve-pairs-blind-php-N`, one per batch, numbered on from the highest already in
+   `suites.json` (34 on 2026-11-17). Files: `benchmarks/cve-candidates-YYYY-MM-DD-php-old.{tsv,json}`.
+
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
 **Carrying on a topic** doesn't depend on anything an earlier session did. Rebuild the topic's candidate list from

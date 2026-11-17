@@ -50,28 +50,40 @@ def sessions(directory, since=0):
                   key=lambda s: s["created"])
 
 
+def _tool_output(state):
+    """The text a tool returned: a string under "output" (opencode 1.x) or a list of parts under "content" (2.x)."""
+    if "output" in state:
+        return str(state["output"] or "")
+    return "".join(str(part.get("text", "")) for part in state.get("content") or [] if isinstance(part, dict))
+
+
 def usage(session_id, cwd=None):
-    data = _opencode("export", session_id, cwd=cwd)
+    # opencode 2.x moved export under `session` and flattened messages: {"type": "assistant", "model": {"id"},
+    # "tokens", "content": [parts]} in place of 1.x's {"info": {"role", "modelID", "tokens"}, "parts": [...]}.
+    try:
+        data = _opencode("session", "export", session_id, cwd=cwd)
+    except subprocess.CalledProcessError:
+        data = _opencode("export", session_id, cwd=cwd)
     tokens = {"input": 0, "cache_read": 0, "output": 0, "reasoning": 0}
     turns = calls = refused = read = 0
     model = ""
     for message in data["messages"]:
-        info = message["info"]
-        if info.get("role") != "assistant":
+        info = message.get("info", message)
+        if info.get("role", info.get("type")) != "assistant":
             continue
         turns += 1
-        model = info.get("modelID", model)
+        model = info.get("modelID") or (info.get("model") or {}).get("id") or model
         t = info.get("tokens", {})
         tokens["input"] += t.get("input", 0)
         tokens["cache_read"] += t.get("cache", {}).get("read", 0)
         tokens["output"] += t.get("output", 0)
         tokens["reasoning"] += t.get("reasoning", 0)
-        for part in message["parts"]:
-            if part.get("type") == "tool":
+        for part in message.get("parts", message.get("content")) or []:
+            if isinstance(part, dict) and part.get("type") == "tool":
                 calls += 1
                 state = part.get("state", {})
-                refused += state.get("status") == "error"
-                read += len(str(state.get("output", "")))
+                refused += state.get("status") in ("error", "failed")
+                read += len(_tool_output(state))
     info = data["info"]
     created, updated = info.get("time", {}).get("created", 0), info.get("time", {}).get("updated", 0)
     return {"session": session_id, "model": model, "minutes": round((updated - created) / 60000),
