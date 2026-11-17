@@ -71,7 +71,9 @@ RULES = [
         "languages": ["python", "javascript"], "type": VULNERABILITY, "severity": MAJOR,
         "summary": "Some inputs make this pattern take exponential or polynomial time, so crafted input can "
                    "stall the process. Remove nested or overlapping quantifiers, anchor the pattern, or bound "
-                   "repetition and input length.",
+                   "repetition and input length. Exponential backtracking is reported as a vulnerability; "
+                   "polynomial, which needs long input, as a security hotspot to review where the pattern reads "
+                   "outside text.",
         "references": [
             {"label": "OWASP: Regular expression Denial of Service",
              "url": "https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS"},
@@ -273,6 +275,15 @@ def regex_finding(path, r):
         return Finding(TOOL, "regex-backtracking", MINOR, HOTSPOT,
                        message + ". It is in a developer tool (a script or management command), so it only "
                        "matters if that tool reads text someone else controls", path, r["line"])
+    # Polynomial backtracking needs long input to hurt (a request body, an uploaded file), and the check can't
+    # tell what the regex reads: a parser's patterns over its own source files were most of a scan's
+    # "vulnerabilities" (codewatch on its own code, 2026-11-17). Exponential stays one: a few dozen characters
+    # are enough.
+    if r.get("complexity") != "exponential":
+        return Finding(TOOL, "regex-backtracking", MAJOR, HOTSPOT,
+                       message + ". Polynomial backtracking is slow only on long input: it matters where this "
+                       "pattern reads text from outside (a request, an upload) without a length limit",
+                       path, r["line"])
     return Finding(TOOL, "regex-backtracking", severity, VULNERABILITY, message, path, r["line"])
 
 

@@ -27,6 +27,12 @@ rules:
           - pattern-not-inside: |
               request = $MAKE(...)
               ...
+          # Nor in a module with a function of its own by that name, which hides the framework's: codewatch's
+          # CLI client, `def request(url, token, data=None)`, then `status, body = request(f"{url}/api/...")`.
+          - pattern-not-inside: |
+              def request(...):
+                ...
+              ...
       - pattern: starlette.requests.Request
       # The request passed on to a helper under a short name: pgAdmin's file manager, add(self, req) reading
       # req.form.get('currentpath') (GHSA-cr8c-972v-rmp3). Only the parts a Flask/Werkzeug request has and an
@@ -1428,6 +1434,20 @@ rules:
               regex: '^(?!(?i:((.*\.)?(db|mongo|database)(\.\w+|\[[^\]]+\])|(.*\.)?\w*(collection|coll|_col)s?)$))(?!(?i:.*soup))(?!(?i:(.*[._])?(jpath|jsonpath|json_path)$)).*$'
           - pattern-not: $TREE.find({...}, ...)
           - pattern-not: $TREE.findall({...}, ...)
+          # Nor a module's own find function (codewatch's `catalog.find(rule_id)`, a rule lookup): no XML library
+          # has one at module level, so a receiver the file imports as a module isn't a tree.
+          - pattern-not-inside: |
+              import $TREE
+              ...
+          - pattern-not-inside: |
+              import $MOD as $TREE
+              ...
+          - pattern-not-inside: |
+              from $MOD import $TREE
+              ...
+          - pattern-not-inside: |
+              from $MOD import $OTHER, $TREE
+              ...
           - focus-metavariable: $QUERY
 
   - id: codewatch.python.web.ldap-injection
@@ -2093,6 +2113,14 @@ rules:
               - pattern: self.$BASE + $REST
               - pattern: self.$BASE % $REST
           - metavariable-regex: {metavariable: $PREFIX, regex: '^https?://[^/{%]+/'}
+      # A urllib Request is checked where it's built (its URL is a sink below), so what it carries on to urlopen()
+      # is only its body and headers: codewatch's MCP server posts a tool's arguments as JSON to a configured host.
+      # The variable, not the call, so a request URL among the call's arguments still reaches that sink.
+      - patterns:
+          - pattern-inside: |
+              $REQ = urllib.request.Request(...)
+              ...
+          - pattern: $REQ
     pattern-sinks:
       - patterns:
           - pattern-either:

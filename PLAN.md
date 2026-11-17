@@ -2220,3 +2220,35 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     check in test_pass_rules_only_ask_about_functions_whose_result_is_assigned. A side note from the
     investigation: a case scope of "." checks out only the repository's top-level files (cone-mode sparse
     checkout); 80 cases use it, and none of last night's scans failed from it, but deeper files are absent.
+85. **False alarms on codewatch's own code** (2026-11-17). The maintainer scanned codewatch itself: 230 issues, 56
+    "vulnerabilities". 35 were regex backtracking in the analyzers' own parsers; 21 were critical taint findings in
+    the server, CLI client and MCP server, every one a false alarm from five shapes no CVE pair or app set had shown:
+    - XPath `.find()` on a module (`catalog.find(rule_id)`, a rule lookup): the sink now skips a receiver the file
+      imports as a module (no XML library has a module-level find).
+    - A module with its own `def request(...)` (the CLI client): the bare `request` source skips such a module.
+    - A check in a helper that answers with a message (`scan_refusal(project, branch)`: a regex test of the branch,
+      returning "That isn't a branch name."), and a caller that stops when it answers (`if scan_refusal(...):
+      return None`, or the answer stored then tested). New core/analyzers/project_checks.py finds such helpers by
+      their body (every return None, a constant or an f-string; an `if` testing a parameter with a regex or `not in`
+      returns a message) and adds a guard sanitizer to every Python taint rule. launch_scan stops being a sink for
+      the branch, which cleared its three callers.
+    - A URL whose host is configuration: `base = os.environ.get("CODEWATCH_URL", ...).rstrip("/")`, then
+      f"{base}/api/{path}" (the MCP server). Semgrep can't tie an f-string's first part to an assigned variable (a
+      regex group doesn't unify with a metavariable), so project_checks lists the names assigned from os.environ,
+      os.getenv or Django settings and the SSRF rule clears an f-string starting with one of them and a `/`; without
+      the slash (`f"{base}{path}"`, path `@evil.com`) or with the request's value first it is still found. And a
+      urllib Request assigned to a variable carries only its body to urlopen (its URL is a sink where it's built);
+      sanitizing the call itself hid that sink, so the variable is cleaned, as lookup-result does.
+    - A row the ORM just created (`Project.objects.create(owner=owner, **fields)`, fields from the request body)
+      returned by a helper: pass-through drops lookup-result, so the whole row was request data and its key reached
+      the coverage upload's path. summaries.ORM_CREATED (objects.create/get_or_create/update_or_create) is kept in
+      every pass-through variant.
+    Regex backtracking: exponential stays a critical vulnerability; polynomial, which needs long input and whose
+    input the check can't see, is now a major security hotspot (developer tools stay a minor one).
+    Measured: the codewatch repository has no Semgrep vulnerabilities (21 before); the 23 Python CVE cases with
+    SSRF, command-injection or XPath weaknesses are unchanged in both modes (`devtools.py cases`). Tests:
+    tests/test_python_own_code.py (each fails without its change, each beside a real flow still found) and
+    test_polynomial_backtracking_is_a_hotspot_and_exponential_a_vulnerability. For the nightly: app findings can
+    only drop; any that drops is to be read, since a helper wrongly taken for a refusal check or a configured name
+    reused for request data would hide a real one. Lesson: no measure had a person read a whole report as a user
+    would; codewatch is a Django app nobody tuned on, and was never scanned.

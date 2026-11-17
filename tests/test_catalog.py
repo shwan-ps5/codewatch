@@ -92,7 +92,7 @@ def test_codewatch_checks_find_redos_in_python_and_js(tmp_path):
 def test_a_slow_regex_in_a_developer_tool_is_a_hotspot(tmp_path):
     """A version-bump script or a management command reads the developer's own text; a Flask app run with
     `python app.py` (also under __main__) still serves visitors."""
-    slow = 'import re\n\ndef strip(text):\n    return re.sub(r"<[^>]+>", "", text)\n'
+    slow = 'import re\n\ndef strip(text):\n    return re.sub(r"^(a+)+$", "", text)\n'
     main = '\nif __name__ == "__main__":\n    strip(open("CHANGELOG").read())\n'
     (tmp_path / "bump_version.py").write_text(slow + main)
     (tmp_path / "app" / "management" / "commands").mkdir(parents=True)
@@ -107,6 +107,17 @@ def test_a_slow_regex_in_a_developer_tool_is_a_hotspot(tmp_path):
                      ("app/services.py", "vulnerability"),
                      ("bump_version.py", "security_hotspot"),
                      ("web.py", "vulnerability")]
+
+
+@pytest.mark.skipif(not CodewatchChecks().available(), reason="tools/ not installed")
+def test_polynomial_backtracking_is_a_hotspot_and_exponential_a_vulnerability(tmp_path):
+    """Polynomial backtracking needs long input, and the check can't see what the regex reads (codewatch's own
+    template parsers over source files were most of its scan's vulnerabilities); exponential needs only a few
+    dozen characters."""
+    (tmp_path / "a.py").write_text('import re\nTAG = re.compile(r"<[^>]+>")\nEVIL = re.compile(r"^(a+)+$")\n')
+    result = CodewatchChecks().run(Context(root=tmp_path, files=["a.py"]))
+    found = sorted((f.line, f.type, f.severity) for f in result.findings if f.rule == "regex-backtracking")
+    assert found == [(2, "security_hotspot", "major"), (3, "vulnerability", "critical")]
 
 
 def test_ratings():

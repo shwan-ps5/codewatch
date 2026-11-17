@@ -41,6 +41,7 @@ from .match_statements import match_as_if
 from .php_template_sinks import TEMPLATE_RULE as PHP_TEMPLATE_RULE
 from .php_template_sinks import tidy_message as tidy_php_template_message
 from .php_template_sinks import with_php_template_sinks
+from .project_checks import with_project_checks
 from .python_tools import LineCache, complexity_severity, security_purpose
 from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
 from .slices import index_slices
@@ -130,6 +131,7 @@ class Semgrep(Analyzer):
         custom_rules = with_serializer_checks(custom_rules, python_texts)
         custom_rules = with_resource_sources(custom_rules, python_texts)
         custom_rules = with_sandbox_sanitizers(custom_rules, python_texts)
+        custom_rules = with_project_checks(custom_rules, python_texts)
         custom_rules = with_stored_sources(custom_rules, python_texts)
         custom_rules = with_template_sinks(custom_rules, {
             f: text for f in ctx.files_with(TEMPLATE_EXTENSIONS) if (text := read_source(ctx.root / f)) is not None})

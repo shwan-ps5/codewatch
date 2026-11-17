@@ -867,6 +867,11 @@ def assigned_calls(texts, python=False):
 # run_dir at their fixes) hands back nothing for path traversal. One more variant of the pass rules; a variant per
 # rule was the slowest part of a large project's scan.
 OWN_PASS_RULES = {"codewatch.python.web.path-traversal"}
+# A row the ORM has just saved is stored data, as lookup-result says of one read back; pass-through drops
+# lookup-result (its names would hide a returner), so a helper returning `Project.objects.create(owner=owner,
+# **fields)` handed the whole row back as request data and its key reached a file path (codewatch's own
+# create_project, called with fields from the request body). These name no project function.
+ORM_CREATED = [{"pattern": f"$MODEL.objects.{method}(...)"} for method in ("create", "get_or_create", "update_or_create")]
 PASS_RULE_OWN_KEYS = {"id", "message", "metadata", "severity", "pattern-sources", "pattern-sinks", "pattern-sanitizers"}
 
 
@@ -892,7 +897,7 @@ def pass_rules(rules, names, signatures=None, passes=None):
     for rule in python:
         variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
         variant["pattern-sanitizers"] = copy.deepcopy(
-            without_lookup_result(rule) if rule["id"] in OWN_PASS_RULES else common)
+            without_lookup_result(rule) if rule["id"] in OWN_PASS_RULES else common) + copy.deepcopy(ORM_CREATED)
         if passes is not None:
             variant["pattern-sanitizers"] += argument_sanitizers(
                 signatures, passing_parameters(passes.get(rule["id"], ())), PYTHON_BUILTINS | HANDLER_NAMES,

@@ -9,6 +9,7 @@ from core.analyzers.dependencies import declaration_line, manifests
 from core.analyzers.multi_tools import added_names, mentioning
 from core.analyzers.summaries import (
     NAME_BATCH,
+    ORM_CREATED,
     added,
     argument_sanitizers,
     assigned_calls,
@@ -475,7 +476,7 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     other = {**rule, "id": "o", "pattern-sanitizers": [{"pattern": "int(...)"}, {"pattern": "f(...)"}]}
     variants = pass_rules([same, other], {"build"})
     assert [(v["message"], v["pattern-sanitizers"]) for v in variants] == [
-        ("$FUNC|$OWNER|$PARAM|s,o", [{"pattern": "f(...)"}])]
+        ("$FUNC|$OWNER|$PARAM|s,o", [{"pattern": "f(...)"}, *ORM_CREATED])]
     # Different propagators still make different variants.
     spread = {**rule, "id": "p", "pattern-propagators": [{"pattern": "$A.extend($B)", "from": "$B", "to": "$A"}]}
     assert [v["message"] for v in pass_rules([rule, spread], {"build"})] == ["$FUNC|$OWNER|$PARAM|r",
