@@ -371,6 +371,28 @@ def test_a_case_that_fails_to_scan_is_left_out_not_fatal(tmp_path, monkeypatch, 
     assert any("bad: scan failed" in line and "specify directories" in line for line in logged)
 
 
+def test_scoring_named_cases_leaves_out_one_that_fails_to_scan(tmp_path, monkeypatch, cwes):
+    """devtools cases on 34 new cases (2026-11-18): one Semgrep failure lost every other case's score."""
+    cases = [{"id": "ok", "repo": "r", "fix": "f", "cwe": [89]}, {"id": "bad", "repo": "r", "fix": "f", "cwe": [89]}]
+    suite = {"name": "pairs", "kind": "cve-pairs", "about": "Demo.", "cases": cases}
+    (tmp_path / "suites.json").write_text(json.dumps({"suites": [suite]}))
+    monkeypatch.setattr(benchmark, "ROOT", tmp_path)
+    monkeypatch.setattr(benchmark.catalog, "load", lambda: ({}, {"cwe_parents": PARENTS}))
+
+    def scan_pair(suite, case, log):
+        if case["id"] == "bad":
+            raise subprocess.CalledProcessError(2, ["semgrep"], stderr="Fixpoint timeout")
+        return {"before": {}, "after": {}}, {"before": [], "after": []}
+
+    monkeypatch.setattr(benchmark, "scan_pair", scan_pair)
+    logged = []
+
+    out = benchmark.score_cases(["ok", "bad"], log=logged.append)
+
+    assert [(name, sorted({r["id"] for r in modes.values()})) for name, modes in out] == [("pairs", ["ok"])]
+    assert any("bad: scan failed" in line for line in logged)
+
+
 def test_a_pair_logs_the_time_of_its_fetch_and_of_each_side_with_every_analyzer(monkeypatch):
     """The nightly's "== time" section is built from these lines (2026-11-10: suite time had doubled in a week and
     nothing said where it went)."""

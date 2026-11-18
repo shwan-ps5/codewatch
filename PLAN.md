@@ -2281,3 +2281,17 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     seven new blind suites; merged here into one per language: cve-pairs-blind-python-26 (1),
     cve-pairs-blind-javascript-26 (4), cve-pairs-blind-php-35 (18), and 1 into cve-pairs-blind-javascript-nonhttp.
     No blind diff was read. Yield: 34 of 664 (5%) open cases kept.
+    First scores (`devtools.py cases`, verdict mode; review mode the same except where noted): 7 of 33 found.
+    Python: MISP GHSA-jwxw found but still flagged after the fix (its _safe_next_url rebuilds the URL with
+    urlunsplit after urlsplit checks, not recognised as a redirect check); Zulip missed (the redirect target comes
+    back from generate_thumbnail_url in zerver/lib). JS: wiki-plugin-datalog found and quiet after the fix;
+    localhost-now found and still flagged (its fix strips ../ with a regex, arguably still unsafe); m-server and
+    Countly found only in review mode by Semgrep's registry path-join rules; NocoBase, NodeBB, glance, Etherpad
+    and Nango missed. misp-modules sourcecache missed (no module-request source). PHP: Shaarli and three FusionPBX
+    XSS cases found, all still flagged after their fixes (escape() and is_uuid() not recognised, and in
+    fifo_interactive the replacement $fifo_name); the other 15 missed. LimeSurvey CVE-2014-5016 couldn't be
+    scored: Semgrep exited 2 after fixpoint timeouts in conditionsaction.php and participantsaction.php. That
+    failure made `devtools.py cases` crash and lose every other score; score_cases now leaves a failed case out
+    and logs it, as run() already did (test_scoring_named_cases_leaves_out_one_that_fails_to_scan). For a rule
+    session: FusionPBX's escape()/is_uuid(), the urlsplit-based redirect helper, and the Semgrep exit on
+    LimeSurvey.

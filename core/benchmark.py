@@ -665,7 +665,7 @@ def scan_parallel(suites, log, workers):
 def score_cases(ids, log=print, workers=1):
     """Scan only the CVE cases whose id starts with one of ids (from suites that aren't blind) and score each,
     without writing results: a quick check of the cases a rule change is meant to move. Returns
-    [(suite name, {mode: case result})]."""
+    [(suite name, {mode: case result})]. A case whose scan fails is logged and left out, as in run()."""
     suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
               if suite["kind"] == "cve-pairs" and not suite.get("blind")]
     chosen = [{**suite, "cases": [c for c in suite["cases"] if c["id"].startswith(tuple(ids))]} for suite in suites]
@@ -673,11 +673,11 @@ def score_cases(ids, log=print, workers=1):
     jobs = [(suite, case) for suite in chosen for case in suite["cases"]]
     workers = max(1, min(workers, len(jobs)))
     scanned = scan_parallel(chosen, log, workers) if workers > 1 else {
-        suite["name"]: {case["id"]: scan_pair(suite, case, log) for case in suite["cases"]} for suite in chosen}
+        suite["name"]: {case["id"]: scan_pair_or_none(suite, case, log) for case in suite["cases"]} for suite in chosen}
     parents = catalog.load()[1].get("cwe_parents", {})
     return [(suite["name"], {mode: score_pair(case, *scanned[suite["name"]][case["id"]], types, parents)
                              for mode, types in MODES.items()})
-            for suite in chosen for case in suite["cases"]]
+            for suite in chosen for case in suite["cases"] if scanned[suite["name"]].get(case["id"]) is not None]
 
 
 def run(names=None, log=print, workers=1):
