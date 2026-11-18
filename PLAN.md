@@ -2254,4 +2254,30 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     would; codewatch is a Django app nobody tuned on, and was never scanned.
     Since 2026-11-18 the nightly scans codewatch itself as an app (~/.cache/codewatch/fresh/codewatch, a link to
     the nightly's own checkout, so it scans the commit measured): expected result no vulnerabilities (none at
-    9a3e032, 416 files, 148s); any line under it in the app diff is a false alarm to fix.
+    9c799d9, 416 files, 148s); any line under it in the app diff is a false alarm to fix.
+86. **Twelve research batches reviewed: topics 14, 15 and 16** (2026-11-18). The runner had stopped at its cap of
+    12 batches waiting. 664 advisories read by the agents (topic 14's six batches, which finish it; topic 15's first
+    three; topic 16's first three days of new arrivals), 81 accepted (57 open, 24 blind). All 57 open fixes were
+    within the size limits with one parent; their diffs were read here and 23 rejected:
+    - generated or stored data, no request in the changed code: misp-modules CVE-2026-97863 (a shell script written
+      for the user to run, never executed by the server), cloudcmd GHSA-m8fw, glance GHSA-7375 and crud-file-server
+      GHSA-h24f (file names read from disk into a listing), MantisBT CVE-2019-15539 and CVE-2019-15074 (attachment
+      names from the database), PrivateBin GHSA-8j72 (a decrypted paste's attachment name), Tiny File Manager
+      CVE-2019-16790 (shell stat on files already on disk);
+    - values parsed out of an uploaded file outside the changed code: LimeSurvey CVE-2018-20322 (ZIP entry names),
+      Cacti CVE-2020-25706 (template archive), OctoberCMS GHSA-gg6x (CSV columns), Solidtime CVE-2026-76806 (ZIP
+      JSON ids), phpMyAdmin CVE-2018-15605 (the database server's warnings for an imported file);
+    - nothing a scanner can follow: noVNC GHSA-49rv (the VNC server's text through the RFB library), JupyterLab
+      GHSA-6966 (a clipboard trust flag), ruTorrent GHSA-rh8c (symlink following after a text check), FreeScout
+      CVE-2026-62856 (LIKE wildcards in an already bound value), phpMyFAQ CVE-2017-15727 (an upload type check),
+      Grav CVE-2020-11529 and WordPress CVE-2020-4048 (flaws inside the redirect helper, the value an argument),
+      GLPI CVE-2020-15226 (request read and SQL both outside the changed file);
+    - duplicates: phpMyAdmin CVE-2018-7260 is GHSA-gqmj, already in cve-pairs-php; OpenEMR CVE-2018-17181 shares
+      CVE-2018-17180's fix commit and is merged into it (CWE 22 and 89).
+    Changed at review: misp-modules sourcecache GHSA-vmhf to cve-pairs-python-nonhttp (a MISP module request, not
+    a web request) with CWE-918 added; Zulip CVE-2019-19775's scope widened to zerver/views/thumbnail.py, where the
+    url parameter is read; wiki-plugin-datalog GHSA-pm52 gets CWE-78 (req.query into exec). Added: 2 to
+    cve-pairs-python, 1 to -python-nonhttp, 9 to cve-pairs-javascript, 22 to cve-pairs-php. The agents named
+    seven new blind suites; merged here into one per language: cve-pairs-blind-python-26 (1),
+    cve-pairs-blind-javascript-26 (4), cve-pairs-blind-php-35 (18), and 1 into cve-pairs-blind-javascript-nonhttp.
+    No blind diff was read. Yield: 34 of 664 (5%) open cases kept.
