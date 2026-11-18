@@ -345,7 +345,7 @@ npm advisories (step 29). Those pools are nearly used up.
    with no advisory, the CVE id (`reviewed.py --split CVE-...`). Say in the JSON's `method` how many candidates of
    each language were left. Files: `benchmarks/cve-candidates-YYYY-MM-DD-oldweb.{tsv,json}`.
 
-15. **PHP web app CVEs from before 2021.** (queued 2026-11-17; start only when topic 14 is done) Topic 10's
+15. **PHP web app CVEs from before 2021.** (done 2026-11-18, cve-candidates-2026-11-18-php-old-4.*) Topic 10's
    method for the years it didn't read: CVEs in `CVEProject/cvelistV5` with `datePublished` before 2021-01-01, and
    GitHub-reviewed Packagist advisories published before 2021, filtered exactly as topic 14 (one GitHub commit, a
    section 2 CWE or a description naming one; references in one repository for advisories), dropped when
