@@ -402,6 +402,7 @@ def test_a_pair_logs_the_time_of_its_fetch_and_of_each_side_with_every_analyzer(
     monkeypatch.setattr(benchmark, "importers", lambda *args: set())
 
     def scan_and_gave_up(root, log, paths=(), focus=None, tools=None):
+        assert tools is not None
         tools.update({"semgrep": 90.4, "bandit": 3.0, "radon": 0.2})
         return [], focus is not None
     monkeypatch.setattr(benchmark, "scan_and_gave_up", scan_and_gave_up)

@@ -1,9 +1,11 @@
+import threading
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 from core.git import Mirror, git
-from core.jobs import project_lock
+from core.jobs import project_lock, stop_overdue_scan
 from core.models import Project
 from core.runner import ensure_main_branch, scan
 
@@ -45,6 +47,8 @@ class Command(BaseCommand):
         parser.add_argument("--coverage", help="Cobertura XML or LCOV report from the project's test run")
         parser.add_argument("--coverage-base", help="Directory the report's paths are relative to")
         parser.add_argument("--fail-on-gate", action="store_true", help="Exit 1 if any quality gate fails")
+        parser.add_argument("--time-limit", type=int, help="Seconds; past it the scan is recorded as failed and its "
+                            "process group killed (scans the server launches run in their own)")
 
     def handle(self, **options):
         key = options["project"]
@@ -53,6 +57,11 @@ class Command(BaseCommand):
         except Project.DoesNotExist as exc:
             raise CommandError(f"Unknown project {key}") from exc
         mirror = Mirror(proj)
+        if options["time_limit"]:
+            watchdog = threading.Timer(options["time_limit"], stop_overdue_scan,
+                                       (proj, timezone.now(), options["time_limit"]))
+            watchdog.daemon = True
+            watchdog.start()
         with project_lock(proj):
             mirror.sync()
             ensure_main_branch(proj, mirror)

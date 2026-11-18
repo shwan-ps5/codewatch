@@ -207,8 +207,9 @@ class Metric(models.Model):
 
 
 class IssueResolution(models.Model):
-    WONT_FIX, FALSE_POSITIVE = "wont_fix", "false_positive"
-    STATUSES = [(WONT_FIX, "Won't fix"), (FALSE_POSITIVE, "False positive")]
+    WONT_FIX, FALSE_POSITIVE, SAFE = "wont_fix", "false_positive", "safe"
+    # Safe: a security hotspot reviewed and found acceptable where it is (neither a false alarm nor a known risk).
+    STATUSES = [(WONT_FIX, "Won't fix"), (FALSE_POSITIVE, "False positive"), (SAFE, "Safe (reviewed)")]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="resolutions")
     fingerprint = models.CharField(max_length=40)

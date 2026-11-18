@@ -62,7 +62,7 @@ def test_a_revision_is_never_taken_for_a_git_option(repo, tmp_path, settings):
 @pytest.mark.django_db
 def test_a_symlink_never_brings_a_file_from_outside_the_repository(repo, tmp_path):
     outside = tmp_path / "outside.py"
-    outside.write_text("import os\nSECRET = 'server file'\n")
+    outside.write_text("import os\nSECRET = 'server file'\n")  # pragma: allowlist secret
     (repo / "linked.py").symlink_to(outside)
     (repo / "inner.py").symlink_to("app.py")
     sh(repo, "add", ".")
@@ -226,7 +226,8 @@ def test_repeated_wrong_passwords_lock_the_login_for_a_while(alice):
     c = Client()
     assert c.get("/login/").status_code == 200
     for _ in range(10):
-        assert c.post("/login/", {"username": "alice", "password": "guess"}).status_code == 200  # nosec B105
+        wrong = {"username": "alice", "password": "guess"}  # nosec B105  # pragma: allowlist secret
+        assert c.post("/login/", wrong).status_code == 200
     right = {"username": "alice", "password": "pw-alice-123"}  # nosec B105  # pragma: allowlist secret
     assert c.post("/login/", right).status_code == 429
     cache.clear()
@@ -281,6 +282,38 @@ def test_scans_are_limited_per_branch_and_across_the_server(alice, monkeypatch, 
     resp = Client().post("/api/projects/demo/scan/", {"branch": "feature", "coverage": report},
                          headers=auth(token_for(alice)))
     assert resp.status_code == 413 and not launched
+
+
+@pytest.mark.django_db
+def test_a_scan_the_server_launches_is_stopped_at_its_time_limit(alice, monkeypatch, settings, tmp_path):
+    """A repository crafted to make an analyzer slow (codewatch's own template regexes backtrack polynomially on
+    huge files, 2026-11-18) must not hold a scan slot: the server's scans get a time limit, and past it the running
+    analysis is recorded as failed before the scan's process group is killed."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from core import jobs
+
+    launched = []
+    monkeypatch.setattr(jobs.subprocess, "Popen", lambda args, **kw: launched.append(args))
+    settings.CODEWATCH_CACHE = tmp_path / "cache"
+    project = Project.objects.create(key="demo", repo_url="https://site.example/r.git", main_branch="main",
+                                     owner=alice)
+    jobs.launch_scan(project)
+    assert launched[0][-2:] == ["--time-limit", str(int(jobs.SCAN_TIME_LIMIT.total_seconds()))]
+    assert jobs.SCAN_TIME_LIMIT < jobs.STALE_SCAN, "stopped before the server stops counting it"
+
+    since = timezone.now()
+    earlier = Analysis.objects.create(project=project, branch="old", commit=HEAD)
+    Analysis.objects.filter(pk=earlier.pk).update(started_at=since - timedelta(hours=2))
+    running = Analysis.objects.create(project=project, branch="main", commit=HEAD)
+    killed = []
+    jobs.stop_overdue_scan(project, since, 2700, kill=lambda: killed.append(True))
+    running.refresh_from_db()
+    earlier.refresh_from_db()
+    assert killed and running.status == Analysis.FAILED and "45 minutes" in running.error
+    assert earlier.status == Analysis.RUNNING, "only this scan's analyses"
 
 
 @pytest.mark.django_db

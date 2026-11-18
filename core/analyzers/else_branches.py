@@ -21,8 +21,9 @@ def else_rows(tree, lines):
         if not isinstance(node, ast.If) or not node.orelse:
             continue
         first = node.orelse[0]
-        if isinstance(first, ast.If) and len(node.orelse) == 1 and ELIF_RE.match(lines[first.lineno - 1]) \
-                and len(ELIF_RE.match(lines[first.lineno - 1]).group(1)) == node.col_offset:
+        if isinstance(first, ast.If) and len(node.orelse) == 1 \
+                and (elif_line := ELIF_RE.match(lines[first.lineno - 1])) \
+                and len(elif_line.group(1)) == node.col_offset:
             rows.append((first.lineno, "elif"))
             continue
         # The `else:` line is the last one before the else body at the if's own indentation.

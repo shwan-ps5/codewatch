@@ -94,6 +94,18 @@ def test_api_issue_listing_detail_and_resolve(repo, alice, server):
     assert c.get("/api/projects/", headers=auth("cw_wrong")).status_code == 401
 
 
+@pytest.mark.django_db
+def test_a_reviewed_hotspot_can_be_marked_safe(alice):
+    """A hotspot reviewed and found acceptable is neither a false alarm nor a risk left in (2026-11-18: codewatch's
+    own fixed-URL urlopen calls and bearer-token API)."""
+    from core.models import IssueResolution
+    from core.views import set_resolution
+
+    project = Project.objects.create(key="demo", repo_url="https://site.example/r.git", owner=alice)
+    set_resolution(project, "f" * 40, IssueResolution.SAFE, "fixed https URL")
+    assert IssueResolution.objects.get().get_status_display() == "Safe (reviewed)"
+
+
 def test_init_writes_config_and_hook(repo, monkeypatch):
     monkeypatch.setenv("CODEWATCH_URL", "http://example.test")
     assert cli.main(["init", str(repo), "--hook", "pre-push"]) == 0

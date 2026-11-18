@@ -2295,3 +2295,21 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     and logs it, as run() already did (test_scoring_named_cases_leaves_out_one_that_fails_to_scan). For a rule
     session: FusionPBX's escape()/is_uuid(), the urlsplit-based redirect helper, and the Semgrep exit on
     LimeSurvey.
+87. **The rest of codewatch's own report** (2026-11-18). After step 85 the maintainer's scan of codewatch showed 22
+    bugs, 1 vulnerability and 65 hotspots. The 22 bugs were basedpyright type errors in tooling (a possibly
+    unbound variable, Optional values used unchecked, `*args` calls it couldn't count, loose annotations): fixed,
+    no behaviour changed except that an empty opencode export now raises a clear TypeError. The vulnerability and
+    four secret hotspots were test fixtures: marked `# pragma: allowlist secret`, the project's convention. A
+    scanner false alarm fixed: Semgrep's registry rule django-no-csrf-token reported every POST form over about
+    ten lines, token or not (its `...` stops there in generic mode); codewatch now drops the finding when the
+    matched form has {% csrf_token %} (multi_tools.form_has_csrf_token, test in tests/test_python_own_code.py).
+    The 38 regex-backtracking hotspots (step 85 made them hotspots) were timed on their attack inputs at 200 KB:
+    most take 2-20 s or more, so a repository crafted for it could hold a server scan slot, and server scans had
+    no time limit (STALE_SCAN only stopped counting them after an hour). Scans the server launches now get
+    `--time-limit` (jobs.SCAN_TIME_LIMIT, CODEWATCH_SCAN_MINUTES, 45 by default): past it the running analyses are
+    recorded as failed and the scan's process group, analyzers included, is killed. The regexes themselves were
+    left as they are. A new resolution status, "Safe (reviewed)", for a hotspot that is acceptable where it is
+    (migration 0009). Resolved on the maintainer's server: 24 safe (fixed-URL or checked-URL urlopen calls, the
+    bearer-token API's csrf_exempt, a local Ollama call, regexes that only see file names or run in tools and
+    tests), 9 false positives, 32 regex hotspots won't fix (bounded by the time limit), and the test-fixture
+    vulnerability.

@@ -149,7 +149,7 @@ def project_writes(functions, models):
     for func in functions:
         by_name.setdefault(func.name, []).append(func)
     unique = {name: funcs[0] for name, funcs in by_name.items() if len(funcs) == 1}
-    seeded, returners = {}, set()
+    seeded, returners, writes = {}, set(), set()
     for _ in range(6):
         changed, writes = False, set()
         for func in functions:

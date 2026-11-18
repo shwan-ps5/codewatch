@@ -1,6 +1,7 @@
 import fcntl
 import os
 import re
+import signal
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -17,6 +18,9 @@ BRANCH_RE = re.compile(r"^(?!-)[^\x00-\x20\x7f~^:?*\[\\]{1,200}$")
 MAX_RUNNING_SCANS = int(os.environ.get("CODEWATCH_MAX_SCANS") or 4)
 # A scan still marked running after this long died without saying so.
 STALE_SCAN = timedelta(hours=1)
+# A scan the server launched is stopped after this long, before it counts as stale: a repository crafted to make
+# an analyzer slow (a regex that backtracks on a huge file) can't hold one of the server's scan slots for good.
+SCAN_TIME_LIMIT = timedelta(minutes=int(os.environ.get("CODEWATCH_SCAN_MINUTES") or 45))
 
 
 def scan_refusal(project, branch=None):
@@ -48,7 +52,8 @@ def launch_scan(project, branch=None, coverage=None):
     log_dir = settings.CODEWATCH_CACHE / project.key / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{timezone.now():%Y%m%d-%H%M%S}-{(branch or 'main').replace('/', '_')}.log"
-    args = [sys.executable, str(settings.BASE_DIR / "manage.py"), "scan", project.key]
+    args = [sys.executable, str(settings.BASE_DIR / "manage.py"), "scan", project.key,
+            "--time-limit", str(int(SCAN_TIME_LIMIT.total_seconds()))]
     if branch:
         args += ["--branch", branch]
     if coverage:
@@ -66,3 +71,16 @@ def save_coverage_upload(project, upload):
     with open(path, "wb") as out:
         out.writelines(upload.chunks())
     return path
+
+
+def kill_own_process_group():
+    """The scan command runs in its own session (launch_scan), so this ends it and every analyzer it started."""
+    os.killpg(os.getpgrp(), signal.SIGKILL)
+
+
+def stop_overdue_scan(project, since, seconds, kill=kill_own_process_group):
+    """Called when a scan passes its time limit: its analyses still running are recorded as failed, then it ends."""
+    Analysis.objects.filter(project=project, status=Analysis.RUNNING, started_at__gte=since).update(
+        status=Analysis.FAILED, finished_at=timezone.now(),
+        error=f"Stopped after {seconds // 60} minutes, the server's time limit for a scan (CODEWATCH_SCAN_MINUTES).")
+    kill()

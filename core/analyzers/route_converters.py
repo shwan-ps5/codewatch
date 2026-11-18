@@ -80,7 +80,8 @@ def constant_text(node):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
         return constant_text(node.func.value)
     if isinstance(node, ast.JoinedStr):
-        return "".join(part.value for part in node.values if isinstance(part, ast.Constant))
+        return "".join(part.value for part in node.values
+                       if isinstance(part, ast.Constant) and isinstance(part.value, str))
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
         left, right = constant_text(node.left), constant_text(node.right)
         return None if left is None and right is None else (left or "") + (right or "")

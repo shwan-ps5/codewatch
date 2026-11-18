@@ -742,7 +742,7 @@ def from_sources(found, js):
     if not names:
         return []
     receivers = ["this"] if js else sorted(RECEIVERS)
-    calls = [{"pattern": c} for c in ("$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers))]
+    calls: list[dict] = [{"pattern": c} for c in ("$RET_FUNC(...)", *(f"{r}.$RET_FUNC(...)" for r in receivers))]
     # A module or object named once (services.get_x(), share.perform()), not a chain: Project.objects.create()
     # is Django's, not a view's create() (taiga).
     calls.append({"patterns": [{"pattern": "$MODULE.$RET_FUNC(...)"},
@@ -1069,7 +1069,7 @@ def excluded_callees(rule):
 PLAIN_ARGUMENT = {"metavariable-regex": {"metavariable": "$PT_ARG", "regex": "^[^()]+$"}}
 
 
-def argument_sanitizers(signatures, passing, excluded=frozenset(), mixed_only=True):
+def argument_sanitizers(signatures, passing, excluded: set[str] | frozenset[str] = frozenset(), mixed_only=True):
     """Sanitizers for each argument of a call to the project's functions that the function can't hand back:
     `self.resolve(doc, request)` is the doc's data, not the request's, when resolve returns only what it looks up
     with the request. A position is clean only when it is a parameter that isn't passed in every def of the name.

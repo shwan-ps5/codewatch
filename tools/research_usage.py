@@ -64,6 +64,8 @@ def usage(session_id, cwd=None):
         data = _opencode("session", "export", session_id, cwd=cwd)
     except subprocess.CalledProcessError:
         data = _opencode("export", session_id, cwd=cwd)
+    if not isinstance(data, dict):
+        raise TypeError(f"opencode exported no session object for {session_id}")
     tokens = {"input": 0, "cache_read": 0, "output": 0, "reasoning": 0}
     turns = calls = refused = read = 0
     model = ""

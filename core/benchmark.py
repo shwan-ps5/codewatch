@@ -279,11 +279,19 @@ def score_labelled_mode(cases, by_file, parents):
     return {"overall": rates(totals), "categories": dict(sorted(per_cwe.items())), "mistakes": mistakes}
 
 
+def cwe_of_dir(name):
+    """The CWE number of a seed directory name such as CWE-089."""
+    found = CWE_DIR_RE.fullmatch(name)
+    if not found:
+        raise ValueError(f"not a CWE directory name: {name!r}")
+    return int(found[1])
+
+
 def seed_cases(root, suite):
     """Seed files from a ground-truth YAML ({seeds: [{file, cwe}]}) plus clean controls that must stay quiet."""
     truth = yaml.safe_load((root / suite["ground_truth"]).read_text())
-    cases = [{"path": f"{suite['test_dir']}/{seed['file']}", "cwe": int(CWE_DIR_RE.fullmatch(seed["cwe"])[1]),
-              "real": True} for seed in truth["seeds"]]
+    cases = [{"path": f"{suite['test_dir']}/{seed['file']}", "cwe": cwe_of_dir(seed["cwe"]), "real": True}
+             for seed in truth["seeds"]]
     cases += [{"path": f"{suite['test_dir']}/{p.name}", "cwe": None, "real": False}
               for p in sorted((root / suite["test_dir"]).glob(suite["clean_glob"]))]
     return cases
@@ -504,7 +512,7 @@ def scan_pair(suite, case, log):
     root, parent = fetch_pair(suite, case)
     timing(log, (suite["name"], case["id"], "fetch"), time.monotonic() - start)
     diff = git("diff", "-U0", "--no-renames", parent, case["fix"], cwd=root)
-    spots = fix_spots(diff, SOURCE_EXTENSIONS[suite["language"]])
+    spots: dict = fix_spots(diff, SOURCE_EXTENSIONS[suite["language"]])
     # A fix in a template (dropping |safe) leaves the finding at the Python call that renders it, in a file the
     # fix didn't change: those calls are scored too, for the template rule only.
     templates = changed_templates(diff) if suite["language"].startswith("python") else set()
@@ -570,7 +578,8 @@ def score_pair(case, spots, sides, types, parents):
 def score_pairs_mode(cases, scanned, types, parents):
     totals, per_cwe, results = {"tp": 0, "fn": 0, "fp": 0, "tn": 0}, defaultdict(lambda: {"tp": 0, "fn": 0, "fp": 0, "tn": 0}), []
     for case in cases:
-        r = score_pair(case, *scanned[case["id"]], types, parents)
+        spots, sides = scanned[case["id"]]
+        r = score_pair(case, spots, sides, types, parents)
         for key in ("tp" if r["detected"] else "fn", "fp" if r["still_flagged"] else "tn"):
             totals[key] += 1
             per_cwe[f"CWE-{case['cwe'][0]}"][key] += 1
@@ -647,7 +656,7 @@ def scan_parallel(suites, log, workers):
     """{suite name: (root, issues) or {case id: pair}}, every suite and CVE case scanned in its own process."""
     jobs = [(suite, None) for suite in suites if suite["kind"] != "cve-pairs"]
     jobs += [(suite, case) for suite in suites if suite["kind"] == "cve-pairs" for case in suite["cases"]]
-    scanned = {suite["name"]: {} for suite in suites if suite["kind"] == "cve-pairs"}
+    scanned: dict = {suite["name"]: {} for suite in suites if suite["kind"] == "cve-pairs"}
     # spawn: a worker starts clean rather than forking a process that may hold threads or open connections.
     with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn"),
                              initializer=setup_worker, initargs=(workers,)) as pool:
@@ -675,9 +684,15 @@ def score_cases(ids, log=print, workers=1):
     scanned = scan_parallel(chosen, log, workers) if workers > 1 else {
         suite["name"]: {case["id"]: scan_pair_or_none(suite, case, log) for case in suite["cases"]} for suite in chosen}
     parents = catalog.load()[1].get("cwe_parents", {})
-    return [(suite["name"], {mode: score_pair(case, *scanned[suite["name"]][case["id"]], types, parents)
-                             for mode, types in MODES.items()})
-            for suite in chosen for case in suite["cases"] if scanned[suite["name"]].get(case["id"]) is not None]
+    out = []
+    for suite in chosen:
+        for case in suite["cases"]:
+            pair = scanned[suite["name"]].get(case["id"])
+            if pair is not None:
+                spots, sides = pair
+                out.append((suite["name"], {mode: score_pair(case, spots, sides, types, parents)
+                                            for mode, types in MODES.items()}))
+    return out
 
 
 def run(names=None, log=print, workers=1):

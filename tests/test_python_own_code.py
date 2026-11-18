@@ -2,7 +2,7 @@
 flow beside it that must still be found."""
 import pytest
 
-from core.analyzers.multi_tools import Semgrep
+from core.analyzers.multi_tools import Semgrep, form_has_csrf_token
 from core.analyzers.project_checks import configured_names, refusal_helpers
 from tests.test_detection import semgrep_vulnerabilities
 
@@ -114,3 +114,13 @@ def test_a_row_the_orm_just_created_is_stored_data(tmp_path):
         "    open(f'/srv/{same}/upload', 'wb')\n"                           # 18
         "    return HttpResponse('ok')\n")})
     assert lines(found, "path-traversal") == {("views.py", 18)}
+
+
+def test_a_long_form_with_its_csrf_token_has_one():
+    """Semgrep's django-no-csrf-token reported codewatch's 15-line settings form, whose token is on its first line:
+    the rule's `...` stops after about ten lines. The form's own lines decide."""
+    form = ['<form method="post">{% csrf_token %}', *(f"<p>field {i}</p>" for i in range(14)), "</form>"]
+    page = ["<h1>Settings</h1>", *form, '<form method="post">', "<p>no token</p>", "</form>"]
+    assert form_has_csrf_token(page, 2, 17)
+    assert form_has_csrf_token(["<form method=post>{%- csrf_token -%}</form>"], 1, 1)
+    assert not form_has_csrf_token(page, 18, 20), "the token of another form doesn't count"

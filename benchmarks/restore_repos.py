@@ -54,7 +54,8 @@ def main(argv):
     base = Path.home() / ".cache" / "codewatch"
     repos = [r for r in pinned((HERE.parent / "PLAN.md").read_text()) if r[0] in wanted]
     with ThreadPoolExecutor(4) as pool:
-        results = list(pool.map(lambda r: restore(*r, base), repos))
+        results = [job.result() for job in [pool.submit(restore, folder, url, name, commit, base)
+                                            for folder, url, name, commit in repos]]
     print("\n".join(results))
     return 1 if any(r.startswith("FAILED") for r in results) else 0
 

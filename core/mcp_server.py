@@ -105,7 +105,8 @@ def get_rule(rule_id: str) -> dict:
 
 @mcp.tool()
 def resolve_issue(issue_id: int, status: str, comment: str = "") -> dict:
-    """Mark an issue 'false_positive' or 'wont_fix' (with a reason in comment), or 'reopen' it.
+    """Mark an issue 'false_positive', 'wont_fix' or, for a reviewed security hotspot, 'safe' (with a reason in
+    comment), or 'reopen' it.
 
     Only for findings that are genuinely not problems; fix real issues in code and rescan instead.
     """

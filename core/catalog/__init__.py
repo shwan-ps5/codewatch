@@ -69,7 +69,7 @@ def custom_semgrep_rules():
     import yaml
 
     class PlainDumper(yaml.SafeDumper):
-        def ignore_aliases(self, _data):
+        def ignore_aliases(self, data):  # noqa: ARG002 - every alias is expanded
             return True
 
     rules = []

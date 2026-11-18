@@ -204,6 +204,9 @@ class Semgrep(Analyzer):
             elif (check_id != item["check_id"] and not via
                     and not self.from_visible(ctx, path, message, returners.get(custom_id, ()))):
                 continue
+            if check_id.endswith(CSRF_FORM_RULE) and form_has_csrf_token(
+                    source.lines(path), item["start"]["line"], item["end"]["line"]):
+                continue
             kind = semgrep_type(check_id, metadata)
             # codewatch's own taint rule for this weakness already followed the data here; a registry rule that
             # matches the same weakness without seeing guards or sanitizers is left for review, not a verdict.
@@ -252,7 +255,7 @@ class Semgrep(Analyzer):
         review rather than claimed as a vulnerability."""
         if not hits:
             return []
-        files = [(f, read_source(ctx.root / f) or "") for f in ctx.files_with(self.extensions & CODE)]
+        files = [(f, read_source(ctx.root / f) or "") for f in ctx.files_with((self.extensions or set()) & CODE)]
         used = summaries_module.referenced_names(files)
         rules = {r["id"]: r for r in custom_rules}
         scalars = {f: scalar_parameters(text) for f, text in files if f.endswith(".py")}
@@ -625,6 +628,17 @@ def add_inline_scripts(ctx, rel, copies, targets, originals):
     copy.write_text(script)
     targets.append(str(copy))
     originals[str(copy)] = rel
+
+
+CSRF_FORM_RULE = "django-no-csrf-token"
+CSRF_TOKEN_RE = re.compile(r"\{%-?\s*csrf_token\s*-?%\}")
+
+
+def form_has_csrf_token(lines, start, end):
+    """Whether the form Semgrep matched (lines start..end) has a {% csrf_token %}. The registry's
+    django-no-csrf-token rule checks with `...`, which in generic mode spans about ten lines, so any longer form
+    was reported without its token (codewatch's own project settings form, 2026-11-18)."""
+    return bool(CSRF_TOKEN_RE.search("\n".join(lines[start - 1:end])))
 
 
 def semgrep_type(check_id, metadata):

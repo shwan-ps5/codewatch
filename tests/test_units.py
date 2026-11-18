@@ -264,7 +264,7 @@ def test_hashes_are_not_secrets():
     pattern = re.compile(NOT_SECRET_LINES)
     for line in ('"commit": "f1291485808b66e20ddb6b01b10dc71b3df8c8ba"', "sha256 = 'ab12'", '"integrity": "sha512-x"'):
         assert pattern.search(line), line
-    for line in ('"password": "hunter2hunter2"', "API_KEY = 'abc'", "token: xyz"):
+    for line in ('"password": "hunter2hunter2"', "API_KEY = 'abc'", "token: xyz"):  # pragma: allowlist secret
         assert not pattern.search(line), line
 
 
