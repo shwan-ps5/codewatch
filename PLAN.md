@@ -2252,3 +2252,6 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     only drop; any that drops is to be read, since a helper wrongly taken for a refusal check or a configured name
     reused for request data would hide a real one. Lesson: no measure had a person read a whole report as a user
     would; codewatch is a Django app nobody tuned on, and was never scanned.
+    Since 2026-11-18 the nightly scans codewatch itself as an app (~/.cache/codewatch/fresh/codewatch, a link to
+    the nightly's own checkout, so it scans the commit measured): expected result no vulnerabilities (none at
+    9a3e032, 416 files, 148s); any line under it in the app diff is a false alarm to fix.
