@@ -309,7 +309,7 @@ npm advisories (step 29). Those pools are nearly used up.
    fewer than 30 candidates, read them all, say so in the JSON's `method` and mark the topic done. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-python-frontend.{tsv,json}`.
 
-14. **Python and JavaScript/TypeScript web app CVEs from before 2021.** (queued 2026-11-17) Every topic so far kept
+14. **Python and JavaScript/TypeScript web app CVEs from before 2021.** (done 2026-11-18, cve-candidates-2026-11-18-oldweb.*) Every topic so far kept
    entries published since 2021, and the GitHub and CVE-list pools since then are read to the bottom for Python and
    JS/TS apps (topic 13's whole filtered list was 39). The years before are untouched apart from topic 5's
    reviewed PyPI advisories with one commit URL. The gaps this topic is for, measured on 2026-11-17 (PLAN.md step
