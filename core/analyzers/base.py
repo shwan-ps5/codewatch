@@ -1,4 +1,5 @@
 import ast
+import json
 import os
 import re
 import shutil
@@ -143,8 +144,22 @@ class Analyzer:
         if proc.returncode not in ok_codes:
             # Some tools (semgrep --json --quiet) report the failure on stdout and leave stderr empty.
             detail = proc.stderr.strip() or proc.stdout.strip()
-            raise ToolError(f"{self.name} exited {proc.returncode}: {detail[-2000:]}")
+            raise ToolError(f"{self.name} exited {proc.returncode}: {failure_detail(detail)}")
         return proc.stdout if stream == "stdout" else proc.stderr
+
+
+def failure_detail(output):
+    """A failed tool's message. A JSON report (semgrep) gives its errors' messages: its tail is profiling data."""
+    try:
+        report = json.loads(output)
+    except ValueError:
+        return output[-2000:]
+    errors = report.get("errors") if isinstance(report, dict) else None
+    if not errors:
+        return output[-2000:]
+    # The start of the first error says what failed; a rule's message can quote a long generated regex after it.
+    return "; ".join(str(e.get("message") or e.get("type") or e) if isinstance(e, dict) else str(e)
+                     for e in errors)[:2000]
 
 
 # End-to-end suites too (immich: e2e/src/specs/server/api/oauth.e2e-spec.ts).

@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -613,3 +614,11 @@ def test_only_javascript_functions_the_pass_rule_can_see_into_can_be_clean():
         "const typed: Handler = (a) => a;\n"
         "if (ready) {\n  run();\n}\n")
     assert js_functions([text]) == {"plain", "exported", "arrow", "block", "method"}
+
+
+def test_a_failed_tools_json_report_gives_its_errors_not_its_tail():
+    from core.analyzers.base import failure_detail
+    report = {"errors": [{"type": "Fatal error", "message": "Out of memory"}], "time": {"rules": ["x" * 5000]}}
+    assert failure_detail(json.dumps(report)) == "Out of memory"
+    assert failure_detail("plain text error") == "plain text error"
+    assert failure_detail('{"errors": []}') == '{"errors": []}'
