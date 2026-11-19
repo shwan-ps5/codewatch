@@ -1637,6 +1637,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    could slow typescript-estree until the tool time limit, and c8 only runs a project's own tests. Revisit:
    drop the override for typescript-eslint >= 8.73 after 2026-11-30. ESLint 9 is end-of-life (npm warns); it
    stays until eslint-plugin-security and jsx-a11y support ESLint 10.
+99. **The CI run is cached, and nothing in it waits on apt** (2026-11-19). The first Actions run hung for its whole
+   60 minutes in `playwright install --with-deps`. The log stops after `apt-get update` fetched noble-security from
+   an unresponsive EC2 Ubuntu mirror. Changes:
+   - `--with-deps` is gone, since ubuntu-24.04 runners carry Chrome and its libraries; Chromium has its own step
+     with a 10-minute limit;
+   - the install step has a 15-minute limit;
+   - the installed analyzers (the venvs, `tools/node_modules` and Playwright's browser) are cached under a key
+     hashed from every pinning file. A later run only reinstalls codewatch itself, unless a pin changed.
 
 ## How things work (non-obvious)
 
