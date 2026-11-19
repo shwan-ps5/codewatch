@@ -1714,8 +1714,12 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    - Kept: Etherpad CVE-2015-4085. `src/node/hooks/express/tests.js` is a server route serving /tests/frontend, not
      test code: the URL reaches the file path through `replace("..", "")` and the fix adds a containment check.
      GHSA-5m5m's "test-only fix" misread the file name; its row now says duplicate.
-   Rows of the removed cases keep their old reason after "Before:". The 5 blind-suite conflicts wait for the
-   maintainer.
+   Rows of the removed cases keep their old reason after "Before:".
+   - The 5 blind-suite conflicts (`cve-pairs-blind-php-35`: CVE-2020-35136, CVE-2015-5078, CVE-2019-13575,
+     CVE-2018-12588, CVE-2020-26124) stay as they are, unread (the maintainer left it to Claude). A later review
+     accepted them, and this step shows earlier rejections under the other id going wrong as often as right;
+     dropping them unread would throw away cases on a coin flip. **To do after that suite's end-of-round blind
+     scan:** read each one's rejection and fix, give it one decision, and correct the score if a case goes.
 
 ## How things work (non-obvious)
 
