@@ -1,7 +1,9 @@
 """Which advisories and fix commits have already been looked at, so nobody reads them twice.
 
 Reads every benchmarks/cve-candidates-*.tsv (one row per advisory read, accepted or rejected) and every
-cve-pairs suite in benchmarks/suites.json, blind ones included. Standard library only, so it runs anywhere:
+cve-pairs suite in benchmarks/suites.json, blind ones included. An advisory's other ids (a GHSA's CVE, or the GHSA
+of a CVE) count as known too, from a local github/advisory-database clone (CODEWATCH_ADVISORY_DB, default
+~/advisory-database) when there is one. Standard library only, so it runs anywhere:
 
     python3 -I benchmarks/reviewed.py                    every known advisory: id, status, where recorded
     python3 -I benchmarks/reviewed.py GHSA-... SHA ...   just these (advisory ids or fix commits, 7+ hex chars);
@@ -20,6 +22,7 @@ Blind cases show only their suite name: their reasons are never written down.
 import csv
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -27,6 +30,9 @@ from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ADVISORY_DB = Path(os.environ.get("CODEWATCH_ADVISORY_DB") or Path.home() / "advisory-database")
+ALIASES_FIELD = re.compile(rb'"aliases":\s*\[([^\]]*)\]')
+QUOTED = re.compile(rb'"([^"]+)"')
 
 
 def is_blind(advisory_id):
@@ -51,15 +57,44 @@ def tsv_decisions(root):
     return seen
 
 
-def known(root=HERE):
-    """{advisory id: (status, where recorded)} and {fix commit: advisory id}."""
+def advisory_aliases(db):
+    """{GHSA id: its other ids} from a github/advisory-database clone; empty without one. Reads only the start of
+    each advisory file, where its aliases are: about 3 seconds for 400,000 advisories."""
+    aliases = {}
+    for folder in sorted((db / "advisories").glob("*/*/*/GHSA-*")):
+        try:
+            with (folder / f"{folder.name}.json").open("rb") as file:
+                field = ALIASES_FIELD.search(file.read(4096))
+        except OSError:
+            continue
+        if field and (names := [n.decode() for n in QUOTED.findall(field.group(1))]):
+            aliases[folder.name] = names
+    return aliases
+
+
+def add_aliases(seen, aliases):
+    """Every id of a known advisory, recorded as known under the id it was read as (GHSA-w3fm was read again as a
+    new advisory though its CVE, CVE-2026-133116, had been rejected the hour before, 2026-11-19)."""
+    for ghsa, names in aliases.items():
+        ids = [ghsa, *names]
+        if (read_as := next((i for i in ids if i in seen), None)) is None:
+            continue
+        status, where = seen[read_as]
+        for other in ids:
+            seen.setdefault(other, (status, f"{where} (as {read_as})"))
+    return seen
+
+
+def known(root=HERE, db=None):
+    """{advisory id: (status, where recorded)} and {fix commit: advisory id}; with db, the aliases of each known
+    advisory too."""
     seen, fixes = tsv_decisions(root), {}
     for suite in json.loads((root / "suites.json").read_text())["suites"]:
         cases = [c for c in suite.get("cases", []) if isinstance(c, dict) and c.get("id")]
         for case in cases:
             seen[case["id"]] = (f"suite:{suite['name']}", "suites.json")
         fixes |= {case["fix"]: case["id"] for case in cases if case.get("fix")}
-    return seen, fixes
+    return (add_aliases(seen, advisory_aliases(db)) if db else seen), fixes
 
 
 # Not source code for the size limits: tests and test-runner configs, docs, changelogs, lockfiles, manifests, and
@@ -265,10 +300,10 @@ COMMANDS = {"size": lambda argv, _root: size(argv[1], argv[2], python="--python"
             "guard": guard_command, "pending": pending_command, "--split": split_command}
 
 
-def main(argv, root=HERE):
+def main(argv, root=HERE, db=ADVISORY_DB):
     if argv[:1] and argv[0] in COMMANDS:
         return COMMANDS[argv[0]](argv, root)
-    seen, fixes = known(root)
+    seen, fixes = known(root, db)
     if not argv:
         for advisory, (status, where) in sorted(seen.items()):
             print(advisory, status, where, sep="\t")

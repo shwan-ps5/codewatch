@@ -1676,6 +1676,30 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      tiptap and one parse5 library fixes, ros2cli's CLI argument, OpnForm's widened denylist, two modified-shop
      fixes over the size limit, Moodle CVE-2026-133062 over 3 commits) are clear from the agents' reasons.
    Yield: 1 of 13. The topic-16 list is empty until new advisories arrive, so later runs read only a few each.
+102. **Pull request #2 reviewed; an advisory's other ids count as known** (2026-11-19). Two topic 16 batches (new-6
+   and new-7), 15 read, 1 accepted: bolt/core CVE-2026-77376 (blind; split checked, fix in no suite, no other id),
+   added to `cve-pairs-blind-php-36` rather than the agent's new `-37`. The 14 rejections hold on their reasons:
+   library code (janephp x3, tiptap x2, NLTK x3, typebox, django-docutils), fixes too large (Termix, modified-shop
+   x2) and a CLI tool (sqlmap).
+   Five of the 15 had been read before: four under their other id (Termix GHSA-w3fm is CVE-2026-133116, likewise
+   the two tiptap GHSAs and modified-shop GHSA-3v6p), since `reviewed.py` matched only the id as written. It now
+   also counts every alias of a known advisory, from the local github/advisory-database clone
+   (`CODEWATCH_ADVISORY_DB`, default `~/advisory-database`, about 3 seconds for 400,000 advisories; without a clone,
+   ids as written only), in both the full list the agents filter with and single lookups
+   (`test_an_advisorys_other_ids_are_known`). Against the branch before new-6 it flags those four. The fifth,
+   modified-shop CVE-2026-133248, shares GHSA-3v6p's fix commit rather than an id, and reject rows carry no fix SHA.
+   - **Open: 14 advisories are recorded under two ids, with different decisions.** 136 advisories in all were read
+     twice. Most agree, or differ only by topic (LimeSurvey GHSA-f764, -v854, -x533 rejected as "PHP, not
+     JavaScript" in a JavaScript batch, then accepted as PHP) or by the duplicate rule (CVE-2018-7260 rejected as
+     GHSA-gqmj, which is in the suite); GHSA-wrxc's "unsure" was answered as CVE-2020-11529 (rejected). On merits,
+     4 cases in open suites were rejected under their other id: CVE-2018-19994 (as GHSA-78hj: values set outside
+     the diff), CVE-2018-17180 (as GHSA-c98x: the fix mixes unrelated changes), GHSA-487r (as CVE-2015-3297: no
+     check added) and CVE-2015-4085 (as GHSA-5m5m: a test-only fix, perhaps a different commit). Each needs its
+     fix read again and one decision. 5 cases in `cve-pairs-blind-php-35` (CVE-2020-35136, CVE-2015-5078,
+     CVE-2019-13575, CVE-2018-12588, CVE-2020-26124) have a rejected other id; their rejection reasons were not
+     read, since they describe blind cases. Whether to keep them is the maintainer's call, made without reading.
+   - The blind split is by the id an advisory is recorded under, so an advisory's other id can split the other way
+     (GHSA-487r open, its CVE blind). It stays by recorded id; the alias check now stops a second reading.
 
 ## How things work (non-obvious)
 

@@ -12,13 +12,33 @@ def test_reviewed_finds_advisories_and_fix_commits(tmp_path, capsys):
         {"name": "owasp", "kind": "owasp-benchmark"},
         {"name": "cve-pairs-python", "kind": "cve-pairs", "cases": [{"id": "GHSA-in", "fix": "abcdef1234" * 4}]},
     ]}))
-    assert reviewed.main(["GHSA-new"], root=tmp_path) == 0
-    assert reviewed.main(["GHSA-rej", "abcdef12", "GHSA-acc"], root=tmp_path) == 1
+    assert reviewed.main(["GHSA-new"], root=tmp_path, db=None) == 0
+    assert reviewed.main(["GHSA-rej", "abcdef12", "GHSA-acc"], root=tmp_path, db=None) == 1
     out = capsys.readouterr().out.splitlines()
     assert out[0] == "GHSA-new\tnew"
     assert out[1].startswith("GHSA-rej\trejected")
     assert out[2].startswith("abcdef12 (GHSA-in)\tsuite:cve-pairs-python")
     assert out[3].startswith("GHSA-acc\taccepted")
+
+
+def test_an_advisorys_other_ids_are_known(tmp_path, capsys):
+    # Termix GHSA-w3fm was read again as new though its CVE had been rejected an hour before (2026-11-19).
+    (tmp_path / "cve-candidates-x.tsv").write_text("repo\tid\tcwe\tdecision\tsuite\treason\n"
+                                                   "a/b\tCVE-2026-1\t22\treject\t\trelease commit\n"
+                                                   "a/c\tGHSA-acc2\t79\treject\t\tlibrary code\n")
+    (tmp_path / "suites.json").write_text(json.dumps({"suites": []}))
+    db = tmp_path / "db"
+    for ghsa, aliases in {"GHSA-w3fm": ["CVE-2026-1"], "GHSA-acc2": ["CVE-2026-2"], "GHSA-new1": ["CVE-2026-3"],
+                          "GHSA-none": []}.items():
+        folder = db / "advisories" / "unreviewed" / "2026" / "11" / ghsa
+        folder.mkdir(parents=True)
+        (folder / f"{ghsa}.json").write_text(json.dumps({"id": ghsa, "aliases": aliases}, indent=2))
+    assert reviewed.main(["GHSA-w3fm", "CVE-2026-2", "GHSA-new1", "CVE-2026-3", "GHSA-none"], root=tmp_path, db=db) == 1
+    out = capsys.readouterr().out.splitlines()
+    assert out[0] == "GHSA-w3fm\trejected\tcve-candidates-x.tsv (as CVE-2026-1)"
+    assert out[1] == "CVE-2026-2\trejected\tcve-candidates-x.tsv (as GHSA-acc2)"
+    assert out[2:] == ["GHSA-new1\tnew", "CVE-2026-3\tnew", "GHSA-none\tnew"]
+    assert reviewed.main(["GHSA-w3fm"], root=tmp_path, db=None) == 0  # without the database, only ids as read
 
 
 def test_split_rule_matches_plan():
