@@ -19,10 +19,16 @@ WRAPPER_RE = re.compile(r"^(?:typing\.)?(?:Optional|List|list|Sequence|set|Set)\
 ROUTE_MARK = "$ROUTE"
 
 
+def without_none(annotation):
+    """An annotation without a trailing `| None`."""
+    head, bar, tail = annotation.strip().rpartition("|")
+    return head.rstrip() if bar and tail.strip() == "None" else annotation.strip()
+
+
 def model_named(annotation, models):
     """The model an annotation names, through Optional[...], List[...] and `| None`, or None."""
     while True:
-        annotation = re.sub(r"\s*\|\s*None$", "", annotation.strip())
+        annotation = without_none(annotation)
         inner = WRAPPER_RE.match(annotation)
         if not inner:
             return annotation if annotation in models else None

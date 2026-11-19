@@ -2,7 +2,9 @@
 import ast
 import json
 import re
+import subprocess
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from django.contrib.auth.models import User
@@ -86,6 +88,18 @@ def test_codewatch_checks_find_redos_in_python_and_js(tmp_path):
     assert found == [("duplicate-string-literal", "b.js", 2, "minor"),
                      ("regex-backtracking", "a.py", 2, "critical"),
                      ("regex-backtracking", "b.js", 1, "critical")]
+
+
+@pytest.mark.skipif(not CodewatchChecks().available(), reason="tools/ not installed")
+def test_codewatchs_own_regexes_pass_its_backtracking_check():
+    """codewatch reads untrusted repositories, so none of its own patterns may backtrack: a new one that can is a
+    failing test here, not a hotspot to waive in the report (PLAN.md step 90)."""
+    root = Path(__file__).resolve().parent.parent
+    tracked = subprocess.run(["git", "ls-files", "*.py"], cwd=root, capture_output=True, text=True, check=True).stdout
+    files = [f for f in tracked.split() if "/migrations/" not in f]
+    found = [f"{f.path}:{f.line} {f.message[:100]}" for f in CodewatchChecks().run(Context(root=root, files=files)).findings
+             if f.rule == "regex-backtracking"]
+    assert found == []
 
 
 @pytest.mark.skipif(not CodewatchChecks().available(), reason="tools/ not installed")

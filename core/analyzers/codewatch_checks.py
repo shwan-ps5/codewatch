@@ -36,7 +36,7 @@ TOOL = "codewatch"
 MIN_LITERAL_LENGTH = 5
 RE_MODULES = {"re", "regex"}
 RE_FUNCTIONS = {"compile", "match", "search", "fullmatch", "sub", "subn", "split", "findall", "finditer"}
-PY_FLAGS = {"IGNORECASE": "i", "I": "i", "MULTILINE": "m", "M": "m", "DOTALL": "s", "S": "s"}
+PY_FLAGS = {"IGNORECASE": "i", "I": "i", "MULTILINE": "m", "M": "m", "DOTALL": "s", "S": "s", "VERBOSE": "x", "X": "x"}
 
 RULES = [
     {
@@ -133,6 +133,48 @@ def python_flags(call):
     return flags
 
 
+INLINE_FLAGS_RE = re.compile(r"\(\?([aiLmsux]+)\)")
+
+
+def without_verbose_layout(pattern):
+    """A verbose pattern (re.X) as the regex it means: whitespace and # comments outside character classes and
+    escapes are layout, not text to match."""
+    out, in_class, i = [], False, 0
+    while i < len(pattern):
+        char = pattern[i]
+        if char == "\\":
+            out.append(pattern[i:i + 2])
+            i += 2
+            continue
+        if in_class:
+            in_class = char != "]"
+        elif char == "[":
+            in_class = True
+        elif char.isspace():
+            i += 1
+            continue
+        elif char == "#":
+            i = pattern.find("\n", i)
+            i = len(pattern) if i < 0 else i
+            continue
+        out.append(char)
+        i += 1
+    return "".join(out)
+
+
+def inline_flags(pattern, flags):
+    """A leading (?imsx) group moved into the flags: JavaScript has no inline flags, and a pattern it can't parse
+    isn't checked at all (five of codewatch's own regexes went unchecked that way)."""
+    found = INLINE_FLAGS_RE.match(pattern)
+    if not found:
+        return pattern, flags
+    letters = found.group(1)
+    pattern = pattern[found.end():]
+    if "x" in letters:
+        pattern = without_verbose_layout(pattern)
+    return pattern, flags + "".join(f for f in "ims" if f in letters and f not in flags)
+
+
 def to_js_syntax(pattern):
     """Python-only regex syntax rewritten to its JavaScript equivalent so recheck can analyse it."""
     pattern = re.sub(r"\(\?P<(\w+)>", r"(?<\1>", pattern)
@@ -149,17 +191,62 @@ def anchored(pattern, function):
     return pattern
 
 
+ANCHORED_METHODS = ("match", "fullmatch")
+
+
+def compiled_patterns(tree):
+    """{name: re.compile calls assigned to it} in this module."""
+    compiled = defaultdict(list)
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                and is_re_call(node.value) and node.value.func.attr == "compile"):
+            compiled[node.targets[0].id].append(node.value)
+    return compiled
+
+
+def name_uses(tree, names):
+    """{name: what each read of it does}: the attribute taken (NAME.match) or None for any other use."""
+    attributes = {id(node.value): node.attr for node in ast.walk(tree)
+                  if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)}
+    uses = defaultdict(list)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id in names:
+            uses[node.id].append(attributes.get(id(node)))
+    return uses
+
+
+def compiled_uses(tree):
+    """{id of a re.compile call: "match" or "fullmatch"} for a pattern assigned once to a name that is only ever
+    used as NAME.match(...) or NAME.fullmatch(...) in this module: those try one position, so they are analysed
+    anchored, as re.match(...) is. A name used any other way (searched, passed on, put in a list) stays a search."""
+    compiled = compiled_patterns(tree)
+    uses = name_uses(tree, compiled)
+    out = {}
+    for name, calls in compiled.items():
+        methods = set(uses.get(name, ()))
+        if len(calls) == 1 and methods and methods <= set(ANCHORED_METHODS):
+            out[id(calls[0])] = "match" if "match" in methods else "fullmatch"
+    return out
+
+
+def is_re_call(node):
+    return (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in RE_FUNCTIONS
+            and isinstance(node.func.value, ast.Name) and node.func.value.id in RE_MODULES and bool(node.args))
+
+
 def python_regexes(tree, path):
     out = []
+    anchored_compiles = compiled_uses(tree)
     for node in ast.walk(tree):
-        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr in RE_FUNCTIONS and isinstance(node.func.value, ast.Name)
-                and node.func.value.id in RE_MODULES and node.args):
+        if not is_re_call(node):
             continue
         first = node.args[0]
         if isinstance(first, ast.Constant) and isinstance(first.value, str):
-            out.append({"path": path, "line": node.lineno, "flags": python_flags(node), "original": first.value,
-                        "pattern": anchored(to_js_syntax(first.value), node.func.attr)})
+            flags = python_flags(node)
+            pattern = without_verbose_layout(first.value) if "x" in flags else first.value
+            pattern, flags = inline_flags(pattern, flags.replace("x", ""))
+            out.append({"path": path, "line": node.lineno, "flags": flags, "original": first.value,
+                        "pattern": anchored(to_js_syntax(pattern), anchored_compiles.get(id(node), node.func.attr))})
     return out
 
 

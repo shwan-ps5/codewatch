@@ -22,12 +22,14 @@ TEMPLATE_EXTENSIONS = {".html", ".htm", ".jinja", ".jinja2", ".j2", ".djhtml"}
 FLASK_RAW_EXTENSIONS = {".jinja", ".jinja2", ".j2"}
 XSS_RULE = "codewatch.python.web.xss"
 # {{ expression|filter|...|safe }}: the expression's first name, and the filters before safe.
-SAFE_RE = re.compile(r"\{\{-?\s*([A-Za-z_]\w*)([^{}|]*(?:\|[^{}|]*)*?)\|\s*safe\s*-?\}\}")
-PRINT_RE = re.compile(r"\{\{-?\s*([A-Za-z_]\w*)([^{}]*?)-?\}\}")
+# The name ends where the filters start, and a block's contents can't hold another opener (as php_template_sinks).
+SAFE_RE = re.compile(r"\{\{-?\s*([A-Za-z_]\w*)(?!\w)([^{}|]*(?:\|[^{}|]*)*?)\|\s*safe\s*-?\}\}")
+PRINT_RE = re.compile(r"\{\{-?\s*([A-Za-z_]\w*)(?!\w)([^{}]*?)-?\}\}")
 FOR_RE = re.compile(r"\{%-?\s*for\s+(\w+)(?:\s*,\s*\w+)*\s+in\s+([A-Za-z_]\w*)")
-AUTOESCAPE_OFF_RE = re.compile(r"\{%-?\s*autoescape\s+(?:false|off)\s*-?%\}(.*?)\{%-?\s*endautoescape\s*-?%\}", re.DOTALL)
+AUTOESCAPE_OFF_RE = re.compile(
+    r"\{%-?\s*autoescape\s+(?:false|off)\s*-?%\}((?:(?!\{%-?\s*autoescape\b)[\s\S])*?)\{%-?\s*endautoescape\s*-?%\}")
 # Filters that leave text that can't carry markup: escaping, sanitizing, JSON, numbers and counts.
-ESCAPING_FILTER_RE = re.compile(r"\|\s*(\w*(escape|saniti[sz]e|clean|bleach|json)\w*|e|striptags|int|float|length|count|"
+ESCAPING_FILTER_RE = re.compile(r"\|\s*(?:(?=\w*(?:escape|saniti[sz]e|clean|bleach|json))\w+|e|striptags|int|float|length|count|"
                                 r"urlencode|filesizeformat)\b", re.IGNORECASE)
 ADMIN_ONLY = ("admins_only", "admin_required", "staff_member_required", "superuser_required")
 KEYWORDS = {"loop", "super", "self", "caller", "varargs", "kwargs", "true", "false", "none", "True", "False", "None"}

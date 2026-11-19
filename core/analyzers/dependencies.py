@@ -147,7 +147,6 @@ OSV_BATCH_URL = "https://api.osv.dev/v1/querybatch"
 OSV_BATCH_SIZE = 1000
 LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml")
 YARN_VERSION_RE = re.compile(r"""^\s+version:?\s+"?([^"\s]+)"?\s*$""")
-PNPM_PEER_SUFFIX_RE = re.compile(r"[(_].*$")
 
 
 def mark(found, package, dev):
@@ -201,7 +200,7 @@ def pnpm_lock_packages(text):
     data = yaml.safe_load(text) or {}
     found = {}
     for raw, entry in (data.get("packages") or {}).items():
-        key = PNPM_PEER_SUFFIX_RE.sub("", str(raw).lstrip("/"))
+        key = re.split(r"[(_]", str(raw).lstrip("/"), maxsplit=1)[0]  # without the peer suffix
         at = key.rfind("@")
         if at > 0:
             name, version = key[:at], key[at + 1:]

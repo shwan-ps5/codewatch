@@ -102,7 +102,7 @@ def sarif_issues(sarif, default_ids):
             loc = result["locations"][0]["physicalLocation"]
             rule = rules.get(result["ruleId"], {})
             tags = rule.get("properties", {}).get("tags", [])
-            cwes = sorted({int(m.group(1)) for t in tags if (m := re.match(r"external/cwe/cwe-0*(\d+)$", t))})
+            cwes = sorted({int(m.group(1)) for t in tags if (m := re.match(r"external/cwe/cwe-0*([1-9]\d*|0)$", t))})
             issues.append({"tool": "codeql", "rule": result["ruleId"], "path": unquote(loc["artifactLocation"]["uri"]),
                            "line": loc.get("region", {}).get("startLine"), "cwes": cwes,
                            "type": "vulnerability" if result["ruleId"] in default_ids else "security_hotspot"})

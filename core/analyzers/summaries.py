@@ -202,10 +202,13 @@ def python_signature(text, func, line):
     return positional[1:] if method else positional, [a.arg for a in node.args.kwonlyargs], method
 
 
+# Parameters run to the first ")" but never past the next `function` keyword, or hold one level of parentheses for
+# an assignment: no pattern scans past the next header, so a line of unclosed headers is read once, not once per
+# header.
 JS_HEADER_RES = [
-    re.compile(r"function\s*\*?\s*(?P<name>\w+)\s*(<[^>]*>)?\s*\((?P<params>[^)]*)\)"),
-    re.compile(r"(?P<name>\w+)\s*=\s*(async\s+)?(function\s*)?\((?P<params>[^)]*)\)"),
-    re.compile(r"^\s*(public\s+|private\s+|protected\s+|static\s+|async\s+)*(?P<name>\w+)\s*(<[^>]*>)?\s*\((?P<params>[^)]*)\)[^;]*\{"),
+    re.compile(r"\bfunction\b\s*(?:\*\s*)?(?P<name>\w+)\s*(?:<[^<>]*>\s*)?\((?P<params>(?:[^)f]|f(?!unction\b))*)\)"),
+    re.compile(r"\b(?P<name>\w+)\s*=\s*(async\s+)?(function\s*)?\((?P<params>[^()]*(?:\([^()]*\)[^()]*)*)\)"),
+    re.compile(r"^\s*(public\s+|private\s+|protected\s+|static\s+|async\s+)*(?P<name>\w+)\s*(?:<[^>]*>\s*)?\((?P<params>[^)]*)\)[^;]*\{"),
 ]
 
 
@@ -261,7 +264,7 @@ def parse_summaries(results, read_text, known=None, hits=None):
 
 
 NAME_RE = re.compile(r"[A-Za-z_$][\w$]*")
-DEFINITION_RE = re.compile(r"(\bdef|\bfunction\s*\*?|\bclass)\s+$")
+DEFINITION_RE = re.compile(r"\b(?:def|class|function(?:\s*\*)?)\s+$")
 DEFINITION_REACH = 64
 NOT_A_USE_RE = re.compile(r"^\s*(#|//|\*|/\*)|module\.exports|\bexports\.|^\s*export\s*\{|__all__")
 
@@ -516,7 +519,10 @@ def via_rules(rules, summaries, receivers=None):
     return out
 
 
-PY_IMPORT_RE = re.compile(r"^\s*(?:from\s+(\.*[\w.]*)\s+import\s+([\w., ()*]+)|import\s+([\w., ]+))", re.MULTILINE)
+# The module and each name list start with something other than a space, so the spaces around them are read once.
+PY_IMPORT_RE = re.compile(
+    r"^[ \t]*(?:from[ \t]+(\.*\w[\w.]*|\.+)[ \t]+import[ \t]+([\w.,()*][\w., ()*]*)|import[ \t]+([\w.,][\w., ]*))",
+    re.MULTILINE)
 JS_IMPORT_RE = re.compile(r"""(?:\bfrom\s+|\brequire\s*\(\s*|\bimport\s*\(\s*)['"](\.{1,2}/[^'"]+)['"]""")
 JS_EXTENSIONS = ("", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", "/index.js", "/index.ts")
 
@@ -844,7 +850,7 @@ PASS_MAX_ROUNDS = 4
 # What with_pass_through's sanitizer matches: a variable assigned from a call, or a call returned (a superset; a
 # miss only means a function is never treated as clean). Any receiver: `obj.method(` is asked about too, for
 # other_receiver_methods.
-ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn)\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
+ASSIGNED_CALL_RE = re.compile(r"(?:=|\breturn\b)\s*(?:await\s+)?(?:\w+(?:\.\w+)*\.)?(\w+)\s*\(")
 # Python only: a call interpolated into an f-string (PostHog GHSA-jrwm: f"{get_base_url(region, subdomain)}users",
 # where only subdomain reaches the URL and region is compared). In JavaScript `{` starts every block.
 FSTRING_CALL_RE = re.compile(r"\{\s*(?:await\s+)?(?:[\w.]+\.)?(\w+)\s*\(")
@@ -944,16 +950,19 @@ JS_PASS_SINKS = [
 JS_KEYWORDS = {"if", "for", "while", "switch", "catch", "function", "return", "with", "constructor", "super"}
 # Function definitions in the shapes JS_PASS_SOURCES covers (a miss only means a function is never clean)...
 JS_DEFINED_RE = re.compile(
-    r"\bfunction\s*\*?\s*(\w+)\s*\("
+    r"\bfunction\b\s*(?:\*\s*)?(\w+)\s*\("
     r"|\b(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*(?::[^=;{]+)?=>|\w+\s*=>)"
-    r"|^[ \t]*(?:(?:public|private|protected|static|async|override|get|set)\s+)*(\w+)\s*(?:<[^>()]*>)?\s*\([^()]*\)"
-    r"\s*(?::[^{;=]+)?\{[ \t]*$", re.MULTILINE)
+    r"|^[ \t]*(?:(?:public|private|protected|static|async|override|get|set)[ \t]+)*(\w+)[ \t]*(?:<[^<>()]*>[ \t]*)?"
+    r"\([^()]*\)\s*(?::[^{;=:]+)?\{[ \t]*$", re.MULTILINE)
 # ...and in shapes it doesn't: a class field (`handle = (a) => a`), a plain reassignment or an object literal's
 # property. A name defined either way is never clean.
-JS_UNCOVERED_RE = re.compile(
-    r"^[ \t]*(?:(?:public|private|protected|static|readonly|override)\s+)*(\w+)\s*(?:\??:[^=;]+)?=\s*(?:async\s+)?"
-    r"(?:function\b|\(|\w+\s*=>)"
-    r"|\b(\w+)\s*:\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*(?::[^=;{]+)?=>|\w+\s*=>)", re.MULTILINE)
+# A method's return type, and a property's outside brackets, holds no colon, so no match reads past the next
+# `name(): type` or `name:`. A field's modifiers and annotation are on its line; (?<![^\n]) is the start of a line.
+JS_UNCOVERED_FIELD_RE = re.compile(
+    r"(?<![^\n])[ \t]*(?:(?:public|private|protected|static|readonly|override)[ \t]+)*(\w+)[ \t]*(?:\??:[^=;\r\n]+)?="
+    r"\s*(?:async\s+)?(?:function\b|\(|\w+\s*=>)")
+JS_UNCOVERED_PROPERTY_RE = re.compile(
+    r"\b(\w+)\s*:\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*(?::(?:[^=;{():]|\((?:[^()]|\([^()]*\))*\))+)?=>|\w+\s*=>)")
 
 
 # A file that reads the request: Express/Koa handlers and Nest's parameter decorators.
@@ -965,7 +974,7 @@ def js_functions(texts):
     defined, uncovered = set(), set()
     for text in texts:
         defined |= {name for groups in JS_DEFINED_RE.findall(text) for name in groups if name}
-        uncovered |= {name for groups in JS_UNCOVERED_RE.findall(text) for name in groups if name}
+        uncovered |= set(JS_UNCOVERED_FIELD_RE.findall(text)) | set(JS_UNCOVERED_PROPERTY_RE.findall(text))
     return defined - uncovered - JS_KEYWORDS - HANDLER_NAMES
 
 

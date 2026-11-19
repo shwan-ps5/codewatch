@@ -131,8 +131,8 @@ CONTEXT_LINES = 5
 # HMAC or a cache key keeps its secret: preimages of MD5 and SHA-1 are still out of reach (outline's deletion
 # code from the user's JWT secret; TOTP is HMAC-SHA-1 by standard).
 SECURITY_PURPOSE_RE = re.compile(
-    r"\b(\w*passw\w*|pwd|passphrase|\w*credential\w*|\w*salt\w*|(?!crypto\b)\w*crypt\w*"
-    r"|(\w+_)?(cert\w*|sign(ed|er|ing|atures?)?|integrity|verif\w*))\b", re.IGNORECASE)
+    r"\b(?:(?=\w*(?:passw|credential|salt))\w+|pwd|passphrase|(?!crypto\b)(?=\w*crypt)\w+"
+    r"|(?=(?:\w+_)?(?:cert|verif))\w+|(?=(?:\w+_)?(?:sign(?:ed|er|ing|atures?)?|integrity)\b)\w+)\b", re.IGNORECASE)
 
 
 def security_purpose(cache, path, line):
@@ -148,7 +148,7 @@ def security_purpose(cache, path, line):
 # A line that opens a function: `function f(`, an arrow, or a method `name(...) {` (not if/for/while/switch/catch).
 FUNCTION_HEADER_RE = re.compile(
     r"\bfunction\b|=>|^\s*(async\s+|static\s+|public\s+|private\s+|protected\s+|get\s+|set\s+)*"
-    r"(?!(if|for|while|switch|catch|with|return)\b)[\w$]+\s*\(.*\)\s*(:\s*[^={]+)?\{\s*$")
+    r"(?!(if|for|while|switch|catch|with|return)\b)[\w$]+\s*\(.*\)\s*(?::[^={:]*)?\{\s*$")
 
 
 def enclosing_function_text(rows, line, limit):

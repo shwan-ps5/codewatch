@@ -23,8 +23,11 @@ PHP_VIEW_SUFFIXES = (".php", ".ctp", ".phtml")
 VAR_RE = re.compile(r"\$([A-Za-z_]\w*)")
 
 # Twig: {{ name...|raw }} and everything under {% autoescape false %}.
-TWIG_PRINT_RE = re.compile(r"\{\{-?\s*([A-Za-z_]\w*)([^{}]*?)-?\}\}")
-TWIG_AUTOESCAPE_OFF_RE = re.compile(r"\{%-?\s*autoescape\s+false\s*-?%\}(.*?)\{%-?\s*endautoescape\s*-?%\}", re.DOTALL)
+# The name ends where the filters start, so the two parts can't trade characters; a block's contents can't hold another
+# opener, so a file of unclosed tags is read once rather than once per tag.
+TWIG_PRINT_RE = re.compile(r"\{\{-?\s*([A-Za-z_]\w*)(?!\w)([^{}]*?)-?\}\}")
+TWIG_AUTOESCAPE_OFF_RE = re.compile(
+    r"\{%-?\s*autoescape\s+false\s*-?%\}((?:(?!\{%-?\s*autoescape\b)[\s\S])*?)\{%-?\s*endautoescape\s*-?%\}")
 TWIG_FOR_RE = re.compile(r"\{%-?\s*for\s+(\w+)(?:\s*,\s*\w+)?\s+in\s+([A-Za-z_]\w*)")
 TWIG_KEYWORDS = {"loop", "app", "_self", "_context", "true", "false", "null", "not", "attribute", "include", "block",
                  "parent", "range", "constant", "dump", "source", "path", "url", "asset", "csrf_token", "form"}
@@ -32,25 +35,25 @@ TWIG_SAFE_FILTER_RE = re.compile(r"\|\s*(e|escape|striptags|length|abs|round|num
                                  r"url_encode|trans|default\(\s*['\"][^'\"]*['\"]\s*\)\s*\|\s*e)\b")
 TWIG_OFF_RE = re.compile(r"['\"]autoescape['\"]\s*=>\s*false")
 # Blade: {!! $name ... !!}.
-BLADE_RAW_RE = re.compile(r"\{!!\s*(.*?)\s*!!\}", re.DOTALL)
+BLADE_RAW_RE = re.compile(r"\{!!((?:[^!{]|!(?!!\})|\{(?!!!))*)!!\}")
 # Latte: {$name|noescape} and the old {!$name}.
-LATTE_RAW_RE = re.compile(r"\{(?:!\s*(\$\w+)[^}]*|(\$\w+)[^}]*\|\s*noescape[^}]*)\}")
+LATTE_RAW_RE = re.compile(r"\{(?:!\s*(\$\w+)(?!\w)[^{}]*|(\$\w+)(?!\w)(?:[^{}|]|\|(?!\s*noescape))*\|\s*noescape[^{}]*)\}")
 # Smarty: {$name|modifier...}, raw unless a modifier escapes or the project escapes by default.
-SMARTY_PRINT_RE = re.compile(r"\{\$(\w+)([^{}]*)\}")
+SMARTY_PRINT_RE = re.compile(r"\{\$(\w+)(?!\w)([^{}]*)\}")
 SMARTY_SAFE_RE = re.compile(r"\|\s*(escape|strip_tags|intval|floatval|count|date_format|string_format|"
                             r"number_format|urlencode|json_encode)\b|\bnofilter\b")
 SMARTY_ESCAPE_ON_RE = re.compile(r"escape_html\s*=\s*true|setEscapeHtml\s*\(\s*true")
 # A plain PHP view's printed expressions: <?= ... ?>, and echo/print statements anywhere in its PHP.
-SHORT_ECHO_RE = re.compile(r"<\?=(.*?)\?>", re.DOTALL)
+SHORT_ECHO_RE = re.compile(r"<\?=((?:[^?<]|\?(?!>)|<(?!\?=))*)\?>")
 ECHO_RE = re.compile(r"\b(?:echo|print)\b")
 PHP_FOREACH_RE = re.compile(r"foreach\s*\(\s*\$(\w+)\s+as\s+(?:\$\w+\s*=>\s*)?\$(\w+)")
 # Calls whose result can't carry markup: escapers and encoders, numbers, booleans and counts.
 ESCAPING_CALL_RE = re.compile(
-    r"(?i)^(h|e|htmlspecialchars|htmlentities|esc_\w+|escape\w*|\w*_?escape\w*|strip_tags|intval|floatval|boolval|"
+    r"(?i)^(h|e|htmlspecialchars|htmlentities|esc_\w+|(?=\w*escape)\w+|strip_tags|intval|floatval|boolval|"
     r"count|sizeof|number_format|json_encode|urlencode|rawurlencode|date|strlen|mb_strlen|md5|sha1|base64_encode|"
     r"purify|wp_kses\w*|sanitize_\w+|filter_var|empty|isset|is_\w+|in_array|array_key_exists|\$this->.*)$")
 CAST_RE = re.compile(r"\(\s*(int|integer|float|double|bool|boolean)\s*\)\s*$")
-NAME_RE = re.compile(r"(\$this(?:->\w+)+|[A-Za-z_\\][\w\\]*(?:::\w+)?)\s*$")
+NAME_RE = re.compile(r"(?<![\w\\])(\$this(?:->\w+)+|[A-Za-z_\\][\w\\]*(?:::\w+)?)\s*$")
 
 
 def printed_variables(expression):
@@ -120,7 +123,7 @@ def kind(path, text):
         # OpenCart 2's and others' .tpl files are plain PHP.
         return "php" if ("<?php" in text or "<?=" in text) else "smarty"
     if lower.endswith((".ctp", ".phtml")) or (lower.endswith(".php") and PHP_VIEW_DIR_RE.search(path)
-                                             and "?>" in text and not re.search(r"^\s*(abstract\s+|final\s+)?class\s",
+                                             and "?>" in text and not re.search(r"^[ \t]*(?:abstract\s+|final\s+)?class\s",
                                                                                 text, re.MULTILINE)):
         return "php"
     return None
@@ -173,7 +176,7 @@ def php_raw(text):
     """Variables a PHP view prints unescaped. One the view assigns itself is its own, not what the controller
     passed (MISP's populate_event_from_template.ctp rebuilds $fileArray, escaped, before printing it)."""
     loops = {item: items for items, item in PHP_FOREACH_RE.findall(text)}
-    own = set(re.findall(r"\$(\w+)\s*(?:\[[^\]]*\]\s*)*=(?!=|>)", text))
+    own = set(re.findall(r"\$(\w+)\s*(?:\[[^\][]*\]\s*)*=(?!=|>)", text))
     raw = set()
     for expression in printed_expressions(text):
         raw.update(followed(name, loops) for name in printed_variables(expression))
@@ -184,7 +187,7 @@ def raw_variables(text, kind_, settings):
     if kind_ == "twig":
         return twig_raw(text, settings["twig_off"])
     if kind_ == "blade":
-        return {v for expression in BLADE_RAW_RE.findall(text) for v in printed_variables(expression)}
+        return {v for expression in BLADE_RAW_RE.findall(text) for v in printed_variables(expression.strip())}
     if kind_ == "latte":
         return {(a or b).lstrip("$") for a, b in LATTE_RAW_RE.findall(text)}
     if kind_ == "smarty":
@@ -283,7 +286,7 @@ def template_sinks(found):
 # (3.x and later), its name underscored, unless it calls $this->render('other'); a view's elements print too.
 CAKE_VIEW_RE = re.compile(r"(?:^|/)(?:View|templates)/(?!Elements?/|element/|Layouts?/|layout/|email/|Emails/)"
                           r"([A-Z]\w*)/(\w+)\.(?:ctp|php)$")
-CAKE_ELEMENT_RE = re.compile(r"(?:^|/)(?:View/Elements|templates/element)/(.+)\.(?:ctp|php)$")
+CAKE_ELEMENT_DIR_RE = re.compile(r"(?:^|/)(?:View/Elements|templates/element)/")
 CONTROLLER_RE = re.compile(r"\bclass\s+(\w+)Controller\s+extends\s+\w+")
 FUNCTION_RE = re.compile(r"\bfunction\s+(\w+)\s*\(")
 RENDER_RE = re.compile(r"\$this->render\(\s*['\"]/?([\w/]+)['\"]")
@@ -295,9 +298,16 @@ def squashed(name):
     return name.replace("_", "").lower()
 
 
+def cake_element(path):
+    """The element name of a CakePHP element file (View/Elements/a/b.ctp -> a/b), or None."""
+    found = CAKE_ELEMENT_DIR_RE.search(path)
+    name = path[found.end():] if found else ""
+    return name[:-4] if name.endswith((".ctp", ".php")) and len(name) > 4 else None
+
+
 def cake_views(templates):
     """{(controller, squashed view name): variables the view, or an element it includes, prints unescaped}."""
-    elements = {m.group(1): text for path, text in templates.items() if (m := CAKE_ELEMENT_RE.search(path))}
+    elements = {name: text for path, text in templates.items() if (name := cake_element(path))}
     views = {}
     for path, text in templates.items():
         if not (m := CAKE_VIEW_RE.search(path)):

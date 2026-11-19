@@ -10,7 +10,7 @@ line keeps its number.
 import ast
 import re
 
-CONVERTER_RE = re.compile(r"<(\w+)(?:\([^)>]*\))?:(\w+)>")
+CONVERTER_RE = re.compile(r"<(\w+)(?:\([^()<>]*\))?:(\w+)>")
 TEXT_CONVERTERS = {"string", "path"}
 TYPES = {"uuid": "uuid.UUID"}
 ROUTE_DECORATORS = {"route", "get", "post", "put", "patch", "delete"}
@@ -69,7 +69,8 @@ URL_TEXT = "codewatch_url_text"
 DJANGO_ROUTES = {"path", "re_path", "url"}
 PATH_PARAMETER_RE = re.compile(r"<(?:(\w+):)?(\w+)>")
 TEXT_PATH_CONVERTERS = {"", "str", "path"}
-GROUP_RE = re.compile(r"\(\?P<(\w+)>((?:[^()\\]|\\.|\((?:[^()\\]|\\.)*\))*)\)")
+# A group starts at an unescaped "(": `\(?P<` is a literal parenthesis, and starting there read the rest of the route.
+GROUP_RE = re.compile(r"(?<!\\)\(\?P<(\w+)>((?:[^()\\]|\\.|\((?:[^()\\]|\\.)*\))*)\)")
 TEXT_GROUP_RE = re.compile(r"\.|\[\^|\\[SWD]")
 
 

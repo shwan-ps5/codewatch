@@ -11,7 +11,7 @@ import re
 
 from .body_models import takes_route_sources
 
-PARAMETER_RE = re.compile(r"<(?:(\w+)(?:\([^)>]*\))?:)?(\w+)>")
+PARAMETER_RE = re.compile(r"<(?:(\w+)(?:\([^()<>]*\))?:)?(\w+)>")
 TEXT_CONVERTERS = {"", "string", "path"}
 HANDLERS = "get|post|put|patch|delete"
 

@@ -7,15 +7,17 @@ code become same-length filler, so a finding's line is the template's line.
 """
 import re
 
-SCRIPT_RE = re.compile(r"<script\b([^>]*)>(.*?)</script\s*>", re.IGNORECASE | re.DOTALL)
+# Attributes run to the first ">" (template tags such as <?= ?> included) and contents to the first </script, as a
+# browser reads them; neither runs past another <script, so a page of unclosed tags is read once, not once per tag.
+SCRIPT_RE = re.compile(r"<script\b((?:[^<>]|<(?!script\b))*)>([^<]*(?:<(?!/?script\b)[^<]*)*)</script\s*>", re.IGNORECASE)
 # Script types that are JavaScript; anything else (text/template, application/json, x-tmpl-mustache) is data.
 JS_TYPES = {"", "text/javascript", "application/javascript", "module", "text/ecmascript", "application/ecmascript"}
 TYPE_RE = re.compile(r"""\btype\s*=\s*["']?([^"'\s>]*)""", re.IGNORECASE)
 SRC_RE = re.compile(r"\bsrc\s*=", re.IGNORECASE)
 # A template expression becomes a number (valid JavaScript wherever a value goes, plain text inside a string);
 # statement tags and template comments become spaces. Newlines inside a tag are kept so lines don't move.
-EXPRESSION_RE = re.compile(r"\{\{.*?\}\}", re.DOTALL)
-STATEMENT_RE = re.compile(r"\{%.*?%\}|\{#.*?#\}", re.DOTALL)
+EXPRESSION_RE = re.compile(r"\{\{(?:[^{}]|\{(?!\{)|\}(?!\}))*\}\}")
+STATEMENT_RE = re.compile(r"\{%(?:[^{%]|%(?!\})|\{(?!%))*%\}|\{#(?:[^{#]|#(?!\})|\{(?!#))*#\}")
 
 
 def _blank(text):

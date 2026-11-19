@@ -55,11 +55,18 @@ def known(root=HERE):
 # Not source code for the size limits: tests and test-runner configs, docs, changelogs, lockfiles, manifests, and
 # translation catalogs (SQLBot GHSA-fghj and Openpanel GHSA-wfxj were rejected as too large over locale JSON and
 # vitest.config.ts, 2026-11-04).
-NOT_SOURCE = re.compile(r"(^|/)(tests?|spec|__tests__|docs?|changelog\.d)/|test_|_test\.|\.(test|spec)\.|\.(md|mdx|rst|txt|lock)$"
+NOT_SOURCE = re.compile(r"(^|/)(tests?|spec|__tests__|docs?|changelog\.d)/|test_|_test\.|\.(test|spec)\.|\.(md|mdx|rst|txt|lock|po)$"
                         r"|(^|/)(package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|\.gitignore|CHANGELOG[^/]*)$"
-                        r"|(^|/)(vitest|jest|playwright|karma|cypress)\.config\.[cm]?[jt]s$"
-                        r"|(^|/)(locales?|i18n|lang|translations?)/.*\.(json|ya?ml|po|properties)$|\.po$",
+                        r"|(^|/)(vitest|jest|playwright|karma|cypress)\.config\.[cm]?[jt]s$",
                         re.IGNORECASE)
+TRANSLATION_DIR = re.compile(r"(^|/)(locales?|i18n|lang|translations?)/", re.IGNORECASE)
+CATALOG_EXTENSIONS = (".json", ".yml", ".yaml", ".po", ".properties")
+
+
+def not_source(name):
+    """A file the size limits leave out: NOT_SOURCE, or a translation catalog under a translations folder."""
+    return bool(NOT_SOURCE.search(name)
+                or (TRANSLATION_DIR.search(name) and name.lower().endswith(CATALOG_EXTENSIONS)))
 LIMITS = {"default": (3, 120), "python": (5, 200)}  # PLAN.md step 22; step 24 widened Python's
 
 
@@ -79,7 +86,7 @@ def measure(diff):
             files[current].append(line)
     sizes = {}
     for name, lines in files.items():
-        if NOT_SOURCE.search(name):
+        if not_source(name):
             continue
         added = Counter(_squash(x[1:]) for x in lines if x[0] == "+" and x[1:].strip())
         removed = Counter(_squash(x[1:]) for x in lines if x[0] == "-" and x[1:].strip())

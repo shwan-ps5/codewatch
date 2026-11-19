@@ -2366,3 +2366,37 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     most 9, cognitive at most 9; the old and new versions gave identical sanitizers on 3,000 generated signature
     sets, including ones over NAME_BATCH. README now gives both complexity thresholds (cyclomatic 10 for
     radon/lizard, cognitive 15 for complexipy, critical above twice either); it named only the cognitive one.
+
+90. **codewatch's own regexes: rewritten, not waived** (2026-11-19). Step 87 marked 32 polynomial-backtracking
+    hotspots won't fix on the strength of the scan time limit; the maintainer asked for them to be fixed instead,
+    since a reader of the report sees them waived on our own code. Checking with the analyzer itself (not a copy of
+    it) found two scanner gaps first:
+    - a pattern starting with an inline flag group, `(?i)...`, is a JavaScript syntax error, so recheck never saw
+      it and the check skipped it silently (five of our own, one of them vulnerable). inline_flags() now moves a
+      leading (?imsx) into the flags, and verbose patterns (re.X or (?x)) lose their layout before the check
+      (test_inline_and_verbose_flags_reach_the_regex_check);
+    - a compiled pattern only ever used as NAME.match(...) or NAME.fullmatch(...) tries one position, but was
+      analysed as a search. compiled_uses() now analyses it anchored, as re.match(...) already was; a name that is
+      also searched, passed on or put in a list stays a search
+      (test_a_compiled_pattern_only_matched_at_a_position_is_analysed_anchored).
+    With every pattern checked, 39 were vulnerable (the 32 plus developer tools and file-name helpers marked safe,
+    and the one the inline flag hid). Each was rewritten so it can't backtrack: one place for optional whitespace
+    (`\s*\*?\s*` -> `(?:\*\s*)?`), a name that ends where filters start (`(?!\w)`), block contents that can't
+    hold another opener (`<?= ... ?>`, `{!! !!}`, `{{ }}`, `{% %}`, `<script>`), word lists by lookahead
+    (`(?=\w*escape)\w+` for `\w*escape\w*`), return types and annotations that stop at a colon or line end,
+    matching from an unescaped `(?P<` only, and plain string handling where a regex wasn't needed (a trailing
+    `| None`, the pnpm peer suffix, CakePHP element names, translation catalogs). No atomic groups or possessive
+    quantifiers: the check can't parse them, so they would hide a pattern rather than fix it, and neither would
+    an f-string or a pattern built in a variable (the check reads string literals only).
+    Old and new were compared on every template, JS/TS and Python file of the learning-set apps and benchmark
+    checkouts (40,000 to 94,000 files per pattern; no blind set). Fourteen patterns give identical results. The
+    rest differ only where the old pattern was wrong: `\breturn` matched inside `returns(` and `return_value.x(`
+    (525 names), `function\s*(\w+)` read `functionalUpdate(` as `alUpdate`, a `<script` in a PHP string or an IE
+    conditional comment swallowed every script up to the next `</script>` (43 files), an annotation ran across
+    lines to a later `= function` (739 object keys taken for class fields; 202 real fields those matches had
+    hidden are now found), and assignments of bracketed expressions were read as function headers. Three
+    regressions the comparison caught were fixed before commit: multi-line method return types (now allowed),
+    attributes holding template tags (`src="<?= ... ?>"`, now allowed up to the first `>` as before), and
+    headers with two levels of brackets in their defaults (parameters again run to the first `)`, bounded by the
+    next `function` keyword). test_codewatchs_own_regexes_pass_its_backtracking_check runs the check on every
+    tracked Python file, so a new slow pattern fails the suite instead of reaching the report.

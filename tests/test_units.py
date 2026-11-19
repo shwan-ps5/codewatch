@@ -226,6 +226,30 @@ def test_match_patterns_are_anchored():
     assert anchored("a+b", "search") == "a+b"
 
 
+def test_inline_and_verbose_flags_reach_the_regex_check():
+    import ast
+
+    from core.analyzers.codewatch_checks import python_regexes
+
+    source = ('import re\nre.search(r"(?i)(a+)+$", s)\nre.search(r"(?sx) a [ ]+ \\# b  # comment", s)\n'
+              're.search(r"x+", s, re.VERBOSE | re.I)\n')
+    found = [(r["pattern"], r["flags"]) for r in python_regexes(ast.parse(source), "app.py")]
+    assert found == [("(a+)+$", "i"), (r"a[ ]+\#b", "s"), ("x+", "i")], (
+        "a leading (?i) is JavaScript syntax error, so the pattern used to be skipped instead of checked")
+
+
+def test_a_compiled_pattern_only_matched_at_a_position_is_analysed_anchored():
+    import ast
+
+    from core.analyzers.codewatch_checks import python_regexes
+
+    source = ("import re\nAT = re.compile(r'\\s*=')\nBOTH = re.compile(r'\\s*:')\nLISTED = re.compile(r'\\s*;')\n"
+              "AT.match(line, end)\nBOTH.match(line)\nBOTH.search(line)\nREGEXES = [LISTED]\nLISTED.match(line)\n")
+    found = {r["original"]: r["pattern"] for r in python_regexes(ast.parse(source), "app.py")}
+    assert found == {r"\s*=": r"^(?:\s*=)", r"\s*:": r"\s*:", r"\s*;": r"\s*;"}, (
+        "only a pattern never searched or passed on tries a single position")
+
+
 def test_known_type_checker_false_positives():
     from core.analyzers.extra import known_false_positive
 
@@ -530,7 +554,7 @@ def test_keyword_comparisons_filtered_by_name_in_projects_with_many_functions():
         regex = next(p["metavariable-regex"]["regex"] for p in sanitizer["patterns"]
                      if p.get("metavariable-regex", {}).get("metavariable") == "$PT_FUNC")
         filtered = set(regex.strip("^$()").split("|"))
-        compared = set(re.findall(r'"\^\(([^)]*)\)\$", str\(\$PT_FUNC\)',
+        compared = set(re.findall(r'"\^\(([^()]*)\)\$", str\(\$PT_FUNC\)',
                                   sanitizer["patterns"][-3]["metavariable-comparison"]["comparison"]))
         assert {name for names in compared for name in names.split("|")} == filtered
         covered += filtered
