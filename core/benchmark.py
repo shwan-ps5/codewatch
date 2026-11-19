@@ -20,6 +20,7 @@ import yaml
 
 from . import catalog
 from .analyzers import php_template_sinks
+from .analyzers.base import python_tree
 from .analyzers.template_sinks import TEMPLATE_EXTENSIONS, TEMPLATE_RULE, XSS_RULE, template_name
 from .collect import ScanConfig, ScanInput, collect
 
@@ -41,12 +42,38 @@ def git(*args, cwd):
                           errors="replace").stdout
 
 
+BEFORE, AFTER = "before", "after"
+FETCH, GAVE_UP, CVE_PAIRS = "fetch", "gave_up", "cve-pairs"
+
+
+def lenient_text(path):
+    """A file's text, undecodable bytes replaced (a checkout's files needn't be UTF-8)."""
+    return path.read_text(errors="replace")
+
+
+def file_text(path):
+    return lenient_text(path) if path.is_file() else ""
+
+
+def tracked(root, paths):
+    """The checkout's tracked files under paths (all of them for none)."""
+    return git("ls-files", "-z", "--", *paths, cwd=root).split("\0")
+
+
+def cwe_parents():
+    return catalog.load()[1].get("cwe_parents", {})
+
+
+def case_scope(case):
+    return case.get("scope", [])
+
+
 def fetch(suite):
     target = CACHE / suite["name"]
     target.mkdir(parents=True, exist_ok=True)
     if not (target / ".git").exists():
         git("init", "-q", cwd=target)
-    git("fetch", "-q", "--depth", "1", suite["repo"], suite["commit"], cwd=target)
+    git(FETCH, "-q", "--depth", "1", suite["repo"], suite["commit"], cwd=target)
     git("checkout", "-q", "--force", "FETCH_HEAD", cwd=target)
     return target
 
@@ -57,14 +84,14 @@ def timing(log, label, seconds, parts=None, gave_up=False):
     before them), and whether Semgrep gave up on some files. devtools.py bench writes them to
     $CODEWATCH_BENCH_TIMINGS."""
     parts = [f"{name}={sec:.0f}" for name, sec in sorted((parts or {}).items(), key=lambda kv: -kv[1]) if sec >= 1]
-    log("\t".join(["timing", *label, f"{seconds:.0f}", " ".join(parts + (["gave_up"] if gave_up else []))]))
+    log("\t".join(["timing", *label, f"{seconds:.0f}", " ".join(parts + ([GAVE_UP] if gave_up else []))]))
 
 
 def fetch_and_scan(suite, log):
     """A whole-repository suite's checkout and issues, with the time of each logged."""
     start = time.monotonic()
     root = fetch(suite)
-    timing(log, (suite["name"], "-", "fetch"), time.monotonic() - start)
+    timing(log, (suite["name"], "-", FETCH), time.monotonic() - start)
     start, tools = time.monotonic(), {}
     issues, gave_up = scan_and_gave_up(root, log, tools=tools)
     timing(log, (suite["name"], "-", "scan"), time.monotonic() - start, tools, gave_up=gave_up)
@@ -78,7 +105,7 @@ def scan(root, log, paths=(), focus=None):
 def scan_and_gave_up(root, log, paths=(), focus=None, tools=None):
     """The scan's issues, and whether Semgrep gave up on some rules in some files (its only note is that one).
     tools, when given, is filled with each analyzer's seconds."""
-    files = [f for f in git("ls-files", "-z", "--", *paths, cwd=root).split("\0") if f]
+    files = [f for f in tracked(root, paths) if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
     out = collect(cfg, ScanInput(root, files, "benchmark", focus=focus), log)
     if tools is not None:
@@ -163,7 +190,7 @@ def score_owasp_mode(cases, suite, by_file, parents):
 
 
 def score_owasp(root, suite, issues):
-    parents = catalog.load()[1].get("cwe_parents", {})
+    parents = cwe_parents()
     cases = owasp_cases(root, suite)
     return {mode: score_owasp_mode(cases, suite, issues_by_file(issues, types), parents)
             for mode, types in MODES.items()}
@@ -180,7 +207,7 @@ def marked_lines(root):
     for path in files:
         if "codefixes" in path:
             continue
-        for n, line in enumerate((root / path).read_text(errors="replace").splitlines(), 1):
+        for n, line in enumerate(lenient_text(root / path).splitlines(), 1):
             if match := SNIPPET_RE.search(line):
                 for challenge in match[1].split():
                     marks[challenge].append((path, n))
@@ -246,7 +273,7 @@ def score_cwe_mode(cases, by_file, parents):
 
 
 def score_cwe_folders(root, suite, issues):
-    parents = catalog.load()[1].get("cwe_parents", {})
+    parents = cwe_parents()
     cases = cwe_cases(root, suite)
     return {mode: score_cwe_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
 
@@ -298,13 +325,13 @@ def seed_cases(root, suite):
 
 
 def score_seeds(root, suite, issues):
-    parents = catalog.load()[1].get("cwe_parents", {})
+    parents = cwe_parents()
     cases = seed_cases(root, suite)
     return {mode: score_labelled_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
 
 
 def score_labelled(root, suite, issues):
-    parents = catalog.load()[1].get("cwe_parents", {})
+    parents = cwe_parents()
     cases = labelled_cases(root, suite)
     return {mode: score_labelled_mode(cases, issues_by_file(issues, types), parents) for mode, types in MODES.items()}
 
@@ -333,13 +360,13 @@ def fetch_pair(suite, case):
         git("remote", "add", "origin", case["repo"], cwd=target)
     # Every time, so a scope widened in suites.json reaches a clone made before (SQLBot GHSA-fghj: its request model
     # sat outside the first scope).
-    if case.get("scope"):
+    if case_scope(case):
         # --skip-checks: a folder named like a pattern, such as Next.js's `[[...path]]` (Postiz GHSA-2p7p), is
         # refused without it, and that refusal once stopped a whole night's suites.
-        git("sparse-checkout", "set", "--skip-checks", *case["scope"], cwd=target)
+        git("sparse-checkout", "set", "--skip-checks", *case_scope(case), cwd=target)
     else:
         git("sparse-checkout", "disable", cwd=target)
-    git("fetch", "-q", "--depth", "2", "--filter=blob:none", "origin", case["fix"], cwd=target)
+    git(FETCH, "-q", "--depth", "2", "--filter=blob:none", "origin", case["fix"], cwd=target)
     return target, git("rev-parse", f"{case['fix']}^", cwd=target).strip()
 
 
@@ -349,19 +376,29 @@ def span(start, count):
     return (max(start, 1), start + 1) if count == 0 else (start, start + count - 1)
 
 
+def hunk_spots(match, old, new):
+    """(side, path, (first, last)) for both sides of a hunk header."""
+    return ((BEFORE, old, span(*match.group(1, 2))), (AFTER, new, span(*match.group(3, 4))))
+
+
+def diff_path(line, prefix):
+    """The path of a ---/+++ line, or None for /dev/null."""
+    return line[6:] if line.startswith(prefix) else None
+
+
 def fix_spots(diff, extensions):
     """{"before": {path: [(first, last)]}, "after": ...} for non-test source files changed by the fix."""
-    spots = {"before": defaultdict(list), "after": defaultdict(list)}
+    spots = {BEFORE: defaultdict(list), AFTER: defaultdict(list)}
     old = new = None
     for line in diff.splitlines():
         if line.startswith("--- "):
-            old = line[6:] if line.startswith("--- a/") else None
+            old = diff_path(line, "--- a/")
         elif line.startswith("+++ "):
-            new = line[6:] if line.startswith("+++ b/") else None
+            new = diff_path(line, "+++ b/")
         elif match := HUNK_RE.match(line):
-            for side, path, (start, count) in (("before", old, match.group(1, 2)), ("after", new, match.group(3, 4))):
+            for side, path, lines in hunk_spots(match, old, new):
                 if path and path.endswith(extensions) and not TEST_PATH_RE.search(path):
-                    spots[side][path].append(span(start, count))
+                    spots[side][path].append(lines)
     return {side: dict(paths) for side, paths in spots.items()}
 
 
@@ -381,27 +418,27 @@ def changed_templates(diff):
     return names
 
 
+def rendered_template(node):
+    """The template argument of a render call (render_template(x), render(request, x)), or None."""
+    if not isinstance(node, ast.Call):
+        return None
+    func = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", None)
+    if func not in RENDER_CALLS:
+        return None
+    index = RENDER_CALLS[func]
+    return node.args[index] if len(node.args) > index else next(
+        (k.value for k in node.keywords if k.arg in ("template_name", "template_name_or_list")), None)
+
+
 def render_spans(text, names):
     """[(first, last)] lines of the calls in a Python file's text that render one of the named templates."""
     if not any(name in text for name in names):
         return []
-    try:
-        tree = ast.parse(text)
-    except (SyntaxError, ValueError):
+    tree = python_tree(text)
+    if tree is None:
         return []
-    spans = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        func = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", None)
-        if func not in RENDER_CALLS:
-            continue
-        index = RENDER_CALLS[func]
-        arg = node.args[index] if len(node.args) > index else next(
-            (k.value for k in node.keywords if k.arg in ("template_name", "template_name_or_list")), None)
-        if isinstance(arg, ast.Constant) and arg.value in names:
-            spans.append((node.lineno, node.end_lineno or node.lineno))
-    return sorted(spans)
+    return sorted((node.lineno, node.end_lineno or node.lineno) for node in ast.walk(tree)
+                  if isinstance(arg := rendered_template(node), ast.Constant) and arg.value in names)
 
 
 def template_renderers(root, paths, names):
@@ -409,9 +446,9 @@ def template_renderers(root, paths, names):
     if not names:
         return {}
     found = {}
-    for path in git("ls-files", "-z", "--", *paths, cwd=root).split("\0"):
+    for path in tracked(root, paths):
         if (path.endswith(".py") and not TEST_PATH_RE.search(path) and (root / path).is_file()
-                and (spans := render_spans((root / path).read_text(errors="replace"), names))):
+                and (spans := render_spans(lenient_text(root / path), names))):
             found[path] = spans
     return found
 
@@ -426,9 +463,9 @@ def importers(root, paths, changed):
     if not modules:
         return set()
     found = set()
-    for path in git("ls-files", "-z", "--", *paths, cwd=root).split("\0"):
+    for path in tracked(root, paths):
         if (path.endswith(".py") and path not in modules and not TEST_PATH_RE.search(path) and (root / path).is_file()
-                and visible(path, modules, lambda rel: (root / rel).read_text(errors="replace"))):
+                and visible(path, modules, lambda rel: lenient_text(root / rel))):
             found.add(path)
     return found
 
@@ -437,56 +474,65 @@ PHP_KEY_RE = re.compile(r"template variable ['\"](\w+)['\"]")
 PHP_NAME_RE = re.compile(r"\(template ['\"]([^'\"]+)['\"]\)")
 
 
+def changed_php_templates(root, changed):
+    """{path: (template kind, text)} for the changed files that are templates."""
+    templates = {}
+    for path in changed:
+        text = file_text(root / path)
+        if (kind := php_template_sinks.kind(path, text)) is not None:
+            templates[path] = (kind, text)
+    return templates
+
+
+def renders_changed(issue, templates, raw):
+    """A template-rule finding setting a variable a changed template prints unescaped, through a call naming that
+    template or naming none."""
+    if issue["rule"] != php_template_sinks.TEMPLATE_RULE or not (key := PHP_KEY_RE.search(issue.get("message") or "")):
+        return False
+    name = PHP_NAME_RE.search(issue["message"])
+    return any(key.group(1) in raw[path]
+               and (name is None or name.group(1) in php_template_sinks.names(path, templates[path][0]))
+               for path in templates)
+
+
 def php_template_renders(root, changed, found):
     """{path: [(line, line)]} of the PHP template rule's findings that set a variable one of the changed templates
     prints unescaped, through a call naming that template or (Smarty's assign(), CakePHP's set()) naming none: a fix
     in the template removes the finding at the controller, in a file the fix didn't change (oc-server3 GHSA-w8rr)."""
-    templates = {}
-    for path in changed:
-        text = (root / path).read_text(errors="replace") if (root / path).is_file() else ""
-        if (kind := php_template_sinks.kind(path, text)) is not None:
-            templates[path] = (kind, text)
+    templates = changed_php_templates(root, changed)
     if not templates:
         return {}
     joined = "\n".join(text for path, (_, text) in templates.items() if path.endswith(".php"))
     settings = {"twig_off": bool(php_template_sinks.TWIG_OFF_RE.search(joined)), "smarty_escapes": False}
     raw = {path: php_template_sinks.raw_variables(text, kind, settings) for path, (kind, text) in templates.items()}
     renders = {}
-    for i in found:
-        if i["rule"] != php_template_sinks.TEMPLATE_RULE or not (key := PHP_KEY_RE.search(i.get("message") or "")):
-            continue
-        name = PHP_NAME_RE.search(i["message"])
-        if any(key.group(1) in raw[path] and (name is None
-                                              or name.group(1) in php_template_sinks.names(path, templates[path][0]))
-               for path in templates):
-            renders.setdefault(i["path"], []).append((i["line"], i["line"]))
+    for i in (i for i in found if renders_changed(i, templates, raw)):
+        renders.setdefault(i["path"], []).append((i["line"], i["line"]))
     return renders
 
 
 PHP_CALLER_SUFFIXES = (".php", ".ctp", ".phtml", ".inc", ".module", ".tpl")
 
 
+def printed_variable_words(root, changed):
+    """How a PHP file would name a variable the changed templates print unescaped: 'x', "x" or ->x =."""
+    words = set()
+    for kind, text in changed_php_templates(root, changed).values():
+        variables = php_template_sinks.raw_variables(text, kind, {"twig_off": True, "smarty_escapes": False})
+        words |= {f"'{v}'" for v in variables} | {f'"{v}"' for v in variables} | {f"->{v} =" for v in variables}
+    return words
+
+
 def php_template_callers(root, paths, changed):
     """PHP files in the checkout that might set a variable a changed template prints unescaped: they name the
     template, or quote the variable (assign('x', ...), set('x', ...)). The focus of the scan, so the template
     rule's finding at the controller is seen."""
-    words = set()
-    for path in changed:
-        text = (root / path).read_text(errors="replace") if (root / path).is_file() else ""
-        if (kind := php_template_sinks.kind(path, text)) is None:
-            continue
-        variables = php_template_sinks.raw_variables(text, kind, {"twig_off": True, "smarty_escapes": False})
-        words |= {f"'{v}'" for v in variables} | {f'"{v}"' for v in variables} | {f"->{v} =" for v in variables}
+    words = printed_variable_words(root, changed)
     if not words:
         return set()
-    found = set()
-    for path in git("ls-files", "-z", "--", *paths, cwd=root).split("\0"):
-        if (path.endswith(PHP_CALLER_SUFFIXES) and path not in changed and not TEST_PATH_RE.search(path)
-                and (root / path).is_file()):
-            text = (root / path).read_text(errors="replace")
-            if any(w in text for w in words):
-                found.add(path)
-    return found
+    candidates = (path for path in tracked(root, paths) if path.endswith(PHP_CALLER_SUFFIXES)
+                  and path not in changed and not TEST_PATH_RE.search(path) and (root / path).is_file())
+    return {path for path in candidates if any(w in lenient_text(root / path) for w in words)}
 
 
 def at_render(issue, renders):
@@ -501,45 +547,50 @@ def with_code(root, issues):
     for i in issues:
         if i["path"] not in lines:
             path = root / i["path"]
-            lines[i["path"]] = path.read_text(errors="replace").splitlines() if path.is_file() else []
+            lines[i["path"]] = file_text(path).splitlines()
         text = lines[i["path"]]
         i["code"] = text[i["line"] - 1].strip() if i["line"] and i["line"] <= len(text) else ""
     return issues
 
 
+def scan_side(suite, case, checkout, known, log):
+    """One side of a fix pair: the security findings in the changed files, at the calls that render a changed
+    template, and in the changed modules' importers. checkout: (root, side, commit); known: (spots, templates)."""
+    (root, side, commit), (spots, templates) = checkout, known
+    start, tools = time.monotonic(), {}
+    git("checkout", "-q", "--force", commit, cwd=root)
+    renders = spots["renders"][side] = template_renderers(root, case_scope(case), templates)
+    callers = importers(root, case_scope(case), set(spots[side]))
+    # A PHP template's unescaped variable is set in a controller the fix may not touch.
+    php_callers = (php_template_callers(root, case_scope(case), set(spots[side]))
+                   if suite["language"] == "php" else set())
+    prep = time.monotonic() - start
+    # Only findings in the changed files (and those render calls, and the changed modules' importers) are
+    # scored, so Semgrep's per-file pass looks only at those files.
+    found, spots[GAVE_UP][side] = scan_and_gave_up(root, log, case_scope(case),
+                                                    focus=sorted({*spots[side], *renders, *callers, *php_callers}),
+                                                    tools=tools)
+    if suite["language"] == "php":
+        renders = spots["renders"][side] = php_template_renders(root, set(spots[side]), found)
+    timing(log, (suite["name"], case["id"], side), time.monotonic() - start, {"prep": prep, **tools},
+           spots[GAVE_UP][side])
+    found = [i for i in found if i["type"] in SECURITY_TYPES]
+    return with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)
+                            or i["path"] in callers])
+
+
 def scan_pair(suite, case, log):
     start = time.monotonic()
     root, parent = fetch_pair(suite, case)
-    timing(log, (suite["name"], case["id"], "fetch"), time.monotonic() - start)
+    timing(log, (suite["name"], case["id"], FETCH), time.monotonic() - start)
     diff = git("diff", "-U0", "--no-renames", parent, case["fix"], cwd=root)
     spots: dict = fix_spots(diff, SOURCE_EXTENSIONS[suite["language"]])
     # A fix in a template (dropping |safe) leaves the finding at the Python call that renders it, in a file the
     # fix didn't change: those calls are scored too, for the template rule only.
     templates = changed_templates(diff) if suite["language"].startswith("python") else set()
-    spots["renders"], spots["gave_up"] = {}, {}
-    sides = {}
-    for side, commit in (("before", parent), ("after", case["fix"])):
-        start, tools = time.monotonic(), {}
-        git("checkout", "-q", "--force", commit, cwd=root)
-        renders = spots["renders"][side] = template_renderers(root, case.get("scope", []), templates)
-        callers = importers(root, case.get("scope", []), set(spots[side]))
-        # A PHP template's unescaped variable is set in a controller the fix may not touch.
-        php_callers = (php_template_callers(root, case.get("scope", []), set(spots[side]))
-                       if suite["language"] == "php" else set())
-        prep = time.monotonic() - start
-        # Only findings in the changed files (and those render calls, and the changed modules' importers) are
-        # scored, so Semgrep's per-file pass looks only at those files.
-        found, spots["gave_up"][side] = scan_and_gave_up(root, log, case.get("scope", []),
-                                                         focus=sorted({*spots[side], *renders, *callers,
-                                                                       *php_callers}),
-                                                         tools=tools)
-        if suite["language"] == "php":
-            renders = spots["renders"][side] = php_template_renders(root, set(spots[side]), found)
-        timing(log, (suite["name"], case["id"], side), time.monotonic() - start, {"prep": prep, **tools},
-               spots["gave_up"][side])
-        found = [i for i in found if i["type"] in SECURITY_TYPES]
-        sides[side] = with_code(root, [i for i in found if i["path"] in spots[side] or at_render(i, renders)
-                                       or i["path"] in callers])
+    spots["renders"], spots[GAVE_UP] = {}, {}
+    sides = {side: scan_side(suite, case, (root, side, commit), (spots, templates), log)
+             for side, commit in ((BEFORE, parent), (AFTER, case["fix"]))}
     return spots, sides
 
 
@@ -547,32 +598,43 @@ def near(issue, spans):
     return any(first - NEARBY_LINES <= (issue["line"] or 0) <= last + NEARBY_LINES for first, last in spans)
 
 
+def relevant_issues(issues, types, case, parents):
+    """The findings of the given types for the advisory's weakness (or a related one)."""
+    return [i for i in issues if i["type"] in types
+            and any(related(c, w, parents) for c in issue_cwes(i) for w in case["cwe"])]
+
+
+def issue_key(issue):
+    return issue["path"], issue["rule"], issue["code"]
+
+
+def at_spot(issue, spots, side):
+    return near(issue, spots[side].get(issue["path"], ())) or at_render(issue, spots.get("renders", {}).get(side, {}))
+
+
+def rule_lines(issues):
+    return sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in issues})
+
+
+def hits_and_still(before, after, spots):
+    """(findings that detect the advisory, findings still there after its fix)."""
+    after_keys = {issue_key(i) for i in after}
+    # A finding the fix makes go away counts only when the fixed side's scan was complete: Semgrep giving up on a
+    # file under load (the 2026-11-07 nightly, mlflow GHSA-wqmh) drops its findings there without an error.
+    complete = not spots.get(GAVE_UP, {}).get(AFTER)
+    hits = [i for i in before if at_spot(i, spots, BEFORE) or (complete and issue_key(i) not in after_keys)]
+    hit_keys = {issue_key(i) for i in hits}
+    return hits, [i for i in after if issue_key(i) in hit_keys or at_spot(i, spots, AFTER)]
+
+
 def score_pair(case, spots, sides, types, parents):
     """Detected: a finding of the advisory's weakness at the fixed spot, or one the fix makes go away. Still
     flagged (a false alarm on fixed code): such a finding survives the fix, or a new one appears at the fix."""
-    def relevant(side):
-        return [i for i in sides[side] if i["type"] in types
-                and any(related(c, w, parents) for c in issue_cwes(i) for w in case["cwe"])]
-
-    def key(i):
-        return i["path"], i["rule"], i["code"]
-
-    def at_spot(i, side):
-        return near(i, spots[side].get(i["path"], ())) or at_render(i, spots.get("renders", {}).get(side, {}))
-
-    before, after = relevant("before"), relevant("after")
-    after_keys = {key(i) for i in after}
-    # A finding the fix makes go away counts only when the fixed side's scan was complete: Semgrep giving up on a
-    # file under load (the 2026-11-07 nightly, mlflow GHSA-wqmh) drops its findings there without an error.
-    complete = not spots.get("gave_up", {}).get("after")
-    hits = [i for i in before if at_spot(i, "before") or (complete and key(i) not in after_keys)]
-    hit_keys = {key(i) for i in hits}
-    still = [i for i in after if key(i) in hit_keys or at_spot(i, "after")]
-    gave_up = sorted(side for side, flag in spots.get("gave_up", {}).items() if flag)
-    return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], **({"gave_up": gave_up} if gave_up else {}),
-            "detected": bool(hits),
-            "still_flagged": bool(still), "by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in hits}),
-            "still_by": sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in still})}
+    hits, still = hits_and_still(*(relevant_issues(sides[side], types, case, parents) for side in (BEFORE, AFTER)),
+                                 spots)
+    gave_up = sorted(side for side, flag in spots.get(GAVE_UP, {}).items() if flag)
+    return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], **({GAVE_UP: gave_up} if gave_up else {}),
+            "detected": bool(hits), "still_flagged": bool(still), "by": rule_lines(hits), "still_by": rule_lines(still)}
 
 
 def score_pairs_mode(cases, scanned, types, parents):
@@ -608,7 +670,7 @@ def scan_pair_or_none(suite, case, log):
 
 def score_scanned_pairs(suite, scanned):
     """Scores of the cases that were scanned; a case whose scan failed (None) is left out of this run's scores."""
-    parents = catalog.load()[1].get("cwe_parents", {})
+    parents = cwe_parents()
     scanned = {case_id: pair for case_id, pair in scanned.items() if pair is not None}
     cases = [case for case in suite["cases"] if case["id"] in scanned]
     (CACHE / f"{suite['name']}.issues.json").write_text(json.dumps(scanned))
@@ -620,7 +682,7 @@ SCORERS = {"owasp-benchmark": score_owasp, "vuln-snippets": score_snippets, "cwe
 
 
 def run_suite(suite, log):
-    if suite["kind"] == "cve-pairs":
+    if suite["kind"] == CVE_PAIRS:
         log(f"== {suite['name']}: {len(suite['cases'])} fix commits")
         return score_cve_pairs(suite, log)
     log(f"== {suite['name']}: fetching {suite['commit'][:10]}")
@@ -652,11 +714,16 @@ def scan_job(suite, case=None):
     return suite["name"], case["id"], scan_pair_or_none(suite, case, lines.append), lines
 
 
+def parallel_jobs(suites):
+    """(suite, None) for a whole-repository suite and (suite, case) for each CVE case."""
+    return ([(suite, None) for suite in suites if suite["kind"] != CVE_PAIRS]
+            + [(suite, case) for suite in suites if suite["kind"] == CVE_PAIRS for case in suite["cases"]])
+
+
 def scan_parallel(suites, log, workers):
     """{suite name: (root, issues) or {case id: pair}}, every suite and CVE case scanned in its own process."""
-    jobs = [(suite, None) for suite in suites if suite["kind"] != "cve-pairs"]
-    jobs += [(suite, case) for suite in suites if suite["kind"] == "cve-pairs" for case in suite["cases"]]
-    scanned: dict = {suite["name"]: {} for suite in suites if suite["kind"] == "cve-pairs"}
+    jobs = parallel_jobs(suites)
+    scanned: dict = {suite["name"]: {} for suite in suites if suite["kind"] == CVE_PAIRS}
     # spawn: a worker starts clean rather than forking a process that may hold threads or open connections.
     with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn"),
                              initializer=setup_worker, initargs=(workers,)) as pool:
@@ -671,48 +738,55 @@ def scan_parallel(suites, log, workers):
     return scanned
 
 
+def chosen_cases(ids):
+    """The open CVE suites, each with only its cases whose id starts with one of ids; suites left with none dropped."""
+    suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
+              if suite["kind"] == CVE_PAIRS and not suite.get("blind")]
+    chosen = [{**suite, "cases": [c for c in suite["cases"] if c["id"].startswith(tuple(ids))]} for suite in suites]
+    return [suite for suite in chosen if suite["cases"]]
+
+
 def score_cases(ids, log=print, workers=1):
     """Scan only the CVE cases whose id starts with one of ids (from suites that aren't blind) and score each,
     without writing results: a quick check of the cases a rule change is meant to move. Returns
     [(suite name, {mode: case result})]. A case whose scan fails is logged and left out, as in run()."""
-    suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
-              if suite["kind"] == "cve-pairs" and not suite.get("blind")]
-    chosen = [{**suite, "cases": [c for c in suite["cases"] if c["id"].startswith(tuple(ids))]} for suite in suites]
-    chosen = [suite for suite in chosen if suite["cases"]]
-    jobs = [(suite, case) for suite in chosen for case in suite["cases"]]
-    workers = max(1, min(workers, len(jobs)))
+    chosen = chosen_cases(ids)
+    workers = max(1, min(workers, sum(len(suite["cases"]) for suite in chosen)))
     scanned = scan_parallel(chosen, log, workers) if workers > 1 else {
         suite["name"]: {case["id"]: scan_pair_or_none(suite, case, log) for case in suite["cases"]} for suite in chosen}
-    parents = catalog.load()[1].get("cwe_parents", {})
-    out = []
-    for suite in chosen:
-        for case in suite["cases"]:
-            pair = scanned[suite["name"]].get(case["id"])
-            if pair is not None:
-                spots, sides = pair
-                out.append((suite["name"], {mode: score_pair(case, spots, sides, types, parents)
-                                            for mode, types in MODES.items()}))
-    return out
+    parents = cwe_parents()
+    pairs = [(suite["name"], case, scanned[suite["name"]].get(case["id"])) for suite in chosen for case in suite["cases"]]
+    return [(name, {mode: score_pair(case, *pair, types, parents) for mode, types in MODES.items()})
+            for name, case, pair in pairs if pair is not None]
+
+
+def selected_suites(names):
+    """The named suites, or every suite except blind and deferred ones."""
+    return [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
+            if not ((names and suite["name"] not in names)
+                    or (not names and (suite.get("blind") or suite.get("deferred"))))]
+
+
+def scored_suite(suite, scanned, log):
+    """A suite's scores, from its parallel scan when there is one."""
+    if suite["name"] not in scanned:
+        return run_suite(suite, log)
+    if suite["kind"] == CVE_PAIRS:
+        # In the suite's order, as a sequential run writes them.
+        return score_scanned_pairs(suite, {c["id"]: scanned[suite["name"]][c["id"]] for c in suite["cases"]})
+    root, issues = scanned[suite["name"]]
+    return score_scanned_suite(suite, Path(root), issues)
 
 
 def run(names=None, log=print, workers=1):
     """Score the named suites, or every suite except blind and deferred ones, which run only when named (a deferred
     suite is ground truth kept for rules that don't exist yet, such as PHP's). With workers > 1 the scans run in
     that many processes; scoring and the order of the results are the same."""
-    suites = [suite for suite in json.loads((ROOT / "suites.json").read_text())["suites"]
-              if not ((names and suite["name"] not in names)
-                      or (not names and (suite.get("blind") or suite.get("deferred"))))]
+    suites = selected_suites(names)
     scanned = scan_parallel(suites, log, workers) if workers > 1 else {}
     out = {}
     for suite in suites:
-        if suite["name"] not in scanned:
-            scored = run_suite(suite, log)
-        elif suite["kind"] == "cve-pairs":
-            # In the suite's order, as a sequential run writes them.
-            scored = score_scanned_pairs(suite, {c["id"]: scanned[suite["name"]][c["id"]] for c in suite["cases"]})
-        else:
-            root, issues = scanned[suite["name"]]
-            scored = score_scanned_suite(suite, Path(root), issues)
+        scored = scored_suite(suite, scanned, log)
         result = {**scored, "suite": suite["name"], "commit": suite.get("commit", "per case"),
                   "scanned_at": datetime.now(UTC).isoformat(timespec="seconds"),
                   "overall": {mode: scored[mode]["overall"] for mode in MODES}}
@@ -779,7 +853,7 @@ def render_pairs(mode, r):
 
 
 RENDERERS = {"owasp-benchmark": render_owasp, "vuln-snippets": render_snippets, "cwe-folders": render_cwe,
-             "labelled-files": render_labelled, "seed-files": render_labelled, "cve-pairs": render_pairs}
+             "labelled-files": render_labelled, "seed-files": render_labelled, CVE_PAIRS: render_pairs}
 
 
 def render(suite, result):
@@ -803,8 +877,46 @@ def parse_timings(lines):
         extra = fields[4].split() if len(fields) > 4 else []
         rows.append({"suite": fields[0], "case": fields[1], "phase": fields[2], "seconds": float(fields[3]),
                      "parts": {k: float(v) for k, v in (p.split("=", 1) for p in extra if "=" in p)},
-                     "gave_up": "gave_up" in extra})
+                     GAVE_UP: GAVE_UP in extra})
     return rows
+
+
+def minutes(seconds):
+    return f"{seconds / 60:.0f} min"
+
+
+def summed(key, rows, part=False):
+    """[(name, seconds)] summed per row[key], or per analyzer part, largest first."""
+    totals = defaultdict(float)
+    for row in rows:
+        for name, seconds in (row["parts"].items() if part else [(row[key], row["seconds"])]):
+            totals[name] += seconds
+    return sorted(totals.items(), key=lambda kv: -kv[1])
+
+
+def per_case(rows):
+    totals = defaultdict(float)
+    for row in rows:
+        totals[row["suite"], row["case"]] += row["seconds"]
+    return totals
+
+
+def slowest(rows, top):
+    lines = []
+    for row in sorted((r for r in rows if r["phase"] != FETCH), key=lambda r: -r["seconds"])[:top]:
+        parts = " ".join(f"{k}={v:.0f}" for k, v in list(row["parts"].items())[:4])
+        lines.append(f"  {row['seconds']:.0f}s {row['suite']} {row['case']} {row['phase']} {parts}"
+                     + (" gave_up" if row[GAVE_UP] else ""))
+    return lines
+
+
+def moved_cases(rows, before, top):
+    """The cases whose time moved by half or more (and a minute) since the previous run."""
+    now, then = per_case(rows), per_case(before)
+    moved = sorted(((now[k] - then[k], k) for k in now.keys() & then.keys()
+                    if abs(now[k] - then[k]) >= max(60, then[k] / 2)), key=lambda d: -abs(d[0]))
+    return (["moved most since the previous run:" if moved else "no case's time moved by half or more"]
+            + [f"  {then[k]:.0f}s -> {now[k]:.0f}s {k[0]} {k[1]}" for _, k in moved[:top]])
 
 
 def timing_report(lines, previous=(), top=10):
@@ -812,37 +924,13 @@ def timing_report(lines, previous=(), top=10):
     lines) the cases whose time moved most. Times are summed over the parallel processes and are wall time inside
     each, so they rise with the load of the other scans running beside them."""
     rows, before = parse_timings(lines), parse_timings(previous)
-
-    def minutes(seconds):
-        return f"{seconds / 60:.0f} min"
-
-    def summed(key, rows, part=False):
-        totals = defaultdict(float)
-        for row in rows:
-            for name, seconds in (row["parts"].items() if part else [(row[key], row["seconds"])]):
-                totals[name] += seconds
-        return sorted(totals.items(), key=lambda kv: -kv[1])
-
     total = sum(r["seconds"] for r in rows)
-    fetching = sum(r["seconds"] for r in rows if r["phase"] == "fetch")
+    fetching = sum(r["seconds"] for r in rows if r["phase"] == FETCH)
     out = [f"{minutes(total)} of scans summed over processes, {minutes(fetching)} of it fetching"
            + (f" (previous run {minutes(sum(r['seconds'] for r in before))})" if before else ""),
            "by suite: " + ", ".join(f"{name} {minutes(s)}" for name, s in summed("suite", rows)),
            "by analyzer: " + ", ".join(f"{name} {minutes(s)}" for name, s in summed(None, rows, part=True)[:8]),
-           "slowest:"]
-    for row in sorted((r for r in rows if r["phase"] != "fetch"), key=lambda r: -r["seconds"])[:top]:
-        parts = " ".join(f"{k}={v:.0f}" for k, v in list(row["parts"].items())[:4])
-        out.append(f"  {row['seconds']:.0f}s {row['suite']} {row['case']} {row['phase']} {parts}"
-                   + (" gave_up" if row["gave_up"] else ""))
+           "slowest:", *slowest(rows, top)]
     if before:
-        def per_case(rows):
-            totals = defaultdict(float)
-            for row in rows:
-                totals[row["suite"], row["case"]] += row["seconds"]
-            return totals
-        now, then = per_case(rows), per_case(before)
-        moved = sorted(((now[k] - then[k], k) for k in now.keys() & then.keys()
-                        if abs(now[k] - then[k]) >= max(60, then[k] / 2)), key=lambda d: -abs(d[0]))
-        out.append("moved most since the previous run:" if moved else "no case's time moved by half or more")
-        out += [f"  {then[k]:.0f}s -> {now[k]:.0f}s {k[0]} {k[1]}" for _, k in moved[:top]]
+        out += moved_cases(rows, before, top)
     return "\n".join(out)

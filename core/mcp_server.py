@@ -18,30 +18,46 @@ mcp = FastMCP("codewatch", instructions=(
 SECURITY_TYPES = "vulnerability,security_hotspot"
 
 
-def call(path, params=None, body=None):
-    base = os.environ.get("CODEWATCH_URL", "http://127.0.0.1:8100").rstrip("/")
-    query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v not in (None, "", False)})
+def require_safe_transport(base):
+    """The server URL is http(s), and plain http only to this machine: the token goes with every request."""
     parts = urllib.parse.urlsplit(base)
     if parts.scheme not in ("http", "https"):
         raise RuntimeError(f"CODEWATCH_URL must be http(s): {base}")
     if parts.scheme == "http" and parts.hostname not in ("localhost", "127.0.0.1", "::1"):
         raise RuntimeError(f"Not sending the token to {parts.hostname} over plain http; use https")
-    url = f"{base}/api/{path}" + (f"?{query}" if query else "")
+
+
+def query_suffix(params):
+    query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v not in (None, "", False)})
+    return f"?{query}" if query else ""
+
+
+def api_request(url, body):
+    """A GET, or a POST of body as JSON, with the token."""
     headers = {"Authorization": f"Bearer {os.environ.get('CODEWATCH_TOKEN', '')}"}
     data = None
     if body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST" if body is not None else "GET")
+    return urllib.request.Request(url, data=data, headers=headers, method="POST" if body is not None else "GET")
+
+
+def error_detail(exc):
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.load(exc).get("error")
+    except ValueError:
+        return exc.reason
+
+
+def call(path, params=None, body=None):
+    base = os.environ.get("CODEWATCH_URL", "http://127.0.0.1:8100").rstrip("/")
+    require_safe_transport(base)
+    url = f"{base}/api/{path}" + query_suffix(params)
+    try:
+        with urllib.request.urlopen(api_request(url, body), timeout=60) as resp:
             return json.load(resp)
     except urllib.error.HTTPError as exc:
-        try:
-            detail = json.load(exc).get("error")
-        except ValueError:
-            detail = exc.reason
-        raise RuntimeError(f"codewatch API {exc.code}: {detail}") from exc
+        raise RuntimeError(f"codewatch API {exc.code}: {error_detail(exc)}") from exc
 
 
 @mcp.tool()

@@ -300,15 +300,19 @@ def in_library_folder(path, folders):
     return Path(path).suffix.lower() in LIBRARY_SUFFIXES and any(path.startswith(f) for f in folders)
 
 
+def library_files(root, files, bundles):
+    """Files of vendored libraries: in a library folder, or carrying a library's banner."""
+    folders = library_folders(files)
+    return [f for f in files if f not in bundles and (in_library_folder(f, folders) or vendored(root / f))]
+
+
 def without_third_party(root, files, log=print):
     """files less minified bundles and vendored libraries, which the dependency audit covers instead."""
     bundles = [f for f in files if minified(root / f)]
-    if bundles:
-        log(f"Skipping {len(bundles)} minified JavaScript file(s), e.g. {bundles[0]}")
-    folders = library_folders(files)
-    libraries = [f for f in files if f not in bundles and (in_library_folder(f, folders) or vendored(root / f))]
-    if libraries:
-        log(f"Skipping {len(libraries)} vendored library file(s), e.g. {libraries[0]}")
+    libraries = library_files(root, files, bundles)
+    for found, what in ((bundles, "minified JavaScript"), (libraries, "vendored library")):
+        if found:
+            log(f"Skipping {len(found)} {what} file(s), e.g. {found[0]}")
     skipped = set(bundles) | set(libraries)
     return [f for f in files if f not in skipped]
 
@@ -332,6 +336,26 @@ def analyzer_skip_reason(analyzer, cfg, ctx):
     return None
 
 
+def merge_result(combined, result, kept):
+    """Add one analyzer's kept findings, metrics and line sets to the combined result."""
+    combined.findings += kept
+    for key, value in result.metrics.items():
+        combined.metrics[key] = combined.metrics.get(key, 0) + value if key in ADDITIVE_METRICS else value
+    combined.covered_lines.update(result.covered_lines)
+    combined.coverable_lines.update(result.coverable_lines)
+    combined.duplicated_lines.update(result.duplicated_lines)
+
+
+def run_analyzer(analyzer, ctx, log):
+    """(result, None) or (None, the error status) for one analyzer: one tool failing doesn't fail the analysis."""
+    log(f"Running {analyzer.name}")
+    try:
+        return analyzer.run(ctx), None
+    except Exception as exc:  # noqa: BLE001 - reported per tool in the UI
+        log(f"  {analyzer.name} failed: {exc}")
+        return None, {"status": "error", "detail": str(exc)[-2000:]}
+
+
 def run_analyzers(cfg, ctx, log):
     """Run every applicable analyzer, merging their results; one tool failing doesn't fail the analysis."""
     # Tools report a "./"-prefixed path (collect) by its plain name.
@@ -342,21 +366,13 @@ def run_analyzers(cfg, ctx, log):
         if skip:
             tools[analyzer.name] = skip
             continue
-        log(f"Running {analyzer.name}")
         started = time.monotonic()
-        try:
-            result = analyzer.run(ctx)
-        except Exception as exc:  # noqa: BLE001 - reported per tool in the UI
-            tools[analyzer.name] = {"status": "error", "detail": str(exc)[-2000:]}
-            log(f"  {analyzer.name} failed: {exc}")
+        result, failure = run_analyzer(analyzer, ctx, log)
+        if result is None:
+            tools[analyzer.name] = failure
             continue
         kept = [f for f in result.findings if f.path in tracked or is_url(f.path)]
-        combined.findings += kept
-        for key, value in result.metrics.items():
-            combined.metrics[key] = combined.metrics.get(key, 0) + value if key in ADDITIVE_METRICS else value
-        combined.covered_lines.update(result.covered_lines)
-        combined.coverable_lines.update(result.coverable_lines)
-        combined.duplicated_lines.update(result.duplicated_lines)
+        merge_result(combined, result, kept)
         tools[analyzer.name] = {"status": "ok", "issues": len(kept), "seconds": round(time.monotonic() - started, 1)}
         if result.notes:
             tools[analyzer.name]["detail"] = " ".join(result.notes)

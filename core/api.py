@@ -326,23 +326,35 @@ def new_server_project_fields(request, key, body):
     return fields
 
 
+def cloneable_project(request, key, body):
+    """The project to scan on the server (created if the token may), which must have a repository URL."""
+    project = project_for_scan(request, key, new_server_project_fields(request, key, body))
+    if not project.repo_url:
+        raise ApiError(400, "This project has no repository URL; upload results with codewatch-scan instead")
+    return project
+
+
+def uploaded_coverage(request, project):
+    """Where a coverage report sent with the scan request was saved, or None; refused over the size limit."""
+    coverage = request.FILES.get("coverage")
+    if not coverage:
+        return None
+    if coverage.size > settings.CODEWATCH_MAX_COVERAGE_UPLOAD:
+        raise ApiError(413, f"Coverage reports are limited to {settings.CODEWATCH_MAX_COVERAGE_UPLOAD // 2**20} MB")
+    return save_coverage_upload(project, coverage)
+
+
 @api(scope=ApiToken.SCAN, methods=("POST",))
 def server_scan(request, key):
     """Ask the server to clone/fetch the repository URL and scan a branch itself."""
     body = request.POST if request.content_type.startswith("multipart/") else json_body(request)
-    project = project_for_scan(request, key, new_server_project_fields(request, key, body))
-    if not project.repo_url:
-        raise ApiError(400, "This project has no repository URL; upload results with codewatch-scan instead")
+    project = cloneable_project(request, key, body)
     branch = body.get(BRANCH) or None
     if branch is not None and not (isinstance(branch, str) and BRANCH_RE.match(branch)):
         raise ApiError(400, "branch must be a branch name")
     refusal = scan_refusal(project, branch)
     if refusal:
         raise ApiError(409, refusal)
-    coverage = request.FILES.get("coverage")
-    if coverage and coverage.size > settings.CODEWATCH_MAX_COVERAGE_UPLOAD:
-        raise ApiError(413, f"Coverage reports are limited to {settings.CODEWATCH_MAX_COVERAGE_UPLOAD // 2**20} MB")
-    path = save_coverage_upload(project, coverage) if coverage else None
-    launch_scan(project, branch, coverage=path)
+    launch_scan(project, branch, coverage=uploaded_coverage(request, project))
     return JsonResponse({"project": project.key, BRANCH: branch or project.main_branch or None,
                          "status": "queued"}, status=202)

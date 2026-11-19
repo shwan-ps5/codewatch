@@ -380,16 +380,24 @@ def test_summarised_calls_share_one_sink_per_call_shape():
     # A sink per summarised function, or per parameter name passed by keyword, made Semgrep match thousands of
     # patterns in a large project and time out.
     found = {(f"helper_{i}", 0, f"value_{i % 50}", False, "app.py") for i in range(NAME_BATCH + 1)}
-    sinks = via_sinks(found, js=False)
-    positional = [s for s in sinks if "pattern" in s["patterns"][0]]
-    keyword = [s for s in sinks if "pattern-either" in s["patterns"][0]]
+    positional, keyword = sinks_by_kind(via_sinks(found, js=False))
     assert {s["patterns"][0]["pattern"] for s in positional} == {"$VIA_FUNC($ARG, ...)", "$MODULE.$VIA_FUNC($ARG, ...)"}
     assert len(positional) == 4  # each shape's names split into two regexes
     assert len(keyword) == 2  # one callee kind, function names in two regexes, all 50 keywords in one
     regexes = [s["patterns"][1]["metavariable-regex"]["regex"] for s in positional]
-    for func, *_ in found:
-        assert sum(bool(re.match(r, func)) for r in regexes) == 2
-    assert not any(re.match(r, "helper_") for r in regexes)
+    assert all(matching(regexes, func) == 2 for func, *_ in found)
+    assert matching(regexes, "helper_") == 0
+
+
+def sinks_by_kind(sinks):
+    """(positional call sinks, keyword sinks)."""
+    return ([s for s in sinks if "pattern" in s["patterns"][0]],
+            [s for s in sinks if "pattern-either" in s["patterns"][0]])
+
+
+def matching(regexes, name):
+    """How many of regexes match name."""
+    return sum(bool(re.match(r, name)) for r in regexes)
 
 
 def test_keyword_via_sinks_keep_only_summarised_pairs():
@@ -479,6 +487,10 @@ def test_semgrep_timeouts_are_reported_not_lost(monkeypatch, tmp_path):
     assert tools["noted"]["detail"] == "Gave up on app/big.py."
 
 
+PASS_RULE = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
+             "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "os.system(...)"}]}
+
+
 def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     source = ("x = build(a)\ny = await self.fetch(b)\nz = cls.make (c)\nlog(d)\nif a == check(e):\n    pass\n"
               "return resolve(f)\n")
@@ -489,8 +501,10 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     assert assigned_calls([passed], python=True) >= {"get_path", "kind", "fmt"}
     assert "get_path" not in assigned_calls([passed])
     assert "log" not in assigned_calls([passed], python=True)
-    rule = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
-            "pattern-sources": [{"pattern": "request.args"}], "pattern-sinks": [{"pattern": "os.system(...)"}]}
+
+
+def test_pass_rules_share_a_variant_per_group_of_alike_rules():
+    rule = PASS_RULE
     assert pass_rules([rule], set()) == []
     [variant] = pass_rules([rule], {"build"})
     [sink] = variant["pattern-sinks"]
@@ -505,7 +519,9 @@ def test_pass_rules_only_ask_about_functions_whose_result_is_assigned():
     spread = {**rule, "id": "p", "pattern-propagators": [{"pattern": "$A.extend($B)", "from": "$B", "to": "$A"}]}
     assert [v["message"] for v in pass_rules([rule, spread], {"build"})] == ["$FUNC|$OWNER|$PARAM|r",
                                                                               "$FUNC|$OWNER|$PARAM|p"]
-    # A nested def returning its outer function's parameter says nothing of which of its own it passes.
+
+
+def test_a_nested_def_returning_its_outer_parameter_passes_none_of_its_own():
     assert parse_passes([("r.passes", "a.py", 1, "build|build|x|r,s"), ("o.passes", "a.py", 2, "$FUNC|$OWNER|$PARAM|o"),
                          ("o.passes", "a.py", 3, "inner|outer|y|o")]) == {
         "r": {("build", "x", "a.py")}, "s": {("build", "x", "a.py")}, "o": {("inner", "*", "a.py")}}
@@ -551,14 +567,19 @@ def test_keyword_comparisons_filtered_by_name_in_projects_with_many_functions():
     assert len(keyword) == 3
     covered = []
     for sanitizer in keyword:
-        regex = next(p["metavariable-regex"]["regex"] for p in sanitizer["patterns"]
-                     if p.get("metavariable-regex", {}).get("metavariable") == "$PT_FUNC")
-        filtered = set(regex.strip("^$()").split("|"))
-        compared = set(re.findall(r'"\^\(([^()]*)\)\$", str\(\$PT_FUNC\)',
-                                  sanitizer["patterns"][-3]["metavariable-comparison"]["comparison"]))
-        assert {name for names in compared for name in names.split("|")} == filtered
+        filtered, compared = filtered_and_compared(sanitizer)
+        assert compared == filtered
         covered += filtered
     assert sorted(covered) == sorted(signatures)
+
+
+def filtered_and_compared(sanitizer):
+    """(function names a keyword sanitizer's name filter allows, function names its comparison compares)."""
+    regex = next(p["metavariable-regex"]["regex"] for p in sanitizer["patterns"]
+                 if p.get("metavariable-regex", {}).get("metavariable") == "$PT_FUNC")
+    compared = re.findall(r'"\^\(([^()]*)\)\$", str\(\$PT_FUNC\)',
+                          sanitizer["patterns"][-3]["metavariable-comparison"]["comparison"])
+    return set(regex.strip("^$()").split("|")), {name for names in compared for name in names.split("|")}
 
 
 def test_deeper_passes_use_only_what_the_last_pass_added():

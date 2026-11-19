@@ -39,6 +39,7 @@ from ..analyzers.python_tools import BANDIT_SEVERITY, RUFF_EXTEND_IGNORE, RUFF_R
 
 PYTHON, JS, C, HTML, CSS, WEB, IAC, ANY = "python", "javascript", "c/c++", "html", "css", "web", "iac", "any"
 BANDIT, ESLINT, DETECT_SECRETS = "bandit", "eslint", "detect-secrets"  # pragma: allowlist secret
+VARIES = "varies"  # a tool whose findings each carry their own severity
 SEMGREP_PACK_URL = "https://semgrep.dev/c/p/default"
 ESLINT_DOC_URL = "https://raw.githubusercontent.com/eslint/eslint/main/docs/src/rules/{}.md"
 CWE_RE = re.compile(r"CWE-(\d+)")
@@ -173,7 +174,7 @@ def bandit_plugin(plugin, issue):
     cwes = {getattr(issue.Cwe, n) for n in re.findall(r"cwe=issue\.Cwe\.(\w+)", source)} - {0}
     doc = inspect.getdoc(fn) or ""
     paragraphs = [p for p in doc.split("\n\n")[1:] if p and not p.startswith(("..", ":"))]
-    return rule(BANDIT, f"{fn._test_id}:{plugin.name}", humanize(plugin.name), [PYTHON], HOTSPOT, "varies",
+    return rule(BANDIT, f"{fn._test_id}:{plugin.name}", humanize(plugin.name), [PYTHON], HOTSPOT, VARIES,
                 license_="Apache-2.0 (bandit)", summary=" ".join(paragraphs[0].split())[:400] if paragraphs else "",
                 docs=f"https://bandit.readthedocs.io/en/latest/plugins/{fn._test_id.lower()}_{plugin.name}.html",
                 cwe=cwes, doc=rst_to_markdown(doc), refs=links_in(doc))
@@ -229,13 +230,13 @@ def single():
              license_="MIT (jscpd)", summary="The same block of code appears in more than one place.",
              docs="https://github.com/kucherenko/jscpd"),
         rule("pip-audit", "vulnerable-dependency", "Dependency with a known vulnerability", [PYTHON],
-             VULNERABILITY, "varies", license_="Apache-2.0 (pip-audit)",
+             VULNERABILITY, VARIES, license_="Apache-2.0 (pip-audit)",
              summary="A dependency has a published advisory (severity taken from the advisory).",
              docs="https://github.com/pypa/pip-audit", cwe=[1395], owasp=["A03:2025"],
              refs=[{"label": "OSV vulnerability database", "url": "https://osv.dev"},
                    {"label": "PyPA Advisory Database", "url": "https://github.com/pypa/advisory-database"}]),
         rule("osv", "vulnerable-dependency", "Dependency with a known vulnerability", [JS],
-             VULNERABILITY, "varies", license_="CC-BY-4.0 (OSV data)",
+             VULNERABILITY, VARIES, license_="CC-BY-4.0 (OSV data)",
              summary="A package version pinned in package-lock.json, yarn.lock or pnpm-lock.yaml has a published "
                      "advisory (severity taken from the advisory).",
              docs="https://google.github.io/osv.dev/post-v1-querybatch/", cwe=[1395], owasp=["A03:2025"],
@@ -360,7 +361,7 @@ def axe(data):
     for r in data.get("axe", []):
         wcag = [".".join(t[4:]) for t in r["tags"] if re.fullmatch(r"wcag\d{3,4}", t)]
         refs = [{"label": f"WCAG 2.2 SC {sc}", "url": f"https://www.w3.org/WAI/WCAG22/quickref/#{sc}"} for sc in wcag]
-        out.append(rule("axe", r["id"], r["help"], [WEB], ACCESSIBILITY, "varies", license_="MPL-2.0 (axe-core)",
+        out.append(rule("axe", r["id"], r["help"], [WEB], ACCESSIBILITY, VARIES, license_="MPL-2.0 (axe-core)",
                         summary=r["description"], docs=r["url"], refs=refs, wcag=wcag))
     return out
 

@@ -82,15 +82,8 @@ def ingest(analysis, payload):
     """Store a collect() payload on an analysis: issues with new-code flags, metrics, sources, then the gate."""
     ref_fps = reference_fingerprints(analysis.project, payload.get("reference_analysis_commit"))
     changed = {p: set(lines) for p, lines in (payload.get("changed_lines") or {}).items()}
-    issues = dedupe([{k: i.get(k) for k in ISSUE_FIELDS} for i in payload["issues"]])
-    for i in issues:
-        # Pages and the API index by these: one unknown value made every view of the analysis fail.
-        if i["severity"] not in SEVERITIES or i["type"] not in ISSUE_TYPES:
-            raise ValueError(f"Unknown severity or type: {i['severity']!r}, {i['type']!r}")
-    metrics = dict(payload["metrics"])
-    fixed = fixed_issue_count(analysis, {i["fingerprint"] for i in issues})
-    if fixed is not None:
-        metrics["fixed_issues"] = fixed
+    issues = checked_issues(payload["issues"])
+    metrics = analysis_metrics(analysis, payload["metrics"], issues)
 
     with transaction.atomic():
         Issue.objects.bulk_create(
@@ -106,6 +99,25 @@ def ingest(analysis, payload):
         analysis.save()
         gate.refresh(analysis)
     return analysis
+
+
+def checked_issues(raw):
+    """The payload's issues, duplicates merged, each with a known severity and type: pages and the API index by
+    these, and one unknown value made every view of the analysis fail."""
+    issues = dedupe([{k: i.get(k) for k in ISSUE_FIELDS} for i in raw])
+    for i in issues:
+        if i["severity"] not in SEVERITIES or i["type"] not in ISSUE_TYPES:
+            raise ValueError(f"Unknown severity or type: {i['severity']!r}, {i['type']!r}")
+    return issues
+
+
+def analysis_metrics(analysis, metrics, issues):
+    """The payload's metrics, plus how many of the branch's previous analysis's issues are gone."""
+    metrics = dict(metrics)
+    fixed = fixed_issue_count(analysis, {i["fingerprint"] for i in issues})
+    if fixed is not None:
+        metrics["fixed_issues"] = fixed
+    return metrics
 
 
 def reference_fingerprints(project, commit):

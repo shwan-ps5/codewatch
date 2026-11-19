@@ -13,6 +13,11 @@ SECURITY_TYPES = {"vulnerability", "security_hotspot"}
 BROAD_CWES = {398, 664, 682, 691, 693, 697, 703, 707, 710, 1006, 1041, 1076, 1078, 1164, 1177}
 
 
+def declared_same(ra, rb):
+    """The catalogue lists one rule as the same as the other."""
+    return rb["id"] in (ra.get("same_as") or []) or ra["id"] in (rb.get("same_as") or [])
+
+
 def same_check(a, b):
     """Same tool and rule, rules the catalogue calls equivalent, or rules sharing a specific CWE."""
     if a["tool"] == b["tool"]:
@@ -20,7 +25,7 @@ def same_check(a, b):
     ra, rb = catalog.lookup(a["tool"], a["rule"]), catalog.lookup(b["tool"], b["rule"])
     if not (ra and rb):
         return False
-    if rb["id"] in (ra.get("same_as") or []) or ra["id"] in (rb.get("same_as") or []):
+    if declared_same(ra, rb):
         return True
     shared = set(ra["cwe"]) & set(rb["cwe"])
     if a["type"] in SECURITY_TYPES and b["type"] in SECURITY_TYPES:
@@ -42,9 +47,14 @@ def dedupe(issues):
             group.append(issue)
             kept.append(issue)
             continue
-        if SEVERITY_RANK.get(issue["severity"], 5) < SEVERITY_RANK.get(twin["severity"], 5):
-            twin["severity"] = issue["severity"]
-        for source in [f"{issue['tool']}:{issue['rule']}", *issue["also_reported_by"]]:
-            if source != f"{twin['tool']}:{twin['rule']}" and source not in twin["also_reported_by"]:
-                twin["also_reported_by"].append(source)
+        merge_into(twin, issue)
     return kept
+
+
+def merge_into(twin, issue):
+    """The kept finding takes the merged one's higher severity and lists its detectors."""
+    if SEVERITY_RANK.get(issue["severity"], 5) < SEVERITY_RANK.get(twin["severity"], 5):
+        twin["severity"] = issue["severity"]
+    for source in [f"{issue['tool']}:{issue['rule']}", *issue["also_reported_by"]]:
+        if source != f"{twin['tool']}:{twin['rule']}" and source not in twin["also_reported_by"]:
+            twin["also_reported_by"].append(source)
