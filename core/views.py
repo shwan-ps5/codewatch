@@ -16,7 +16,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST, require_safe
 
-from . import gate
+from . import folders, gate
 from .analyzers import ANALYZERS
 from .catalog import update as catalog_update
 from .collect import parse_period
@@ -70,7 +70,8 @@ def refresh_gates(project):
 @require_safe
 def index(request):
     catalog_update.maybe_launch()
-    projects = [(p, next(iter(p.latest_analyses()), None)) for p in Project.visible_to(request.user).order_by("key")]
+    projects = [(p, next(iter(p.latest_analyses()), None), bool(p.repo_url) and p.can_scan(request.user))
+                for p in Project.visible_to(request.user).order_by("key")]
     return render(request, "core/index.html", {"projects": projects})
 
 
@@ -101,10 +102,17 @@ def create_project(owner, **fields):
     return project
 
 
+JUST_CREATED = "just_created_project"
+
+
 def new_project(request):
-    form = NewProjectForm(request.POST or None, user=request.user)
+    picked = folders.suggestion(request.GET.get("use")) if request.user.is_superuser and "use" in request.GET else None
+    form = NewProjectForm(request.POST or None, user=request.user, initial=picked)
     if request.method == "POST" and form.is_valid():
         project = create_project(request.user, **form.cleaned_data)
+        # A scan token for codewatch-scan in the working copy, shown once on the project page.
+        _, raw = ApiToken.issue(request.user, f"{project.key} (created with the project)", ApiToken.SCAN)
+        request.session[JUST_CREATED] = {"key": project.key, "raw": raw}
         refusal = scan_refusal(project)
         if refusal:
             messages.info(request, f"Created {project.key}. {refusal}")
@@ -112,7 +120,11 @@ def new_project(request):
             launch_scan(project)
             messages.success(request, f"Created {project.key}; the first scan of the main branch has started.")
         return redirect(PROJECT_PAGE, key=project.key)
-    return render(request, "core/new_project.html", {"form": form})
+    return render(request, "core/new_project.html", {
+        "form": form,
+        "picked": picked,
+        "browse": folders.listing(request.GET.get("folder")) if request.user.is_superuser else None,
+    })
 
 
 @require_safe
@@ -124,8 +136,14 @@ def project_detail(request, key):
         unscanned = [b for b in Mirror(project).branches() if b not in scanned]
     except GitError:
         unscanned = []
+    new_token = request.session.get(JUST_CREATED)
+    if new_token and new_token["key"] == project.key:
+        del request.session[JUST_CREATED]
+    else:
+        new_token = None
     return render(request, "core/project.html", {
         "project": project,
+        "new_token": new_token and new_token["raw"],
         "latest": latest,
         "unscanned": unscanned,
         "can_scan": project.can_scan(request.user),
@@ -145,8 +163,8 @@ def start_scan(request, key):
         messages.info(request, refusal)
     else:
         launch_scan(project, branch)
-        messages.success(request, f"Scan of {branch or 'the main branch'} started.")
-    return redirect(PROJECT_PAGE, key=key)
+        messages.success(request, f"Scan of {project.name}, {branch or 'the main branch'}, started.")
+    return redirect(safe_next(request, reverse(PROJECT_PAGE, args=[key])))
 
 
 TYPE_ROWS = [("bug", "bugs"), ("vulnerability", "vulnerabilities"), ("security_hotspot", "security_hotspots"),

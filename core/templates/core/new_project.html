@@ -3,13 +3,25 @@
 {% block crumbs %}<li aria-current="page">New project</li>{% endblock %}
 {% block content %}
 <h1>New project</h1>
-<section class="card" aria-labelledby="local-h">
-<h2 id="local-h">Private repository: scan your local copy</h2>
-<p>No setup needed here. Create a token on your <a href="{% url 'account' %}">account page</a>, then run this in your working copy. The project is created on the first upload:</p>
-<pre class="token">CODEWATCH_URL={{ request.scheme }}://{{ request.get_host }} CODEWATCH_TOKEN=cw_… codewatch-scan --project my-key</pre>
+{% if browse %}
+<section class="card" aria-labelledby="pick-h" style="max-width:820px">
+<h2 id="pick-h">Choose a folder on this machine</h2>
+<p>In <code>{{ browse.absolute }}</code>{% if browse.parent is not None %} · <a href="?folder={{ browse.parent|urlencode }}">Up one folder</a>{% endif %}
+{% if browse.repository %} · <a href="?use={{ browse.path|urlencode }}&amp;folder={{ browse.path|urlencode }}"><strong>Use this folder</strong></a>{% endif %}</p>
+{% if browse.folders %}<ul class="folders">
+{% for f in browse.folders %}<li><a href="?folder={{ f.path|urlencode }}">{{ f.name }}</a>{% if f.repository %} <span class="muted">git</span> · <a href="?use={{ f.path|urlencode }}&amp;folder={{ browse.path|urlencode }}" aria-label="Use {{ f.name }}">Use</a>{% endif %}</li>
+{% endfor %}</ul>{% else %}<p class="muted">No folders here.</p>{% endif %}
+<p class="muted">Folders marked git can be scanned. The title and key come from the folder's name; change them below if you like.</p>
 </section>
+{% endif %}
 <section class="card" aria-labelledby="server-h" style="max-width:820px">
-<h2 id="server-h">Or let the server clone and scan a repository</h2>
+<h2 id="server-h">{% if picked %}Create {{ picked.name }}{% else %}Let the server clone and scan a repository{% endif %}</h2>
+{% if picked %}<p>The server scans the committed branches of <code>{{ picked.repo_url }}</code>. A scan token for scanning your working copy, uncommitted changes included, is created with the project and shown once on its page.</p>{% endif %}
 <form method="post">{% csrf_token %}{% include "core/form_table.html" %}<p><button>Create and scan</button></p></form>
+</section>
+<section class="card" aria-labelledby="local-h">
+<h2 id="local-h">Or scan your local copy without creating the project here</h2>
+<p>Create a token on your <a href="{% url 'account' %}">account page</a>, then run this in your working copy. The project is created on the first upload:</p>
+<pre class="token">CODEWATCH_URL={{ request.scheme }}://{{ request.get_host }} CODEWATCH_TOKEN=cw_… codewatch-scan --project my-key</pre>
 </section>
 {% endblock %}

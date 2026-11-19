@@ -1552,6 +1552,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    `test_a_scan_with_every_analyzer_leaves_the_repository_as_it_was` runs a full scan with every analyzer over hostile
    configs and checks `git status --ignored` is empty. Each test fails without its fix. flaskbb's checkout still
    has to be restored (`git checkout .`) before the next nightly, or its numbers stay off.
+94. **Add a local repository from the new-project page** (2026-11-19, the maintainer's request). A browser's
+   folder picker uploads files and never gives the page a path, so the server lists folders itself, for
+   administrators only. It lists names under `CODEWATCH_BROWSE_ROOT` (home by default), resolved and kept under that
+   root, and reads no file contents. "Use" fills in the path, the folder's name as the title and a free slug key.
+   Creating the project issues a scan token, shown once on the project page with the `codewatch-scan` command for
+   the working copy. The project list gains a Scan button, which returns to the list. Tests:
+   `tests/test_new_project.py`, plus the picker page in the axe test. The self-scan found one new finding, bandit
+   B105 on the session-key constant's name, which was renamed rather than waived.
 
 ## How things work (non-obvious)
 

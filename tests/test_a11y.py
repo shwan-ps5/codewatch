@@ -3,7 +3,7 @@ import json
 
 import pytest
 from django.contrib.auth.models import User
-from django.test import Client
+from django.test import Client, override_settings
 
 from core.analyzers.accessibility import Axe, HtmlA11y, JsxA11y
 from core.analyzers.base import Context
@@ -77,6 +77,7 @@ def test_codewatch_pages_pass_axe(repo, alice, bob, server, tmp_path):  # noqa: 
         "account": (alice, "/account/"),
         "password": (alice, "/account/password/"),
         "new-project": (alice, "/projects/new/"),
+        "new-project-folder": (admin, "/projects/new/?use=repo"),
         "users": (admin, "/users/"),
         "user-edit": (admin, f"/users/{bob.pk}/"),
         "rules": (None, "/rules/?language=python"),
@@ -89,7 +90,8 @@ def test_codewatch_pages_pass_axe(repo, alice, bob, server, tmp_path):  # noqa: 
         c = Client()
         if user:
             c.force_login(user)
-        resp = c.get(path)
+        with override_settings(CODEWATCH_BROWSE_ROOT=tmp_path):  # the folder browser lists the scanned repo
+            resp = c.get(path)
         assert resp.status_code == 200, name
         out = tmp_path / f"{name}.html"
         out.write_bytes(resp.content)

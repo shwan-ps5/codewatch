@@ -203,7 +203,7 @@ All endpoints take `Authorization: Bearer <token>`.
 
 ## Server-side scans
 
-Create the project in the UI with a repository URL, use `manage.py addproject KEY URL`, or `POST /api/projects/<key>/scan/`. Branches are scanned from a bare mirror in `~/.cache/codewatch/`, never touching a working copy, one scan of a project at a time and at most `CODEWATCH_MAX_SCANS` (4) across the server. Public repositories work for everyone; the server's own git credentials, server-local paths and hosts on its network only for projects an administrator owns (or added with `addproject`).
+Create the project in the UI with a repository URL, use `manage.py addproject KEY URL`, or `POST /api/projects/<key>/scan/`. An administrator can instead pick a repository folder on the server from **New project**: the page lists folders under `CODEWATCH_BROWSE_ROOT` (the home directory by default; names only, hidden folders left out), takes the title and key from the folder's name, and creates a scan token for `codewatch-scan` in that working copy, shown once on the project's page. The project list has a **Scan** button for each project the server can scan. Branches are scanned from a bare mirror in `~/.cache/codewatch/`, never touching a working copy, one scan of a project at a time and at most `CODEWATCH_MAX_SCANS` (4) across the server. Public repositories work for everyone; the server's own git credentials, server-local paths and hosts on its network only for projects an administrator owns (or added with `addproject`).
 
 ```bash
 venv/bin/python manage.py scan my-app --all-branches --fail-on-gate
