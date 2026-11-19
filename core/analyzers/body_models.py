@@ -13,6 +13,8 @@ sink in another file (SQLBot CVE-2026-53556). In that callee the model's other f
 import ast
 import re
 
+from .base import python_tree
+
 MODEL_BASES = {"BaseModel", "pydantic.BaseModel", "SQLModel", "sqlmodel.SQLModel"}
 TEXT_RE = re.compile(r"^((typing\.)?(Optional|List|Annotated)\[str\b.*|(list|set)\[str\]|str( \| None)?|Any)$")
 WRAPPER_RE = re.compile(r"^(?:typing\.)?(?:Optional|List|list|Sequence|set|Set)\[(.*)\]$")
@@ -35,45 +37,56 @@ def model_named(annotation, models):
         annotation = inner.group(1)
 
 
+def class_shape(node):
+    """([a class's bases], {annotated field: annotation})."""
+    fields = {stmt.target.id: ast.unparse(stmt.annotation) for stmt in node.body
+              if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)}
+    return [ast.unparse(b) for b in node.bases], fields
+
+
+def class_definitions(texts):
+    """{class name: ([its bases], {annotated field: annotation})}, the first definition of each name."""
+    classes = {}
+    for tree in filter(None, map(python_tree, texts)):
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                classes.setdefault(node.name, class_shape(node))
+    return classes
+
+
+def model_classes(classes):
+    """The classes that are models: a model base, or a base that is a model, at any depth."""
+    models = set()
+    while more := {name for name, (bases, _) in classes.items()
+                   if name not in models and any(b in MODEL_BASES or b in models for b in bases)}:
+        models |= more
+    return models
+
+
+def model_annotations(name, classes, models, seen=()):
+    """A model's annotated fields, its model bases' included (its own win)."""
+    bases, fields = classes[name]
+    inherited = {}
+    for base in bases:
+        if base in models and base not in seen:
+            inherited |= model_annotations(base, classes, models, (*seen, name))
+    return inherited | fields
+
+
 def model_fields(texts):
     """{model class: {text field}}, the field names that are non-text in some model, and {model class: {field:
     model}} for fields typed with another model, from Python sources."""
-    classes = {}
-    for text in texts:
-        try:
-            tree = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                fields = {stmt.target.id: ast.unparse(stmt.annotation) for stmt in node.body
-                          if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)}
-                classes.setdefault(node.name, ([ast.unparse(b) for b in node.bases], fields))
-    models = set()
-    while True:
-        more = {name for name, (bases, _) in classes.items()
-                if name not in models and any(b in MODEL_BASES or b in models for b in bases)}
-        if not more:
-            break
-        models |= more
-
-    def annotations(name, seen=()):
-        bases, fields = classes[name]
-        inherited = {}
-        for base in bases:
-            if base in models and base not in seen:
-                inherited |= annotations(base, (*seen, name))
-        return inherited | fields
-
+    classes = class_definitions(texts)
+    models = model_classes(classes)
     text, other, nested = {}, set(), {}
     for name in models:
-        for field, annotation in annotations(name).items():
+        for field, annotation in model_annotations(name, classes, models).items():
             if TEXT_RE.match(annotation):
                 text.setdefault(name, set()).add(field)
-            else:
-                other.add(field)
-                if inner := model_named(annotation, models):
-                    nested.setdefault(name, {})[field] = inner
+                continue
+            other.add(field)
+            if inner := model_named(annotation, models):
+                nested.setdefault(name, {})[field] = inner
     return text, other, nested
 
 
@@ -92,32 +105,32 @@ def alternation(names):
     return "|".join(map(re.escape, sorted(names)))
 
 
+def deep_models(direct, nested):
+    """{model: ({field typed with a model that has text}, {those models' text fields})}."""
+    deep = {}
+    for model, fields in (nested or {}).items():
+        if subs := {f: direct[inner] for f, inner in fields.items() if inner in direct}:
+            deep[model] = (set(subs), set().union(*subs.values()))
+    return deep
+
+
+def names_regex(metavariable, names):
+    return {"metavariable-regex": {"metavariable": metavariable, "regex": f"^({alternation(names)})$"}}
+
+
 def model_sources(text, other, nested=None):
     """Semgrep taint sources for route parameters typed with these models: their text fields, the text fields of
     their model-typed fields, and the whole model passed to a call. Empty when no model has text."""
     direct = {m: found - other for m, found in text.items() if found - other}
-    deep = {}  # model: ({field typed with a model}, {that model's text fields})
-    for model, fields in (nested or {}).items():
-        subs = {f: direct[inner] for f, inner in fields.items() if inner in direct}
-        if subs:
-            deep[model] = (set(subs), set().union(*subs.values()))
+    deep = deep_models(direct, nested)
     sources = []
     if direct:
-        sources.append({"patterns": [
-            *route_patterns(direct),
-            {"pattern": "$PARAM.$FIELD"},
-            {"metavariable-regex": {"metavariable": "$FIELD",
-                                    "regex": f"^({alternation(set().union(*direct.values()))})$"}},
-        ]})
+        sources.append({"patterns": [*route_patterns(direct), {"pattern": "$PARAM.$FIELD"},
+                                     names_regex("$FIELD", set().union(*direct.values()))]})
     if deep:
-        sources.append({"patterns": [
-            *route_patterns(deep),
-            {"pattern": "$PARAM.$SUB.$FIELD"},
-            {"metavariable-regex": {"metavariable": "$SUB",
-                                    "regex": f"^({alternation(set().union(*(s for s, _ in deep.values())))})$"}},
-            {"metavariable-regex": {"metavariable": "$FIELD",
-                                    "regex": f"^({alternation(set().union(*(f for _, f in deep.values())))})$"}},
-        ]})
+        sources.append({"patterns": [*route_patterns(deep), {"pattern": "$PARAM.$SUB.$FIELD"},
+                                     names_regex("$SUB", set().union(*(s for s, _ in deep.values()))),
+                                     names_regex("$FIELD", set().union(*(f for _, f in deep.values())))]})
     if direct or deep:
         sources.append({"patterns": [
             *route_patterns({*direct, *deep}),

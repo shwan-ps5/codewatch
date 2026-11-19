@@ -8,10 +8,10 @@ from pathlib import Path
 
 import yaml
 
-from .base import Analyzer, Finding, Result, ToolError
+from .base import MAJOR, Analyzer, Finding, Result, ToolError
 
 OSV_URL = "https://api.osv.dev/v1/vulns/{}"
-OSV_SEVERITY = {"CRITICAL": "blocker", "HIGH": "critical", "MODERATE": "major", "MEDIUM": "major", "LOW": "minor"}
+OSV_SEVERITY = {"CRITICAL": "blocker", "HIGH": "critical", "MODERATE": MAJOR, "MEDIUM": MAJOR, "LOW": "minor"}
 REQUIREMENTS_GLOB = "requirements*.txt"
 
 
@@ -45,7 +45,7 @@ def osv_severity(vuln_ids):
             continue
         if rating in OSV_SEVERITY:
             return OSV_SEVERITY[rating]
-    return "major"
+    return MAJOR
 
 
 class PipAudit(Analyzer):
@@ -154,21 +154,31 @@ def mark(found, package, dev):
     found[package] = found.get(package, True) and bool(dev)
 
 
-def package_lock_packages(text):
-    """{(name, version): development only} from package-lock.json / npm-shrinkwrap.json, lockfile versions 1-3."""
-    data = json.loads(text)
-    found = {}
-    for key, entry in (data.get("packages") or {}).items():
-        if "node_modules/" not in key or entry.get("link") or not entry.get("version"):
-            continue
-        name = entry.get("name") or key.rsplit("node_modules/", 1)[1]
-        mark(found, (name, entry["version"]), entry.get("dev") or entry.get("devOptional"))
-    stack = list((data.get("dependencies") or {}).items()) if not data.get("packages") else []
+def lockfile_v2_packages(found, packages):
+    """Lockfile versions 2 and 3: `packages`, keyed by node_modules path."""
+    for key, entry in packages.items():
+        if "node_modules/" in key and not entry.get("link") and entry.get("version"):
+            name = entry.get("name") or key.rsplit("node_modules/", 1)[1]
+            mark(found, (name, entry["version"]), entry.get("dev") or entry.get("devOptional"))
+
+
+def lockfile_v1_packages(found, dependencies):
+    """Lockfile version 1: nested `dependencies`."""
+    stack = list(dependencies.items())
     while stack:
         name, entry = stack.pop()
         if isinstance(entry, dict) and entry.get("version") and not str(entry["version"]).startswith("file:"):
             mark(found, (name, entry["version"]), entry.get("dev"))
             stack.extend((entry.get("dependencies") or {}).items())
+
+
+def package_lock_packages(text):
+    """{(name, version): development only} from package-lock.json / npm-shrinkwrap.json, lockfile versions 1-3."""
+    data = json.loads(text)
+    found = {}
+    lockfile_v2_packages(found, data.get("packages") or {})
+    if not data.get("packages"):
+        lockfile_v1_packages(found, data.get("dependencies") or {})
     return found
 
 
@@ -182,12 +192,19 @@ def yarn_spec_name(spec):
     return name
 
 
+def yarn_entry_names(line):
+    """The package names an entry header (`"a@^1", a@^1.2:`) names, or None for any other line."""
+    if not line or line[0].isspace() or not line.rstrip().endswith(":") or line.startswith("#"):
+        return None
+    return [n for n in (yarn_spec_name(s) for s in line.rstrip()[:-1].split(",")) if n]
+
+
 def yarn_lock_packages(text):
     """{(name, version): False} from yarn.lock, classic (v1) and Berry formats, which don't mark dev packages."""
     found, names = {}, []
     for line in text.splitlines():
-        if line and not line[0].isspace() and line.rstrip().endswith(":") and not line.startswith("#"):
-            names = [n for n in (yarn_spec_name(s) for s in line.rstrip()[:-1].split(",")) if n]
+        if (header := yarn_entry_names(line)) is not None:
+            names = header
         elif names and (match := YARN_VERSION_RE.match(line)):
             found.update(((name, match[1]), False) for name in names)
             names = []
@@ -255,6 +272,13 @@ def lockfile_line(text, name):
     return None
 
 
+def dependency_metrics(locked, advisories, findings):
+    return {"vulnerable_dependencies": len({pkg for _, packages in locked.values() for pkg in packages
+                                            if pkg in advisories}),
+            "dependency_vulnerabilities": len(findings),
+            "dependency_critical_vulnerabilities": sum(f.severity in ("blocker", "critical") for f in findings)}
+
+
 class OsvLockfiles(Analyzer):
     """Known advisories in the exact package versions an npm, yarn or pnpm lockfile pins, looked up in OSV."""
 
@@ -266,7 +290,9 @@ class OsvLockfiles(Analyzer):
     def available(self):
         return True
 
-    def run(self, ctx):
+    @staticmethod
+    def locked(ctx):
+        """{lockfile: (its text, {(name, version): development only})} for the lockfiles that parse."""
         locked = {}
         for f in ctx.files:
             parse = LOCKFILE_PARSERS.get(Path(f).name)
@@ -274,27 +300,29 @@ class OsvLockfiles(Analyzer):
                 continue
             try:
                 text = (ctx.root / f).read_text(errors="replace")
-                packages = parse(text)
+                locked[f] = (text, parse(text))
             except (OSError, ValueError, yaml.YAMLError):
                 continue
-            locked[f] = (text, packages)
+        return locked
+
+    def all_details(self, advisories):
+        ids = sorted({i for found in advisories.values() for i in found})
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            return dict(zip(ids, pool.map(self.details, ids), strict=True))
+
+    def run(self, ctx):
+        locked = self.locked(ctx)
         try:
             advisories = osv_advisories({pkg for _, packages in locked.values() for pkg in packages})
         except (OSError, ValueError) as exc:
             raise ToolError(f"OSV query failed: {exc}") from exc
-        ids = sorted({i for found in advisories.values() for i in found})
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            details = dict(zip(ids, pool.map(self.details, ids), strict=True))
+        details = self.all_details(advisories)
         result = Result()
         for path, (text, packages) in sorted(locked.items()):
-            for (name, version), dev in sorted(packages.items()):
-                for vid in advisories.get((name, version), []):
-                    result.findings.append(self.finding(path, text, (name, version, dev), details.get(vid) or {"id": vid}))
-        result.metrics["vulnerable_dependencies"] = len({pkg for _, packages in locked.values() for pkg in packages
-                                                         if pkg in advisories})
-        result.metrics["dependency_vulnerabilities"] = len(result.findings)
-        result.metrics["dependency_critical_vulnerabilities"] = sum(
-            f.severity in ("blocker", "critical") for f in result.findings)
+            result.findings += [self.finding(path, text, (name, version, dev), details.get(vid) or {"id": vid})
+                                for (name, version), dev in sorted(packages.items())
+                                for vid in advisories.get((name, version), [])]
+        result.metrics |= dependency_metrics(locked, advisories, result.findings)
         return result
 
     @staticmethod
@@ -314,6 +342,6 @@ class OsvLockfiles(Analyzer):
         fix = ", ".join(fixed_versions(vuln, name)) or "none available"
         summary = vuln.get("summary") or advisory_summary(vuln)
         where = " (development only)" if dev else ""
-        return Finding("osv", cve, OSV_SEVERITY.get(rating, "major"), "security_hotspot" if dev else "vulnerability",
+        return Finding("osv", cve, OSV_SEVERITY.get(rating, MAJOR), "security_hotspot" if dev else "vulnerability",
                        f"{name} {version}{where}: {cve} \u2014 fixed in {fix}. {summary}"[:600], path,
                        lockfile_line(text, name))

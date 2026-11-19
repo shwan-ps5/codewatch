@@ -9,6 +9,7 @@ from the path, reflected in error messages).
 import ast
 import re
 
+from .base import python_tree
 from .body_models import takes_route_sources
 
 PARAMETER_RE = re.compile(r"<(?:(\w+)(?:\([^()<>]*\))?:)?(\w+)>")
@@ -19,25 +20,28 @@ HANDLERS = "get|post|put|patch|delete"
 def text_parameters(texts):
     """{resource class name: URL parameters filled with text}, from `$API.add_resource(Class, "/url", ...)`."""
     found = {}
-    for text in texts:
-        if "add_resource" not in text:
-            continue
-        try:
-            tree = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
+    for tree in filter(None, (python_tree(text) for text in texts if "add_resource" in text)):
         for node in ast.walk(tree):
-            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                    and node.func.attr == "add_resource" and node.args):
-                continue
-            target = node.args[0]
-            name = target.attr if isinstance(target, ast.Attribute) else getattr(target, "id", None)
-            urls = [a.value for a in node.args[1:] if isinstance(a, ast.Constant) and isinstance(a.value, str)]
-            params = {param for url in urls for converter, param in PARAMETER_RE.findall(url)
-                      if converter in TEXT_CONVERTERS}
-            if name and params:
-                found.setdefault(name, set()).update(params)
+            if registered := resource_parameters(node):
+                found.setdefault(registered[0], set()).update(registered[1])
     return found
+
+
+def resource_parameters(node):
+    """(resource class name, {text URL parameters}) for an add_resource call that has both, else None."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "add_resource" and node.args):
+        return None
+    target = node.args[0]
+    name = target.attr if isinstance(target, ast.Attribute) else getattr(target, "id", None)
+    params = text_url_parameters(node.args[1:])
+    return (name, params) if name and params else None
+
+
+def text_url_parameters(args):
+    """URL parameters filled with text in the URL strings among args."""
+    urls = [a.value for a in args if isinstance(a, ast.Constant) and isinstance(a.value, str)]
+    return {param for url in urls for converter, param in PARAMETER_RE.findall(url) if converter in TEXT_CONVERTERS}
 
 
 def resource_source(cls, params):

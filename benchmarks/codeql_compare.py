@@ -33,12 +33,14 @@ sys.stdout.reconfigure(line_buffering=True)
 
 from core import benchmark, catalog
 
+TOOL = "codeql"
+PYTHON, JAVASCRIPT = "python", "javascript"
 CODEWATCH_CACHE = Path.home() / ".cache" / "codewatch"
-CODEQL = Path(os.environ.get("CODEWATCH_CODEQL", CODEWATCH_CACHE / "codeql" / "codeql"))
+CODEQL = Path(os.environ.get("CODEWATCH_CODEQL", CODEWATCH_CACHE / TOOL / TOOL))
 OUT = CODEWATCH_CACHE / "codeql-compare"
 SUITES = {lang: {"review": f"codeql/{lang}-queries:codeql-suites/{lang}-security-extended.qls",
                  "verdict": f"codeql/{lang}-queries:codeql-suites/{lang}-code-scanning.qls"}
-          for lang in ("python", "javascript")}
+          for lang in (PYTHON, JAVASCRIPT)}
 JS_FILES = re.compile(r"\.(js|jsx|mjs|cjs|ts|tsx|vue|html|htm)$")
 # GitHub's SPDX ids that are OSI-approved, as suites.json records them.
 OSI_SPDX = {"MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "GPL-2.0", "GPL-3.0", "LGPL-2.1",
@@ -90,22 +92,78 @@ def query_ids(suite):
     return ids
 
 
+def run_rules(run):
+    """{rule id: rule} for a SARIF run: the driver's rules and every extension's (the query packs)."""
+    rules = {r["id"]: r for r in run["tool"]["driver"].get("rules", [])}
+    for ext in run["tool"].get("extensions", []):
+        rules.update({r["id"]: r for r in ext.get("rules", [])})
+    return rules
+
+
+def tag_cwes(tags):
+    return sorted({int(m.group(1)) for t in tags if (m := re.match(r"external/cwe/cwe-0*([1-9]\d*|0)$", t))})
+
+
+def sarif_issue(result, rules, default_ids):
+    loc = result["locations"][0]["physicalLocation"]
+    tags = rules.get(result["ruleId"], {}).get("properties", {}).get("tags", [])
+    return {"tool": TOOL, "rule": result["ruleId"], "path": unquote(loc["artifactLocation"]["uri"]),
+            "line": loc.get("region", {}).get("startLine"), "cwes": tag_cwes(tags),
+            "type": "vulnerability" if result["ruleId"] in default_ids else "security_hotspot"}
+
+
 def sarif_issues(sarif, default_ids):
     """Each result as a benchmark issue: verdict ("vulnerability") for a query GitHub runs by default, review
     ("security_hotspot") for the rest of security-extended; CWEs from the query's tags."""
     issues = []
     for run in json.loads(sarif.read_text())["runs"]:
-        rules = {r["id"]: r for r in run["tool"]["driver"].get("rules", [])}
-        for ext in run["tool"].get("extensions", []):
-            rules.update({r["id"]: r for r in ext.get("rules", [])})
-        for result in run.get("results", []):
-            loc = result["locations"][0]["physicalLocation"]
-            rule = rules.get(result["ruleId"], {})
-            tags = rule.get("properties", {}).get("tags", [])
-            cwes = sorted({int(m.group(1)) for t in tags if (m := re.match(r"external/cwe/cwe-0*([1-9]\d*|0)$", t))})
-            issues.append({"tool": "codeql", "rule": result["ruleId"], "path": unquote(loc["artifactLocation"]["uri"]),
-                           "line": loc.get("region", {}).get("startLine"), "cwes": cwes,
-                           "type": "vulnerability" if result["ruleId"] in default_ids else "security_hotspot"})
+        rules = run_rules(run)
+        issues += [sarif_issue(result, rules, default_ids) for result in run.get("results", [])]
+    return issues
+
+
+def scan_languages(language, files):
+    """The CodeQL languages to extract: a Python suite's case can be front-end code only (a scope with no Python),
+    and CodeQL refuses a language with no files."""
+    if not language.startswith(PYTHON):
+        return [JAVASCRIPT]
+    return [*([PYTHON] if any(f.endswith(".py") for f in files) else []),
+            *([JAVASCRIPT] if any(JS_FILES.search(f) for f in files) else [])]
+
+
+def resources():
+    return [f"--threads={os.environ.get('CODEQL_THREADS', '3')}", f"--ram={os.environ.get('CODEQL_RAM', '6000')}"]
+
+
+def empty_languages(error, langs):
+    """Languages CodeQL found nothing to extract in (an HTML page with no script, a vendored bundle it skips)."""
+    return [lang for lang, name in ((PYTHON, "Python"), (JAVASCRIPT, "JavaScript"))
+            if lang in langs and f"not any written in {name}" in str(error)]
+
+
+def create_database(work, root, langs):
+    """The database for root, dropping any language with nothing extracted and scanning the rest; the languages
+    it holds."""
+    while True:
+        try:
+            codeql("database", "create", str(work / "db"), "--db-cluster", f"--language={','.join(langs)}",
+                   f"--source-root={root}", "--overwrite", *resources())
+        except RuntimeError as error:
+            empty = empty_languages(error, langs)
+            if not empty or len(langs) == len(empty):
+                raise
+            langs = [lang for lang in langs if lang not in empty]
+        else:
+            return langs
+
+
+def analyze(work, langs, default_ids):
+    issues = []
+    for lang in langs:
+        sarif = work / f"{lang}.sarif"
+        codeql("database", "analyze", str(work / "db" / lang), SUITES[lang]["review"],
+               "--format=sarif-latest", f"--output={sarif}", *resources())
+        issues += sarif_issues(sarif, default_ids[lang])
     return issues
 
 
@@ -113,36 +171,12 @@ def codeql_scan(language, default_ids):
     """A stand-in for benchmark.scan_and_gave_up: the same signature, CodeQL's findings."""
     def scan(root, log, paths=(), focus=None, tools=None):  # noqa: ARG001 - scan_and_gave_up's signature
         files = [f for f in benchmark.git("ls-files", "-z", "--", *paths, cwd=root).split("\0") if f]
-        # A Python suite's case can be front-end code only (a scope with no Python): CodeQL refuses a language
-        # with no files.
-        langs = ([*(["python"] if any(f.endswith(".py") for f in files) else []),
-                  *(["javascript"] if any(JS_FILES.search(f) for f in files) else [])]
-                 if language.startswith("python") else ["javascript"])
-        threads, ram = os.environ.get("CODEQL_THREADS", "3"), os.environ.get("CODEQL_RAM", "6000")
         work = Path(tempfile.mkdtemp(prefix="codeql-", dir=OUT))
         try:
             start = time.monotonic()
-            while True:
-                try:
-                    codeql("database", "create", str(work / "db"), "--db-cluster", f"--language={','.join(langs)}",
-                           f"--source-root={root}", "--overwrite", f"--threads={threads}", f"--ram={ram}")
-                    break
-                except RuntimeError as error:
-                    # Files with the extension but nothing CodeQL extracts (an HTML page with no script, a
-                    # vendored bundle it skips): that language is dropped and the rest scanned.
-                    empty = [lang for lang, name in (("python", "Python"), ("javascript", "JavaScript"))
-                             if lang in langs and f"not any written in {name}" in str(error)]
-                    if not empty or len(langs) == len(empty):
-                        raise
-                    langs = [lang for lang in langs if lang not in empty]
-            issues = []
-            for lang in langs:
-                sarif = work / f"{lang}.sarif"
-                codeql("database", "analyze", str(work / "db" / lang), SUITES[lang]["review"],
-                       "--format=sarif-latest", f"--output={sarif}", f"--threads={threads}", f"--ram={ram}")
-                issues += sarif_issues(sarif, default_ids[lang])
+            issues = analyze(work, create_database(work, root, scan_languages(language, files)), default_ids)
             if tools is not None:
-                tools["codeql"] = time.monotonic() - start
+                tools[TOOL] = time.monotonic() - start
             return issues, False
         finally:
             shutil.rmtree(work, ignore_errors=True)
@@ -150,7 +184,7 @@ def codeql_scan(language, default_ids):
 
 
 def related_cwes(issue, original=benchmark.issue_cwes):
-    return set(issue["cwes"]) if issue.get("tool") == "codeql" else original(issue)
+    return set(issue["cwes"]) if issue.get("tool") == TOOL else original(issue)
 
 
 def scan_case(suite, case, default_ids):
@@ -169,12 +203,60 @@ def scan_case(suite, case, default_ids):
         return case["id"], None, f"failed: {error}", lines
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("suites", nargs="+")
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--only", nargs="*", default=[])
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def earlier_results(suite, cases, only):
+    """(scanned, skipped) kept from the suite's last run when only some cases are re-run, without those cases."""
+    if not only or not (OUT / f"{suite['name']}.json").exists():
+        return {}, {}
+    cases_run = {c["id"] for c in cases}
+    scanned = json.loads((OUT / f"{suite['name']}.issues.json").read_text())
+    skipped = json.loads((OUT / f"{suite['name']}.json").read_text())["skipped"]
+    return ({k: v for k, v in scanned.items() if k not in cases_run},
+            {k: v for k, v in skipped.items() if k not in cases_run})
+
+
+def run_cases(suite, cases, default_ids, workers):
+    """({case id: pair}, {case id: why skipped}) for the cases, scanned in worker processes."""
+    scanned, skipped = {}, {}
+    with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn")) as pool:
+        futures = [pool.submit(scan_case, suite, case, default_ids) for case in cases]
+        for future in as_completed(futures):
+            case_id, pair, why, lines = future.result()
+            for line in lines:
+                if line.startswith("timing\t"):
+                    print("  " + line.removeprefix("timing\t"), flush=True)
+            if pair is None:
+                skipped[case_id] = why
+                print(f"  {case_id}: skipped, {why}", flush=True)
+            else:
+                scanned[case_id] = pair
+    return scanned, skipped
+
+
+def write_scores(suite, scanned, skipped, parents):
+    done = [c for c in suite["cases"] if c["id"] in scanned]
+    result = {mode: benchmark.score_pairs_mode(done, scanned, types, parents)
+              for mode, types in benchmark.MODES.items()}
+    result["skipped"] = skipped
+    result[TOOL] = codeql("version", "--format=terse").strip()
+    (OUT / f"{suite['name']}.json").write_text(json.dumps(result, indent=1) + "\n")
+    (OUT / f"{suite['name']}.issues.json").write_text(json.dumps(scanned))
+    for mode in benchmark.MODES:
+        o = result[mode]["overall"]
+        print(f"{suite['name']} {mode}: found {sum(r['detected'] for r in result[mode]['cases'])}/{len(done)}, "
+              f"still flagged {sum(r['still_flagged'] for r in result[mode]['cases'])} ({o})", flush=True)
+    print(f"{suite['name']}: {len(skipped)} skipped", flush=True)
+
+
+def main():
+    args = parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     every = {s["name"]: s for s in json.loads((benchmark.ROOT / "suites.json").read_text())["suites"]}
     suites = [every[name] for name in args.suites]
@@ -186,38 +268,9 @@ def main():
     for suite in suites:
         cases = [c for c in suite["cases"] if not args.only or c["id"].startswith(tuple(args.only))]
         print(f"== {suite['name']}: {len(cases)} cases", flush=True)
-        scanned, skipped = {}, {}
-        if args.only and (OUT / f"{suite['name']}.json").exists():
-            # Re-running some cases: the suite's other results are kept.
-            scanned = json.loads((OUT / f"{suite['name']}.issues.json").read_text())
-            skipped = json.loads((OUT / f"{suite['name']}.json").read_text())["skipped"]
-            cases_run = {c["id"] for c in cases}
-            scanned = {k: v for k, v in scanned.items() if k not in cases_run}
-            skipped = {k: v for k, v in skipped.items() if k not in cases_run}
-        with ProcessPoolExecutor(args.workers, mp_context=multiprocessing.get_context("spawn")) as pool:
-            futures = [pool.submit(scan_case, suite, case, default_ids) for case in cases]
-            for future in as_completed(futures):
-                case_id, pair, why, lines = future.result()
-                for line in lines:
-                    if line.startswith("timing\t"):
-                        print("  " + line.removeprefix("timing\t"), flush=True)
-                if pair is None:
-                    skipped[case_id] = why
-                    print(f"  {case_id}: skipped, {why}", flush=True)
-                else:
-                    scanned[case_id] = pair
-        done = [c for c in suite["cases"] if c["id"] in scanned]
-        result = {mode: benchmark.score_pairs_mode(done, scanned, types, parents)
-                  for mode, types in benchmark.MODES.items()}
-        result["skipped"] = skipped
-        result["codeql"] = codeql("version", "--format=terse").strip()
-        (OUT / f"{suite['name']}.json").write_text(json.dumps(result, indent=1) + "\n")
-        (OUT / f"{suite['name']}.issues.json").write_text(json.dumps(scanned))
-        for mode in benchmark.MODES:
-            o = result[mode]["overall"]
-            print(f"{suite['name']} {mode}: found {sum(r['detected'] for r in result[mode]['cases'])}/{len(done)}, "
-                  f"still flagged {sum(r['still_flagged'] for r in result[mode]['cases'])} ({o})", flush=True)
-        print(f"{suite['name']}: {len(skipped)} skipped", flush=True)
+        scanned, skipped = earlier_results(suite, cases, args.only)
+        new_scanned, new_skipped = run_cases(suite, cases, default_ids, args.workers)
+        write_scores(suite, scanned | new_scanned, skipped | new_skipped, parents)
 
 
 if __name__ == "__main__":

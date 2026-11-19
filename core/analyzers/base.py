@@ -1,3 +1,4 @@
+import ast
 import os
 import re
 import shutil
@@ -149,6 +150,14 @@ class Analyzer:
 # End-to-end suites too (immich: e2e/src/specs/server/api/oauth.e2e-spec.ts).
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|__tests__|specs?|e2e|cypress)/|(^|/)test_[^/]{0,200}\.py$|_test\.py$"
                           r"|[.-](test|spec|e2e-spec|e2e)\.[jt]sx?$")
+
+
+def python_tree(text):
+    """The module's syntax tree, or None for a file Python can't parse (another dialect, a template, a fragment)."""
+    try:
+        return ast.parse(text)
+    except (SyntaxError, ValueError):
+        return None
 
 
 def is_test_file(path):

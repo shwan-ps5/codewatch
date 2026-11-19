@@ -33,22 +33,32 @@ def is_blind(advisory_id):
     return int(hashlib.sha256(advisory_id.encode()).hexdigest(), 16) % 3 == 0
 
 
+ACCEPTED = "accepted"
+
+
+def tsv_rows(lines):
+    """The rows of a candidate TSV, without blank and comment lines."""
+    return csv.reader((x for x in lines if x.strip() and not x.startswith("#")), delimiter="\t")
+
+
+def tsv_decisions(root):
+    """{advisory id: (decision, TSV file)} from every candidate batch."""
+    seen = {}
+    for tsv in sorted(root.glob("cve-candidates-*.tsv")):
+        for row in tsv_rows(tsv.open()):
+            if len(row) >= 4 and row[1] != "id":
+                seen[row[1]] = ({"accept": ACCEPTED, "reject": "rejected"}.get(row[3], row[3] or "unsure"), tsv.name)
+    return seen
+
+
 def known(root=HERE):
     """{advisory id: (status, where recorded)} and {fix commit: advisory id}."""
-    seen, fixes = {}, {}
-    for tsv in sorted(root.glob("cve-candidates-*.tsv")):
-        rows = csv.reader((line for line in tsv.open() if line.strip() and not line.startswith("#")), delimiter="\t")
-        for row in rows:
-            if len(row) < 4 or row[1] == "id":
-                continue
-            decision = {"accept": "accepted", "reject": "rejected"}.get(row[3], row[3] or "unsure")
-            seen[row[1]] = (decision, tsv.name)
+    seen, fixes = tsv_decisions(root), {}
     for suite in json.loads((root / "suites.json").read_text())["suites"]:
-        for case in suite.get("cases", []):
-            if isinstance(case, dict) and case.get("id"):
-                seen[case["id"]] = (f"suite:{suite['name']}", "suites.json")
-                if case.get("fix"):
-                    fixes[case["fix"]] = case["id"]
+        cases = [c for c in suite.get("cases", []) if isinstance(c, dict) and c.get("id")]
+        for case in cases:
+            seen[case["id"]] = (f"suite:{suite['name']}", "suites.json")
+        fixes |= {case["fix"]: case["id"] for case in cases if case.get("fix")}
     return seen, fixes
 
 
@@ -74,9 +84,8 @@ def _squash(text):
     return "".join(text.split())
 
 
-def measure(diff):
-    """{source file: changed lines}, where a line removed and added again with only whitespace changed, and blank
-    lines, don't count."""
+def diff_files(diff):
+    """{file: its added and removed lines} of a unified diff."""
     files, current = {}, None
     for line in diff.splitlines():
         if line.startswith("diff --git "):
@@ -84,13 +93,21 @@ def measure(diff):
             files[current] = []
         elif current and line[:1] in "+-" and not line.startswith(("+++ ", "--- ")):
             files[current].append(line)
-    sizes = {}
-    for name, lines in files.items():
-        if not_source(name):
-            continue
-        added = Counter(_squash(x[1:]) for x in lines if x[0] == "+" and x[1:].strip())
-        removed = Counter(_squash(x[1:]) for x in lines if x[0] == "-" and x[1:].strip())
-        sizes[name] = sum((added - removed).values()) + sum((removed - added).values())
+    return files
+
+
+def changed_lines(lines):
+    """Lines changed beyond whitespace: one removed and added again with only whitespace changed, and blank lines,
+    don't count."""
+    def squashed(sign):
+        return Counter(_squash(x[1:]) for x in lines if x[0] == sign and x[1:].strip())
+    added, removed = squashed("+"), squashed("-")
+    return sum((added - removed).values()) + sum((removed - added).values())
+
+
+def measure(diff):
+    """{source file: changed lines}, ignoring whitespace-only changes and files that aren't source."""
+    sizes = {name: changed_lines(lines) for name, lines in diff_files(diff).items() if not not_source(name)}
     return {name: n for name, n in sizes.items() if n}
 
 
@@ -121,54 +138,76 @@ def _git(*args, cwd):
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
 
 
-def guard(base, head="HEAD", repo=HERE.parent):
-    """Problems with the commits since base, which an unattended research run made: only candidate files (and
-    AGENTS.md) touched, the maintainer's noreply identity, and blind cases described by nothing but their entry."""
+def identity_problems(base, head, repo):
     problems = []
     for line in _git("log", "--format=%an <%ae>|%cn <%ce>|%h", f"{base}..{head}", cwd=repo).splitlines():
         author, committer, commit = line.split("|")
         if author != IDENTITY or committer != IDENTITY:
             problems.append(f"{commit}: committed as {author} / {committer}")
+    return problems
+
+
+def tsv_problems(name, text):
+    """A blind case accepted with its reason written out."""
+    return [f"{name}: blind case {row[1]} has a reason" for row in tsv_rows(text.splitlines())
+            if len(row) >= 6 and row[3] == "accept" and is_blind(row[1]) and row[5] != WITHHELD]
+
+
+def accepted_ids(head, stem, repo):
+    """Advisory ids with an accept row in the batch's TSV at head."""
+    try:
+        rows = _git("show", f"{head}:{stem}.tsv", cwd=repo).splitlines()
+    except subprocess.CalledProcessError:
+        rows = []
+    return {r[1] for r in tsv_rows(rows) if len(r) >= 4 and r[3] == "accept"}
+
+
+def case_problems(name, case, accepted_rows, stem):
+    """An accepted case missing from the TSV, a blind one described beyond its entry, or one in the wrong half."""
+    problems = []
+    blind = is_blind(case.get("id", ""))
+    if case.get("id") not in accepted_rows:
+        problems.append(f"{name}: {case.get('id')} is accepted here but has no accept row in {stem}.tsv")
+    extra = set(case) - {"id", "suite", "entry", "reason_withheld"}
+    if blind and extra:
+        problems.append(f"{name}: blind case {case['id']} has {sorted(extra)}")
+    if ("blind" in str(case.get("suite", ""))) != blind:
+        problems.append(f"{name}: {case.get('id')} is in the wrong half ({case.get('suite')})")
+    return problems
+
+
+def shared_fix_problems(name, accepted, head, repo):
+    """Open cases whose fix commit is a blind case's. Scanning an open case scans its fix commit, so a shared one
+    would expose the blind case (NginxProxyManager GHSA-mhxx and -5rqg shared 99cce7e with a blind advisory,
+    2026-11-04)."""
+    blind_fixes = _blind_fixes(head, repo) | {c.get("entry", {}).get("fix") for c in accepted
+                                              if is_blind(c.get("id", ""))}
+    return [f"{name}: open case {case.get('id')} has a blind case's fix commit; reject it" for case in accepted
+            if (fix := case.get("entry", {}).get("fix")) and not is_blind(case.get("id", "")) and fix in blind_fixes]
+
+
+def batch_problems(name, text, head, repo):
+    try:
+        batch = json.loads(text)
+    except ValueError as error:
+        return [f"{name}: not JSON ({error})"]
+    stem = name[: -len(".json")]
+    accepted, accepted_rows = batch.get(ACCEPTED, []), accepted_ids(head, stem, repo)
+    problems = [p for case in accepted for p in case_problems(name, case, accepted_rows, stem)]
+    return problems + shared_fix_problems(name, accepted, head, repo)
+
+
+def guard(base, head="HEAD", repo=HERE.parent):
+    """Problems with the commits since base, which an unattended research run made: only candidate files (and
+    AGENTS.md) touched, the maintainer's noreply identity, and blind cases described by nothing but their entry."""
+    problems = identity_problems(base, head, repo)
     changed = [f for f in _git("diff", "--name-only", "--diff-filter=AM", f"{base}..{head}", cwd=repo).splitlines() if f]
     problems += [f"{name}: not a file research may change" for name in changed if not ALLOWED.match(name)]
     for name in changed:
         if not ALLOWED.match(name) or name == "AGENTS.md":
             continue
         text = _git("show", f"{head}:{name}", cwd=repo)
-        if name.endswith(".tsv"):
-            for row in csv.reader((x for x in text.splitlines() if x.strip() and not x.startswith("#")), delimiter="\t"):
-                if len(row) >= 6 and row[3] == "accept" and is_blind(row[1]) and row[5] != WITHHELD:
-                    problems.append(f"{name}: blind case {row[1]} has a reason")
-        else:
-            try:
-                batch = json.loads(text)
-            except ValueError as error:
-                problems.append(f"{name}: not JSON ({error})")
-                continue
-            stem = name[: -len(".json")]
-            try:
-                rows = _git("show", f"{head}:{stem}.tsv", cwd=repo).splitlines()
-            except subprocess.CalledProcessError:
-                rows = []
-            accepted_rows = {r[1] for r in csv.reader((x for x in rows if x.strip() and not x.startswith("#")),
-                                                       delimiter="\t") if len(r) >= 4 and r[3] == "accept"}
-            for case in batch.get("accepted", []):
-                if case.get("id") not in accepted_rows:
-                    problems.append(f"{name}: {case.get('id')} is accepted here but has no accept row in {stem}.tsv")
-                extra = set(case) - {"id", "suite", "entry", "reason_withheld"}
-                if is_blind(case.get("id", "")) and extra:
-                    problems.append(f"{name}: blind case {case['id']} has {sorted(extra)}")
-                blind_suite = "blind" in str(case.get("suite", ""))
-                if blind_suite != is_blind(case.get("id", "")):
-                    problems.append(f"{name}: {case.get('id')} is in the wrong half ({case.get('suite')})")
-            # Scanning an open case scans its fix commit: one shared with a blind case would expose that case
-            # (NginxProxyManager GHSA-mhxx and -5rqg shared 99cce7e with a blind advisory, 2026-11-04).
-            blind_fixes = _blind_fixes(head, repo) | {c.get("entry", {}).get("fix") for c in batch.get("accepted", [])
-                                                      if is_blind(c.get("id", ""))}
-            for case in batch.get("accepted", []):
-                fix = case.get("entry", {}).get("fix")
-                if fix and not is_blind(case.get("id", "")) and fix in blind_fixes:
-                    problems.append(f"{name}: open case {case.get('id')} has a blind case's fix commit; reject it")
+        problems += tsv_problems(name, text) if name.endswith(".tsv") else batch_problems(name, text, head, repo)
     return problems
 
 
@@ -204,21 +243,31 @@ def lookup(key, seen, fixes):
     return None
 
 
+def guard_command(argv, _root):
+    problems = guard(*argv[1:3])
+    print("\n".join(problems) or "ok")
+    return 1 if problems else 0
+
+
+def pending_command(_argv, root):
+    waiting = pending(root)
+    print(len(waiting), *waiting, sep="\n")
+    return 0
+
+
+def split_command(argv, _root):
+    for advisory in argv[1:]:
+        print(advisory, "blind" if is_blind(advisory) else "open")
+    return 0
+
+
+COMMANDS = {"size": lambda argv, _root: size(argv[1], argv[2], python="--python" in argv),
+            "guard": guard_command, "pending": pending_command, "--split": split_command}
+
+
 def main(argv, root=HERE):
-    if argv[:1] == ["size"]:
-        return size(argv[1], argv[2], python="--python" in argv)
-    if argv[:1] == ["guard"]:
-        problems = guard(*argv[1:3])
-        print("\n".join(problems) or "ok")
-        return 1 if problems else 0
-    if argv[:1] == ["pending"]:
-        waiting = pending(root)
-        print(len(waiting), *waiting, sep="\n")
-        return 0
-    if argv[:1] == ["--split"]:
-        for advisory in argv[1:]:
-            print(advisory, "blind" if is_blind(advisory) else "open")
-        return 0
+    if argv[:1] and argv[0] in COMMANDS:
+        return COMMANDS[argv[0]](argv, root)
     seen, fixes = known(root)
     if not argv:
         for advisory, (status, where) in sorted(seen.items()):

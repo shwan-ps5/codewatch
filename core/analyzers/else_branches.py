@@ -16,25 +16,28 @@ ELIF_RE = re.compile(r"^(\s*)elif\b")
 
 def else_rows(tree, lines):
     """(row, kind) of each `else:` / `elif` line that belongs to an if statement."""
-    rows = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.If) or not node.orelse:
-            continue
-        first = node.orelse[0]
-        if isinstance(first, ast.If) and len(node.orelse) == 1 \
-                and (elif_line := ELIF_RE.match(lines[first.lineno - 1])) \
-                and len(elif_line.group(1)) == node.col_offset:
-            rows.append((first.lineno, "elif"))
-            continue
-        # The `else:` line is the last one before the else body at the if's own indentation.
-        row = first.lineno
-        while row > node.lineno:
-            m = ELSE_RE.match(lines[row - 1])
-            if m and len(m.group(1)) == node.col_offset:
-                rows.append((row, "else"))
-                break
-            row -= 1
-    return rows
+    return [found for node in ast.walk(tree) if isinstance(node, ast.If) and node.orelse
+            and (found := else_row(node, lines))]
+
+
+def is_elif(node, lines):
+    first = node.orelse[0]
+    return (isinstance(first, ast.If) and len(node.orelse) == 1
+            and (elif_line := ELIF_RE.match(lines[first.lineno - 1])) is not None
+            and len(elif_line.group(1)) == node.col_offset)
+
+
+def else_row(node, lines):
+    """(row, kind) of an if statement's `elif` or `else:` line, or None. The `else:` line is the last one before
+    the else body at the if's own indentation."""
+    first = node.orelse[0]
+    if is_elif(node, lines):
+        return first.lineno, "elif"
+    for row in range(first.lineno, node.lineno, -1):
+        m = ELSE_RE.match(lines[row - 1])
+        if m and len(m.group(1)) == node.col_offset:
+            return row, "else"
+    return None
 
 
 def split_else(source):

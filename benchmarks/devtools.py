@@ -139,14 +139,17 @@ def scan_repo(root, mode):
     result = Semgrep().run(ctx)
     lines.append(f"== {root.name}: {len(files)} files, {time.time() - start:.0f}s")
     lines += [f"-- note: {note}" for note in result.notes]
-    for f in result.findings:
-        if mode == "--entry":
-            keep = ENTRY_MARK in f.message
-        else:
-            keep = f.type == "vulnerability" and (mode != "--via" or "[via " in f.message)
-        if keep:
-            lines.append(f"   {f.path} {f.line} {f.rule.rsplit('.', 1)[-1]} {f.message[-40:] if mode else ''}")
+    lines += [f"   {f.path} {f.line} {f.rule.rsplit('.', 1)[-1]} {f.message[-40:] if mode else ''}"
+              for f in result.findings if listed(f, mode)]
     return lines
+
+
+def listed(finding, mode):
+    """Whether repos() prints a finding: entry-point marks with --entry, else vulnerabilities (only "via" ones with
+    --via)."""
+    if mode == "--entry":
+        return ENTRY_MARK in finding.message
+    return finding.type == "vulnerability" and (mode != "--via" or "[via " in finding.message)
 
 
 def timings(args):

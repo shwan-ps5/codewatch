@@ -57,40 +57,51 @@ def _tool_output(state):
     return "".join(str(part.get("text", "")) for part in state.get("content") or [] if isinstance(part, dict))
 
 
-def usage(session_id, cwd=None):
-    # opencode 2.x moved export under `session` and flattened messages: {"type": "assistant", "model": {"id"},
-    # "tokens", "content": [parts]} in place of 1.x's {"info": {"role", "modelID", "tokens"}, "parts": [...]}.
+def export(session_id, cwd=None):
+    """The session's export: opencode 2.x moved it under `session`; 1.x has `export`."""
     try:
         data = _opencode("session", "export", session_id, cwd=cwd)
     except subprocess.CalledProcessError:
         data = _opencode("export", session_id, cwd=cwd)
     if not isinstance(data, dict):
         raise TypeError(f"opencode exported no session object for {session_id}")
+    return data
+
+
+def add_tokens(tokens, info):
+    t = info.get("tokens", {})
+    tokens["input"] += t.get("input", 0)
+    tokens["cache_read"] += t.get("cache", {}).get("read", 0)
+    tokens["output"] += t.get("output", 0)
+    tokens["reasoning"] += t.get("reasoning", 0)
+
+
+def tool_parts(message):
+    """The tool calls in an assistant message, as (failed, characters returned)."""
+    parts = [p for p in message.get("parts", message.get("content")) or [] if isinstance(p, dict) and p.get("type") == "tool"]
+    return [(p.get("state", {}).get("status") in ("error", "failed"), len(_tool_output(p.get("state", {}))))
+            for p in parts]
+
+
+def usage(session_id, cwd=None):
+    # opencode 2.x flattened messages: {"type": "assistant", "model": {"id"}, "tokens", "content": [parts]} in place
+    # of 1.x's {"info": {"role", "modelID", "tokens"}, "parts": [...]}.
+    data = export(session_id, cwd)
     tokens = {"input": 0, "cache_read": 0, "output": 0, "reasoning": 0}
-    turns = calls = refused = read = 0
-    model = ""
+    turns, calls, model = 0, [], ""
     for message in data["messages"]:
         info = message.get("info", message)
         if info.get("role", info.get("type")) != "assistant":
             continue
         turns += 1
         model = info.get("modelID") or (info.get("model") or {}).get("id") or model
-        t = info.get("tokens", {})
-        tokens["input"] += t.get("input", 0)
-        tokens["cache_read"] += t.get("cache", {}).get("read", 0)
-        tokens["output"] += t.get("output", 0)
-        tokens["reasoning"] += t.get("reasoning", 0)
-        for part in message.get("parts", message.get("content")) or []:
-            if isinstance(part, dict) and part.get("type") == "tool":
-                calls += 1
-                state = part.get("state", {})
-                refused += state.get("status") in ("error", "failed")
-                read += len(_tool_output(state))
+        add_tokens(tokens, info)
+        calls += tool_parts(message)
     info = data["info"]
     created, updated = info.get("time", {}).get("created", 0), info.get("time", {}).get("updated", 0)
     return {"session": session_id, "model": model, "minutes": round((updated - created) / 60000),
-            "turns": turns, "tool_calls": calls, "tool_errors": refused, "chars_read": read, "tokens": tokens,
-            "usd": cost(model, tokens, created)}
+            "turns": turns, "tool_calls": len(calls), "tool_errors": sum(failed for failed, _ in calls),
+            "chars_read": sum(n for _, n in calls), "tokens": tokens, "usd": cost(model, tokens, created)}
 
 
 def line(u):

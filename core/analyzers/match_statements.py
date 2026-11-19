@@ -28,50 +28,62 @@ def colon_after(line, col):
     return -1
 
 
-def multiline_case_header(lines, case, subject):
-    """{row: new line} for a case whose pattern spans lines (LightRAG GHSA-v9w6-9hq9-33ch:
-    `case (\n ".txt"\n | ".md"\n ):`): `case` becomes `if subject == (` on the first line and `)` closes it before
-    the colon on the last, so the lines between stay as they are, inside the brackets."""
-    # `case (` can stand alone on its line, with the pattern starting on the next.
+def case_line(lines, case):
+    """(row, match) of the `case` keyword's line: the pattern's own line or one of the two before it, since
+    `case (` can stand alone with the pattern on the next line; None if not found."""
     first = case.pattern.lineno
     while first > 1 and not CASE_RE.match(lines[first - 1]) and lines[first - 1].strip() not in ("", ")"):
         first -= 1
         if case.pattern.lineno - first > 2:
             return None
-    if not (m := CASE_RE.match(lines[first - 1])):
-        return None
-    # The header ends at the first colon after the pattern (or guard); a bracket the pattern sits in can close on
-    # a later line, outside the pattern's own span.
+    m = CASE_RE.match(lines[first - 1])
+    return (first, m) if m else None
+
+
+def header_colon(lines, case):
+    """(row, column) of the colon that ends the case header: the first after the pattern (or guard), on a later
+    line if a bracket the pattern sits in closes outside the pattern's own span; None if there is none."""
     after = case.guard or case.pattern
     last, end = after.end_lineno, colon_after(lines[after.end_lineno - 1], after.end_col_offset)
     while end == -1 and last < len(lines) and last < case.body[0].lineno - 1:
         last += 1
         end = colon_after(lines[last - 1], 0)
-    if end == -1 or last == first:
-        return None
-    head = lines[first - 1][len(m.group(0)):]
-    body = [head, *lines[first:last - 1], lines[last - 1][:end]]
-    pattern_text = "".join(body)
-    if case.guard:
+    return None if end == -1 else (last, end)
+
+
+def header_parses(pattern_text, guarded):
+    """The header text between `case` and the colon is a pattern (and ` if ` guard) Python reads as expressions."""
+    if guarded:
         guard_start = pattern_text.rfind(" if ")
         if guard_start == -1:
-            return None
+            return False
         pattern_text, guard = pattern_text[:guard_start], pattern_text[guard_start + 4:]
         if not expression(f"({guard})"):
-            return None
-    if not expression(f"({pattern_text})"):
+            return False
+    return bool(expression(f"({pattern_text})"))
+
+
+def closed_last_line(tail, end, guarded):
+    """The header's last line with the pattern's bracket closed: before the guard's `if`, or before the colon."""
+    if not guarded:
+        return f"{tail[:end]}){tail[end:]}"
+    cut = tail.rfind(" if ", 0, end)
+    return None if cut == -1 else f"{tail[:cut]}) and ({tail[cut + 4:end]}){tail[end:]}"
+
+
+def multiline_case_header(lines, case, subject):
+    """{row: new line} for a case whose pattern spans lines (LightRAG GHSA-v9w6-9hq9-33ch:
+    `case (\n ".txt"\n | ".md"\n ):`): `case` becomes `if subject == (` on the first line and `)` closes it before
+    the colon on the last, so the lines between stay as they are, inside the brackets."""
+    start, colon = case_line(lines, case), header_colon(lines, case)
+    if start is None or colon is None or colon[0] == start[0]:
         return None
-    edits = {first: f"{m.group(1)}if {subject} == ({head}"}
-    tail = lines[last - 1]
-    if case.guard:
-        # The guard sits after the pattern on the last line: close the pattern's bracket before its `if`.
-        cut = tail.rfind(" if ", 0, end)
-        if cut == -1:
-            return None
-        edits[last] = f"{tail[:cut]}) and ({tail[cut + 4:end]}){tail[end:]}"
-    else:
-        edits[last] = f"{tail[:end]}){tail[end:]}"
-    return edits
+    (first, m), (last, end) = start, colon
+    head = lines[first - 1][len(m.group(0)):]
+    if not header_parses("".join([head, *lines[first:last - 1], lines[last - 1][:end]]), case.guard is not None):
+        return None
+    closed = closed_last_line(lines[last - 1], end, case.guard is not None)
+    return None if closed is None else {first: f"{m.group(1)}if {subject} == ({head}", last: closed}
 
 
 def case_header(source, lines, case, subject):

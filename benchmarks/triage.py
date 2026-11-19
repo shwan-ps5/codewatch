@@ -55,12 +55,16 @@ def app_dirs():
     return dirs
 
 
+REPORT_FINDINGS = "apps.txt"
+ERROR = "ERROR"
+
+
 def findings(report, everything):
     """[(app, path, line, rule)] to triage."""
-    current = (report / "apps.txt").read_text().splitlines()
-    earlier = sorted(p for p in NIGHTLY.glob("20??-??-??") if p.name < report.name and (p / "apps.txt").exists())
+    current = (report / REPORT_FINDINGS).read_text().splitlines()
+    earlier = sorted(p for p in NIGHTLY.glob("20??-??-??") if p.name < report.name and (p / REPORT_FINDINGS).exists())
     if earlier and not everything:
-        seen = set((earlier[-1] / "apps.txt").read_text().splitlines())
+        seen = set((earlier[-1] / REPORT_FINDINGS).read_text().splitlines())
         current = [x for x in current if x not in seen]
     return [tuple(x.split(" ", 3)) for x in current if x.count(" ") >= 3]
 
@@ -84,9 +88,9 @@ def ask(model, prompt):
                 return verdict, str(answer.get("reason", "")).strip()
         except Exception as error:  # noqa: BLE001 - network, HTTP 429, bad JSON: retry, then report
             if attempt == 3:
-                return "ERROR", f"{type(error).__name__}: {error}"[:200]
+                return ERROR, f"{type(error).__name__}: {error}"[:200]
         time.sleep(5 * (attempt + 1))
-    return "ERROR", "no usable answer"
+    return ERROR, "no usable answer"
 
 
 def triage(finding, dirs):
@@ -94,10 +98,10 @@ def triage(finding, dirs):
     root = dirs.get(app)
     result = {"app": app, "path": path, "line": int(line), "rule": rule}
     if root is None or not (root / path).is_file():
-        return {**result, "verdict": "ERROR", "votes": {}, "reason": "file not found"}
+        return {**result, "verdict": ERROR, "votes": {}, "reason": "file not found"}
     prompt = PROMPT.format(app=app, path=path, line=line, rule=rule, code=code_around(root, path, int(line)))
     votes = {model: ask(model, prompt) for model in MODELS}
-    verdicts = {v for v, _ in votes.values() if v != "ERROR"}
+    verdicts = {v for v, _ in votes.values() if v != ERROR}
     if len(verdicts) != 1:
         votes[TIEBREAK] = ask(TIEBREAK, prompt)
         decided = votes[TIEBREAK][0]
@@ -110,7 +114,7 @@ def triage(finding, dirs):
 
 def write(report, results):
     (report / "triage.json").write_text(json.dumps(results, indent=1) + "\n")
-    order = {"FALSE_ALARM": 0, "REAL": 1, "ERROR": 2}
+    order = {"FALSE_ALARM": 0, "REAL": 1, ERROR: 2}
     out = [f"# Triage drafts for {report.name} (Ollama: {', '.join(MODELS)}; ties: {TIEBREAK})", "",
            "Drafts only: a Claude session confirms each before it drives a rule change.", "",
            "| Verdict | Agreed | Finding | Reason |", "|---|---|---|---|"]
@@ -121,13 +125,19 @@ def write(report, results):
     (report / "triage.md").write_text("\n".join(out) + "\n")
 
 
+def report_to_triage(argv):
+    """The nightly report named on the command line, else the latest with an apps.txt; None if there is none."""
+    named = [a for a in argv if not a.startswith("--") and not a.isdigit()]
+    reports = sorted(p for p in NIGHTLY.glob("20??-??-??") if (p / REPORT_FINDINGS).exists())
+    report = Path(named[0]) if named else (reports[-1] if reports else None)
+    return report if report is not None and (report / REPORT_FINDINGS).exists() else None
+
+
 def main(argv):
     everything = "--all" in argv
     limit = int(argv[argv.index("--limit") + 1]) if "--limit" in argv else 300
-    named = [a for a in argv if not a.startswith("--") and not a.isdigit()]
-    reports = sorted(p for p in NIGHTLY.glob("20??-??-??") if (p / "apps.txt").exists())
-    report = Path(named[0]) if named else (reports[-1] if reports else None)
-    if report is None or not (report / "apps.txt").exists():
+    report = report_to_triage(argv)
+    if report is None:
         print("no nightly report with apps.txt")
         return 1
     todo = findings(report, everything)[:limit]
@@ -135,10 +145,9 @@ def main(argv):
     with ThreadPoolExecutor(PARALLEL) as pool:
         results = list(pool.map(lambda f: triage(f, dirs), todo))
     write(report, results)
-    counts = {v: sum(r["verdict"] == v for r in results) for v in ("REAL", "FALSE_ALARM", "ERROR")}
+    counts = {v: sum(r["verdict"] == v for r in results) for v in ("REAL", "FALSE_ALARM", ERROR)}
     print(f"triage: {len(results)} findings, " + ", ".join(f"{n} {v}" for v, n in counts.items()))
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

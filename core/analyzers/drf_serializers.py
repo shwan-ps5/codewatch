@@ -10,6 +10,8 @@ private and non-http URLs, and create() then fetches validated_data["attachments
 import ast
 import re
 
+from .base import python_tree
+
 SERIALIZER_BASE_RE = re.compile(r"Serializer$")
 CHECK_PREFIX = "validate_"
 
@@ -26,23 +28,21 @@ def base_name(node):
 def checked_fields(texts):
     """{serializer class name: fields it checks with validate_<field>}, from the project's Python sources."""
     checked = {}
-    for text in texts:
-        if CHECK_PREFIX not in text or "Serializer" not in text:
-            continue
-        try:
-            tree = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
+    trees = (python_tree(text) for text in texts if CHECK_PREFIX in text and "Serializer" in text)
+    for tree in filter(None, trees):
         for node in ast.walk(tree):
-            if not isinstance(node, ast.ClassDef) or not any(
-                    SERIALIZER_BASE_RE.search(base_name(b)) for b in node.bases):
-                continue
-            fields = {item.name.removeprefix(CHECK_PREFIX) for item in node.body
-                      if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-                      and item.name.startswith(CHECK_PREFIX) and len(item.name) > len(CHECK_PREFIX)}
-            if fields:
+            if fields := serializer_checks(node):
                 checked.setdefault(node.name, set()).update(fields)
     return checked
+
+
+def serializer_checks(node):
+    """The fields a serializer class checks with validate_<field> methods; empty for any other node."""
+    if not isinstance(node, ast.ClassDef) or not any(SERIALIZER_BASE_RE.search(base_name(b)) for b in node.bases):
+        return set()
+    return {item.name.removeprefix(CHECK_PREFIX) for item in node.body
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and item.name.startswith(CHECK_PREFIX) and len(item.name) > len(CHECK_PREFIX)}
 
 
 def field_sanitizer(cls, fields):
