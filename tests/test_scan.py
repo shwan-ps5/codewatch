@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import pytest
 from django.core.management import call_command
+from django.test import Client
 from django.utils import timezone
 
 from core import gate
@@ -48,7 +49,9 @@ def test_branch_new_code_and_gate(scanned_feature):
     new = list(feature.issues.filter(is_new=True).values_list("rule", flat=True))
     assert new == ["F821"], "shifted F401 must keep its identity; only the undefined name is new"
     assert feature.gate_passed is False
-    assert {d["metric"] for d in feature.gate_details if d["status"] == "error"} == {"new_bugs", "new_critical_issues"}
+    # The new critical bug also makes the whole codebase's reliability D, worse than the overall gate's C.
+    assert {d["metric"] for d in feature.gate_details if d["status"] == "error"} == {
+        "new_bugs", "new_critical_issues", "reliability_rating"}
 
 
 @pytest.mark.django_db
@@ -191,3 +194,21 @@ def test_a_scan_with_every_analyzer_leaves_the_repository_as_it_was(repo):
     call_command("scan", "demo")
     assert sh(repo, "status", "--porcelain", "--ignored") == ""
     assert Analysis.objects.get(branch="main").issues.filter(tool="ruff").exists()
+
+
+@pytest.mark.django_db
+def test_a_first_scan_fails_the_gate_on_existing_problems_and_links_to_all_of_them(repo, project, django_user_model):
+    """No new code on a first scan, so only the overall conditions can fail it (VibeVoice passed with 129 bugs)."""
+    (repo / "app.py").write_text("def f():\n    return undefined_name\n")
+    sh(repo, "commit", "-qam", "a bug")
+    call_command("scan", "demo")
+    main = Analysis.objects.get(branch="main")
+    assert main.gate_passed is False
+    assert [d["metric"] for d in main.gate_details if d["status"] == "error"] == ["reliability_rating"]
+    admin = django_user_model.objects.get(username="admin")
+    admin.profile.must_change_password = False
+    admin.profile.save()
+    client = Client()
+    client.force_login(admin)
+    page = client.get(f"/p/demo/a/{main.pk}/").content.decode()
+    assert f'href="/p/demo/a/{main.pk}/issues/?type=bug">see the issues</a>' in page

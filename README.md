@@ -94,7 +94,7 @@ Issue types: bug, vulnerability, **security hotspot** (security-sensitive code t
 
 Each analysis gets A–E ratings, overall and on new code: **reliability**, **security** and **accessibility** (worst open issue of that type), **maintainability** (the worse of the SQALE technical-debt ratio and the worst open code smell) and **security review** (share of hotspots reviewed), combined into a 0–100 **health score**. The `/ratings/` page explains the formulas.
 
-The default quality gate, on new code:
+The default quality gate, mostly on new code, plus a floor for the whole codebase so a first scan (which has no new code) can't pass a project full of old problems:
 
 | Condition | Default |
 |---|---|
@@ -105,6 +105,7 @@ The default quality gate, on new code:
 | Small changes | coverage/duplication skipped under 20 new lines |
 | Dependency CVEs | no critical ones (overall) |
 | Accessibility | no new accessibility issues |
+| Whole codebase | reliability, security, security review and maintainability ratings C or better |
 
 Every condition can be changed per project under **Settings**.
 

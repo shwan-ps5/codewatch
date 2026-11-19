@@ -1572,6 +1572,17 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      a gap in the rule worth closing with its own test;
    - `el.innerHTML = fresh.innerHTML` on the page's own re-fetched HTML, now `replaceChildren(...)` with the parsed
      nodes.
+95. **The default gate covers the whole codebase too** (2026-11-19, the maintainer's choice). VibeVoice passed its
+   first scan with 129 bugs, 497 smells and 12 unreviewed hotspots (reliability C, maintainability D, security
+   review E, health 55): every default condition was on new code, and a first scan has none. Options weighed:
+   - treat all code as new on a first scan: the second, unchanged scan would then pass with the same issues;
+   - show "not checked yet" on a first scan;
+   - add conditions on the whole codebase (chosen).
+   `OVERALL_GATE` fails reliability, security, security review or maintainability worse than C. Migration 0011 adds
+   these conditions to existing projects that have no condition on the metric yet. A failed overall condition
+   links to all issues of its type, a new-code one to the new ones. Tests: the first-scan case in
+   `tests/test_scan.py`; `test_branch_new_code_and_gate` now also expects `reliability_rating`, since its new
+   critical bug makes the whole branch D. Stored gate results are re-evaluated on the next scan or settings save.
 
 ## How things work (non-obvious)
 

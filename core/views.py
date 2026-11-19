@@ -180,6 +180,8 @@ GATE_ISSUES = {
     "new_security_review_rating": "type=security_hotspot", "new_security_hotspots": "type=security_hotspot",
     "new_maintainability_rating": "type=code_smell", "new_code_smells": "type=code_smell",
     "new_accessibility_issues": "type=accessibility", "new_accessibility_rating": "type=accessibility",
+    "reliability_rating": "type=bug", "security_rating": "type=vulnerability",
+    "security_review_rating": "type=security_hotspot", "maintainability_rating": "type=code_smell",
     "new_blocker_issues": "severity=blocker", "new_critical_issues": "severity=critical",
     "new_major_issues": "severity=major", "new_issues": "",
 }
@@ -193,8 +195,10 @@ def gate_rows(analysis):
     for d in analysis.gate_details or []:
         is_rating = d["metric"].endswith("_rating")
         query = GATE_ISSUES.get(d["metric"])
+        # A condition on new code links to the new issues; one on the whole codebase to all of them.
+        scope = ["new=1"] if d["metric"].startswith("new_") else []
         rows.append({**d, "is_rating": is_rating,
-                     "link": None if query is None else f"{base}?{query + '&' if query else ''}new=1"})
+                     "link": None if query is None else f"{base}?{'&'.join([query, *scope] if query else scope)}"})
     return rows
 
 

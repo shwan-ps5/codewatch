@@ -295,6 +295,14 @@ class ApiToken(models.Model):
         return token
 
 
+# The whole codebase too, not only new code: a first scan has no new code, so without these a project with a
+# hundred bugs and unreviewed hotspots passed (VibeVoice, 2026-11-19). Worse than C (3) fails.
+OVERALL_GATE = [
+    ("reliability_rating", GateCondition.GT, 3),
+    ("security_rating", GateCondition.GT, 3),
+    ("security_review_rating", GateCondition.GT, 3),
+    ("maintainability_rating", GateCondition.GT, 3),
+]
 DEFAULT_GATE = [
     ("new_blocker_issues", GateCondition.GT, 0),
     ("new_critical_issues", GateCondition.GT, 0),
@@ -306,4 +314,5 @@ DEFAULT_GATE = [
     ("new_accessibility_issues", GateCondition.GT, 0),
     ("new_maintainability_rating", GateCondition.GT, 1),
     ("new_security_review_rating", GateCondition.GT, 1),
+    *OVERALL_GATE,
 ]
