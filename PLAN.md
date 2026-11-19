@@ -2341,3 +2341,22 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     86: cve-pairs-blind-python-27 (2), cve-pairs-blind-javascript-27 (2), cve-pairs-blind-php-36 (25); the agents'
     cve-pairs-blind-python-frontend-5 (2) and cve-pairs-blind-python-nonhttp-2 (1) kept as named. The agents'
     blind split was checked against the sha256 rule for all 72; no blind diff was read. Yield: 19 of 391 (5%).
+    First scores (`devtools.py cases`, verdict mode): 7 of 19 found, 2 of them quiet after the fix. Found and
+    quiet after: AVideo-Encoder CVE-2026-61573 (XSS) and Chamilo CVE-2026-61584 (audio_dir). Found but still
+    flagged after: AVideo-Encoder installer CVE-2026-61564 (var_export() and the prepared INSERTs not
+    recognised), tt-rss GHSA-vrw3 (an is_absolute_url() check before the redirect), Serendipity CVE-2016-10082 (a
+    preg_replace() character allowlist), yt-mcp CVE-2026-75612 and Zyrabit CVE-2026-130154 (realpath containment
+    helpers). Review mode adds Frappe CVE-2026-55796 and CVE-2026-55823 (bandit B608, quiet after), Tautulli
+    CVE-2026-52835 (still flagged after its basename()) and designer-mcp GHSA-p45h (ESLint and Semgrep path rules,
+    still flagged). Missed: Bazarr, both code-graph-rag/NetLicensing MCP cases, AVideo Streamer::get (three calls
+    deep), OSSN's config template, EspoCRM's label paths, Piwigo's batch manager include and Wavelog's OQRS
+    search. For a rule session: var_export() as a PHP code sanitizer, is_absolute_url()-style redirect checks,
+    preg_replace() allowlists, and realpath/commonpath containment in Python.
+
+89. **A failed gate points at its issues** (2026-11-19). The maintainer's scan of codewatch failed the gate with
+    every rating A and no bugs, vulnerabilities or hotspots on the cards: the cause was one new critical code smell
+    (argument_sanitizers, complexity 30, new because step 87 edited its def line), but nothing on the page led to
+    it, and the gate table showed "New maintainability rating: 1", which reads as one issue rather than A. The
+    analysis page now shows a rating condition as a letter ("worse than A", value A), links every failed
+    condition to the new issues behind it (test_a_failed_gate_links_to_the_issues_that_failed_it), and the
+    maintainability card shows the code-smell count, overall and new, next to the debt ratio.

@@ -52,6 +52,21 @@ def test_branch_new_code_and_gate(scanned_feature):
 
 
 @pytest.mark.django_db
+def test_a_failed_gate_links_to_the_issues_that_failed_it(scanned_feature, django_user_model):
+    from django.test import Client
+    from django.utils.html import escape
+
+    _, feature = scanned_feature
+    client = Client()
+    client.force_login(django_user_model.objects.create_superuser("root", password="x"))  # pragma: allowlist secret
+    page = client.get(f"/p/demo/a/{feature.pk}/").content.decode()
+    for query in ("severity=critical&new=1", "type=bug&new=1"):
+        assert f'{escape(query)}">see the issues</a>' in page, query
+    gate_table = page.split('id="gate-h"')[1].split("</table>")[0]
+    assert "worse than A" in gate_table and "rating-A" in gate_table, "a rating is a letter, not a count"
+
+
+@pytest.mark.django_db
 def test_resolving_the_new_issue_passes_the_gate(scanned_feature, project):
     _, feature = scanned_feature
     issue = feature.issues.get(rule="F821")

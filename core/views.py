@@ -153,6 +153,31 @@ TYPE_ROWS = [("bug", "bugs"), ("vulnerability", "vulnerabilities"), ("security_h
              ("code_smell", "code_smells"), ("accessibility", "accessibility_issues")]
 
 
+# The new-code issues behind each gate condition, as an issue-list query: a failed condition links to them.
+GATE_ISSUES = {
+    "new_bugs": "type=bug", "new_reliability_rating": "type=bug",
+    "new_vulnerabilities": "type=vulnerability", "new_security_rating": "type=vulnerability",
+    "new_security_review_rating": "type=security_hotspot", "new_security_hotspots": "type=security_hotspot",
+    "new_maintainability_rating": "type=code_smell", "new_code_smells": "type=code_smell",
+    "new_accessibility_issues": "type=accessibility", "new_accessibility_rating": "type=accessibility",
+    "new_blocker_issues": "severity=blocker", "new_critical_issues": "severity=critical",
+    "new_major_issues": "severity=major", "new_issues": "",
+}
+
+
+def gate_rows(analysis):
+    """Gate conditions with a ratings value shown as its letter (a rating of 1 is A, not one issue) and the
+    issue list a condition is about, so a failed gate always points at the issues that failed it."""
+    base = reverse("issues", args=[analysis.project.key, analysis.pk])
+    rows = []
+    for d in analysis.gate_details or []:
+        is_rating = d["metric"].endswith("_rating")
+        query = GATE_ISSUES.get(d["metric"])
+        rows.append({**d, "is_rating": is_rating,
+                     "link": None if query is None else f"{base}?{query + '&' if query else ''}new=1"})
+    return rows
+
+
 @require_safe
 def analysis_detail(request, key, pk):
     analysis = get_analysis(request, key, pk)
@@ -161,6 +186,7 @@ def analysis_detail(request, key, pk):
         "analysis": analysis,
         "project": analysis.project,
         "m": m,
+        "gate": gate_rows(analysis),
         "severities": [(s, m.get(f"{s}_issues"), m.get(f"new_{s}_issues")) for s in SEVERITIES],
         "types": [(t, m.get(k), m.get(f"new_{k}")) for t, k in TYPE_ROWS],
         "by_tool": counts_by_tool(analysis),
