@@ -16071,7 +16071,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88 and 101) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-gcwf-c25f-p9rv",
@@ -16099,6 +16099,20 @@
           "summary": "MLflow: path traversal in the FileStore run-outputs API",
           "scope": [
             "mlflow/store/tracking"
+          ]
+        },
+        {
+          "id": "CVE-2026-133238",
+          "cve": "CVE-2026-133238",
+          "repo": "https://github.com/sabnzbd/sabnzbd.git",
+          "fix": "c90ab4ee593220d58b9e849269fac846517b13bc",
+          "cwe": [
+            23
+          ],
+          "license": "NOASSERTION",
+          "summary": "SABnzbd Sorter allows directory traversal through crafted NZB metadata names",
+          "scope": [
+            "sabnzbd"
           ]
         }
       ]
