@@ -36,6 +36,10 @@ import json
 import re
 from pathlib import Path
 
+from .base import python_tree
+
+PARAM, VALUE, FUNC, VIA_FUNC, PT_ARG = "$PARAM", "$VALUE", "$FUNC", "$VIA_FUNC", "$PT_ARG"
+SANITIZERS = "pattern-sanitizers"
 SUMMARY_SUFFIX = ".params"
 VIA_SUFFIX = ".via"
 VIA_RE = re.compile(r"\[via (\w+)\(\)\]$")
@@ -57,8 +61,8 @@ RECEIVERS = {"self", "cls"}
 PYTHON_PARAM_SOURCES = [
     {"patterns": [{"pattern-either": [{"pattern-inside": "def $FUNC(..., $PARAM, ...):\n  ...\n"},
                                       {"pattern-inside": "async def $FUNC(..., $PARAM, ...):\n  ...\n"}]},
-                  {"pattern": "$PARAM"},
-                  {"metavariable-regex": {"metavariable": "$PARAM", "regex": "^(?!(self|cls)$)\\w+$"}}]},
+                  {"pattern": PARAM},
+                  {"metavariable-regex": {"metavariable": PARAM, "regex": "^(?!(self|cls)$)\\w+$"}}]},
 ]
 JS_PARAM_SOURCES = [
     {"patterns": [{"pattern-either": [
@@ -69,7 +73,7 @@ JS_PARAM_SOURCES = [
         {"pattern-inside": "class $CLASS { ... $FUNC(..., $PARAM, ...) { ... } ... }"},
         {"pattern-inside": "$OBJ.$FUNC = (..., $PARAM, ...) => { ... }"},
         {"pattern-inside": "$OBJ.$FUNC = function (..., $PARAM, ...) { ... }"},
-    ]}, {"pattern": "$PARAM"}]},
+    ]}, {"pattern": PARAM}]},
 ]
 
 # A view returns a response, not data, even when another view returns its result.
@@ -89,8 +93,8 @@ PYTHON_RETURN_SINKS = [
                   {"pattern": "return $VALUE"},
                   # A view's response (DRF's Response(...), taiga's response.Ok(...)) is for the client, not data
                   # for a caller.
-                  {"metavariable-regex": {"metavariable": "$VALUE", "regex": RESPONSE_CALL_RE}},
-                  {"focus-metavariable": "$VALUE"}]},
+                  {"metavariable-regex": {"metavariable": VALUE, "regex": RESPONSE_CALL_RE}},
+                  {"focus-metavariable": VALUE}]},
 ]
 JS_RETURN_SINKS = [
     {"patterns": [{"pattern-either": [
@@ -106,7 +110,7 @@ JS_RETURN_SINKS = [
         {"pattern-not-inside": "function $FUNC(..., next) { ... }"},
         {"pattern-not-inside": "const $FUNC = (..., next) => { ... }"},
         {"pattern-not-inside": "$FUNC(..., next) { ... }"},
-        {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
+        {"pattern": "return $VALUE;"}, {"focus-metavariable": VALUE}]},
 ]
 LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)_(?!"
 JS_LOOKUP_RESULT_MARK = "(get|fetch|load|find|lookup)(?!("
@@ -188,12 +192,15 @@ def python_functions(text):
     return functions
 
 
+def innermost_def(defs, line):
+    """(def, in a class) of the innermost of defs around line, or None."""
+    around = [(node, in_class) for node, in_class in defs if node.lineno <= line <= (node.end_lineno or node.lineno)]
+    return max(around, key=lambda d: d[0].lineno, default=None)
+
+
 def python_signature(text, func, line):
     """(positional index or None, is_method) of the parameters of the def named func around line."""
-    best = None
-    for node, in_class in python_functions(text).get(func, ()):
-        if node.lineno <= line <= (node.end_lineno or node.lineno) and (best is None or node.lineno > best[0].lineno):
-            best = (node, in_class)
+    best = innermost_def(python_functions(text).get(func, ()), line)
     if best is None:
         return None
     node, in_class = best
@@ -230,6 +237,29 @@ def js_signature(text, func, line):
     return None
 
 
+def callee_visible(path, func, said, read_text):
+    """A result reached through a summarised callee counts only where that callee is visible from path, for a
+    keyword it names. said: (callee, keyword, the rule's known summaries)."""
+    callee, keyword, rule_known = said
+    if not keyword_summarised(callee, keyword, rule_known):
+        return False
+    defining = {s[4] for s in rule_known if s[0] == callee}
+    return callee != func and bool(defining) and visible(path, defining, read_text)
+
+
+def summary_entry(path, line, func, param, read_text):
+    """(function, positional index or None, parameter, is_method, path) when param is a parameter of the def
+    named func around line, else None."""
+    text = read_text(path)
+    signature = None if text is None else (python_signature if path.endswith(".py") else js_signature)(text, func, line)
+    if signature is None:
+        return None
+    positional, keyword_only, method = signature
+    if param not in positional and param not in keyword_only:
+        return None
+    return func, positional.index(param) if param in positional else None, param, method, path
+
+
 def parse_summaries(results, read_text, known=None, hits=None):
     """{rule id: {(function, positional index or None, parameter, is_method, defining path)}} from pass 1.
 
@@ -238,26 +268,14 @@ def parse_summaries(results, read_text, known=None, hits=None):
     summaries = {}
     for check_id, path, line, message in results:
         func, param, callee, keyword = [*message.split("|"), "", "", ""][:4]
-        if not func or not param:
-            continue
         rule_id = check_id.removesuffix(SUMMARY_SUFFIX)
-        if callee and not callee.startswith("$"):
-            if not keyword_summarised(callee, keyword, (known or {}).get(rule_id, ())):
-                continue
-            defining = {s[4] for s in (known or {}).get(rule_id, ()) if s[0] == callee}
-            if callee == func or not defining or not visible(path, defining, read_text):
-                continue
-        text = read_text(path)
-        if text is None:
+        if not func or not param or (callee and not callee.startswith("$") and not callee_visible(
+                path, func, (callee, keyword, (known or {}).get(rule_id, ())), read_text)):
             continue
-        signature = (python_signature if path.endswith(".py") else js_signature)(text, func, line)
-        if signature is None:
+        entry = summary_entry(path, line, func, param, read_text)
+        if entry is None:
             continue
-        positional, keyword_only, method = signature
-        if param not in positional and param not in keyword_only:
-            continue
-        index = positional.index(param) if param in positional else None
-        summaries.setdefault(rule_id, set()).add((func, index, param, method, path))
+        summaries.setdefault(rule_id, set()).add(entry)
         if hits is not None:
             hits.append((rule_id, path, line, func, param))
     return summaries
@@ -304,7 +322,7 @@ def js_definition(line, start, end):
 
 def callees(method, js):
     receivers = ["this"] if js else sorted(RECEIVERS)
-    return [f"{r}.$VIA_FUNC" for r in receivers] if method else ["$VIA_FUNC", "$MODULE.$VIA_FUNC"]
+    return [f"{r}.$VIA_FUNC" for r in receivers] if method else [VIA_FUNC, "$MODULE.$VIA_FUNC"]
 
 
 # A method summarised in one class is also reached through other receivers (`store.load_run(run_id)` with store a
@@ -344,37 +362,49 @@ def receiver_text(target):
     return None
 
 
+def generic_methods(trees):
+    """{class: {(generic-named method, defining path)}} for the project's classes."""
+    methods = {}
+    for path, tree in trees.items():
+        for node in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+            methods.setdefault(node.name, set()).update(
+                (item.name, path) for item in node.body
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in GENERIC_METHODS)
+    return {cls: found for cls, found in methods.items() if found}
+
+
+def instance_receivers(node, classes):
+    """(class, [receivers]) for `x = Class(...)` or `self.x: T = Class(...)` of one of classes, else None."""
+    if not isinstance(node, (ast.Assign, ast.AnnAssign)) or node.value is None:
+        return None
+    cls = constructed_class(node.value, classes)
+    if not cls:
+        return None
+    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+    return cls, [text for target in targets if (text := receiver_text(target)) and text not in RECEIVERS]
+
+
 def typed_receivers(texts):
     """{(method, defining path): receivers} for the generic-named methods of the project's classes (GENERIC_METHODS:
     `get`, `add`, `save`), and the variables and self fields assigned an instance of that class anywhere in texts
     ({path: source}). A call on one of them reaches the project's method, not a library's: taiga's
     `self._client = JiraClient(...)` then `self._client.get(url)`, Vibe-Trading's `self._memory.add(...)`
     (GHSA-3j25). By name across files, so visible() still decides whether the calling file can reach it."""
-    trees = {}
-    for path, text in texts.items():
-        try:
-            trees[path] = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
-    methods = {}
-    for path, tree in trees.items():
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                for item in node.body:
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in GENERIC_METHODS:
-                        methods.setdefault(node.name, set()).add((item.name, path))
+    trees = {path: tree for path, text in texts.items() if (tree := python_tree(text)) is not None}
+    methods = generic_methods(trees)
     if not methods:
         return {}
-    by_class = {}
-    for tree in trees.values():
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
-                cls = constructed_class(node.value, methods)
-                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-                for target in targets if cls else ():
-                    if (text := receiver_text(target)) and text not in RECEIVERS:
-                        by_class.setdefault(cls, set()).add(text)
+    by_class = class_receivers(trees, methods)
     return {key: receivers for cls, receivers in by_class.items() for key in methods[cls]}
+
+
+def class_receivers(trees, classes):
+    """{class: receivers assigned an instance of it}."""
+    by_class = {}
+    for found in (instance_receivers(node, classes) for tree in trees.values() for node in ast.walk(tree)):
+        if found and found[1]:
+            by_class.setdefault(found[0], set()).update(found[1])
+    return by_class
 
 
 def typed_receiver_sinks(found, receivers):
@@ -385,7 +415,7 @@ def typed_receiver_sinks(found, receivers):
         if not names:
             continue
         shape = [{"metavariable-regex": {"metavariable": "$OBJ", "regex": regex}} for regex in name_regexes(names)]
-        named = {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": f"^{re.escape(func)}$"}}
+        named = {"metavariable-regex": {"metavariable": VIA_FUNC, "regex": f"^{re.escape(func)}$"}}
         if index is not None:
             call = "$OBJ.$VIA_FUNC(" + "".join(f"$A{i}, " for i in range(index)) + "$ARG, ...)"
             sinks += [{"patterns": [{"pattern": call}, s, named, {"focus-metavariable": "$ARG"}]} for s in shape]
@@ -414,47 +444,77 @@ def name_regexes(names):
             for i in range(0, len(names), NAME_BATCH)]
 
 
-def via_sinks(found, js, receivers=None):
-    """One sink per call shape, naming every function called that way: a sink per function made Semgrep match
-    thousands of patterns in a large project. Python keyword arguments get one sink per kind of callee, naming every
-    summarised function and keyword (see KEYWORD_MARK)."""
+FOCUS_ARG = {"focus-metavariable": "$ARG"}
+
+
+def via_func(regex):
+    return {"metavariable-regex": {"metavariable": VIA_FUNC, "regex": regex}}
+
+
+def via_keyword(regex):
+    return {"metavariable-regex": {"metavariable": "$VIA_KW", "regex": regex}}
+
+
+def positional_call(index):
+    return "$OBJ.$VIA_FUNC(" + "".join(f"$A{i}, " for i in range(index)) + "$ARG, ...)"
+
+
+def call_shape_sinks(found, js):
+    """A sink per call shape (plain, module or receiver call with the argument at a position), naming every function
+    called that way."""
     callers = {}
     for func, index, _param, method, _path in found:
         for pattern in call_patterns(index, method, js):
             callers.setdefault(pattern, set()).add(func)
-    sinks = [{"patterns": [{"pattern": pattern},
-                           {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": regex}},
-                           {"focus-metavariable": "$ARG"}]}
-             for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
-    if js:
-        return sinks
-    sinks += typed_receiver_sinks(found, receivers or {})
-    others = other_receiver_methods(found)
+    return [{"patterns": [{"pattern": pattern}, via_func(regex), FOCUS_ARG]}
+            for pattern, funcs in sorted(callers.items()) for regex in name_regexes(funcs)]
+
+
+def by_position(found, funcs):
+    """{argument position: functions among funcs summarised at it}."""
     positional = {}
     for func, index, _param, _method, _path in found:
-        if func in others and index is not None:
+        if func in funcs and index is not None:
             positional.setdefault(index, set()).add(func)
-    sinks += [{"patterns": [{"pattern": "$OBJ.$VIA_FUNC(" + "".join(f"$A{i}, " for i in range(index)) + "$ARG, ...)"},
-                            OTHER_RECEIVER,
-                            {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": regex}},
-                            {"focus-metavariable": "$ARG"}]}
-              for index, funcs in sorted(positional.items()) for regex in name_regexes(funcs)]
+    return positional
+
+
+def other_receiver_sinks(found):
+    """Calls on another object to summarised methods with names no library object has, positional and keyword."""
+    others = other_receiver_methods(found)
+    if not others:
+        return []
+    sinks = [{"patterns": [{"pattern": positional_call(index)}, OTHER_RECEIVER, via_func(regex), FOCUS_ARG]}
+             for index, funcs in sorted(by_position(found, others).items()) for regex in name_regexes(funcs)]
     params = {p for f, _index, p, m, _path in found if m and f in others}
-    sinks += [{"patterns": [{"pattern": "$OBJ.$VIA_FUNC(..., $VIA_KW=$ARG, ...)"}, OTHER_RECEIVER,
-                            {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": func_regex}},
-                            {"metavariable-regex": {"metavariable": "$VIA_KW", "regex": param_regex}},
-                            {"focus-metavariable": "$ARG"}]}
-              for func_regex in name_regexes(others) for param_regex in name_regexes(params)] if others else []
+    return sinks + [{"patterns": [{"pattern": "$OBJ.$VIA_FUNC(..., $VIA_KW=$ARG, ...)"}, OTHER_RECEIVER,
+                                  via_func(func_regex), via_keyword(param_regex), FOCUS_ARG]}
+                    for func_regex in name_regexes(others) for param_regex in name_regexes(params)]
+
+
+def keyword_sinks(found):
+    """One sink per kind of callee (function or method) for keyword arguments, naming every summarised function
+    and keyword of that kind (see KEYWORD_MARK)."""
+    sinks = []
     for method in (False, True):
         funcs = {f for f, _index, _param, m, _path in found if m == method}
         params = {p for _f, _index, p, m, _path in found if m == method}
         sinks += [{"patterns": [
             {"pattern-either": [{"pattern": f"{c}(..., $VIA_KW=$ARG, ...)"} for c in callees(method, False)]},
-            {"metavariable-regex": {"metavariable": "$VIA_FUNC", "regex": func_regex}},
-            {"metavariable-regex": {"metavariable": "$VIA_KW", "regex": param_regex}},
-            {"focus-metavariable": "$ARG"},
+            via_func(func_regex), via_keyword(param_regex), FOCUS_ARG,
         ]} for func_regex in name_regexes(funcs) for param_regex in name_regexes(params)]
     return sinks
+
+
+def via_sinks(found, js, receivers=None):
+    """One sink per call shape, naming every function called that way: a sink per function made Semgrep match
+    thousands of patterns in a large project. Python keyword arguments get one sink per kind of callee, naming every
+    summarised function and keyword (see KEYWORD_MARK)."""
+    sinks = call_shape_sinks(found, js)
+    if js:
+        return sinks
+    return (sinks + typed_receiver_sinks(found, receivers or {}) + other_receiver_sinks(found)
+            + keyword_sinks(found))
 
 
 def keyword_summarised(callee, keyword, found):
@@ -497,10 +557,10 @@ def unshielded(variant, found):
     PostHog's check that is itself the outbound request (GHSA-jrwm), hid its own via-sink. Only names a sanitizer
     could match are listed, so a project with many summaries doesn't get a pattern-not per function."""
     names = sorted({func for func, *_ in found if CHECK_NAME_RE.match(func)})
-    if not names or not variant.get("pattern-sanitizers"):
+    if not names or not variant.get(SANITIZERS):
         return variant
     nots = [{"pattern-not": f"{name}(...)"} for name in names] + [{"pattern-not": f"$OBJ.{name}(...)"} for name in names]
-    variant["pattern-sanitizers"] = [{"patterns": [sanitizer, *nots]} for sanitizer in variant["pattern-sanitizers"]]
+    variant[SANITIZERS] = [{"patterns": [sanitizer, *nots]} for sanitizer in variant[SANITIZERS]]
     return variant
 
 
@@ -527,6 +587,36 @@ JS_IMPORT_RE = re.compile(r"""(?:\bfrom\s+|\brequire\s*\(\s*|\bimport\s*\(\s*)['
 JS_EXTENSIONS = ("", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", "/index.js", "/index.ts")
 
 
+def plain_modules(plain):
+    """The modules of `import a.b as c, d`."""
+    return [n.split(" as ")[0].strip() for n in plain.split(",")]
+
+
+def bare_names(names):
+    """The names of `from x import (a as b, c)`."""
+    return [n.split(" as ")[0].strip(" ()") for n in names.split(",")]
+
+
+def relative_files(folder, source, names):
+    """The files a relative import (`from ..a import b`) in folder may name."""
+    dots = len(source) - len(source.lstrip("."))
+    base = source.lstrip(".")
+    anchor = folder.parents[dots - 2] if dots > 1 else folder
+    prefix = anchor.joinpath(*base.split(".")) if base else anchor
+    modules_here = [prefix, *(prefix / n for n in bare_names(names) if n)]
+    return [*(f"{m}.py" for m in modules_here), *(f"{m}/__init__.py" for m in modules_here)]
+
+
+def absolute_modules(match):
+    """The modules an absolute import names: its own and, for `from a import b`, a.b too; none for a relative one."""
+    source, names, plain = match.groups()
+    if plain:
+        return plain_modules(plain)
+    if source.startswith("."):
+        return []
+    return [source, *(f"{source}.{n}" for n in bare_names(names) if n and n != "*")]
+
+
 def python_imports(path, text):
     """Repo-relative files a Python module may import, trying every ancestor folder as an import root."""
     folder = Path(path).parent
@@ -534,20 +624,10 @@ def python_imports(path, text):
     modules = []
     for match in PY_IMPORT_RE.finditer(text):
         source, names, plain = match.groups()
-        if plain:
-            modules += [n.split(" as ")[0].strip() for n in plain.split(",")]
-            continue
-        dots = len(source) - len(source.lstrip("."))
-        base = source.lstrip(".")
-        bare = [n.split(" as ")[0].strip(" ()") for n in names.split(",")]
-        if dots:
-            anchor = folder.parents[dots - 2] if dots > 1 else folder
-            prefix = anchor.joinpath(*base.split(".")) if base else anchor
-            modules_here = [prefix, *(prefix / n for n in bare if n)]
-            yield from (f"{m}.py" for m in modules_here)
-            yield from (f"{m}/__init__.py" for m in modules_here)
-            continue
-        modules += [base, *(f"{base}.{n}" for n in bare if n and n != "*")]
+        if not plain and source.startswith("."):
+            yield from relative_files(folder, source, names)
+        else:
+            modules += absolute_modules(match)
     for module in modules:
         for root in roots:
             target = root.joinpath(*module.split("."))
@@ -573,16 +653,8 @@ def python_absolute_modules(text):
     """Module files a package-qualified absolute import names, relative to whatever folder is its import root:
     `from a.b import c` gives a/b.py, a/b/__init__.py, a/b/c.py and a/b/c/__init__.py."""
     for match in PY_IMPORT_RE.finditer(text):
-        source, names, plain = match.groups()
-        if plain:
-            modules = [n.split(" as ")[0].strip() for n in plain.split(",")]
-        elif source.startswith("."):
-            continue
-        else:
-            bare = [n.split(" as ")[0].strip(" ()") for n in names.split(",")]
-            modules = [source, *(f"{source}.{n}" for n in bare if n and n != "*")]
         # Only a package-qualified name: `import libuser` could be any libuser.py in the project.
-        for module in (m for m in modules if "." in m):
+        for module in (m for m in absolute_modules(match) if "." in m):
             stem = "/".join(module.split("."))
             yield f"{stem}.py"
             yield f"{stem}/__init__.py"
@@ -594,19 +666,16 @@ def python_aliases(texts, names):
     (GHSA-jrwm): the via-sinks list functions by their own name. visible() still requires the importing file to
     import the module that defines the name."""
     aliases = {}
-    for text in texts:
-        if " as " not in text:
-            continue
-        try:
-            tree = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                for alias in node.names:
-                    if alias.asname and alias.asname != alias.name and alias.name in names:
-                        aliases.setdefault(alias.asname, alias.name)
+    for tree in filter(None, (python_tree(text) for text in texts if " as " in text)):
+        for alias in imported_aliases(tree, names):
+            aliases.setdefault(alias.asname, alias.name)
     return aliases
+
+
+def imported_aliases(tree, names):
+    """`from m import name as other` aliases of names in a module."""
+    return [a for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) for a in node.names
+            if a.asname and a.asname != a.name and a.name in names]
 
 
 def with_aliases(summaries, aliases):
@@ -663,6 +732,25 @@ def python_string_modules(text):
                 yield f"{stem}/__init__.py"
 
 
+def suffix_index(paths):
+    """{every path suffix of a Python file ("b.py", "a/b.py", ...): the files ending with it}."""
+    by_suffix = {}
+    for path in (p for p in paths if p.endswith(".py")):
+        parts = path.split("/")
+        for k in range(1, len(parts) + 1):
+            by_suffix.setdefault("/".join(parts[-k:]), []).append(path)
+    return by_suffix
+
+
+def imported_paths(path, text, by_suffix):
+    """The files one file imports, as import_closure resolves them."""
+    if not path.endswith(".py"):
+        return set(js_imports(path, text))
+    targets = {Path(p).as_posix().removeprefix("./") for p in python_imports(path, text)}
+    return targets | {d for m in set(python_absolute_modules(text)) | set(python_string_modules(text))
+                      for d in by_suffix.get(m, ())}
+
+
 def import_closure(paths, seeds, read_text):
     """seeds plus every file among paths that they import, transitively, resolved as visible() does (relative and
     every-ancestor-root imports, package-qualified absolute imports under another folder, relative JS imports).
@@ -671,24 +759,12 @@ def import_closure(paths, seeds, read_text):
     count as imported (python_string_modules); what this can still miss is code reached by neither, such as a
     method called on an object whose class comes from a module nobody here imports."""
     known = set(paths)
-    by_suffix = {}
-    for path in known:
-        if path.endswith(".py"):
-            parts = path.split("/")
-            for k in range(1, len(parts) + 1):
-                by_suffix.setdefault("/".join(parts[-k:]), []).append(path)
+    by_suffix = suffix_index(known)
     found = {s for s in seeds if s in known}
     todo = list(found)
     while todo:
         path = todo.pop()
-        text = read_text(path) or ""
-        if path.endswith(".py"):
-            targets = {Path(p).as_posix().removeprefix("./") for p in python_imports(path, text)}
-            targets |= {d for m in set(python_absolute_modules(text)) | set(python_string_modules(text))
-                        for d in by_suffix.get(m, ())}
-        else:
-            targets = set(js_imports(path, text))
-        for target in (targets & known) - found:
+        for target in (imported_paths(path, read_text(path) or "", by_suffix) & known) - found:
             found.add(target)
             todo.append(target)
     return found
@@ -706,10 +782,10 @@ def returner_rules(rules, returners=None, base=True):
             continue
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + RETURNS_SUFFIX
-        variant["message"] = "$FUNC"
+        variant["message"] = FUNC
         variant["pattern-sources"] = (rule["pattern-sources"] if base else []) + from_sources(found, is_js(rule))
         lookup = JS_LOOKUP_SANITIZER if is_js(rule) else LOOKUP_SANITIZER
-        variant["pattern-sanitizers"] = [*without_lookup_result(rule), copy.deepcopy(lookup)]
+        variant[SANITIZERS] = [*without_lookup_result(rule), copy.deepcopy(lookup)]
         variant["pattern-sinks"] = copy.deepcopy(JS_RETURN_SINKS if is_js(rule) else PYTHON_RETURN_SINKS)
         out.append(variant)
     return out
@@ -772,7 +848,7 @@ def from_rules(rules, returners, summaries):
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + FROM_SUFFIX
         variant["pattern-sources"] = from_sources(found, is_js(rule))
-        variant["pattern-sanitizers"] = without_lookup_result(rule)
+        variant[SANITIZERS] = without_lookup_result(rule)
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
         variant["message"] = rule["message"].strip() + KEYWORD_MARK + " [from $RET_FUNC()]"
         out.append(variant)
@@ -783,14 +859,14 @@ def without_lookup_result(rule):
     """The rule's sanitizers minus lookup-result (python-web.yml, javascript-taint.yml) and the pass-through
     sanitizer, which would also clean get_cmd() when get_cmd is a returner: what the returner pass found overrides
     the name."""
-    return [s for s in rule.get("pattern-sanitizers", [])
+    return [s for s in rule.get(SANITIZERS, [])
             if not any(mark in repr(s) for mark in (LOOKUP_RESULT_MARK, JS_LOOKUP_RESULT_MARK, PASS_THROUGH_MARK))]
 
 
 # Not $FIELD: the JS request sources bind that name (req.$FIELD).
 FIELD_SINKS = {
-    False: [{"patterns": [{"pattern": "self.$STORED_FIELD = $VALUE"}, {"focus-metavariable": "$VALUE"}]}],
-    True: [{"patterns": [{"pattern": "this.$STORED_FIELD = $VALUE;"}, {"focus-metavariable": "$VALUE"}]}],
+    False: [{"patterns": [{"pattern": "self.$STORED_FIELD = $VALUE"}, {"focus-metavariable": VALUE}]}],
+    True: [{"patterns": [{"pattern": "this.$STORED_FIELD = $VALUE;"}, {"focus-metavariable": VALUE}]}],
 }
 
 
@@ -878,7 +954,43 @@ OWN_PASS_RULES = {"codewatch.python.web.path-traversal"}
 # **fields)` handed the whole row back as request data and its key reached a file path (codewatch's own
 # create_project, called with fields from the request body). These name no project function.
 ORM_CREATED = [{"pattern": f"$MODEL.objects.{method}(...)"} for method in ("create", "get_or_create", "update_or_create")]
-PASS_RULE_OWN_KEYS = {"id", "message", "metadata", "severity", "pattern-sources", "pattern-sinks", "pattern-sanitizers"}
+PASS_RULE_OWN_KEYS = {"id", "message", "metadata", "severity", "pattern-sources", "pattern-sinks", SANITIZERS}
+
+
+def common_sanitizers(rules):
+    """The sanitizers (lookup-result left out) that every one of rules has."""
+    if not rules:
+        return []
+    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in rules]
+    return [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])]
+
+
+def named_sinks(sinks, names):
+    """The sinks, each limited to $FUNC among names (a batch of names per copy)."""
+    return [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": FUNC, "regex": regex}}]}
+            for sink in sinks for regex in name_regexes(names)]
+
+
+def grouped_variants(rules, variant_of):
+    """[(variant, [ids of the rules it answers for])]: rules whose variants are alike share one."""
+    groups = {}
+    for rule in rules:
+        variant = variant_of(rule)
+        groups.setdefault(json.dumps(variant, sort_keys=True), (variant, []))[1].append(rule["id"])
+    return list(groups.values())
+
+
+def python_pass_variant(rule, common, signatures, passes):
+    """A rule's part of a pass rule: its own keys gone, the common sanitizers (or its own, for OWN_PASS_RULES),
+    ORM_CREATED and, with passes, argument_sanitizers."""
+    variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
+    variant[SANITIZERS] = copy.deepcopy(
+        without_lookup_result(rule) if rule["id"] in OWN_PASS_RULES else common) + copy.deepcopy(ORM_CREATED)
+    if passes is not None:
+        variant[SANITIZERS] += argument_sanitizers(
+            signatures, passing_parameters(passes.get(rule["id"], ())), PYTHON_BUILTINS | HANDLER_NAMES,
+            mixed_only=False)
+    return variant
 
 
 def pass_rules(rules, names, signatures=None, passes=None):
@@ -889,35 +1001,21 @@ def pass_rules(rules, names, signatures=None, passes=None):
     With passes from the last round, the arguments its functions don't hand back are clean (argument_sanitizers)."""
     if not names:
         return []
-    sinks = [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": "$FUNC", "regex": regex}}]}
-             for sink in PYTHON_RETURN_SINKS for regex in name_regexes(names)]
+    sinks = named_sinks(PYTHON_RETURN_SINKS, names)
     # Sources and sinks are the same for every rule, so rules alike in the rest (propagators) give the same answer:
     # one variant per such group, its message naming the rules it answers for. Only the sanitizers every rule has
     # count (a parameter handed back under fewer is still handed back): a group per rule's own sanitizers made
     # eleven variants, the slowest part of a large project's scan (paperless-ngx).
     python = [rule for rule in taint_rules(rules) if not is_js(rule)]
-    shared = [rule for rule in python if rule["id"] not in OWN_PASS_RULES]
-    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in shared]
-    common = [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])] if shared else []
-    groups = {}
-    for rule in python:
-        variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
-        variant["pattern-sanitizers"] = copy.deepcopy(
-            without_lookup_result(rule) if rule["id"] in OWN_PASS_RULES else common) + copy.deepcopy(ORM_CREATED)
-        if passes is not None:
-            variant["pattern-sanitizers"] += argument_sanitizers(
-                signatures, passing_parameters(passes.get(rule["id"], ())), PYTHON_BUILTINS | HANDLER_NAMES,
-                mixed_only=False)
-        groups.setdefault(json.dumps(variant, sort_keys=True), (variant, []))[1].append(rule["id"])
-    out = []
-    for variant, ids in groups.values():
-        out.append({**copy.deepcopy(variant), "id": ids[0] + PASSES_SUFFIX, "severity": "INFO",
-                    # The source's own function name is bound as $OWNER: the message names the function that
-                    # returns, the one whose parameter it is (a nested def can return its outer one's) and which.
-                    "message": "$FUNC|$OWNER|$PARAM|" + ",".join(ids),
-                    "pattern-sources": json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace("$FUNC", "$OWNER")),
-                    "pattern-sinks": copy.deepcopy(sinks)})
-    return out
+    common = common_sanitizers([rule for rule in python if rule["id"] not in OWN_PASS_RULES])
+    groups = grouped_variants(python, lambda rule: python_pass_variant(rule, common, signatures, passes))
+    return [{**copy.deepcopy(variant), "id": ids[0] + PASSES_SUFFIX, "severity": "INFO",
+             # The source's own function name is bound as $OWNER: the message names the function that returns, the
+             # one whose parameter it is (a nested def can return its outer one's) and which.
+             "message": "$FUNC|$OWNER|$PARAM|" + ",".join(ids),
+             "pattern-sources": json.loads(json.dumps(PYTHON_PARAM_SOURCES).replace(FUNC, "$OWNER")),
+             "pattern-sinks": copy.deepcopy(sinks)}
+            for variant, ids in groups]
 
 
 # Every shape of JS function the pass rule sees a parameter and a return of. Not an object literal's properties
@@ -929,7 +1027,7 @@ JS_PASS_SOURCES = [{"patterns": [{"pattern-either": [{"pattern-inside": p} for p
     "$OWNER(..., $PARAM, ...) { ... }",
     "$OBJ.$OWNER = (..., $PARAM, ...) => $BODY",
     "$OBJ.$OWNER = function (..., $PARAM, ...) { ... }",
-)]}, {"pattern": "$PARAM"}]}]
+)]}, {"pattern": PARAM}]}]
 JS_NOT_HANDLERS = [{"pattern-not-inside": p} for p in (
     "function $FUNC(..., next) { ... }", "const $FUNC = (..., next) => { ... }", "$FUNC(..., next) { ... }")]
 JS_PASS_SINKS = [
@@ -940,12 +1038,12 @@ JS_PASS_SINKS = [
         "$FUNC(...) { ... }",
         "$OBJ.$FUNC = (...) => { ... }",
         "$OBJ.$FUNC = function (...) { ... }",
-    )]}, *JS_NOT_HANDLERS, {"pattern": "return $VALUE;"}, {"focus-metavariable": "$VALUE"}]},
+    )]}, *JS_NOT_HANDLERS, {"pattern": "return $VALUE;"}, {"focus-metavariable": VALUE}]},
     # An arrow's expression body is what it returns.
     {"patterns": [{"pattern-either": [{"pattern": p} for p in (
         "const $FUNC = (...) => $VALUE", "$OBJ.$FUNC = (...) => $VALUE")]},
         *({"pattern-not": p} for p in ("const $FUNC = (...) => { ... }", "$OBJ.$FUNC = (...) => { ... }")),
-        {"focus-metavariable": "$VALUE"}]},
+        {"focus-metavariable": VALUE}]},
 ]
 JS_KEYWORDS = {"if", "for", "while", "switch", "catch", "function", "return", "with", "constructor", "super"}
 # Function definitions in the shapes JS_PASS_SOURCES covers (a miss only means a function is never clean)...
@@ -984,19 +1082,16 @@ def js_pass_rules(rules, names):
     js = [rule for rule in taint_rules(rules) if is_js(rule)]
     if not names or not js:
         return []
-    sanitizers = [[json.dumps(s, sort_keys=True) for s in without_lookup_result(rule)] for rule in js]
-    common = [json.loads(s) for s in sanitizers[0] if all(s in others for others in sanitizers[1:])]
-    sinks = [{"patterns": [*sink["patterns"], {"metavariable-regex": {"metavariable": "$FUNC", "regex": regex}}]}
-             for sink in JS_PASS_SINKS for regex in name_regexes(names)]
-    groups = {}
-    for rule in js:
-        variant = {k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}
-        variant["pattern-sanitizers"] = copy.deepcopy(common)
-        groups.setdefault(json.dumps(variant, sort_keys=True), (variant, []))[1].append(rule["id"])
+    common = common_sanitizers(js)
+    sinks = named_sinks(JS_PASS_SINKS, names)
+
+    def variant_of(rule):
+        return {**{k: v for k, v in rule.items() if k not in PASS_RULE_OWN_KEYS}, SANITIZERS: copy.deepcopy(common)}
+
     return [{**copy.deepcopy(variant), "id": ids[0] + PASSES_SUFFIX, "severity": "INFO",
              "message": "$FUNC|$OWNER|$PARAM|" + ",".join(ids),
              "pattern-sources": copy.deepcopy(JS_PASS_SOURCES), "pattern-sinks": copy.deepcopy(sinks)}
-            for variant, ids in groups.values()]
+            for variant, ids in grouped_variants(js, variant_of)]
 
 
 ANY_PARAMETER = "*"
@@ -1025,26 +1120,43 @@ def passing_parameters(found):
     return passing
 
 
+def takes_receiver(node, in_class, positional):
+    """A method (not a staticmethod) whose first parameter is self or cls."""
+    static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in node.decorator_list)
+    return in_class and not static and bool(positional) and positional[0] in RECEIVERS
+
+
+def def_signature(node, in_class):
+    """(positional parameters, keyword-only parameters, positional-only count) of a def, self/cls left out of a
+    method's positions; None if it takes nothing else."""
+    args = node.args
+    positional = [a.arg for a in args.posonlyargs + args.args]
+    dropped = int(takes_receiver(node, in_class, positional))
+    positional = positional[dropped:]
+    keyword_only = [a.arg for a in args.kwonlyargs]
+    if not (args.vararg or args.kwarg or positional or keyword_only):
+        return None
+    # *args and **kwargs aren't named by position or keyword: a call can't be cleaned past them.
+    return (tuple(positional) + ((ANY_PARAMETER,) if args.vararg else ()),
+            tuple(keyword_only) + ((ANY_PARAMETER,) if args.kwarg else ()),
+            max(0, len(args.posonlyargs) - dropped))
+
+
 def python_signatures(texts):
     """{name: [(positional parameters, keyword-only parameters, positional-only count) per def]} of the project's
     Python functions that take a parameter other than self/cls (left out of a method's positions)."""
     signatures = {}
-    for text in texts:
-        for name, nodes in python_functions(text).items():
-            for node, in_class in nodes:
-                args = node.args
-                positional = [a.arg for a in args.posonlyargs + args.args]
-                static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in node.decorator_list)
-                dropped = int(in_class and not static and bool(positional) and positional[0] in RECEIVERS)
-                positional = positional[dropped:]
-                keyword_only = [a.arg for a in args.kwonlyargs]
-                if args.vararg or args.kwarg or positional or keyword_only:
-                    # *args and **kwargs aren't named by position or keyword: a call can't be cleaned past them.
-                    signatures.setdefault(name, []).append((
-                        tuple(positional) + ((ANY_PARAMETER,) if args.vararg else ()),
-                        tuple(keyword_only) + ((ANY_PARAMETER,) if args.kwarg else ()),
-                        max(0, len(args.posonlyargs) - dropped)))
+    for name, nodes in (item for text in texts for item in python_functions(text).items()):
+        for found in (def_signature(node, in_class) for node, in_class in nodes):
+            if found is not None:
+                signatures.setdefault(name, []).append(found)
     return signatures
+
+
+def called_names(node):
+    """Names a def's body calls, plainly or as a method."""
+    return {c.func.id if isinstance(c.func, ast.Name) else c.func.attr
+            for c in ast.walk(node) if isinstance(c, ast.Call) and isinstance(c.func, (ast.Name, ast.Attribute))}
 
 
 def python_callers(texts, callees):
@@ -1053,12 +1165,8 @@ def python_callers(texts, callees):
     callers = {}
     for path, text in texts.items():
         for name, nodes in python_functions(text).items():
-            for node, _in_class in nodes:
-                called = {c.func.id if isinstance(c.func, ast.Name) else c.func.attr
-                          for c in ast.walk(node) if isinstance(c, ast.Call)
-                          and isinstance(c.func, (ast.Name, ast.Attribute))}
-                if not called.isdisjoint(callees):
-                    callers.setdefault(name, set()).add(path)
+            if any(not called_names(node).isdisjoint(callees) for node, _in_class in nodes):
+                callers.setdefault(name, set()).add(path)
     return callers
 
 
@@ -1075,7 +1183,7 @@ def excluded_callees(rule):
 
 # Only an argument without a call is cleaned: one with a call can hold a sink, which a sanitizer around it hides
 # (OWASP Benchmark: escape_for_html(p.read_text()[:1000])).
-PLAIN_ARGUMENT = {"metavariable-regex": {"metavariable": "$PT_ARG", "regex": "^[^()]+$"}}
+PLAIN_ARGUMENT = {"metavariable-regex": {"metavariable": PT_ARG, "regex": "^[^()]+$"}}
 
 
 def clean_positions(defs, through):
@@ -1110,12 +1218,12 @@ def positional_sanitizers(positions):
     """A sanitizer per argument position and batch of names: `f(a, b, $PT_ARG, ...)`, plain or on self/cls."""
     sanitizers = []
     for k, funcs in sorted(positions.items()):
-        args = ", ".join([*(f"$PT_{i}" for i in range(k)), "$PT_ARG", "..."])
+        args = ", ".join([*(f"$PT_{i}" for i in range(k)), PT_ARG, "..."])
         sanitizers += [{"patterns": [
             {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}({args})"} for r in ("", "self.", "cls.")]},
             {"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": regex}},
             PLAIN_ARGUMENT,
-            {"focus-metavariable": "$PT_ARG"},
+            {"focus-metavariable": PT_ARG},
         ]} for regex in name_regexes(funcs)]
     return sanitizers
 
@@ -1145,7 +1253,7 @@ def keyword_batch_sanitizers(batch):
         funcs_filter, *names_filter,
         {"metavariable-comparison": {"comparison": " or ".join(f"({t})" for t in terms[i:i + NAME_BATCH])}},
         PLAIN_ARGUMENT,
-        {"focus-metavariable": "$PT_ARG"},
+        {"focus-metavariable": PT_ARG},
     ]} for i in range(0, len(terms), NAME_BATCH)]
 
 
@@ -1181,7 +1289,7 @@ def with_arguments(rules, signatures, passes, summaries=None):
         summarised = {func for func, *_ in (summaries or {}).get(rule["id"], ())}
         extra = argument_sanitizers(signatures, passing_parameters(passes.get(rule["id"], ())),
                                     excluded_callees(rule) | summarised)
-        out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *extra]} if extra else rule)
+        out.append({**rule, SANITIZERS: [*rule.get(SANITIZERS, []), *extra]} if extra else rule)
     return out
 
 
@@ -1224,6 +1332,40 @@ def stale_summaries(rules, summaries, texts, known):
     return stale
 
 
+PLAIN_ARGUMENTS = {"metavariable-regex": {"metavariable": "$...PT_ARGS", "regex": "^[^()]*$"}}
+
+
+def pass_through_mark(regex):
+    return {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}}
+
+
+def result_sanitizers(clean, js):
+    """A clean function's result assigned and used, and (Python) the call itself inside an expression."""
+    receivers, end = (("", "this."), ";") if js else (("", "self.", "cls."), "")
+    calls = [f"{a}{r}{PASS_THROUGH_MARK}(...){end}" for a in ("", "await ") for r in receivers]
+    sanitizers = [{"patterns": [{"pattern-either": [{"pattern-inside": f"$RESULT = {c}\n...\n"} for c in calls]},
+                                {"pattern": "$RESULT"}, pass_through_mark(regex)]}
+                  for regex in name_regexes(clean)]
+    if js:
+        return sanitizers
+    # The call itself, where its result is used inside an expression (`self.run_dir(run_id) / "run.json"`,
+    # Vibe-Trading GHSA-mjrq at its fix), only when no argument holds a call: a sanitizer on a call hides sinks
+    # among its arguments.
+    return sanitizers + [{"patterns": [
+        {"pattern-either": [{"pattern": f"{r}{PASS_THROUGH_MARK}($...PT_ARGS)"} for r in receivers]},
+        pass_through_mark(regex), PLAIN_ARGUMENTS]} for regex in name_regexes(clean)]
+
+
+def any_receiver_sanitizers(methods):
+    """A Python method that hands nothing back is clean on any receiver too, unless every library has its name."""
+    return [{"patterns": [
+        {"pattern-either": [{"pattern-inside": f"$RESULT = {a}$OBJ.{PASS_THROUGH_MARK}(...)\n...\n"}
+                            for a in ("", "await ")]},
+        {"pattern": "$RESULT"}, pass_through_mark(regex)]} for regex in name_regexes(methods)] + [{"patterns": [
+            {"pattern": f"$OBJ.{PASS_THROUGH_MARK}($...PT_ARGS)"}, pass_through_mark(regex), PLAIN_ARGUMENTS,
+        ]} for regex in name_regexes(methods)]
+
+
 def with_pass_through(rules, functions, passes, summaries, returners):
     """Each taint rule plus a sanitizer for the result of calls to functions that can't return a parameter: not
     found by pass_rules (js_pass_rules for JS), not summarised (a call to one is a via-sink) and not a returner.
@@ -1231,40 +1373,12 @@ def with_pass_through(rules, functions, passes, summaries, returners):
     object, for names not in GENERIC_METHODS (`obj.check(x)` may be anyone's)."""
     out = []
     for rule in rules:
-        if rule not in taint_rules([rule]):
-            out.append(rule)
-            continue
-        clean = clean_functions(rule, functions, passes, summaries, returners)
+        clean = clean_functions(rule, functions, passes, summaries, returners) if rule in taint_rules([rule]) else []
         if not clean:
             out.append(rule)
             continue
-        receivers, end = (("", "this."), ";") if is_js(rule) else (("", "self.", "cls."), "")
-        calls = [f"{a}{r}{PASS_THROUGH_MARK}(...){end}" for a in ("", "await ") for r in receivers]
-        sanitizers = [{"patterns": [
-            {"pattern-either": [{"pattern-inside": f"$RESULT = {c}\n...\n"} for c in calls]},
-            {"pattern": "$RESULT"},
-            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
-        ]} for regex in name_regexes(clean)]
-        if not is_js(rule):
-            # The call itself, where its result is used inside an expression (`self.run_dir(run_id) / "run.json"`,
-            # Vibe-Trading GHSA-mjrq at its fix), only when no argument holds a call: a sanitizer on a call hides
-            # sinks among its arguments.
-            sanitizers += [{"patterns": [
-                {"pattern-either": [{"pattern": f"{r}{PASS_THROUGH_MARK}($...PT_ARGS)"} for r in receivers]},
-                {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
-                {"metavariable-regex": {"metavariable": "$...PT_ARGS", "regex": "^[^()]*$"}},
-            ]} for regex in name_regexes(clean)]
-        # A Python method that hands nothing back is clean on any receiver too, unless every library has its name.
-        methods = [] if is_js(rule) else sorted(set(clean) - GENERIC_METHODS)
-        sanitizers += [{"patterns": [
-            {"pattern-either": [{"pattern-inside": f"$RESULT = {a}$OBJ.{PASS_THROUGH_MARK}(...)\n...\n"}
-                                for a in ("", "await ")]},
-            {"pattern": "$RESULT"},
-            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
-        ]} for regex in name_regexes(methods)] + [{"patterns": [
-            {"pattern": f"$OBJ.{PASS_THROUGH_MARK}($...PT_ARGS)"},
-            {"metavariable-regex": {"metavariable": PASS_THROUGH_MARK, "regex": regex}},
-            {"metavariable-regex": {"metavariable": "$...PT_ARGS", "regex": "^[^()]*$"}},
-        ]} for regex in name_regexes(methods)]
-        out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *sanitizers]})
+        js = is_js(rule)
+        methods = [] if js else sorted(set(clean) - GENERIC_METHODS)
+        sanitizers = result_sanitizers(clean, js) + any_receiver_sanitizers(methods)
+        out.append({**rule, SANITIZERS: [*rule.get(SANITIZERS, []), *sanitizers]})
     return out
