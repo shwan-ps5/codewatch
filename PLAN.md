@@ -1645,6 +1645,11 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    - the install step has a 15-minute limit;
    - the installed analyzers (the venvs, `tools/node_modules` and Playwright's browser) are cached under a key
      hashed from every pinning file. A later run only reinstalls codewatch itself, unless a pin changed.
+   - The first good runs took 30 and 42 minutes, because the 4-core runner needs 21-31 minutes for tests that take
+     3 locally. Tests now run as 4 parallel shards (`CODEWATCH_TEST_SHARD=i/n` in tests/conftest.py keeps every
+     n-th test by node id, so the Semgrep tests spread evenly; shards of 88/88/87/87 cover all 350). Lint and the
+     strict self-check are a fifth job in parallel. The shared setup is a local composite action,
+     `.github/actions/setup`.
 
 ## How things work (non-obvious)
 

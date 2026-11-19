@@ -1,6 +1,6 @@
-# codewatch checks itself: lint, the full test suite, then every analyzer over the whole repository with every open
-# issue failing the run (codewatch check --all --strict). Findings reviewed as safe or false positives are listed with
-# their reasons in codewatch-reviews.json, and the run's summary page shows them all.
+# codewatch checks itself: lint, the full test suite (in four parallel shards), and every analyzer over the whole
+# repository with every open issue failing the run (codewatch check --all --strict). Findings reviewed as safe or
+# false positives are listed with their reasons in codewatch-reviews.json, and the run's summary page shows them all.
 name: codewatch checks itself
 
 on:
@@ -16,63 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  tests:
+    name: Tests (shard ${{ matrix.shard }} of 4)
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        id: python
-        with:
-          python-version: "3.14"
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
-        with:
-          node-version: "22"
-
-      # The installed analyzers, restored when no pinned version has changed: the key is every file that pins one.
-      - name: Restore the installed analyzers
-        id: tools
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: |
-            venv
-            tools/semgrep-venv
-            tools/checkov-venv
-            tools/node_modules
-            ~/.cache/ms-playwright
-          key: tools-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'tools/*.lock', 'tools/package-lock.json') }}
-
-      - name: Install codewatch and its analyzers (pinned versions and hashes)
-        if: steps.tools.outputs.cache-hit != 'true'
-        timeout-minutes: 15
-        run: |
-          python -m venv venv
-          venv/bin/pip install -q -e '.[dev]'
-          venv/bin/pip install -q --require-hashes -r tools/analyzers.lock
-          for t in semgrep checkov; do
-            python -m venv "tools/$t-venv"
-            "tools/$t-venv/bin/pip" install -q --require-hashes -r "tools/$t.lock"
-          done
-          npm ci --prefix tools
-
-      - name: Install codewatch itself (from this commit)
-        if: steps.tools.outputs.cache-hit == 'true'
-        run: venv/bin/pip install -q --no-deps -e .
-
-      # Chromium for the accessibility tests (axe), in its own step with a time limit. Without --with-deps: the
-      # runner image already has the libraries Chrome needs, and --with-deps runs apt-get update, which hung for the
-      # whole hour of the first run on an unresponsive Ubuntu mirror.
-      - name: Install Chromium for the accessibility tests
-        timeout-minutes: 10
-        run: tools/node_modules/.bin/playwright install --only-shell chromium
-
-      - name: Lint
-        run: venv/bin/ruff check .
-
+      - uses: ./.github/actions/setup
       - name: Tests
+        env:
+          CODEWATCH_TEST_SHARD: ${{ matrix.shard }}/4
         run: venv/bin/pytest -q -n auto
 
-      - name: codewatch on its own code
+  self-check:
+    name: codewatch on its own code
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Lint
+        run: venv/bin/ruff check .
+      - name: codewatch check --all --strict
         run: venv/bin/codewatch check --all --strict

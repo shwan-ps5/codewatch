@@ -1,0 +1,51 @@
+# Python, Node and the pinned analyzers, restored from the cache when no pinned version has changed.
+name: Set up codewatch and its analyzers
+description: Python 3.14, Node 22, codewatch and its analyzers at the versions in tools/*.lock and package-lock.json
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+      id: python
+      with:
+        python-version: "3.14"
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+      with:
+        node-version: "22"
+
+    # The key is every file that pins a version.
+    - name: Restore the installed analyzers
+      id: tools
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: |
+          venv
+          tools/semgrep-venv
+          tools/checkov-venv
+          tools/node_modules
+          ~/.cache/ms-playwright
+        key: tools-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'tools/*.lock', 'tools/package-lock.json') }}
+
+    - name: Install codewatch and its analyzers (pinned versions and hashes)
+      if: steps.tools.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        python -m venv venv
+        venv/bin/pip install -q -e '.[dev]'
+        venv/bin/pip install -q --require-hashes -r tools/analyzers.lock
+        for t in semgrep checkov; do
+          python -m venv "tools/$t-venv"
+          "tools/$t-venv/bin/pip" install -q --require-hashes -r "tools/$t.lock"
+        done
+        npm ci --prefix tools
+
+    - name: Install codewatch itself (from this commit)
+      if: steps.tools.outputs.cache-hit == 'true'
+      shell: bash
+      run: venv/bin/pip install -q --no-deps -e .
+
+    # Chromium for the accessibility tests (axe). Without --with-deps: the runner image already has the libraries
+    # Chrome needs, and --with-deps runs apt-get update, which hung for the whole hour of the first run on an
+    # unresponsive Ubuntu mirror.
+    - name: Install Chromium for the accessibility tests
+      shell: bash
+      run: timeout 600 tools/node_modules/.bin/playwright install --only-shell chromium

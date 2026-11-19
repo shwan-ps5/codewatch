@@ -58,3 +58,16 @@ def trusted_servers_file(tmp_path, monkeypatch):
     path = tmp_path / "trusted" / "servers.txt"
     monkeypatch.setattr(client, "TRUSTED_SERVERS_FILE", path)
     return path
+
+
+def pytest_collection_modifyitems(config, items):
+    """CODEWATCH_TEST_SHARD="i/n" keeps every n-th test, starting at the i-th (1-based), so CI can run the suite
+    as n parallel jobs; the slow Semgrep tests are spread evenly. Unset: every test."""
+    shard = os.environ.get("CODEWATCH_TEST_SHARD")
+    if not shard:
+        return
+    index, count = (int(part) for part in shard.split("/"))
+    ordered = sorted(items, key=lambda item: item.nodeid)
+    keep = {id(item) for n, item in enumerate(ordered) if n % count == index - 1}
+    config.hook.pytest_deselected(items=[item for item in items if id(item) not in keep])
+    items[:] = [item for item in items if id(item) in keep]
