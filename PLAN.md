@@ -2360,3 +2360,9 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     analysis page now shows a rating condition as a letter ("worse than A", value A), links every failed
     condition to the new issues behind it (test_a_failed_gate_links_to_the_issues_that_failed_it), and the
     maintainability card shows the code-smell count, overall and new, next to the debt ratio.
+    argument_sanitizers itself is split rather than marked won't fix: clean_positions, clean_keywords and
+    clean_arguments find the arguments a function can't hand back, positional_sanitizers and keyword_sanitizers
+    (with keyword_terms and keyword_batch_sanitizers per batch) build the patterns. Cyclomatic complexity 30 -> at
+    most 9, cognitive at most 9; the old and new versions gave identical sanitizers on 3,000 generated signature
+    sets, including ones over NAME_BATCH. README now gives both complexity thresholds (cyclomatic 10 for
+    radon/lizard, cognitive 15 for complexipy, critical above twice either); it named only the cognitive one.

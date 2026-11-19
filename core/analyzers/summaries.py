@@ -1069,24 +1069,36 @@ def excluded_callees(rule):
 PLAIN_ARGUMENT = {"metavariable-regex": {"metavariable": "$PT_ARG", "regex": "^[^()]+$"}}
 
 
-def argument_sanitizers(signatures, passing, excluded: set[str] | frozenset[str] = frozenset(), mixed_only=True):
-    """Sanitizers for each argument of a call to the project's functions that the function can't hand back:
-    `self.resolve(doc, request)` is the doc's data, not the request's, when resolve returns only what it looks up
-    with the request. A position is clean only when it is a parameter that isn't passed in every def of the name.
+def clean_positions(defs, through):
+    """Argument positions that no def of a name hands back: each def has a parameter there, and it isn't passing."""
+    return [k for k in range(MAX_ARGUMENT_POSITION)
+            if all(k < len(pos) and pos[k] not in through | {ANY_PARAMETER} for pos, _kw, _only in defs)]
 
-    mixed_only: only for functions that hand back some parameter. One that hands back none has the cheaper result
-    sanitizer in the final scan (with_pass_through); pass_rules have no such sanitizer and need every function."""
+
+def clean_keywords(defs, through):
+    """Keyword names that every def of a name accepts and none hands back; none when a def takes **kwargs."""
+    named = [set(pos[only:]) | set(kw) for pos, kw, only in defs]
+    if any(ANY_PARAMETER in n for n in named):
+        return set()
+    return set.intersection(*named) - through
+
+
+def clean_arguments(signatures, passing, excluded, mixed_only):
+    """({position: function names}, {function name: keyword names}) of the arguments argument_sanitizers cleans."""
     positions, by_names = {}, {}
     for func, defs in (signatures or {}).items():
         through = passing.get(func, set())
         if func in excluded or (mixed_only and not through) or ANY_PARAMETER in through:
             continue
-        for k in range(MAX_ARGUMENT_POSITION):
-            if all(k < len(pos) and pos[k] not in through | {ANY_PARAMETER} for pos, _kw, _only in defs):
-                positions.setdefault(k, set()).add(func)
-        named = [set(pos[only:]) | set(kw) for pos, kw, only in defs]
-        if not any(ANY_PARAMETER in n for n in named) and (safe := set.intersection(*named) - through):
+        for k in clean_positions(defs, through):
+            positions.setdefault(k, set()).add(func)
+        if safe := clean_keywords(defs, through):
             by_names[func] = safe
+    return positions, by_names
+
+
+def positional_sanitizers(positions):
+    """A sanitizer per argument position and batch of names: `f(a, b, $PT_ARG, ...)`, plain or on self/cls."""
     sanitizers = []
     for k, funcs in sorted(positions.items()):
         args = ", ".join([*(f"$PT_{i}" for i in range(k)), "$PT_ARG", "..."])
@@ -1096,34 +1108,57 @@ def argument_sanitizers(signatures, passing, excluded: set[str] | frozenset[str]
             PLAIN_ARGUMENT,
             {"focus-metavariable": "$PT_ARG"},
         ]} for regex in name_regexes(funcs)]
-    # One sanitizer for every keyword, its comparison pairing each function with its own keywords: a pattern per
-    # keyword made the final scan half as slow again (djangoproject.com).
-    # The comparison is slow, so plain name filters come first, and each sanitizer covers one batch of functions,
-    # its filter naming them: with one filter over every function, a project with more than a batch (mlflow,
-    # 3,282) had none, and every keyword argument in every file ran thousands of comparisons (PLAN.md step 68).
-    funcs = sorted(by_names)
-    for start in range(0, len(funcs), NAME_BATCH):
-        batch = {func: by_names[func] for func in funcs[start:start + NAME_BATCH]}
-        groups = {}
-        for func, names in batch.items():
-            groups.setdefault(frozenset(names), set()).add(func)
-        terms = [f're.match("{f}", str($PT_FUNC)) and re.match("{k}", str($PT_KW))'
-                 for names, group in sorted(groups.items(), key=lambda item: sorted(item[1]))
-                 for f in name_regexes(group) for k in name_regexes(names)]
-        funcs_filter = {"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": name_regexes(batch)[0]}}
-        names = set().union(*batch.values())
-        names_filter = [{"metavariable-regex": {"metavariable": "$PT_KW", "regex": regex}}
-                        for regex in name_regexes(names)][:1] if len(names) <= NAME_BATCH else []
-        for i in range(0, len(terms), NAME_BATCH):
-            sanitizers.append({"patterns": [
-                {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}(..., $PT_KW=$PT_ARG, ...)"}
-                                    for r in ("", "self.", "cls.")]},
-                funcs_filter, *names_filter,
-                {"metavariable-comparison": {"comparison": " or ".join(f"({t})" for t in terms[i:i + NAME_BATCH])}},
-                PLAIN_ARGUMENT,
-                {"focus-metavariable": "$PT_ARG"},
-            ]})
     return sanitizers
+
+
+def keyword_terms(batch):
+    """Comparison terms pairing each group of functions with its own keyword names, functions with the same names
+    grouped. batch: {function name: keyword names}."""
+    groups = {}
+    for func, names in batch.items():
+        groups.setdefault(frozenset(names), set()).add(func)
+    return [f're.match("{f}", str($PT_FUNC)) and re.match("{k}", str($PT_KW))'
+            for names, group in sorted(groups.items(), key=lambda item: sorted(item[1]))
+            for f in name_regexes(group) for k in name_regexes(names)]
+
+
+def keyword_batch_sanitizers(batch):
+    """The keyword sanitizers for one batch of functions: plain name filters first (the comparison is slow), then
+    the comparison, at most NAME_BATCH terms per sanitizer."""
+    terms = keyword_terms(batch)
+    funcs_filter = {"metavariable-regex": {"metavariable": ARGUMENT_MARK, "regex": name_regexes(batch)[0]}}
+    names = set().union(*batch.values())
+    names_filter = [{"metavariable-regex": {"metavariable": "$PT_KW", "regex": regex}}
+                    for regex in name_regexes(names)][:1] if len(names) <= NAME_BATCH else []
+    return [{"patterns": [
+        {"pattern-either": [{"pattern": f"{r}{ARGUMENT_MARK}(..., $PT_KW=$PT_ARG, ...)"}
+                            for r in ("", "self.", "cls.")]},
+        funcs_filter, *names_filter,
+        {"metavariable-comparison": {"comparison": " or ".join(f"({t})" for t in terms[i:i + NAME_BATCH])}},
+        PLAIN_ARGUMENT,
+        {"focus-metavariable": "$PT_ARG"},
+    ]} for i in range(0, len(terms), NAME_BATCH)]
+
+
+def keyword_sanitizers(by_names):
+    """One sanitizer for every keyword, its comparison pairing each function with its own keywords: a pattern per
+    keyword made the final scan half as slow again (djangoproject.com). Each covers one batch of functions, its
+    filter naming them: with one filter over every function, a project with more than a batch (mlflow, 3,282) had
+    none, and every keyword argument in every file ran thousands of comparisons (PLAN.md step 68)."""
+    funcs = sorted(by_names)
+    return [sanitizer for start in range(0, len(funcs), NAME_BATCH)
+            for sanitizer in keyword_batch_sanitizers({func: by_names[func] for func in funcs[start:start + NAME_BATCH]})]
+
+
+def argument_sanitizers(signatures, passing, excluded: set[str] | frozenset[str] = frozenset(), mixed_only=True):
+    """Sanitizers for each argument of a call to the project's functions that the function can't hand back:
+    `self.resolve(doc, request)` is the doc's data, not the request's, when resolve returns only what it looks up
+    with the request. A position is clean only when it is a parameter that isn't passed in every def of the name.
+
+    mixed_only: only for functions that hand back some parameter. One that hands back none has the cheaper result
+    sanitizer in the final scan (with_pass_through); pass_rules have no such sanitizer and need every function."""
+    positions, by_names = clean_arguments(signatures, passing, excluded, mixed_only)
+    return positional_sanitizers(positions) + keyword_sanitizers(by_names)
 
 
 def with_arguments(rules, signatures, passes, summaries=None):
