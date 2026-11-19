@@ -244,8 +244,11 @@ class Checkov(Analyzer):
         args = ["--output", "json", "--quiet", "--compact", "--skip-download",
                 "--framework", "dockerfile", "terraform", "github_actions", "kubernetes"]
         for f in files:
-            args += ["--file", f]
-        out = self.exec(args, ctx, ok_codes=(0, 1))
+            args += ["--file", str(ctx.root / f)]
+        # Checkov reads .checkov.yaml from its working directory: the scanned repository's could write report files
+        # into it (output-file-path) or load Python from it (external-checks-dir). It runs from an empty directory.
+        with tempfile.TemporaryDirectory() as cwd:
+            out = self.exec(args, ctx, ok_codes=(0, 1), cwd=cwd)
         reports = json.loads(out or "[]")
         result = Result()
         for report in reports if isinstance(reports, list) else [reports]:

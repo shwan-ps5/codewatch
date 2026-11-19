@@ -75,7 +75,8 @@ class Ruff(Analyzer):
 
     def run(self, ctx):
         files = ctx.files_with(PY)
-        args = ["check", "--output-format", "json", "--exit-zero", "--no-cache",
+        # --no-fix: a project's own `fix = true` (flaskbb) would otherwise rewrite the files being scanned.
+        args = ["check", "--no-fix", "--output-format", "json", "--exit-zero", "--no-cache",
                 "--extend-select", ",".join(RUFF_EXTEND_SELECT), "--extend-ignore", ",".join(RUFF_EXTEND_IGNORE),
                 *files]
         try:

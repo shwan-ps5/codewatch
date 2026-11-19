@@ -1540,6 +1540,18 @@ projects 9,910 files and timed out the final scan; existing projects keep their 
 `devtools.py repos` also scans directories that aren't git working copies, and prints as it goes. A tool
 timeout used to kill only semgrep's Python wrapper: semgrep-core kept running (1.6 GB, 30 min) and the next
 scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec` now kills the process group.
+93. **A scan never changes the scanned repository** (2026-11-19). After the 2026-11-19 nightly, 39 of flaskbb's files
+   had been rewritten at 05:52, during its scan. flaskbb's pyproject sets `[tool.ruff] fix = true`, and
+   codewatch's ruff runs under the project's own config, so it applied ruff's fixes (RUF022 re-sorting `__all__`,
+   among others). That rewrote a working copy, and the fixed issues then went unreported. ruff now gets
+   `--no-fix`. A probe of the other tools found a second case. Checkov reads `.checkov.yaml` from its working
+   directory, so a repository's config could write report files into it (`output-file-path`) or load Python from it
+   (`external-checks-dir`). Checkov now runs from an empty temporary directory, with absolute file paths.
+   basedpyright already runs from a temporary config, and jscpd and complexipy are given their own output paths.
+   Tests: `tests/test_python_tools_config.py` has one per tool, and
+   `test_a_scan_with_every_analyzer_leaves_the_repository_as_it_was` runs a full scan with every analyzer over hostile
+   configs and checks `git status --ignored` is empty. Each test fails without its fix. flaskbb's checkout still
+   has to be restored (`git checkout .`) before the next nightly, or its numbers stay off.
 
 ## How things work (non-obvious)
 

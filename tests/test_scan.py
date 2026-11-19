@@ -169,3 +169,25 @@ def test_new_code_coverage_from_cobertura(repo, project, tmp_path):
     gate.refresh(feature)
     gate_row = next(d for d in feature.gate_details if d["metric"] == "new_coverage")
     assert gate_row["status"] == "error"
+
+
+HOSTILE_CONFIGS = {  # a repository's own tool settings that would make a tool write into it
+    "pyproject.toml": "[tool.ruff]\nfix = true\nunsafe-fixes = true\n\n[tool.complexipy]\noutput-json = true\n",
+    ".checkov.yaml": "output-file-path: checkov-reports\n",
+    ".jscpd.json": '{"reporters": ["html", "json"], "output": "jscpd-report"}\n',
+    "Dockerfile": "FROM python:3.12\nRUN pip install flask\n",
+    "web.js": "export function f(a) {\n  var unused = 1;\n  return a == null\n}\n",
+}
+
+
+@pytest.mark.django_db
+def test_a_scan_with_every_analyzer_leaves_the_repository_as_it_was(repo):
+    """flaskbb's `fix = true` made ruff rewrite 39 of its files during the nightly scan (2026-11-19)."""
+    for name, text in HOSTILE_CONFIGS.items():
+        (repo / name).write_text(text)
+    sh(repo, "add", ".")
+    sh(repo, "commit", "-qm", "configs")
+    call_command("addproject", "demo", str(repo))
+    call_command("scan", "demo")
+    assert sh(repo, "status", "--porcelain", "--ignored") == ""
+    assert Analysis.objects.get(branch="main").issues.filter(tool="ruff").exists()
