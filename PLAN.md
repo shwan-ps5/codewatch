@@ -1700,6 +1700,22 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      read, since they describe blind cases. Whether to keep them is the maintainer's call, made without reading.
    - The blind split is by the id an advisory is recorded under, so an advisory's other id can split the other way
      (GHSA-487r open, its CVE blind). It stays by recorded id; the alias check now stops a second reading.
+103. **The four open-suite conflicts from step 102 settled** (2026-11-19). Each suite case's fix commit was read
+   again on GitHub. All four were "missed" in the 2026-11-19 nightly, so none was raising a score.
+   - Removed: Dolibarr CVE-2018-19994 from `cve-pairs-php`. The fix casts `Product::update()`'s object properties;
+     the request is read in `product/card.php`, outside the diff and the case's scope. That is step 88's "the value
+     an argument" rejection, which GHSA-78hj already had.
+   - Removed: Etherpad GHSA-487r from `cve-pairs-javascript`. Minify.js's `indexOf(ROOT_DIR)` containment check is
+     there before and after; the fix deletes a backslash-to-slash rewrite that ran after it. An existing guard
+     tightened, as ZoneMinder CVE-2024-43361 and OpnForm CVE-2026-133240 (step 101), and as CVE-2015-3297 had it.
+   - Kept: OpenEMR CVE-2018-17180. The commit fixes the portal's path traversal and CVE-2018-17181's SQL injection
+     (merged into this case on purpose); the rest is a one-line session flag rename no scanner reports. GHSA-c98x's
+     "mixes unrelated changes" was too strict; its row now says duplicate.
+   - Kept: Etherpad CVE-2015-4085. `src/node/hooks/express/tests.js` is a server route serving /tests/frontend, not
+     test code: the URL reaches the file path through `replace("..", "")` and the fix adds a containment check.
+     GHSA-5m5m's "test-only fix" misread the file name; its row now says duplicate.
+   Rows of the removed cases keep their old reason after "Before:". The 5 blind-suite conflicts wait for the
+   maintainer.
 
 ## How things work (non-obvious)
 
