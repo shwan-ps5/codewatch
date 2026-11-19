@@ -1583,6 +1583,19 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    links to all issues of its type, a new-code one to the new ones. Tests: the first-scan case in
    `tests/test_scan.py`; `test_branch_new_code_and_gate` now also expects `reliability_rating`, since its new
    critical bug makes the whole branch D. Stored gate results are re-evaluated on the next scan or settings save.
+96. **`codewatch check`: a commit-time check of the changed files** (2026-11-19, the maintainer's request). Every
+   analyzer runs on the staged files (else every changed file, or the named ones), locally: nothing is uploaded,
+   no project code is run, and the whole-project tools are left out (pip-audit, osv, coverage, axe). The project's
+   own settings come from the server when one is configured. Blocking follows the default gate's new-issue
+   conditions: a bug, a vulnerability or a blocker/critical issue on a changed line, exit 1. Older issues in a
+   touched file are listed with no `!` mark. An analyzer error exits 2, because a check that didn't run mustn't
+   read as clean. `init --hook pre-commit` now installs `codewatch check` instead of coverage plus a full scan and
+   upload. Not blocking: hotspots, which can only be reviewed on the server, and code smells; both are listed.
+   One file of a demo repo took 12 s. Tests: `tests/test_check.py`. Installed as codewatch's own pre-commit hook.
+   Its first run, on `core/client.py`, found two radon cyclomatic-complexity smells (cmd_check and cmd_scan at 13)
+   that the self-scan had missed: the self-scan went through `benchmark.scan`, whose SKIPPED_ANALYZERS leave radon
+   out. A self-scan has to run every analyzer, as the server does. Both functions were split. Known gap: `check`
+   can't see hotspot reviews stored on the server, so reviewed hotspots are listed again (not blocking).
 
 ## How things work (non-obvious)
 

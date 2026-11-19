@@ -20,11 +20,14 @@ from pathlib import Path
 
 from .analyzers.base import node_tool
 from .catalog import custom_semgrep_rules
-from .collect import GitError, LocalRepo, ScanConfig, ScanInput, choose_reference, collect
+from .collect import GitError, LocalRepo, ScanConfig, ScanInput, choose_reference, collect, excluded
 
 CONFIG_FILE = "codewatch-project.json"
 COVERAGE_CANDIDATES = ["coverage.xml", "coverage/cobertura-coverage.xml", "coverage/lcov.info", "lcov.info"]
 HOOK_MARKER = "# installed by codewatch init"
+COVERAGE = "coverage"
+ERROR = "error"
+STORE_TRUE = "store_true"
 
 
 class ClientError(Exception):
@@ -73,7 +76,7 @@ def request(url, token, data=None, timeout=600):
         try:
             body = json.load(exc)
         except ValueError:
-            body = {"error": exc.reason}
+            body = {ERROR: exc.reason}
         return exc.code, body
     except urllib.error.URLError as exc:
         raise ClientError(f"Can't reach {url}: {exc.reason}") from exc
@@ -137,9 +140,13 @@ def scan_target(args, repo, conf):
     branch = first(args.branch, repo.branch())
     if branch == "HEAD":
         raise ClientError("Detached HEAD: pass --branch")
-    if not args.output and not (url and token):
-        raise ClientError(f"Set CODEWATCH_URL and CODEWATCH_TOKEN (or serverUrl in {CONFIG_FILE}, --url/--token)")
     return ScanTarget(args, repo, conf, url, token, key, branch)
+
+
+def require_server(target):
+    """An upload needs a server and a token (writing the payload to a file doesn't)."""
+    if not target.args.output and not (target.url and target.token):
+        raise ClientError(f"Set CODEWATCH_URL and CODEWATCH_TOKEN (or serverUrl in {CONFIG_FILE}, --url/--token)")
 
 
 def fetch_config(target):
@@ -183,6 +190,7 @@ def cmd_scan(args):
     conf = load_config(repo.root)
     target = scan_target(args, repo, conf)
     url, token, key, branch = target.url, target.token, target.key, target.branch
+    require_server(target)
     cfg, created = fetch_config(target)
     head = repo.head()
     ref, ref_analysis = choose_reference(branch, head, cfg, repo)
@@ -215,9 +223,124 @@ def report(body, created):
     log(f"{'Created project. ' if created else ''}Quality gate {gate}: "
         f"{int(m.get('new_issues', 0))} new issues, {int(m.get('issues', 0))} total")
     for cond in body.get("gate", []):
-        if cond["status"] == "error":
+        if cond["status"] == ERROR:
             log(f"  {cond['metric']} = {cond['value']:g} ({'>' if cond['op'] == 'gt' else '<'} {cond['threshold']:g})")
     log(body.get("url", ""))
+
+
+# --- check ------------------------------------------------------------------------------------------------
+
+# Whole-project checks, left out of a check of some files: the dependency audit, coverage and live pages.
+PROJECT_WIDE_ANALYZERS = ("pip-audit", "osv", COVERAGE, "axe")
+# What stops a commit, as the default gate's conditions on new issues: blockers and criticals, bugs, vulnerabilities.
+BLOCKING_SEVERITIES = ("blocker", "critical")
+BLOCKING_TYPES = ("bug", "vulnerability")
+
+
+def files_to_check(repo, named):
+    """The named files, else the staged ones, else every file changed since the last commit (untracked too)."""
+    if named:
+        return sorted({os.path.relpath(Path(f).resolve(), repo.root) for f in named})
+    def listed(*args):
+        return [f for f in repo.git(*args).split("\0") if f]
+    files = listed("diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR")
+    if not files and repo.resolve_commit("HEAD"):
+        files = listed("diff", "HEAD", "--name-only", "-z", "--diff-filter=ACMR") + repo.untracked()
+    elif not files:
+        files = repo.files()
+    return sorted(set(files))
+
+
+def check_config(args, repo, conf):
+    """The project's settings from its server when one is configured and reachable, else the defaults; local
+    opt-outs added either way, and the whole-project analyzers left out."""
+    # Only the settings depend on the branch: a detached HEAD (a rebase in progress) is still checked.
+    args.branch = args.branch or ("detached" if repo.branch() == "HEAD" else None)
+    target = scan_target(args, repo, conf)
+    cfg = default_config(target.conf.get("mainBranch", ""))
+    if target.url and target.token:
+        try:
+            cfg, _created = server_config(target)
+        except ClientError as exc:
+            log(f"Using the default settings: {exc}")
+    cfg.disabled_analyzers = sorted({*cfg.disabled_analyzers, *conf.get("disabledAnalyzers", []), *PROJECT_WIDE_ANALYZERS})
+    cfg.exclusions = list(dict.fromkeys([*cfg.exclusions, *conf.get("exclusions", [])]))
+    return cfg
+
+
+def blocks(issue, changed):
+    """Whether an issue stops the commit: a blocking kind, on a line this change touched (or anywhere, with
+    changed=None)."""
+    serious = issue["severity"] in BLOCKING_SEVERITIES or issue["type"] in BLOCKING_TYPES
+    if not serious:
+        return False
+    if changed is None:
+        return True
+    return bool(issue["line"]) and issue["line"] in changed.get(issue["path"], ())
+
+
+def checked_files(repo, args, cfg):
+    """files_to_check that exist; when none were named, without the project's exclusions."""
+    return [f for f in files_to_check(repo, args.files)
+            if (repo.root / f).is_file() and (args.files or not excluded(f, cfg.exclusions))]
+
+
+def print_issues(issues, blocking):
+    for i in issues:
+        mark = "!" if i in blocking else " "
+        print(f"{mark} {i['path']}:{i['line'] or '-'}: {i['severity']} {i['type']} {i['tool']}:{i['rule']}: "
+              f"{i['message'].splitlines()[0][:200]}", flush=True)
+
+
+def failed_tools(payload):
+    """{analyzer: what went wrong} for each analyzer that failed, said aloud: their files weren't fully checked."""
+    failed = {name: t.get("detail", "") for name, t in payload["tools"].items() if t.get("status") == ERROR}
+    for name, detail in failed.items():
+        log(f"codewatch check: {name} failed, so these files weren't fully checked: {detail[:300]}")
+    return failed
+
+
+def cmd_check(args):
+    """Every analyzer on some files, nothing uploaded and nothing run: exit 1 if a changed line has a bug, a
+    vulnerability or a blocker/critical issue, 2 if an analyzer failed (the files weren't fully checked)."""
+    repo = LocalRepo(".")
+    cfg = check_config(args, repo, load_config(repo.root))
+    files = checked_files(repo, args, cfg)
+    if not files:
+        log("codewatch check: no files to check")
+        return 0
+    changed = changed_lines(repo, args.all_lines)
+    log(f"Checking {len(files)} file(s): " + ", ".join(files[:5]) + (", ..." if len(files) > 5 else ""))
+    payload = collect(cfg, ScanInput(repo.root, files, repo.branch(), changed, None, repo.root, local=True),
+                      check_log(args.verbose))
+    issues = sorted(payload["issues"], key=lambda i: (i["path"], i["line"] or 0))
+    blocking = [i for i in issues if blocks(i, changed)]
+    print_issues(issues, blocking)
+    failed = failed_tools(payload)
+    where = "anywhere in these files" if changed is None else "on changed lines"
+    log(f"{len(issues)} issue(s) in {len(files)} file(s); {len(blocking)} blocking {where} (marked !)")
+    return check_exit(blocking, failed)
+
+
+def changed_lines(repo, all_lines):
+    """{path: lines} changed since the last commit; None (every line counts) with --all-lines or no commit yet."""
+    if all_lines or not repo.resolve_commit("HEAD"):
+        return None
+    return repo.changed_lines("HEAD")
+
+
+def check_log(verbose):
+    """Each analyzer as it runs with --verbose, else only what went wrong."""
+    if verbose:
+        return log
+    return lambda message: log(message) if "failed" in message else None
+
+
+def check_exit(blocking, failed):
+    """1 when something blocks, else 2 when an analyzer failed (not fully checked), else 0."""
+    if blocking:
+        return 1
+    return 2 if failed else 0
 
 
 # --- coverage ---------------------------------------------------------------------------------------------
@@ -239,7 +362,7 @@ def coverage_commands(root, conf):
         if subprocess.run([py, "-c", "import coverage, pytest"], capture_output=True, check=False).returncode:
             raise ClientError(f"{py} needs coverage and pytest: {py} -m pip install coverage pytest "
                               f"(or set testCommand in {CONFIG_FILE})")
-        return [[py, "-m", "coverage", "run", "-m", "pytest"], [py, "-m", "coverage", "xml", "-o", "coverage.xml"]]
+        return [[py, "-m", COVERAGE, "run", "-m", "pytest"], [py, "-m", COVERAGE, "xml", "-o", "coverage.xml"]]
     package = root / "package.json"
     if package.exists() and json.loads(package.read_text()).get("scripts", {}).get("test"):
         c8 = node_tool("c8")
@@ -263,8 +386,15 @@ def cmd_coverage(args):
 # --- init -------------------------------------------------------------------------------------------------
 
 
-def hook_script(strict):
+def hook_script(strict, name="pre-push"):
     exe = shlex.quote(str(Path(sys.argv[0]).resolve()))
+    if name == "pre-commit":
+        return f"""#!/bin/sh
+{HOOK_MARKER}
+# Checks the staged files: a bug, vulnerability or blocker/critical issue on a changed line stops the commit
+# (git commit --no-verify skips it). Nothing is uploaded or run. Remove this file to disable.
+{exe} check
+"""
     scan = f"{exe} scan --fail-on-gate" if strict else f"{exe} scan || echo 'codewatch: scan failed (push continues)'"
     return f"""#!/bin/sh
 {HOOK_MARKER}
@@ -280,9 +410,9 @@ def install_hook(repo, name, strict):
     path = hooks / name
     if path.exists() and HOOK_MARKER not in path.read_text():
         raise ClientError(f"{path} already exists and wasn't written by codewatch; add these lines to it:\n"
-                          + hook_script(strict))
+                          + hook_script(strict, name))
     hooks.mkdir(parents=True, exist_ok=True)
-    path.write_text(hook_script(strict))
+    path.write_text(hook_script(strict, name))
     path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     log(f"Installed {path}")
 
@@ -317,7 +447,7 @@ def add_scan_args(p):
     p.add_argument("--branch", help="Branch name (default: current branch; required on a detached HEAD)")
     p.add_argument("--main-branch", help="Main branch for a new project (default: origin's HEAD branch)")
     p.add_argument("--coverage", help="Cobertura XML or LCOV report (default: auto-detected)")
-    p.add_argument("--fail-on-gate", action="store_true", help="Exit 1 if the quality gate fails")
+    p.add_argument("--fail-on-gate", action=STORE_TRUE, help="Exit 1 if the quality gate fails")
     p.add_argument("--output", help="Write the payload to this file instead of uploading")
 
 
@@ -325,7 +455,15 @@ def build_parser():
     parser = argparse.ArgumentParser(prog="codewatch", description=(__doc__ or "codewatch").splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     add_scan_args(sub.add_parser("scan", help="Analyse the working copy and upload the results"))
-    cov = sub.add_parser("coverage", help="Run the tests with coverage, writing a report scan picks up")
+    check = sub.add_parser("check", help="Check some files locally, uploading nothing (default: the changed ones)")
+    check.add_argument("files", nargs="*", help="Files to check (default: staged files, else every changed file)")
+    check.add_argument("--all-lines", action=STORE_TRUE,
+                       help="Block on issues anywhere in the files, not only on changed lines")
+    check.add_argument("--verbose", action=STORE_TRUE, help="Show each analyzer as it runs")
+    for name in ("--url", "--token", "--project", "--branch"):
+        check.add_argument(name, help="As for scan: where the project's settings come from")
+    check.set_defaults(main_branch=None)
+    cov = sub.add_parser(COVERAGE, help="Run the tests with coverage, writing a report scan picks up")
     cov.add_argument("path", nargs="?", default=".")
     init = sub.add_parser("init", help=f"Write {CONFIG_FILE} and optionally install a git hook")
     init.add_argument("path", nargs="?", default=".")
@@ -333,7 +471,7 @@ def build_parser():
     init.add_argument("--name")
     init.add_argument("--url")
     init.add_argument("--hook", choices=["pre-push", "pre-commit", "none"], default="none")
-    init.add_argument("--strict", action="store_true", help="Make the hook block when the quality gate fails")
+    init.add_argument("--strict", action=STORE_TRUE, help="Make the hook block when the quality gate fails")
     bench = sub.add_parser("benchmark", help="Score codewatch against suites with known vulnerabilities")
     bench.add_argument("suites", nargs="*", help="Suite names from benchmarks/suites.json (default: all)")
     return parser
@@ -348,7 +486,8 @@ def cmd_benchmark(args):
     return 0
 
 
-COMMANDS = {"scan": cmd_scan, "coverage": cmd_coverage, "init": cmd_init, "benchmark": cmd_benchmark}
+COMMANDS = {"scan": cmd_scan, "check": cmd_check, COVERAGE: cmd_coverage, "init": cmd_init,
+            "benchmark": cmd_benchmark}
 
 
 def run(args):

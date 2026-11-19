@@ -58,6 +58,8 @@ All keys are optional. `serverUrl` is used only if you trust it: `codewatch init
 
 `codewatch init --hook pre-push` installs a hook that runs `codewatch coverage` (a test failure stops the push) and then `codewatch scan`. By default a failing quality gate is only reported; `--strict` makes it block the push. An existing hook is never overwritten.
 
+`codewatch init --hook pre-commit` installs a hook that runs `codewatch check` on the staged files instead: every analyzer on just those files, locally, with nothing uploaded and none of the code run. A bug, a vulnerability or a blocker/critical issue **on a line the commit changes** stops it; older issues in the same files are listed but don't block (`git commit --no-verify` skips the hook). An analyzer that fails also stops it (exit 2), since the files weren't fully checked. Run it by hand too: `codewatch check` (the changed files), `codewatch check path/to/file.py`, or `--all-lines` to block on every issue in the named files. The project's settings come from the server when one is configured, else the defaults. Checks that need the whole project are left out: the dependency audit, coverage and live accessibility pages. Cross-file taint (input reaching a sink through a helper in another file) needs both files in the check, so the full `codewatch scan` remains the complete answer.
+
 ### Sharing a project
 
 The project owner adds people under **Settings → Members**:
