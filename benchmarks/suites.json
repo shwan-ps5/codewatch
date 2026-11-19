@@ -2214,20 +2214,6 @@
           ]
         },
         {
-          "id": "GHSA-487r-wq2j-f8m4",
-          "cve": "CVE-2015-3297",
-          "repo": "https://github.com/ether/etherpad-lite.git",
-          "fix": "9d4e5f6e35153129377206ef545d4965afae627d",
-          "cwe": [
-            22
-          ],
-          "license": "Apache-2.0",
-          "summary": "Directory traversal vulnerability in node/utils/Minify.js in Etherpad 1.1.1 through 1.5.2 allows remote attackers to read arbitrary files by leveraging replacement of backslashes with slashes in the path parameter of HTTP API requests.",
-          "scope": [
-            "src/node/utils"
-          ]
-        },
-        {
           "id": "GHSA-r48p-vhgj-x8mm",
           "cve": "CVE-2021-35206",
           "repo": "https://github.com/gitpod-io/gitpod.git",
@@ -11391,20 +11377,6 @@
           "summary": "An issue was discovered in OpenEMR before 5.0.1 Patch 7. Directory Traversal exists via docid=../ to /portal/lib/download_template.php.",
           "scope": [
             "portal"
-          ]
-        },
-        {
-          "id": "CVE-2018-19994",
-          "cve": "CVE-2018-19994",
-          "repo": "https://github.com/Dolibarr/dolibarr.git",
-          "fix": "850b939ffd2c7a4443649331b923d5e0da2d6446",
-          "cwe": [
-            89
-          ],
-          "license": "GPL-3.0",
-          "summary": "An error-based SQL injection vulnerability in product/card.php in Dolibarr version 8.0.2 allows remote authenticated users to execute arbitrary SQL commands via the desiredstock parameter.",
-          "scope": [
-            "htdocs/product/class"
           ]
         },
         {
