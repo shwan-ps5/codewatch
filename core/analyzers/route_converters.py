@@ -10,6 +10,8 @@ line keeps its number.
 import ast
 import re
 
+from .base import python_tree
+
 CONVERTER_RE = re.compile(r"<(\w+)(?:\([^()<>]*\))?:(\w+)>")
 TEXT_CONVERTERS = {"string", "path"}
 TYPES = {"uuid": "uuid.UUID"}
@@ -74,18 +76,25 @@ GROUP_RE = re.compile(r"(?<!\\)\(\?P<(\w+)>((?:[^()\\]|\\.|\((?:[^()\\]|\\.)*\))
 TEXT_GROUP_RE = re.compile(r"\.|\[\^|\\[SWD]")
 
 
+def joined_text(node):
+    return "".join(part.value for part in node.values if isinstance(part, ast.Constant) and isinstance(part.value, str))
+
+
+def added_text(node):
+    left, right = constant_text(node.left), constant_text(node.right)
+    return None if left is None and right is None else (left or "") + (right or "")
+
+
 def constant_text(node):
     """A route string: a constant, 'constant'.format(...), an f-string's constant parts or constants added."""
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
+    if isinstance(node, ast.Constant):
+        return node.value if isinstance(node.value, str) else None
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
         return constant_text(node.func.value)
     if isinstance(node, ast.JoinedStr):
-        return "".join(part.value for part in node.values
-                       if isinstance(part, ast.Constant) and isinstance(part.value, str))
+        return joined_text(node)
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-        left, right = constant_text(node.left), constant_text(node.right)
-        return None if left is None and right is None else (left or "") + (right or "")
+        return added_text(node)
     return None
 
 
@@ -97,47 +106,48 @@ def django_text_parameters(sources):
     """{view function name: {parameter}} for the URL arguments Django's routes pass as free text, from the
     urlpatterns in sources."""
     views = {}
-    for source in sources:
-        if "urlpatterns" not in source:
-            continue
-        try:
-            tree = ast.parse(source)
-        except (SyntaxError, ValueError):
-            continue
+    for tree in filter(None, (python_tree(source) for source in sources if "urlpatterns" in source)):
         for node in ast.walk(tree):
-            if not (isinstance(node, ast.Call) and call_name(node.func) in DJANGO_ROUTES and len(node.args) >= 2):
-                continue
-            route, view = constant_text(node.args[0]), call_name(node.args[1])
-            if route is None or view is None:
-                continue
-            if call_name(node.func) == "path":
-                names = {name for converter, name in PATH_PARAMETER_RE.findall(route)
-                         if converter in TEXT_PATH_CONVERTERS}
-            else:
-                names = {name for name, group in GROUP_RE.findall(route) if TEXT_GROUP_RE.search(group)}
-            if names:
-                views.setdefault(view, set()).update(names)
+            if found := route_text_parameters(node):
+                views.setdefault(found[0], set()).update(found[1])
     return views
+
+
+def text_names(route, function):
+    """The free-text parameters of a route: path() converters that take text, re_path() groups that match it."""
+    if function == "path":
+        return {name for converter, name in PATH_PARAMETER_RE.findall(route) if converter in TEXT_PATH_CONVERTERS}
+    return {name for name, group in GROUP_RE.findall(route) if TEXT_GROUP_RE.search(group)}
+
+
+def route_text_parameters(node):
+    """(view name, {free-text parameters}) for a path()/re_path() call with both, else None."""
+    if not (isinstance(node, ast.Call) and call_name(node.func) in DJANGO_ROUTES and len(node.args) >= 2):
+        return None
+    route, view = constant_text(node.args[0]), call_name(node.args[1])
+    names = text_names(route, call_name(node.func)) if route is not None and view is not None else set()
+    return (view, names) if names else None
 
 
 def mark_url_text(source, views):
     """The source with the free-text URL arguments of the function views in views annotated URL_TEXT, or None."""
     if not views or not any(name in source for name in views):
         return None
-    try:
-        tree = ast.parse(source)
-    except (SyntaxError, ValueError):
+    tree = python_tree(source)
+    if tree is None:
         return None
-    edits = []
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name not in views:
-            continue
-        arguments = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
-        if not arguments or arguments[0].arg != "request":
-            continue
-        edits.extend((arg.lineno, arg.end_col_offset, f": {URL_TEXT}")
-                     for arg in arguments[1:] if arg.arg in views[node.name] and arg.annotation is None)
-    return annotated(source, edits)
+    return annotated(source, [edit for node in ast.walk(tree)
+                              if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in views
+                              for edit in url_text_edits(node, views[node.name])])
+
+
+def url_text_edits(view, names):
+    """URL_TEXT annotations for a request view's unannotated parameters among names."""
+    arguments = view.args.posonlyargs + view.args.args + view.args.kwonlyargs
+    if not arguments or arguments[0].arg != "request":
+        return []
+    return [(arg.lineno, arg.end_col_offset, f": {URL_TEXT}")
+            for arg in arguments[1:] if arg.arg in names and arg.annotation is None]
 
 
 SCALAR_RE = re.compile(r"^(typing\.)?(Optional\[)?(int|float|bool|(uuid\.)?UUID|(datetime\.)?(date|datetime|time)|"

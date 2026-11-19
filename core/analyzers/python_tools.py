@@ -195,6 +195,15 @@ RANDOM_FUNCTIONS = {"random", "randint", "randrange", "choice", "choices", "samp
                     "getrandbits", "randbytes", "normalvariate", "gauss", "triangular"}
 
 
+def passed_as(node, parents):
+    """The keyword a node is passed as, looking up through enclosing expressions within its statement, or None."""
+    while node in parents and not isinstance(node, ast.stmt):
+        if isinstance(parents[node], ast.keyword) and parents[node].arg:
+            return parents[node].arg
+        node = parents[node]
+    return None
+
+
 class LineCache:
     def __init__(self, root):
         self.root, self.files, self.trees = Path(root), {}, {}
@@ -217,13 +226,9 @@ class LineCache:
         tree = self.tree(path)
         parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)} if tree else {}
         for call in parents:
-            if not (isinstance(call, ast.Call) and call.lineno == line and is_random_call(call)):
-                continue
-            node = call
-            while node in parents and not isinstance(node, ast.stmt):
-                if isinstance(parents[node], ast.keyword) and parents[node].arg:
-                    return parents[node].arg
-                node = parents[node]
+            if (isinstance(call, ast.Call) and call.lineno == line and is_random_call(call)
+                    and (keyword := passed_as(call, parents))):
+                return keyword
         return self.function_text(path, line)
 
     def only_shuffles(self, path, line):

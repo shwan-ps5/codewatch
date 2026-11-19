@@ -56,32 +56,56 @@ CAST_RE = re.compile(r"\(\s*(int|integer|float|double|bool|boolean)\s*\)\s*$")
 NAME_RE = re.compile(r"(?<![\w\\])(\$this(?:->\w+)+|[A-Za-z_\\][\w\\]*(?:::\w+)?)\s*$")
 
 
+def string_end(text, i):
+    """Index of the quote closing the string that opens at i (past the end if it is unclosed); backslashes escape."""
+    quote, i = text[i], i + 1
+    while i < len(text) and text[i] != quote:
+        i += 2 if text[i] == "\\" else 1
+    return i
+
+
+def escaping_frame(expression, i):
+    """Whether the bracket at i opens an escaping call (or a $this-> helper, which escapes by default)."""
+    name = NAME_RE.search(expression[:i])
+    return bool(name and ESCAPING_CALL_RE.match(name.group(1).replace(" ", "")))
+
+
+def printed_in_string(expression, i, end, frames):
+    """The variables a double-quoted string interpolates, when nothing around it escapes."""
+    if expression[i] != '"' or any(frames):
+        return set()
+    return {v for v in VAR_RE.findall(expression[i + 1:end]) if v != "this"}
+
+
+def printed_variable(expression, i, frames):
+    """(the variable at i if it prints unescaped, else None; where scanning resumes)."""
+    m = re.match(r"\$(\w+)", expression[i:])
+    if not m:
+        return None, i + 1
+    name = m.group(1)
+    printed = name != "this" and not any(frames) and not CAST_RE.search(expression[:i])
+    return (name if printed else None), i + len(m.group(0))
+
+
 def printed_variables(expression):
     """The variables an expression prints unescaped: each $name not inside an escaping call (or a $this-> helper,
     which escapes by default), nor cast to a number. Double-quoted strings print the variables they interpolate."""
-    found, frames, i, n = set(), [], 0, len(expression)
-    while i < n:
+    found, frames, i = set(), [], 0
+    while i < len(expression):
         c = expression[i]
         if c in "'\"":
-            end = i + 1
-            while end < n and expression[end] != c:
-                end += 2 if expression[end] == "\\" else 1
-            if c == '"' and not any(frames):
-                found.update(v for v in VAR_RE.findall(expression[i + 1:end]) if v != "this")
+            end = string_end(expression, i)
+            found |= printed_in_string(expression, i, end, frames)
             i = end + 1
             continue
-        if c == "(":
-            name = NAME_RE.search(expression[:i])
-            frames.append(bool(name and ESCAPING_CALL_RE.match(name.group(1).replace(" ", ""))))
-        elif c == ")":
-            if frames:
-                frames.pop()
-        elif c == "$" and (m := re.match(r"\$(\w+)", expression[i:])):
-            name = m.group(1)
-            if name != "this" and not any(frames) and not CAST_RE.search(expression[:i]):
-                found.add(name)
-            i += len(m.group(0))
+        if c == "$":
+            name, i = printed_variable(expression, i, frames)
+            found |= {name} if name else set()
             continue
+        if c == "(":
+            frames.append(escaping_frame(expression, i))
+        elif c == ")" and frames:
+            frames.pop()
         i += 1
     return found
 
@@ -92,9 +116,7 @@ def statement_end(text, start):
     while i < n:
         c = text[i]
         if c in "'\"":
-            i += 1
-            while i < n and text[i] != c:
-                i += 2 if text[i] == "\\" else 1
+            i = string_end(text, i)
         elif c in "([{":
             depth += 1
         elif c in ")]}":
@@ -110,23 +132,27 @@ def printed_expressions(text):
             + [text[m.end():statement_end(text, m.end())] for m in ECHO_RE.finditer(text)])
 
 
+TWIG, BLADE, LATTE, SMARTY, PHP = "twig", "blade", "latte", "smarty", "php"
+KIND_SUFFIXES = ((".twig", TWIG), (".blade.php", BLADE), (".latte", LATTE))
+
+
+def is_php_view(lower, path, text):
+    """A .ctp or .phtml file, or a .php file in a view folder that leaves PHP mode and defines no class."""
+    if lower.endswith((".ctp", ".phtml")):
+        return True
+    return (lower.endswith(".php") and bool(PHP_VIEW_DIR_RE.search(path)) and "?>" in text
+            and not re.search(r"^[ \t]*(?:abstract\s+|final\s+)?class\s", text, re.MULTILINE))
+
+
 def kind(path, text):
     """The template kind of a file: twig, blade, latte, smarty, php (a plain PHP view), or None."""
     lower = path.lower()
-    if lower.endswith(".twig"):
-        return "twig"
-    if lower.endswith(".blade.php"):
-        return "blade"
-    if lower.endswith(".latte"):
-        return "latte"
+    if found := next((k for suffix, k in KIND_SUFFIXES if lower.endswith(suffix)), None):
+        return found
     if lower.endswith(".tpl"):
         # OpenCart 2's and others' .tpl files are plain PHP.
-        return "php" if ("<?php" in text or "<?=" in text) else "smarty"
-    if lower.endswith((".ctp", ".phtml")) or (lower.endswith(".php") and PHP_VIEW_DIR_RE.search(path)
-                                             and "?>" in text and not re.search(r"^[ \t]*(?:abstract\s+|final\s+)?class\s",
-                                                                                text, re.MULTILINE)):
-        return "php"
-    return None
+        return PHP if ("<?php" in text or "<?=" in text) else SMARTY
+    return PHP if is_php_view(lower, path, text) else None
 
 
 def names(path, kind_):
@@ -143,7 +169,7 @@ def names(path, kind_):
     for i in range(len(parts)):
         found.add("/".join(parts[i:]))
         found.add("/".join(stem_parts[i:]))
-        if kind_ in ("blade", "php"):
+        if kind_ in (BLADE, PHP):
             found.add(".".join(stem_parts[i:]))
     return {n for n in found if n}
 
@@ -183,19 +209,23 @@ def php_raw(text):
     return {name for name in raw if name not in own}
 
 
+def smarty_raw(text, escapes_by_default):
+    return {name for name, rest in SMARTY_PRINT_RE.findall(text)
+            if not SMARTY_SAFE_RE.search(rest) and (not escapes_by_default or "nofilter" in rest)}
+
+
+RAW_VARIABLES = {
+    TWIG: lambda text, settings: twig_raw(text, settings["twig_off"]),
+    BLADE: lambda text, _settings: {v for expression in BLADE_RAW_RE.findall(text)
+                                    for v in printed_variables(expression.strip())},
+    LATTE: lambda text, _settings: {(a or b).lstrip("$") for a, b in LATTE_RAW_RE.findall(text)},
+    SMARTY: lambda text, settings: smarty_raw(text, settings["smarty_escapes"]),
+    PHP: lambda text, _settings: php_raw(text),
+}
+
+
 def raw_variables(text, kind_, settings):
-    if kind_ == "twig":
-        return twig_raw(text, settings["twig_off"])
-    if kind_ == "blade":
-        return {v for expression in BLADE_RAW_RE.findall(text) for v in printed_variables(expression.strip())}
-    if kind_ == "latte":
-        return {(a or b).lstrip("$") for a, b in LATTE_RAW_RE.findall(text)}
-    if kind_ == "smarty":
-        return {name for name, rest in SMARTY_PRINT_RE.findall(text)
-                if not SMARTY_SAFE_RE.search(rest) and (not settings["smarty_escapes"] or "nofilter" in rest)}
-    if kind_ == "php":
-        return php_raw(text)
-    return set()
+    return RAW_VARIABLES[kind_](text, settings) if kind_ in RAW_VARIABLES else set()
 
 
 def unescaped(templates, php_texts=()):
@@ -230,16 +260,17 @@ def named_sink(patterns, name_regex, variable):
     return {"patterns": [{"pattern-either": [*({"pattern": p} for p in patterns), *filled_array(patterns)]},
                          {"metavariable-regex": {"metavariable": "$NAME", "regex": f"^['\"]({name_regex})['\"]$"}},
                          {"metavariable-regex": {"metavariable": "$KEY", "regex": f"^['\"]{re.escape(variable)}['\"]$"}},
-                         {"focus-metavariable": "$VALUE"}]}
+                         FOCUS_VALUE]}
 
 
 def unnamed_sink(patterns, variable):
     return {"patterns": [{"pattern-either": [{"pattern": p} for p in patterns]},
                          {"metavariable-regex": {"metavariable": "$KEY", "regex": f"^['\"]{re.escape(variable)}['\"]$"}},
-                         {"focus-metavariable": "$VALUE"}]}
+                         FOCUS_VALUE]}
 
 
 ARRAY = "[..., $KEY => $VALUE, ...]"
+FOCUS_VALUE = {"focus-metavariable": "$VALUE"}
 # Calls that name the template they render. Every engine's list is the same: the name has to be one of that kind's
 # templates, so OpenCart's Twig through $this->load->view() and CodeIgniter's PHP views through view() both match.
 NAMED_CALLS = [f"$T->render($NAME, {ARRAY}, ...)", f"$T->renderView($NAME, {ARRAY}, ...)",
@@ -250,36 +281,40 @@ NAMED_CALLS = [f"$T->render($NAME, {ARRAY}, ...)", f"$T->renderView($NAME, {ARRA
                f"view($NAME, {ARRAY}, ...)", f"View::make($NAME, {ARRAY}, ...)",
                "view($NAME, ...)->with($KEY, $VALUE)", f"view($NAME, ...)->with({ARRAY})",
                "View::make($NAME, ...)->with($KEY, $VALUE)"]
-NAMED = dict.fromkeys(("twig", "blade", "latte", "php"), NAMED_CALLS)
+NAMED = dict.fromkeys((TWIG, BLADE, LATTE, PHP), NAMED_CALLS)
 UNNAMED = {
-    "smarty": ["$S->assign($KEY, $VALUE, ...)", f"$S->assign({ARRAY})", "$S->assignByRef($KEY, $VALUE)",
+    SMARTY: ["$S->assign($KEY, $VALUE, ...)", f"$S->assign({ARRAY})", "$S->assignByRef($KEY, $VALUE)",
                "$S->assign_by_ref($KEY, $VALUE)"],
     # A CakePHP component's view variables, for whichever view its controller renders. A controller's own
     # $this->set() is matched to its action's view (cake_sinks).
-    "php": ["$this->Controller->set($KEY, $VALUE)", "$this->controller->set($KEY, $VALUE)",
+    PHP: ["$this->Controller->set($KEY, $VALUE)", "$this->controller->set($KEY, $VALUE)",
             f"$this->Controller->set({ARRAY})", f"$this->controller->set({ARRAY})"],
-    "latte": ["$this->template->$KEY = $VALUE;", "$template->$KEY = $VALUE;"],
+    LATTE: ["$this->template->$KEY = $VALUE;", "$template->$KEY = $VALUE;"],
 }
 
 
-def template_sinks(found):
+def latte_sink(patterns, variable):
+    """A Latte property assignment: $KEY binds the bare identifier, not a string."""
+    return {"patterns": [{"pattern-either": [{"pattern": p} for p in patterns]},
+                         {"metavariable-regex": {"metavariable": "$KEY", "regex": f"^{re.escape(variable)}$"}},
+                         FOCUS_VALUE]}
+
+
+def variable_sinks(kind_, variable, paths):
+    """The sinks for one template variable of one kind: calls that name its templates, and calls that don't."""
     sinks = []
-    for kind_, variables in sorted(found.items()):
-        for variable, paths in sorted(variables.items()):
-            if kind_ in NAMED:
-                tails = set().union(*(names(path, kind_) for path in paths))
-                sinks.append(named_sink(NAMED[kind_], alternation(tails), variable))
-            if kind_ in UNNAMED:
-                patterns = UNNAMED[kind_]
-                if kind_ == "latte":
-                    # A property name, not a string: $KEY binds the bare identifier.
-                    sinks.append({"patterns": [{"pattern-either": [{"pattern": p} for p in patterns]},
-                                               {"metavariable-regex": {"metavariable": "$KEY",
-                                                                       "regex": f"^{re.escape(variable)}$"}},
-                                               {"focus-metavariable": "$VALUE"}]})
-                else:
-                    sinks.append(unnamed_sink(patterns, variable))
+    if kind_ in NAMED:
+        tails = set().union(*(names(path, kind_) for path in paths))
+        sinks.append(named_sink(NAMED[kind_], alternation(tails), variable))
+    if kind_ in UNNAMED:
+        build = latte_sink if kind_ == LATTE else unnamed_sink
+        sinks.append(build(UNNAMED[kind_], variable))
     return sinks
+
+
+def template_sinks(found):
+    return [sink for kind_, variables in sorted(found.items())
+            for variable, paths in sorted(variables.items()) for sink in variable_sinks(kind_, variable, paths)]
 
 
 # CakePHP: a controller action renders View/<Controller>/<action>.ctp (2.x) or templates/<Controller>/<action>.php
@@ -320,6 +355,38 @@ def cake_views(templates):
     return views
 
 
+def render_keys(controller, action, body):
+    """The (controller, squashed view) pairs an action can render: its own view and each $this->render() target."""
+    keys = {(controller.lower(), squashed(action))}
+    for name in RENDER_RE.findall(body):
+        parts = name.split("/")
+        keys.add((parts[-2].lower(), squashed(parts[-1])) if len(parts) > 1 else (controller.lower(), squashed(name)))
+    return keys
+
+
+def controller_actions(controller, text, views):
+    """{variable: {actions whose view prints it unescaped}} for one controller's source."""
+    starts = [(m.start(), m.group(1)) for m in FUNCTION_RE.finditer(text)]
+    ends = [start for start, _ in starts[1:]] + [len(text)]
+    actions = {}
+    for (start, action), end in zip(starts, ends, strict=True):
+        keys = render_keys(controller, action, text[start:end])
+        for variable in set().union(*(views.get(key, set()) for key in keys)):
+            actions.setdefault(variable, set()).add(action)
+    return actions
+
+
+def cake_sink(controller, variable, actions):
+    return {"patterns": [
+        {"pattern-inside": "class $CLASS extends $PARENT { ... }"},
+        {"metavariable-regex": {"metavariable": "$CLASS", "regex": f"^{re.escape(controller)}Controller$"}},
+        {"pattern-inside": "function $ACTION(...) { ... }"},
+        {"metavariable-regex": {"metavariable": "$ACTION", "regex": f"^({alternation(actions)})$"}},
+        {"pattern-either": [{"pattern": "$this->set($KEY, $VALUE)"}, {"pattern": f"$this->set({ARRAY})"}]},
+        {"metavariable-regex": {"metavariable": "$KEY", "regex": f"^['\"]{re.escape(variable)}['\"]$"}},
+        FOCUS_VALUE]}
+
+
 def cake_sinks(templates):
     """A controller's $this->set() of a variable its action's view prints unescaped."""
     views = cake_views(templates)
@@ -327,29 +394,9 @@ def cake_sinks(templates):
         return []
     sinks = []
     for path, text in sorted(templates.items()):
-        if not path.endswith(".php") or not (match := CONTROLLER_RE.search(text)):
-            continue
-        controller = match.group(1)
-        starts = [(m.start(), m.group(1)) for m in FUNCTION_RE.finditer(text)]
-        actions = {}
-        for i, (start, action) in enumerate(starts):
-            body = text[start:starts[i + 1][0] if i + 1 < len(starts) else len(text)]
-            keys = {(controller.lower(), squashed(action))}
-            for name in RENDER_RE.findall(body):
-                parts = name.split("/")
-                keys.add((parts[-2].lower(), squashed(parts[-1])) if len(parts) > 1
-                         else (controller.lower(), squashed(name)))
-            for variable in set().union(*(views.get(key, set()) for key in keys)):
-                actions.setdefault(variable, set()).add(action)
-        for variable, names_ in sorted(actions.items()):
-            sinks.append({"patterns": [
-                {"pattern-inside": "class $CLASS extends $PARENT { ... }"},
-                {"metavariable-regex": {"metavariable": "$CLASS", "regex": f"^{re.escape(controller)}Controller$"}},
-                {"pattern-inside": "function $ACTION(...) { ... }"},
-                {"metavariable-regex": {"metavariable": "$ACTION", "regex": f"^({alternation(names_)})$"}},
-                {"pattern-either": [{"pattern": "$this->set($KEY, $VALUE)"}, {"pattern": f"$this->set({ARRAY})"}]},
-                {"metavariable-regex": {"metavariable": "$KEY", "regex": f"^['\"]{re.escape(variable)}['\"]$"}},
-                {"focus-metavariable": "$VALUE"}]})
+        if path.endswith(".php") and (match := CONTROLLER_RE.search(text)):
+            actions = controller_actions(match.group(1), text, views)
+            sinks += [cake_sink(match.group(1), variable, names_) for variable, names_ in sorted(actions.items())]
     return sinks
 
 

@@ -30,12 +30,15 @@ from .base import (
     Result,
     is_test_file,
     node_tool,
+    python_tree,
 )
 
 TOOL = "codewatch"
 MIN_LITERAL_LENGTH = 5
 RE_MODULES = {"re", "regex"}
-RE_FUNCTIONS = {"compile", "match", "search", "fullmatch", "sub", "subn", "split", "findall", "finditer"}
+MATCH, FULLMATCH = "match", "fullmatch"
+BACKTRACKING = "regex-backtracking"
+RE_FUNCTIONS = {"compile", MATCH, "search", FULLMATCH, "sub", "subn", "split", "findall", "finditer"}
 PY_FLAGS = {"IGNORECASE": "i", "I": "i", "MULTILINE": "m", "M": "m", "DOTALL": "s", "S": "s", "VERBOSE": "x", "X": "x"}
 
 RULES = [
@@ -67,7 +70,7 @@ RULES = [
         "cwe": [1041],
     },
     {
-        "code": "regex-backtracking", "title": "Regular expression vulnerable to catastrophic backtracking (ReDoS)",
+        "code": BACKTRACKING, "title": "Regular expression vulnerable to catastrophic backtracking (ReDoS)",
         "languages": ["python", "javascript"], "type": VULNERABILITY, "severity": MAJOR,
         "summary": "Some inputs make this pattern take exponential or polynomial time, so crafted input can "
                    "stall the process. Remove nested or overlapping quantifiers, anchor the pattern, or bound "
@@ -184,14 +187,14 @@ def to_js_syntax(pattern):
 
 def anchored(pattern, function):
     """re.match/fullmatch only try position 0, so analyse them as anchored rather than as a search."""
-    if function in ("match", "fullmatch") and not pattern.startswith("^"):
+    if function in (MATCH, FULLMATCH) and not pattern.startswith("^"):
         pattern = f"^(?:{pattern})"
-    if function == "fullmatch" and not pattern.endswith("$"):
+    if function == FULLMATCH and not pattern.endswith("$"):
         pattern += "$"
     return pattern
 
 
-ANCHORED_METHODS = ("match", "fullmatch")
+ANCHORED_METHODS = (MATCH, FULLMATCH)
 
 
 def compiled_patterns(tree):
@@ -225,7 +228,7 @@ def compiled_uses(tree):
     for name, calls in compiled.items():
         methods = set(uses.get(name, ()))
         if len(calls) == 1 and methods and methods <= set(ANCHORED_METHODS):
-            out[id(calls[0])] = "match" if "match" in methods else "fullmatch"
+            out[id(calls[0])] = MATCH if MATCH in methods else FULLMATCH
     return out
 
 
@@ -304,27 +307,29 @@ class CodewatchChecks(Analyzer):
     def available(self):
         return shutil.which("node") is not None and node_tool("tsc") is not None
 
-    def run(self, ctx):
-        result = Result()
-        regexes = []
+    @staticmethod
+    def python_checks(ctx):
+        """(repeated-literal findings, regexes to check) from the Python files."""
+        findings, regexes = [], []
         for path in ctx.files_with(PY):
-            try:
-                tree = ast.parse((ctx.root / path).read_text(errors="replace"))
-            except (SyntaxError, ValueError):
+            tree = python_tree((ctx.root / path).read_text(errors="replace"))
+            if tree is None:
                 continue
             if not is_test_file(path):
-                for value, lines in python_literals(tree, ctx.max_literal_repeats):
-                    result.findings.append(literal_finding(path, value, lines))
+                findings += [literal_finding(path, value, lines)
+                             for value, lines in python_literals(tree, ctx.max_literal_repeats)]
             regexes += [{**r, "tooling": True} if developer_tool(tree, path) else r
                         for r in python_regexes(tree, path)]
-        result.findings += self.table_findings(ctx)
+        return findings, regexes
+
+    def run(self, ctx):
+        result = Result()
+        literal_findings, regexes = self.python_checks(ctx)
+        result.findings += literal_findings + self.table_findings(ctx)
         node_out = self.run_node(ctx, regexes)
-        for lit in node_out["literals"]:
-            path = ctx.rel(lit["path"])
-            if not is_test_file(path):
-                result.findings.append(literal_finding(path, lit["value"], lit["lines"]))
-        for r in node_out["regexes"]:
-            result.findings.append(regex_finding(ctx.rel(r["path"]), r))
+        result.findings += [literal_finding(path, lit["value"], lit["lines"]) for lit in node_out["literals"]
+                            if not is_test_file(path := ctx.rel(lit["path"]))]
+        result.findings += [regex_finding(ctx.rel(r["path"]), r) for r in node_out["regexes"]]
         return result
 
     def table_findings(self, ctx):
@@ -359,7 +364,7 @@ def regex_finding(path, r):
     message = (f"Regex /{pattern[:80]}/ has {r.get('complexity', 'super-linear')} backtracking "
                f"({r.get('summary') or 'ReDoS'}); e.g. input {r.get('attack', '')[:80]}")
     if r.get("tooling"):
-        return Finding(TOOL, "regex-backtracking", MINOR, HOTSPOT,
+        return Finding(TOOL, BACKTRACKING, MINOR, HOTSPOT,
                        message + ". It is in a developer tool (a script or management command), so it only "
                        "matters if that tool reads text someone else controls", path, r["line"])
     # Polynomial backtracking needs long input to hurt (a request body, an uploaded file), and the check can't
@@ -367,11 +372,11 @@ def regex_finding(path, r):
     # "vulnerabilities" (codewatch on its own code, 2026-11-17). Exponential stays one: a few dozen characters
     # are enough.
     if r.get("complexity") != "exponential":
-        return Finding(TOOL, "regex-backtracking", MAJOR, HOTSPOT,
+        return Finding(TOOL, BACKTRACKING, MAJOR, HOTSPOT,
                        message + ". Polynomial backtracking is slow only on long input: it matters where this "
                        "pattern reads text from outside (a request, an upload) without a length limit",
                        path, r["line"])
-    return Finding(TOOL, "regex-backtracking", severity, VULNERABILITY, message, path, r["line"])
+    return Finding(TOOL, BACKTRACKING, severity, VULNERABILITY, message, path, r["line"])
 
 
 # A file that builds a web app, even if it also runs itself under `if __name__ == "__main__"` (app.run()).

@@ -97,6 +97,9 @@ def known_false_positive(message):
     return any(p.search(message) for p in KNOWN_FALSE_POSITIVES)
 
 
+SECRETS_TOOL = "detect-secrets"
+
+
 class TypeCheck(Analyzer):
     """Type errors (wrong arguments, None access, bad returns) with basedpyright in standard mode."""
 
@@ -104,7 +107,8 @@ class TypeCheck(Analyzer):
     executable = "basedpyright"
     extensions = PY
 
-    def run(self, ctx):
+    @staticmethod
+    def config(ctx):
         config = {
             "typeCheckingMode": "standard",
             "include": [str(ctx.root / f) for f in ctx.files_with(PY)],
@@ -117,29 +121,40 @@ class TypeCheck(Analyzer):
         venv = next((ctx.root / v for v in ("venv", ".venv") if (ctx.root / v / "bin" / "python").exists()), None)
         if venv and ctx.local:
             config.update(venvPath=str(venv.parent), venv=venv.name)
+        return config
+
+    @staticmethod
+    def finding(ctx, diagnostic):
+        # File-level diagnostics (e.g. a file that can't be read) carry no range.
+        where = diagnostic.get("range")
+        start, end = (where["start"]["line"] + 1, where["end"]["line"] + 1) if where else (None, None)
+        return Finding("basedpyright", diagnostic.get("rule") or "type-error", MAJOR, BUG,
+                       diagnostic["message"].split("\n")[0], ctx.rel(diagnostic["file"]), start, end)
+
+    def run(self, ctx):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "pyrightconfig.json"
-            cfg.write_text(json.dumps(config))
+            cfg.write_text(json.dumps(self.config(ctx)))
             out = self.exec(["--outputjson", "--project", str(cfg)], ctx, ok_codes=(0, 1))
         result = Result()
-        for d in json.loads(out or "{}").get("generalDiagnostics", []):
-            if d["severity"] != "error" or known_false_positive(d["message"]):
-                continue
-            # File-level diagnostics (e.g. a file that can't be read) carry no range.
-            where = d.get("range")
-            start, end = (where["start"]["line"] + 1, where["end"]["line"] + 1) if where else (None, None)
-            result.findings.append(
-                Finding("basedpyright", d.get("rule") or "type-error", MAJOR, BUG,
-                        d["message"].split("\n")[0], ctx.rel(d["file"]), start, end)
-            )
+        result.findings = [self.finding(ctx, d) for d in json.loads(out or "{}").get("generalDiagnostics", [])
+                           if d["severity"] == "error" and not known_false_positive(d["message"])]
         return result
 
 
 class Secrets(Analyzer):
     """Hard-coded credentials and API keys with detect-secrets, plus known token formats it has no plugin for."""
 
-    name = "detect-secrets"
-    executable = "detect-secrets"
+    name = executable = SECRETS_TOOL
+
+    @staticmethod
+    def finding(ctx, path, line, types):
+        """A secret detect-secrets names (a key format) is a vulnerability; a heuristic one is a hotspot."""
+        specific = sorted(types - SECRET_HEURISTICS)
+        return Finding(SECRETS_TOOL, specific[0] if specific else min(types), BLOCKER if specific else MAJOR,
+                       VULNERABILITY if specific else HOTSPOT,
+                       f"Possible hard-coded secret ({', '.join(sorted(types))}); move it to configuration "
+                       "or a secret store, and rotate it if it was ever committed", ctx.rel(path), line)
 
     def run(self, ctx):
         out = self.exec(["scan", "--exclude-lines", NOT_SECRET_LINES, *ctx.files], ctx)
@@ -149,17 +164,9 @@ class Secrets(Analyzer):
             by_line = {}
             for item in items:
                 by_line.setdefault(item["line_number"], set()).add(item["type"])
-            for line, types in sorted(by_line.items()):
-                if types <= ENTROPY_ONLY and not CREDENTIAL_CONTEXT_RE.search(credential_context(lines, path, line)):
-                    continue
-                specific = sorted(types - SECRET_HEURISTICS)
-                result.findings.append(
-                    Finding("detect-secrets", specific[0] if specific else min(types),
-                            BLOCKER if specific else MAJOR,
-                            VULNERABILITY if specific else HOTSPOT,
-                            f"Possible hard-coded secret ({', '.join(sorted(types))}); move it to configuration "
-                            "or a secret store, and rotate it if it was ever committed", ctx.rel(path), line)
-                )
+            result.findings += [self.finding(ctx, path, line, types) for line, types in sorted(by_line.items())
+                                if not types <= ENTROPY_ONLY
+                                or CREDENTIAL_CONTEXT_RE.search(credential_context(lines, path, line))]
         result.findings += known_tokens(ctx, {(f.path, f.line) for f in result.findings})
         return result
 
@@ -190,24 +197,28 @@ def credential_context(lines, path, line):
     return lines.function_text(path, line) if path.endswith(".py") else lines.get(path, line)
 
 
+def small_text(full):
+    """A text file's contents, or None if it is too large to scan or isn't text."""
+    try:
+        if full.stat().st_size > MAX_TOKEN_SCAN_BYTES:
+            return None
+        return full.read_text(errors="strict")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def token_kind(line):
+    return next((k for k, pattern in TOKEN_FORMATS if pattern.search(line)), None)
+
+
 def known_tokens(ctx, already):
     findings = []
     for path in ctx.files:
-        full = ctx.root / path
-        try:
-            if full.stat().st_size > MAX_TOKEN_SCAN_BYTES:
-                continue
-            text = full.read_text(errors="strict")
-        except (OSError, UnicodeDecodeError):
-            continue
-        for n, line in enumerate(text.splitlines(), 1):
-            if (path, n) in already:
-                continue
-            kind = next((k for k, pattern in TOKEN_FORMATS if pattern.search(line)), None)
-            if kind:
-                findings.append(Finding("detect-secrets", kind, BLOCKER, VULNERABILITY,
-                                        f"{kind} committed to the repository; revoke it and load it from configuration",
-                                        path, n))
+        text = small_text(ctx.root / path)
+        findings += [Finding(SECRETS_TOOL, kind, BLOCKER, VULNERABILITY,
+                             f"{kind} committed to the repository; revoke it and load it from configuration", path, n)
+                     for n, line in enumerate((text or "").splitlines(), 1)
+                     if (path, n) not in already and (kind := token_kind(line))]
     return findings
 
 
@@ -305,12 +316,8 @@ GLOBAL_ASSIGN_RE = re.compile(r"\b(?:window|globalThis|self)\.([\w$]{1,100})\s{0
 HOST_GLOBAL_MIN_FILES = 3
 
 
-def drop_shared_globals(ctx, findings):
-    """no-undef sees one file at a time. Names another script defines at top level, or that several files use
-    without anyone defining them (globals the host page or runtime injects), are not undefined."""
-    undefined = [(f, m[1]) for f in findings if f.rule == "no-undef" and (m := UNDEFINED_RE.match(f.message))]
-    if not undefined:
-        return findings
+def defined_globals(ctx):
+    """Names the project's scripts define at top level or assign to window/globalThis/self."""
     defined = set()
     for path in ctx.files_with(JS):
         try:
@@ -319,10 +326,24 @@ def drop_shared_globals(ctx, findings):
             continue
         defined.update(TOP_LEVEL_DEF_RE.findall(text))
         defined.update(GLOBAL_ASSIGN_RE.findall(text))
+    return defined
+
+
+def shared_names(undefined, defined):
+    """The undefined names another script defines, or that several files use (globals the host page injects)."""
     files_using = {}
     for f, name in undefined:
         files_using.setdefault(name, set()).add(f.path)
-    shared = {n for n, paths in files_using.items() if n in defined or len(paths) >= HOST_GLOBAL_MIN_FILES}
+    return {n for n, paths in files_using.items() if n in defined or len(paths) >= HOST_GLOBAL_MIN_FILES}
+
+
+def drop_shared_globals(ctx, findings):
+    """no-undef sees one file at a time. Names another script defines at top level, or that several files use
+    without anyone defining them (globals the host page or runtime injects), are not undefined."""
+    undefined = [(f, m[1]) for f in findings if f.rule == "no-undef" and (m := UNDEFINED_RE.match(f.message))]
+    if not undefined:
+        return findings
+    shared = shared_names(undefined, defined_globals(ctx))
     drop = {id(f) for f, name in undefined if name in shared}
     return [f for f in findings if id(f) not in drop]
 

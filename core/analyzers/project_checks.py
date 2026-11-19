@@ -17,6 +17,7 @@ start are matched against them.
 import ast
 import re
 
+from .base import python_tree
 from .summaries import is_js
 
 SSRF_RULE = "codewatch.python.web.ssrf"
@@ -31,18 +32,27 @@ def _names(node):
     return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
 
 
+def _called_name(call):
+    return call.func.attr if isinstance(call.func, ast.Attribute) else getattr(call.func, "id", "")
+
+
+def _failed_match(node, params):
+    """`not RE.match(p)` or `not re.fullmatch(..., p)` on a parameter."""
+    if not (isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and isinstance(node.operand, ast.Call)):
+        return False
+    call = node.operand
+    return _called_name(call) in ("match", "fullmatch", "search") and any(_names(a) & params for a in call.args)
+
+
+def _not_allowed(node, params):
+    """`p not in ALLOWED` on a parameter."""
+    return (isinstance(node, ast.Compare) and any(isinstance(op, ast.NotIn) for op in node.ops)
+            and isinstance(node.left, ast.Name) and node.left.id in params)
+
+
 def _tests_a_parameter(test, params):
     """`not RE.match(p)`, `not re.fullmatch(..., p)`, `p not in ALLOWED`, or such a test inside and/or."""
-    for node in ast.walk(test):
-        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and isinstance(node.operand, ast.Call):
-            call = node.operand
-            func = call.func.attr if isinstance(call.func, ast.Attribute) else getattr(call.func, "id", "")
-            if func in ("match", "fullmatch", "search") and any(_names(a) & params for a in call.args):
-                return True
-        if isinstance(node, ast.Compare) and any(isinstance(op, ast.NotIn) for op in node.ops) \
-                and isinstance(node.left, ast.Name) and node.left.id in params:
-            return True
-    return False
+    return any(_failed_match(node, params) or _not_allowed(node, params) for node in ast.walk(test))
 
 
 def _message(value):
@@ -53,28 +63,26 @@ def _harmless(value):
     return value is None or isinstance(value, (ast.Constant, ast.JoinedStr))
 
 
+def _is_refusal_helper(node):
+    """A function whose returns are all harmless, and which returns a message from an if that tests a parameter."""
+    params = _param_names(node) - {"self", "cls"}
+    returns = [n for n in ast.walk(node) if isinstance(n, ast.Return)]
+    if not params or not returns or not all(_harmless(r.value) for r in returns):
+        return False
+    return any(_refuses(n, params) for n in ast.walk(node))
+
+
+def _refuses(node, params):
+    """`if <test of a parameter>: return "message"`."""
+    return (isinstance(node, ast.If) and _tests_a_parameter(node.test, params)
+            and any(isinstance(s, ast.Return) and _message(s.value) for s in node.body))
+
+
 def refusal_helpers(texts):
     """Names of the project's functions that answer with a message when a parameter fails a check."""
-    found = set()
-    for text in texts:
-        if "def " not in text or "return" not in text:
-            continue
-        try:
-            tree = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            params = _param_names(node) - {"self", "cls"}
-            returns = [n for n in ast.walk(node) if isinstance(n, ast.Return)]
-            if not params or not returns or not all(_harmless(r.value) for r in returns):
-                continue
-            if any(isinstance(n, ast.If) and _tests_a_parameter(n.test, params)
-                   and any(isinstance(s, ast.Return) and _message(s.value) for s in n.body)
-                   for n in ast.walk(node)):
-                found.add(node.name)
-    return found
+    trees = (python_tree(text) for text in texts if "def " in text and "return" in text)
+    return {node.name for tree in filter(None, trees) for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_refusal_helper(node)}
 
 
 def refusal_sanitizers(names):
@@ -94,21 +102,18 @@ def refusal_sanitizers(names):
 CONFIG_VALUE_RE = re.compile(r"^(os\.environ\b|os\.getenv\(|(django\.conf\.)?settings\.\w)")
 
 
+def _configured_assignment(node):
+    """The name `name = os.environ...` (or os.getenv, or Django settings) assigns, or None."""
+    if (isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+            and CONFIG_VALUE_RE.match(ast.unparse(node.value))):
+        return node.targets[0].id
+    return None
+
+
 def configured_names(texts):
     """Variables the project assigns from os.environ, os.getenv() or Django settings (possibly stripped first)."""
-    found = set()
-    for text in texts:
-        if "environ" not in text and "getenv" not in text and "settings." not in text:
-            continue
-        try:
-            tree = ast.parse(text)
-        except (SyntaxError, ValueError):
-            continue
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
-                    and CONFIG_VALUE_RE.match(ast.unparse(node.value)):
-                found.add(node.targets[0].id)
-    return found
+    trees = (python_tree(text) for text in texts if "environ" in text or "getenv" in text or "settings." in text)
+    return {name for tree in filter(None, trees) for node in ast.walk(tree) if (name := _configured_assignment(node))}
 
 
 def configured_base_sanitizer(names):
@@ -126,6 +131,10 @@ def configured_base_sanitizer(names):
     ]}
 
 
+def is_python_taint(rule):
+    return rule.get("mode") == "taint" and not is_js(rule) and "python" in rule.get("languages", [])
+
+
 def with_project_checks(rules, texts):
     """Python taint rules with the refusal checks' sanitizers, and SSRF's with the configured bases'."""
     texts = list(texts)
@@ -133,11 +142,9 @@ def with_project_checks(rules, texts):
     if not refusals and not bases:
         return rules
     extra = refusal_sanitizers(refusals) if refusals else []
+    base_sanitizers = [configured_base_sanitizer(bases)] if bases else []
     out = []
     for rule in rules:
-        if rule.get("mode") != "taint" or is_js(rule) or "python" not in rule.get("languages", []):
-            out.append(rule)
-            continue
-        added = extra + ([configured_base_sanitizer(bases)] if bases and rule.get("id") == SSRF_RULE else [])
+        added = (extra + (base_sanitizers if rule.get("id") == SSRF_RULE else [])) if is_python_taint(rule) else []
         out.append({**rule, "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *added]} if added else rule)
     return out
