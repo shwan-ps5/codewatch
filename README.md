@@ -1,5 +1,7 @@
 # codewatch
 
+[![codewatch checks itself](https://github.com/shwan-ps5/codewatch/actions/workflows/codewatch.yml/badge.svg?branch=detection-gaps)](https://github.com/shwan-ps5/codewatch/actions/workflows/codewatch.yml)
+
 > **Work in Progress** — usable for local scanning, but the data model, CLI, API and UI may change without notice. Expect rough edges.
 
 Self-hosted code-quality server: branch analysis, new-code tracking, quality gates, coverage, duplication, dependency CVEs, security hotspots and accessibility checks, built on open-source analyzers. Django + SQLite, no containers or JVM.
@@ -68,6 +70,10 @@ The project owner adds people under **Settings → Members**:
 - **Viewer**: can see results only.
 
 Administrators see every project.
+
+### codewatch on its own code
+
+Every push runs [a workflow](.github/workflows/codewatch.yml) that installs the pinned analyzers, runs the lint and the tests, and then `codewatch check --all --strict`: every analyzer over the whole repository, where **any** open issue fails the run, whatever its kind or severity. No thresholds are raised for codewatch. The findings judged safe or false positives after reading them are in [`codewatch-reviews.json`](codewatch-reviews.json), each with its reason, and the run's summary page lists them, so those exceptions are public and can be questioned. About 40 more are still inline comments that switch a rule off for one line (`noqa`, `nosec`, `nosemgrep`, secret-scanner allowlists), most with the reason beside them; moving the security ones into the reviews file is the next step. `codewatch check` honours that file in any project, and the pre-commit hook gives the same answer locally before a commit leaves the machine.
 
 ## Languages
 

@@ -1,0 +1,52 @@
+# codewatch checks itself: lint, the full test suite, then every analyzer over the whole repository with every open
+# issue failing the run (codewatch check --all --strict). Findings reviewed as safe or false positives are listed with
+# their reasons in codewatch-reviews.json, and the run's summary page shows them all.
+name: codewatch checks itself
+
+on:
+  push:
+    branches: [main, detection-gaps]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codewatch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "22"
+
+      - name: Install codewatch and its analyzers (pinned versions and hashes)
+        run: |
+          python -m venv venv
+          venv/bin/pip install -q -e '.[dev]'
+          venv/bin/pip install -q --require-hashes -r tools/analyzers.lock
+          for t in semgrep checkov; do
+            python -m venv "tools/$t-venv"
+            "tools/$t-venv/bin/pip" install -q --require-hashes -r "tools/$t.lock"
+          done
+          npm ci --prefix tools
+          tools/node_modules/.bin/playwright install --with-deps --only-shell chromium
+
+      - name: Lint
+        run: venv/bin/ruff check .
+
+      - name: Tests
+        run: venv/bin/pytest -q -n auto
+
+      - name: codewatch on its own code
+        run: venv/bin/codewatch check --all --strict

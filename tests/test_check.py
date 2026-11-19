@@ -66,3 +66,33 @@ def test_the_pre_commit_hook_runs_check(work):
     assert cli.main(["init", str(work), "--hook", "pre-commit"]) == 0
     hook = (work / ".git" / "hooks" / "pre-commit").read_text()
     assert hook.rstrip().endswith(" check") and "scan" not in hook.split("\n", 3)[-1]
+
+
+def test_strict_all_blocks_on_any_open_issue_until_it_is_reviewed(work, capsys, monkeypatch, tmp_path):
+    (work / "app.py").write_text("import os\n")  # an unused import: a minor smell, which only --strict blocks
+    sh(work, "commit", "-qam", "smell")
+    assert check(capsys, "--all")[0] == 0
+    code, lines = check(capsys, "--all", "--strict")
+    assert code == 1 and lines[0].startswith("! app.py:1:")
+    fingerprint = _fingerprint(work)
+    (work / cli.REVIEWS_FILE).write_text(json.dumps([{"fingerprint": fingerprint, "status": "false_positive",
+                                                      "comment": "Kept for the test."}]))
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    code, lines = check(capsys, "--all", "--strict")
+    assert code == 0 and lines[0].startswith("= app.py:1:") and "reviewed false_positive: Kept for the test." in lines[1]
+    text = summary.read_text()
+    assert "## codewatch check passes" in text and "| false_positive | Kept for the test. |" in text
+
+
+def test_a_review_without_a_reason_is_refused(work, capsys):
+    (work / cli.REVIEWS_FILE).write_text(json.dumps([{"fingerprint": "f", "status": "safe", "comment": ""}]))
+    assert check(capsys, "--all")[0] == 2
+
+
+def _fingerprint(work):
+    """The unused import's fingerprint, as the check computes it."""
+    from core.collect import ScanConfig, ScanInput, collect
+    cfg = ScanConfig(disabled_analyzers=ONLY_RUFF)
+    payload = collect(cfg, ScanInput(work, ["app.py"], "main", None, local=True), lambda m: None)
+    return next(i["fingerprint"] for i in payload["issues"] if i["rule"] == "F401")

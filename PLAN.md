@@ -1596,6 +1596,25 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    that the self-scan had missed: the self-scan went through `benchmark.scan`, whose SKIPPED_ANALYZERS leave radon
    out. A self-scan has to run every analyzer, as the server does. Both functions were split. Known gap: `check`
    can't see hotspot reviews stored on the server, so reviewed hotspots are listed again (not blocking).
+97. **codewatch checks itself on every push, in public** (2026-11-19, the maintainer's request: show that our own
+   code is as good as our rules can make it).
+   - `.github/workflows/codewatch.yml` installs the pinned analyzers (tools/*.lock and package-lock.json), then runs
+     ruff, pytest and `codewatch check --all --strict`. `--all` covers every file and every line; `--strict` lets
+     every open issue of any kind block. The actions are pinned by commit.
+   - Hotspot reviews lived only in the maintainer's local database, so CI couldn't see them. They are now in
+     `codewatch-reviews.json`: fingerprint, verdict (safe or false_positive) and a reason, which is required.
+     `check` honours the file, and the summary written to `$GITHUB_STEP_SUMMARY` lists every review.
+   - The 22 reviews were exported from the stored ones that match today's findings. One false positive had no
+     reason (a test's throwaway password) and got one; every reason was read for private references.
+   - The first strict whole-project run found three things the earlier self-scans hadn't, all fixed in code: a
+     basedpyright error on the new `Analysis.steps` (a JSONField read through `self`, moved to a module function),
+     and radon complexity in the new `cmd_check` and `write_summary`.
+   - Run time locally: 3 minutes for 432 files.
+   - Caveat: the Semgrep registry ruleset (`p/default`) is fetched at run time, so an upstream rule change can
+     fail CI on unchanged code. That is the honest outcome, since it is a finding we didn't have before.
+   - Still to do: about 40 inline suppressions (`noqa`, `nosec`, `nosemgrep`, `pragma: allowlist secret`) are
+     exceptions a reader can't see in the summary, and 14 of them give no reason. The security ones belong in
+     `codewatch-reviews.json`. The README says so rather than claiming that nothing is suppressed.
 
 ## How things work (non-obvious)
 

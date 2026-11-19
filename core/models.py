@@ -157,7 +157,12 @@ class Analysis(models.Model):
     @property
     def steps(self):
         """The running scan's steps so far, each with when it started; the last is in progress."""
-        return [{"step": s["step"], "at": datetime.fromisoformat(s["at"])} for s in self.progress]
+        return progress_steps(self.progress)
+
+
+def progress_steps(progress):
+    """Stored progress entries ({"step", "at": ISO time}) with their times parsed."""
+    return [{"step": s["step"], "at": datetime.fromisoformat(s["at"])} for s in progress or []]
 
 
 class Issue(models.Model):

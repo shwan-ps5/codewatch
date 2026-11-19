@@ -237,8 +237,11 @@ BLOCKING_SEVERITIES = ("blocker", "critical")
 BLOCKING_TYPES = ("bug", "vulnerability")
 
 
-def files_to_check(repo, named):
-    """The named files, else the staged ones, else every file changed since the last commit (untracked too)."""
+def files_to_check(repo, named, everything=False):
+    """The named files, else (everything) the whole project, else the staged ones, else every file changed since
+    the last commit (untracked too)."""
+    if everything:
+        return repo.files()
     if named:
         return sorted({os.path.relpath(Path(f).resolve(), repo.root) for f in named})
     def listed(*args):
@@ -268,10 +271,10 @@ def check_config(args, repo, conf):
     return cfg
 
 
-def blocks(issue, changed):
-    """Whether an issue stops the commit: a blocking kind, on a line this change touched (or anywhere, with
-    changed=None)."""
-    serious = issue["severity"] in BLOCKING_SEVERITIES or issue["type"] in BLOCKING_TYPES
+def blocks(issue, changed, strict=False):
+    """Whether an issue stops the commit: a blocking kind (any kind, strict), on a line this change touched (or
+    anywhere, with changed=None)."""
+    serious = strict or issue["severity"] in BLOCKING_SEVERITIES or issue["type"] in BLOCKING_TYPES
     if not serious:
         return False
     if changed is None:
@@ -281,15 +284,40 @@ def blocks(issue, changed):
 
 def checked_files(repo, args, cfg):
     """files_to_check that exist; when none were named, without the project's exclusions."""
-    return [f for f in files_to_check(repo, args.files)
+    return [f for f in files_to_check(repo, args.files, args.all)
             if (repo.root / f).is_file() and (args.files or not excluded(f, cfg.exclusions))]
 
 
-def print_issues(issues, blocking):
+REVIEWS_FILE = "codewatch-reviews.json"
+REVIEW_STATUSES = ("safe", "false_positive")
+
+
+def load_reviews(root):
+    """{fingerprint: review} from the repository's codewatch-reviews.json: findings someone read and judged safe
+    or a false positive, each with the reason, kept in the repository where anyone can read and question it."""
+    path = root / REVIEWS_FILE
+    if not path.exists():
+        return {}
+    reviews = json.loads(path.read_text())
+    bad = [r for r in reviews if r.get("status") not in REVIEW_STATUSES or not r.get("comment")]
+    if bad:
+        raise ClientError(f"{REVIEWS_FILE}: every review needs a status ({', '.join(REVIEW_STATUSES)}) and a "
+                          f"reason in comment; not {bad[0]}")
+    return {r["fingerprint"]: r for r in reviews}
+
+
+def issue_line(issue):
+    return (f"{issue['path']}:{issue['line'] or '-'}: {issue['severity']} {issue['type']} "
+            f"{issue['tool']}:{issue['rule']}: {issue['message'].splitlines()[0][:200]}")
+
+
+def print_issues(issues, blocking, reviewed):
     for i in issues:
         mark = "!" if i in blocking else " "
-        print(f"{mark} {i['path']}:{i['line'] or '-'}: {i['severity']} {i['type']} {i['tool']}:{i['rule']}: "
-              f"{i['message'].splitlines()[0][:200]}", flush=True)
+        print(f"{mark} {issue_line(i)}", flush=True)
+    for i in reviewed:
+        review = i["review"]
+        print(f"= {issue_line(i)}\n    reviewed {review['status']}: {review['comment']}", flush=True)
 
 
 def failed_tools(payload):
@@ -309,17 +337,57 @@ def cmd_check(args):
     if not files:
         log("codewatch check: no files to check")
         return 0
-    changed = changed_lines(repo, args.all_lines)
+    changed = changed_lines(repo, args.all_lines or args.all)
     log(f"Checking {len(files)} file(s): " + ", ".join(files[:5]) + (", ..." if len(files) > 5 else ""))
     payload = collect(cfg, ScanInput(repo.root, files, repo.branch(), changed, None, repo.root, local=True),
                       check_log(args.verbose))
-    issues = sorted(payload["issues"], key=lambda i: (i["path"], i["line"] or 0))
-    blocking = [i for i in issues if blocks(i, changed)]
-    print_issues(issues, blocking)
+    issues, reviewed = split_reviewed(payload["issues"], load_reviews(repo.root))
+    blocking = [i for i in issues if blocks(i, changed, args.strict)]
+    print_issues(issues, blocking, reviewed)
     failed = failed_tools(payload)
     where = "anywhere in these files" if changed is None else "on changed lines"
-    log(f"{len(issues)} issue(s) in {len(files)} file(s); {len(blocking)} blocking {where} (marked !)")
+    log(f"{len(issues)} open issue(s) and {len(reviewed)} reviewed in {len(files)} file(s); "
+        f"{len(blocking)} blocking {where} (marked !)")
+    write_summary(files, issues, reviewed, blocking, failed)
     return check_exit(blocking, failed)
+
+
+def split_reviewed(found, reviews):
+    """(open issues, reviewed ones with their review), each in file and line order."""
+    found = sorted(found, key=lambda i: (i["path"], i["line"] or 0))
+    return ([i for i in found if i["fingerprint"] not in reviews],
+            [{**i, "review": reviews[i["fingerprint"]]} for i in found if i["fingerprint"] in reviews])
+
+
+def open_counts(issues):
+    """"2 bug, 1 code smell" for the open issues, or "none"."""
+    kinds = {}
+    for i in issues:
+        kinds[i["type"]] = kinds.get(i["type"], 0) + 1
+    return ", ".join(f"{n} {kind.replace('_', ' ')}" for kind, n in sorted(kinds.items())) or "none"
+
+
+def reviewed_table(reviewed):
+    if not reviewed:
+        return []
+    return ["", f"### {len(reviewed)} reviewed findings ({REVIEWS_FILE})", "",
+            "| Where | Finding | Verdict | Reason |", "|---|---|---|---|"] + [
+        f"| `{i['path']}:{i['line'] or '-'}` | {i['tool']}:{i['rule']} | {i['review']['status']} | "
+        f"{i['review']['comment'].replace('|', '/')} |" for i in reviewed]
+
+
+def write_summary(files, issues, reviewed, blocking, failed):
+    """A Markdown report where GitHub Actions shows one ($GITHUB_STEP_SUMMARY), for anyone reading the run."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    verdict = "fails" if blocking or failed else "passes"
+    lines = [f"## codewatch check {verdict}", "",
+             f"{len(files)} files checked by every analyzer. Open issues: {open_counts(issues)}.", ""]
+    lines += [f"- **{name} failed**, so the files weren't fully checked: {detail[:300]}" for name, detail in failed.items()]
+    lines += [f"- `{issue_line(i)}`" for i in issues] + reviewed_table(reviewed)
+    with open(path, "a") as out:
+        out.write("\n".join(lines) + "\n")
 
 
 def changed_lines(repo, all_lines):
@@ -457,6 +525,9 @@ def build_parser():
     add_scan_args(sub.add_parser("scan", help="Analyse the working copy and upload the results"))
     check = sub.add_parser("check", help="Check some files locally, uploading nothing (default: the changed ones)")
     check.add_argument("files", nargs="*", help="Files to check (default: staged files, else every changed file)")
+    check.add_argument("--all", action=STORE_TRUE, help="Every file in the project (the whole-project check CI runs)")
+    check.add_argument("--strict", action=STORE_TRUE,
+                       help="Every open issue blocks, of any kind or severity, not only new serious ones")
     check.add_argument("--all-lines", action=STORE_TRUE,
                        help="Block on issues anywhere in the files, not only on changed lines")
     check.add_argument("--verbose", action=STORE_TRUE, help="Show each analyzer as it runs")

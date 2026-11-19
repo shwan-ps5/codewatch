@@ -1,0 +1,200 @@
+[
+  {
+    "fingerprint": "9d3ac7bf71ce95e494dbb096d1090a649d759cae",
+    "status": "safe",
+    "comment": "Developer tool: posts to the local Ollama at 127.0.0.1; its prompts are the nightly's own findings.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.insecure-transport.urllib.insecure-request-object.insecure-request-object",
+    "path": "benchmarks/triage.py",
+    "line": 20
+  },
+  {
+    "fingerprint": "85ddc460942053f709d4d95e27c8a9ebcd399ac5",
+    "status": "safe",
+    "comment": "Developer tool: posts to the local Ollama at 127.0.0.1; its prompts are the nightly's own findings.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.insecure-transport.urllib.insecure-request-object.insecure-request-object",
+    "path": "benchmarks/triage.py",
+    "line": 83
+  },
+  {
+    "fingerprint": "8c9b86236e8840292312127db905fd72c81e6f0b",
+    "status": "safe",
+    "comment": "Developer tool: posts to the local Ollama at 127.0.0.1; its prompts are the nightly's own findings.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "benchmarks/triage.py",
+    "line": 84
+  },
+  {
+    "fingerprint": "7f0a9d7693b9bbb3dc73a83f4d63dfa65110ab54",
+    "status": "safe",
+    "comment": "Developer tool: posts to the local Ollama at 127.0.0.1; its prompts are the nightly's own findings.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "benchmarks/triage.py",
+    "line": 84
+  },
+  {
+    "fingerprint": "0161d7b29257dcae1bddaade413af9f1e263daea",
+    "status": "safe",
+    "comment": "Fixed https URL (api.osv.dev); the only variable part is an advisory id in the path.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "core/analyzers/dependencies.py",
+    "line": 42
+  },
+  {
+    "fingerprint": "2d91fa0feaf5aa2e93dc4d4a1752cec369706919",
+    "status": "safe",
+    "comment": "Fixed https URL (api.osv.dev); the only variable part is an advisory id in the path.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "core/analyzers/dependencies.py",
+    "line": 42
+  },
+  {
+    "fingerprint": "16c4d9f65d7d38c4a8b512ca387cf40b593fa610",
+    "status": "safe",
+    "comment": "Fixed https URL (api.osv.dev); the only variable part is an advisory id in the path.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "core/analyzers/dependencies.py",
+    "line": 237
+  },
+  {
+    "fingerprint": "d20ee5834f1f5ba1272f52db72f61f19254e8975",
+    "status": "safe",
+    "comment": "Fixed https URL (api.osv.dev); the only variable part is an advisory id in the path.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "core/analyzers/dependencies.py",
+    "line": 237
+  },
+  {
+    "fingerprint": "5ae8570944ff42b02cbb7aa451e08415f64375af",
+    "status": "safe",
+    "comment": "Fixed https URL (api.osv.dev); the only variable part is an advisory id in the path.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "core/analyzers/dependencies.py",
+    "line": 242
+  },
+  {
+    "fingerprint": "da54c614f7c1e54bff8af0e064c698b83afdc065",
+    "status": "safe",
+    "comment": "Fixed https URL (api.osv.dev); the only variable part is an advisory id in the path.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "core/analyzers/dependencies.py",
+    "line": 242
+  },
+  {
+    "fingerprint": "91000281e38b5375ab153e1e94c4da2e2eb5eb2c",
+    "status": "false_positive",
+    "comment": "Not a password: a regex of hash-like key names.",
+    "tool": "bandit",
+    "rule": "B105:hardcoded_password_string",
+    "path": "core/analyzers/extra.py",
+    "line": 27
+  },
+  {
+    "fingerprint": "8737bbcd909e65ea4a9915470ba2394d1c067565",
+    "status": "false_positive",
+    "comment": "Not a password: a Semgrep metavariable name.",
+    "tool": "bandit",
+    "rule": "B105:hardcoded_password_string",
+    "path": "core/analyzers/summaries.py",
+    "line": 915
+  },
+  {
+    "fingerprint": "856ef052fce9e9bd99af42e245f82025ad80f312",
+    "status": "safe",
+    "comment": "Bearer-token API: the wrapper reads only the Authorization header, never a session cookie, so CSRF has nothing to ride on.",
+    "tool": "semgrep",
+    "rule": "python.django.security.audit.csrf-exempt.no-csrf-exempt",
+    "path": "core/api.py",
+    "line": 36
+  },
+  {
+    "fingerprint": "e6b9c3d5de4777ae856d265ae279a591067c82d3",
+    "status": "safe",
+    "comment": "Fixed https URLs of the catalogue sources (CWE, WCAG, ESLint, Semgrep pack); run by the maintainer's catalogue build.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "core/catalog/sources.py",
+    "line": 53
+  },
+  {
+    "fingerprint": "1cd5dce2451d3541ef321ac32f761b49e6e03729",
+    "status": "safe",
+    "comment": "Fixed https URLs of the catalogue sources (CWE, WCAG, ESLint, Semgrep pack); run by the maintainer's catalogue build.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "core/catalog/sources.py",
+    "line": 53
+  },
+  {
+    "fingerprint": "8c45542c7e06b5007d26200d6440620cf5717d31",
+    "status": "safe",
+    "comment": "The configured codewatch server URL; the code checks it is http(s), and plain http only to localhost, before sending the token.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "core/client.py",
+    "line": 73
+  },
+  {
+    "fingerprint": "a57801182056cc9f0eb4a85c2605d80decbdb1f1",
+    "status": "safe",
+    "comment": "The configured codewatch server URL; the code checks it is http(s), and plain http only to localhost, before sending the token.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "core/client.py",
+    "line": 73
+  },
+  {
+    "fingerprint": "9553023b8670306cb81c12da152517686e3de320",
+    "status": "safe",
+    "comment": "The configured codewatch server URL; the code checks it is http(s), and plain http only to localhost, before sending the token.",
+    "tool": "bandit",
+    "rule": "B310:blacklist",
+    "path": "core/mcp_server.py",
+    "line": 51
+  },
+  {
+    "fingerprint": "c0fc46a48dcee03750712a039a458534342bab74",
+    "status": "safe",
+    "comment": "The configured codewatch server URL; the code checks it is http(s), and plain http only to localhost, before sending the token.",
+    "tool": "semgrep",
+    "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+    "path": "core/mcp_server.py",
+    "line": 51
+  },
+  {
+    "fingerprint": "f9348c801e17ea095f0b88b587a4902916e2eba6",
+    "status": "safe",
+    "comment": "Test fixture for codewatch's CSP rule.",
+    "tool": "codewatch",
+    "rule": "codewatch.python.csp-allows-inline-script",
+    "path": "tests/test_detection.py",
+    "line": 3935
+  },
+  {
+    "fingerprint": "1b415106e1d36cb66183469405b041a5a69ec282",
+    "status": "false_positive",
+    "comment": "Throwaway password of a superuser created in the test database for one test.",
+    "tool": "bandit",
+    "rule": "B106:hardcoded_password_funcarg",
+    "path": "tests/test_scan.py",
+    "line": 64
+  },
+  {
+    "fingerprint": "fff2877c992bfd4bebf41699f8818fe2d5c0b0ab",
+    "status": "false_positive",
+    "comment": "\"pwd\" here is the shell command in the agents' permission list, not a password.",
+    "tool": "detect-secrets",
+    "rule": "Secret Keyword",
+    "path": "tools/opencode-research.json",
+    "line": 37
+  }
+]
