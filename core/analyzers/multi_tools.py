@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
+from typing import NamedTuple
 
 import yaml
 
@@ -122,120 +123,125 @@ class Semgrep(Analyzer):
         os.environ.setdefault("EIO_BACKEND", "posix")
         return super().exec(args, ctx, ok_codes, stream, cwd)
 
-    def run(self, ctx):
-        custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
-        if not ctx.semgrep_config and not custom_rules:
-            return Result()
+    @staticmethod
+    def project_rules(ctx, custom_rules):
+        """codewatch's rules with the sources, sinks and sanitizers learnt from this project's own code."""
         python_texts = [read_source(ctx.root / f) or "" for f in ctx.files_with({".py"})]
-        custom_rules = with_model_sources(custom_rules, python_texts)
-        custom_rules = with_serializer_checks(custom_rules, python_texts)
-        custom_rules = with_resource_sources(custom_rules, python_texts)
-        custom_rules = with_sandbox_sanitizers(custom_rules, python_texts)
-        custom_rules = with_project_checks(custom_rules, python_texts)
-        custom_rules = with_stored_sources(custom_rules, python_texts)
+        for add in (with_model_sources, with_serializer_checks, with_resource_sources, with_sandbox_sanitizers,
+                    with_project_checks, with_stored_sources):
+            custom_rules = add(custom_rules, python_texts)
         custom_rules = with_template_sinks(custom_rules, {
             f: text for f in ctx.files_with(TEMPLATE_EXTENSIONS) if (text := read_source(ctx.root / f)) is not None})
         php_texts = {f: text for f in ctx.files_with(PHP_TEMPLATE_CANDIDATES)
                      if (text := read_source(ctx.root / f)) is not None}
-        custom_rules = with_php_template_sinks(custom_rules, php_texts,
-                                               [t for f, t in php_texts.items() if f.endswith(".php")])
+        return with_php_template_sinks(custom_rules, php_texts,
+                                       [t for f, t in php_texts.items() if f.endswith(".php")])
+
+    def learn(self, ctx, custom_rules, copies):
+        """The summary rounds of summaries.py over the summary targets: what the final rules are built from."""
+        targets, originals, work = copies
+        near = self.summary_targets(ctx, targets, originals)
+        # The first round of pass_rules shares pass 1's first scan.
+        signatures = self.signatures(ctx, near)
+        js_functions = self.js_functions(ctx, near)
+        self.first_rules = (summaries_module.pass_rules(custom_rules, set(signatures))
+                            + summaries_module.js_pass_rules(custom_rules, js_functions))
+        summaries, hits = self.summarise(ctx, custom_rules, near, originals, work)
+        passes = self.find_passes(ctx, custom_rules, (near, originals, work), signatures)
+        summaries, hits = self.resummarise(ctx, custom_rules, (near, originals, work),
+                                           (summaries, hits), (signatures, js_functions, passes))
+        returners, fields = self.find_returners(
+            ctx, summaries_module.with_arguments(custom_rules, signatures, passes), near, originals, work)
+        return Learnt(signatures, js_functions, passes, summaries, hits, returners, fields)
+
+    def final_rules(self, custom_rules, known):
+        final = summaries_module.with_pass_through(
+            summaries_module.with_arguments(custom_rules, known.signatures, known.passes, known.summaries),
+            {False: set(known.signatures), True: known.js_functions}, known.passes, known.summaries, known.returners)
+        return (final + summaries_module.via_rules(final, known.summaries, self.receivers)
+                + summaries_module.from_rules(final, known.returners, known.summaries)
+                + summaries_module.field_variants(final, known.fields, known.summaries))
+
+    def main_scan(self, ctx, rules, copies):
+        """The scan whose results are reported: the registry config and the final rules."""
+        targets, originals, work = copies
+        configs = [CONFIG, ctx.semgrep_config] if ctx.semgrep_config else []
+        if rules:
+            (work / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+            configs += [CONFIG, str(work / "custom.yml")]
+        # Every rule in this pass reads one file at a time, so narrowing it to the focus changes nothing
+        # in those files; the summaries above still saw every file.
+        focus = None if ctx.focus is None else set(ctx.focus)
+        main_targets = targets if focus is None else [t for t in targets if ctx.rel(originals.get(t, t)) in focus]
+        # Semgrep given no targets scans the working directory. The focus is the only place findings count,
+        # and a few files: there each rule gets FOCUS_TIMEOUT and no file is skipped for its timeouts (mlflow
+        # GHSA-wqmh's file_store.py and handlers.py were skipped at the default 5 s; PLAN.md step 68).
+        limits = [] if focus is None else ["--timeout", str(FOCUS_TIMEOUT), "--timeout-threshold", "0"]
+        return self.scan(ctx, configs, main_targets, limits) if main_targets else {"results": []}
+
+    def timeout_notes(self, ctx, originals):
+        if not self.timeouts:
+            return []
+        paths = sorted({ctx.rel(originals.get(p, p)) for p in self.timeouts})
+        listed = f"{', '.join(paths[:5])}{' and more' if len(paths) > 5 else ''}"
+        return [f"Semgrep gave up on some rules in {len(paths)} file(s), so they may hide findings: {listed}."]
+
+    def run(self, ctx):
+        custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
+        if not ctx.semgrep_config and not custom_rules:
+            return Result()
+        custom_rules = self.project_rules(ctx, custom_rules)
         self.timeouts, self.first_found = set(), []
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")
-            near = self.summary_targets(ctx, targets, originals)
-            # The first round of pass_rules shares pass 1's first scan.
-            signatures = self.signatures(ctx, near)
-            js_functions = self.js_functions(ctx, near)
-            self.first_rules = (summaries_module.pass_rules(custom_rules, set(signatures))
-                                + summaries_module.js_pass_rules(custom_rules, js_functions))
-            summaries, hits = self.summarise(ctx, custom_rules, near, originals, Path(work))
-            passes = self.find_passes(ctx, custom_rules, (near, originals, Path(work)), signatures)
-            summaries, hits = self.resummarise(ctx, custom_rules, (near, originals, Path(work)),
-                                               (summaries, hits), (signatures, js_functions, passes))
-            returners, fields = self.find_returners(
-                ctx, summaries_module.with_arguments(custom_rules, signatures, passes), near, originals, Path(work))
-            final = summaries_module.with_pass_through(
-                summaries_module.with_arguments(custom_rules, signatures, passes, summaries),
-                {False: set(signatures), True: js_functions}, passes, summaries, returners)
-            rules = (final + summaries_module.via_rules(final, summaries, self.receivers)
-                     + summaries_module.from_rules(final, returners, summaries)
-                     + summaries_module.field_variants(final, fields, summaries))
-            configs = ["--config", ctx.semgrep_config] if ctx.semgrep_config else []
-            if rules:
-                (Path(work) / "custom.yml").write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-                configs += ["--config", str(Path(work) / "custom.yml")]
-            # Every rule in this pass reads one file at a time, so narrowing it to the focus changes nothing
-            # in those files; the summaries above still saw every file.
-            focus = None if ctx.focus is None else set(ctx.focus)
-            main_targets = targets if focus is None else [t for t in targets if ctx.rel(originals.get(t, t)) in focus]
-            # Semgrep given no targets scans the working directory. The focus is the only place findings count,
-            # and a few files: there each rule gets FOCUS_TIMEOUT and no file is skipped for its timeouts (mlflow
-            # GHSA-wqmh's file_store.py and handlers.py were skipped at the default 5 s; PLAN.md step 68).
-            limits = [] if focus is None else ["--timeout", str(FOCUS_TIMEOUT), "--timeout-threshold", "0"]
-            data = self.scan(ctx, configs, main_targets, limits) if main_targets else {"results": []}
+            copies = (targets, originals, Path(work))
+            known = self.learn(ctx, custom_rules, copies)
+            data = self.main_scan(ctx, self.final_rules(custom_rules, known), copies)
         result = Result()
-        if self.timeouts:
-            paths = sorted({ctx.rel(originals.get(p, p)) for p in self.timeouts})
-            result.notes.append(f"Semgrep gave up on some rules in {len(paths)} file(s), so they may hide findings: "
-                                f"{', '.join(paths[:5])}{' and more' if len(paths) > 5 else ''}.")
-        traced = taint_checked(custom_rules)
-        source = LineCache(ctx.root)
-        custom_ids = [r["id"] for r in custom_rules]
-        for item in data["results"]:
-            path = ctx.rel(originals.get(item["path"], item["path"]))
-            extra = item["extra"]
-            metadata = extra.get("metadata", {})
-            check_id = item["check_id"].removesuffix(summaries_module.VIA_SUFFIX)
-            via = check_id != item["check_id"]
-            field = check_id.endswith(summaries_module.FIELD_SUFFIX)
-            check_id = check_id.removesuffix(summaries_module.FIELD_SUFFIX).removesuffix(summaries_module.FROM_SUFFIX)
-            # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
-            custom_id = next((cid for cid in custom_ids if check_id.endswith(cid)), None)
-            message, callee, keyword = summaries_module.split_keyword(extra["message"].strip())
-            if custom_id == PHP_TEMPLATE_RULE:
-                message = tidy_php_template_message(message)
-            if not summaries_module.keyword_summarised(callee, keyword, summaries.get(custom_id, ())):
-                continue
-            if via and not self.via_visible(ctx, path, message, summaries.get(custom_id, ())):
-                continue
-            if field:
-                if not self.field_stored(path, message, fields.get(custom_id, ())):
-                    continue
-            elif (check_id != item["check_id"] and not via
-                    and not self.from_visible(ctx, path, message, returners.get(custom_id, ()))):
-                continue
-            if check_id.endswith(CSRF_FORM_RULE) and form_has_csrf_token(
-                    source.lines(path), item["start"]["line"], item["end"]["line"]):
-                continue
-            kind = semgrep_type(check_id, metadata)
-            # codewatch's own taint rule for this weakness already followed the data here; a registry rule that
-            # matches the same weakness without seeing guards or sanitizers is left for review, not a verdict.
-            # A template's inline scripts are scanned as JavaScript, so its findings are judged like a .js file's.
-            suffix = ".js" if Path(path).suffix in TEMPLATE_EXTENSIONS else Path(path).suffix
-            if (not custom_id and kind == VULNERABILITY
-                    and cwe_numbers(metadata.get("cwe")) & traced.get(suffix, set())):
-                kind = HOTSPOT
-            # Rules for primitives that are only weak when they protect something (MD5 for a Gravatar URL is
-            # fine): a vulnerability where the code is about secrets or verification, otherwise for review.
-            if (kind == VULNERABILITY and metadata.get("security-purpose") == "required"
-                    and not security_purpose(source, path, item["start"]["line"])):
-                kind = HOTSPOT
-            # Test code isn't served to anyone, so what flows through it is for review, not a verdict.
-            if kind == VULNERABILITY and is_test_file(path):
-                kind = HOTSPOT
-            result.findings.append(
-                Finding("codewatch" if custom_id else "semgrep", custom_id or check_id,
-                        SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, message,
-                        path, item["start"]["line"], item["end"]["line"])
-            )
-        def derived(f):
-            return any(r.search(f.message) for r in (summaries_module.VIA_RE, summaries_module.FROM_RE,
-                                                     summaries_module.FIELD_RE))
-
-        direct = {(f.rule, f.path, f.line) for f in result.findings if not derived(f)}
-        result.findings = [f for f in result.findings if not (derived(f) and (f.rule, f.path, f.line) in direct)]
-        result.findings += self.uncalled_entry_points(ctx, custom_rules, hits, result.findings)
+        result.notes += self.timeout_notes(ctx, originals)
+        reading = Reading(ctx, originals, custom_rules, known, taint_checked(custom_rules), LineCache(ctx.root))
+        found = [f for item in data["results"] if (f := self.result_finding(reading, item)) is not None]
+        result.findings = without_derived_duplicates(found)
+        result.findings += self.uncalled_entry_points(ctx, custom_rules, known.hits, result.findings)
         return result
+
+    def result_visible(self, reading, item, check, said):
+        """Whether a result stands: a summarised keyword reached, a via/from/field variant whose function is
+        visible from the file, and no CSRF token in a form the registry rule flagged."""
+        ctx, known = reading.ctx, reading.known
+        path, (check_id, via, field, derived), (custom_id, message, callee, keyword) = reading.path(item), check, said
+        if not summaries_module.keyword_summarised(callee, keyword, known.summaries.get(custom_id, ())):
+            return False
+        if not self.variant_visible(ctx, path, (via, field, derived), (custom_id, message, known)):
+            return False
+        return not (check_id.endswith(CSRF_FORM_RULE) and form_has_csrf_token(
+            reading.source.lines(path), item["start"]["line"], item["end"]["line"]))
+
+    def variant_visible(self, ctx, path, variant, said):
+        """A via, field or from variant's function (or field) is visible from the result's file."""
+        (via, field, derived), (custom_id, message, known) = variant, said
+        if via:
+            return self.via_visible(ctx, path, message, known.summaries.get(custom_id, ()))
+        if field:
+            return self.field_stored(path, message, known.fields.get(custom_id, ()))
+        return not derived or self.from_visible(ctx, path, message, known.returners.get(custom_id, ()))
+
+    def result_finding(self, reading, item):
+        """A Semgrep result as a finding, or None when it doesn't stand (result_visible)."""
+        path = reading.path(item)
+        extra = item["extra"]
+        check = derived_check(item["check_id"])
+        # Semgrep prefixes rules from a local file with path segments; map them back to codewatch's IDs.
+        custom_id = next((cid for cid in reading.custom_ids if check[0].endswith(cid)), None)
+        message, callee, keyword = summaries_module.split_keyword(extra["message"].strip())
+        if custom_id == PHP_TEMPLATE_RULE:
+            message = tidy_php_template_message(message)
+        if not self.result_visible(reading, item, check, (custom_id, message, callee, keyword)):
+            return None
+        kind = result_kind(reading, item, check[0], custom_id)
+        return Finding("codewatch" if custom_id else "semgrep", custom_id or check[0],
+                       SEMGREP_SEVERITY.get(extra.get("severity"), MINOR), kind, message,
+                       path, item["start"]["line"], item["end"]["line"])
 
     @staticmethod
     def summary_targets(ctx, targets, originals):
@@ -249,31 +255,27 @@ class Semgrep(Analyzer):
                                                lambda rel: read_source(ctx.root / rel))
         return [t for t in targets if rels[t] in near]
 
+    def project_names(self, ctx):
+        """(names the project's code uses outside their definitions, {Python file: scalar parameters})."""
+        files = [(f, read_source(ctx.root / f) or "") for f in ctx.files_with((self.extensions or set()) & CODE)]
+        return (summaries_module.referenced_names(files),
+                {f: scalar_parameters(text) for f, text in files if f.endswith(".py")})
+
     def uncalled_entry_points(self, ctx, custom_rules, hits, findings):
         """A parameter that reaches a sink in a function nothing in the project calls: the data comes from
         whoever does (a library user, a framework, a handler registered by name elsewhere), so it is left for
         review rather than claimed as a vulnerability."""
         if not hits:
             return []
-        files = [(f, read_source(ctx.root / f) or "") for f in ctx.files_with((self.extensions or set()) & CODE)]
-        used = summaries_module.referenced_names(files)
+        used, scalars = self.project_names(ctx)
         rules = {r["id"]: r for r in custom_rules}
-        scalars = {f: scalar_parameters(text) for f, text in files if f.endswith(".py")}
         seen = {(f.rule, f.path, f.line) for f in findings}
         out = []
         for rule_id, path, line, func, param in sorted(hits):
-            if func in used or func.startswith("_") or is_test_file(path) or (rule_id, path, line) in seen:
-                continue
-            if (func, param) in scalars.get(path, ()):
-                continue
-            if ctx.focus is not None and path not in ctx.focus:
-                continue
-            seen.add((rule_id, path, line))
-            rule = rules[rule_id]
-            message = (f"{rule['message'].strip()} [parameter {param} of {func}(), which nothing in the project "
-                       f"calls: check what its callers pass]")
-            out.append(Finding("codewatch", rule_id, SEMGREP_SEVERITY.get(rule.get("severity"), MINOR), HOTSPOT,
-                               message, path, line, line))
+            if entry_point(func, path, (used, scalars.get(path, ()), ctx.focus), param) and \
+                    (rule_id, path, line) not in seen:
+                seen.add((rule_id, path, line))
+                out.append(entry_point_finding(rules[rule_id], rule_id, (path, line, func, param)))
         return out
 
     def scan(self, ctx, configs, targets, limits=()):
@@ -286,17 +288,31 @@ class Semgrep(Analyzer):
         self.timeouts.update(e["path"] for e in data.get("errors", []) if e.get("type") == "Timeout" and e.get("path"))
         return data
 
+    def rule_results(self, ctx, rules, scanned, place):
+        """(rule id, original path, line, message) for each result of scanning with rules. place: (config file,
+        originals, form). A result's id is the rule's own (Semgrep prefixes a local file's rules with path
+        segments), except in the "pass" form, which keeps Semgrep's; "pass" and "returner" strip the message."""
+        config, originals, form = place
+        strip = form in ("pass", "returner")
+        config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
+        data = self.scan(ctx, [CONFIG, str(config)], scanned)
+        ids = [] if form == "pass" else [r["id"] for r in rules]
+        return [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
+                 ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
+                 item["extra"]["message"].strip() if strip else item["extra"]["message"])
+                for item in data["results"]]
+
     def summarise(self, ctx, custom_rules, targets, originals, work):
         """Pass 1 of summaries.py: which function parameters reach each taint rule's sinks, directly or through
         functions already summarised. self.first_rules join the first scan, their results kept in
         self.first_found."""
         summaries, known, new, hits = {}, None, None, []
         scanned = targets
-        texts = [read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")]
+        texts = list(python_texts(ctx, targets).values())
         self.aliases = {}
         # Keyed by the original's path, as summaries are: a rewritten file is scanned from its analysis copy.
         self.receivers = summaries_module.typed_receivers(dict(zip(
-            [ctx.rel(originals.get(t, t)) for t in targets if t.endswith(".py")], texts, strict=True)))
+            [ctx.rel(originals.get(t, t)) for t in python_texts(ctx, targets)], texts, strict=True)))
         for _ in range(summaries_module.MAX_DEPTH):
             # Semi-naive: a deeper pass has only the summaries the last one added as sinks. Whatever reaches an
             # older one was found when it was added, in every file that names it.
@@ -304,29 +320,24 @@ class Semgrep(Analyzer):
             rules = own + (self.first_rules if new is None else [])
             if not rules or not scanned:
                 break
-            config = work / "summaries.yml"
-            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-            data = self.scan(ctx, ["--config", str(config)], scanned)
-            ids = [r["id"] for r in rules]
-            found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
-                      ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
-                      item["extra"]["message"])
-                     for item in data["results"]]
+            found = self.rule_results(ctx, rules, scanned, (work / "summaries.yml", originals, "summary"))
             if new is None:
-                theirs = {r["id"] for r in rules} - {r["id"] for r in own}
-                self.first_found = [f for f in found if f[0] in theirs]
-                found = [f for f in found if f[0] not in theirs]
+                found = self.keep_first_found(found, rules, own)
             more = summaries_module.parse_summaries(found, lambda rel: read_source(ctx.root / rel), known, hits)
-            names = {e[0] for entries in more.values() for e in entries}
-            self.aliases.update(summaries_module.python_aliases(texts, names))
-            more = summaries_module.with_aliases(more, self.aliases)
-            merged = summaries_module.merge(summaries, more)
+            self.aliases.update(summaries_module.python_aliases(texts, all_names(more)))
+            merged = summaries_module.merge(summaries, summaries_module.with_aliases(more, self.aliases))
             if merged is None:
                 break
             new = summaries_module.added(summaries, merged)
             scanned = mentioning(ctx, targets, added_names(summaries, merged))
             summaries = known = merged
         return summaries, hits
+
+    def keep_first_found(self, found, rules, own):
+        """The first scan's results for the pass rules that joined it, set aside in self.first_found; the rest."""
+        theirs = {r["id"] for r in rules} - {r["id"] for r in own}
+        self.first_found = [f for f in found if f[0] in theirs]
+        return [f for f in found if f[0] not in theirs]
 
     def resummarise(self, ctx, custom_rules, copies, found, known):
         """Pass 1 again for the summaries that rest on a call the passes now say hands nothing back
@@ -337,7 +348,7 @@ class Semgrep(Analyzer):
         summaries, hits = found
         signatures, js_functions, passes = known
         functions = {False: set(signatures), True: js_functions}
-        texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
+        texts = python_texts(ctx, targets)
         stale = summaries_module.stale_summaries(custom_rules, summaries, texts, (functions, passes, signatures))
         # A round scans its stale functions without their summaries as sinks, so one resting on another stale one
         # (SQLBot's preview on exec_sql, CVE-2026-53556) is dropped though its callee comes back: such functions
@@ -345,38 +356,28 @@ class Semgrep(Analyzer):
         for _ in range(summaries_module.MAX_DEPTH + 1):
             if not stale:
                 break
-            names = set().union(*stale.values())
-            kept = {rule: {e for e in entries if rule not in stale or e[0] not in stale[rule]}
-                    for rule, entries in summaries.items()}
-            cleaned = summaries_module.with_pass_through(
-                summaries_module.with_arguments(custom_rules, signatures, passes, kept), functions, passes, kept, {})
-            rules = [r for r in summaries_module.summary_rules(cleaned, kept, base=True, receivers=self.receivers)
-                     if r["id"].removesuffix(summaries_module.SUMMARY_SUFFIX) in stale]
-            scanned = sorted(summaries_module.python_definers(texts, names))
+            kept = without_stale(summaries, stale)
+            rules = self.stale_rules(custom_rules, stale, kept, (signatures, functions, passes))
+            scanned = sorted(summaries_module.python_definers(texts, set().union(*stale.values())))
             if not rules or not scanned:
                 break
-            config = work / "resummaries.yml"
-            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-            data = self.scan(ctx, ["--config", str(config)], scanned)
-            ids = [r["id"] for r in rules]
-            results = tuple((next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
-                             ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
-                             item["extra"]["message"]) for item in data["results"])
-            again = summaries_module.parse_summaries(results, lambda rel: read_source(ctx.root / rel), kept)
-            again = {rule: {e for e in entries if e[0] in stale.get(rule, ())} for rule, entries in again.items()}
+            results = tuple(self.rule_results(ctx, rules, scanned, (work / "resummaries.yml", originals, "summary")))
+            again = only_stale(summaries_module.parse_summaries(results, lambda rel: read_source(ctx.root / rel),
+                                                                kept), stale)
             updated = summaries_module.merge(kept, again) or kept
-            gone = {rule: {e[0] for e in summaries.get(rule, set()) - updated.get(rule, set())} for rule in stale}
+            gone = {rule: names_of(summaries.get(rule, set()) - updated.get(rule, set())) for rule in stale}
             summaries = updated
-            # Callers summarised through a function that no longer is, and functions this round dropped that call
-            # one it kept.
-            confirmed = {rule: {e[0] for e in entries} for rule, entries in again.items()}
-            stale = {rule: callers for rule, names_gone in gone.items() if names_gone
-                     and (callers := (set(summaries_module.python_callers(texts, names_gone))
-                                      & {e[0] for e in summaries.get(rule, ())})
-                          | (names_gone & set(summaries_module.python_callers(texts, confirmed.get(rule, set())))))}
+            stale = still_stale(texts, gone, {rule: names_of(entries) for rule, entries in again.items()}, summaries)
         summaries = summaries_module.realiased(summaries, self.aliases)
-        live = {(rule, e[0], e[4]) for rule, entries in summaries.items() for e in entries}
-        return summaries, [h for h in hits if (h[0], h[3], h[1]) in live]
+        return summaries, live_hits(summaries, hits)
+
+    def stale_rules(self, custom_rules, stale, kept, known):
+        """Summary rules for the stale functions' rules, with the sanitizers the passes allow."""
+        signatures, functions, passes = known
+        cleaned = summaries_module.with_pass_through(
+            summaries_module.with_arguments(custom_rules, signatures, passes, kept), functions, passes, kept, {})
+        return [r for r in summaries_module.summary_rules(cleaned, kept, base=True, receivers=self.receivers)
+                if r["id"].removesuffix(summaries_module.SUMMARY_SUFFIX) in stale]
 
     @staticmethod
     def signatures(ctx, targets):
@@ -394,8 +395,7 @@ class Semgrep(Analyzer):
         assigned call made a large app's scan half as long again (actual)."""
         texts = [read_source(ctx.root / t) or "" for t in targets if Path(t).suffix in JS]
         handling = [text for text in texts if summaries_module.JS_REQUEST_RE.search(text)]
-        python = {name for text in (read_source(ctx.root / t) or "" for t in targets if t.endswith(".py"))
-                  for name in summaries_module.python_functions(text)}
+        python = {name for text in python_texts(ctx, targets).values() for name in summaries_module.python_functions(text)}
         return summaries_module.js_functions(texts) & summaries_module.assigned_calls(handling) - python
 
     def find_passes(self, ctx, custom_rules, copies, signatures):
@@ -404,31 +404,34 @@ class Semgrep(Analyzer):
         about the functions that call one whose answer changed. copies: (targets, originals, work)."""
         targets, originals, work = copies
         js_ids = {rule["id"] for rule in custom_rules if summaries_module.is_js(rule)}
-        texts = {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
+        texts = python_texts(ctx, targets)
         passes = summaries_module.parse_passes([(c, p, line, m.strip()) for c, p, line, m in self.first_found])
         # Before the first round every argument counted as handed back.
         changed = set(signatures)
         for _ in range(summaries_module.PASS_MAX_ROUNDS - 1):
             # Only a function that hands something back and calls one whose answer changed can change, and only
             # the files defining one need a scan.
-            handing = {e[0] for entries in passes.values() for e in entries}
-            asked = set(summaries_module.python_callers(texts, changed)) & handing
-            scanned = sorted(summaries_module.python_definers(texts, asked))
-            rules = summaries_module.pass_rules(custom_rules, asked, signatures, passes)
-            if not rules or not scanned:
+            asked = set(summaries_module.python_callers(texts, changed)) & all_names(passes)
+            found = self.pass_round(ctx, custom_rules, (texts, asked, signatures, passes), (work, originals))
+            if found is None:
                 break
-            config = work / "passes.yml"
-            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-            data = self.scan(ctx, ["--config", str(config)], scanned)
-            found = summaries_module.parse_passes([
-                (item["check_id"], ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
-                 item["extra"]["message"].strip()) for item in data["results"]])
-            kept = {rule: {e for e in entries if rule in js_ids or e[0] not in asked} for rule, entries in passes.items()}
+            kept = kept_passes(passes, js_ids, asked)
             found = summaries_module.merge(kept, found) or kept
-            changed = {e[0] for rule in set(found) | set(passes)
-                       for e in found.get(rule, set()) ^ passes.get(rule, set())}
+            changed = changed_names(found, passes)
             passes = found
         return passes
+
+    def pass_round(self, ctx, custom_rules, asking, place):
+        """The passes a round finds for the functions asked about, or None when there is nothing to scan. asking:
+        (texts, asked, signatures, passes); place: (work, originals)."""
+        texts, asked, signatures, passes = asking
+        work, originals = place
+        scanned = sorted(summaries_module.python_definers(texts, asked))
+        rules = summaries_module.pass_rules(custom_rules, asked, signatures, passes)
+        if not rules or not scanned:
+            return None
+        return summaries_module.parse_passes(
+            self.rule_results(ctx, rules, scanned, (work / "passes.yml", originals, "pass")))
 
     def find_returners(self, ctx, custom_rules, targets, originals, work):
         """Pass 3 of summaries.py: which functions return request data, directly or from returners found before,
@@ -436,28 +439,17 @@ class Semgrep(Analyzer):
         returners, fields = {}, {}
         # An unminified library bundled with the app (materialize.js, 366 KB) multiplies this pass's time by ten,
         # and big single-file apps are Python's habit, not JavaScript's.
-        targets = [t for t in targets
-                   if Path(t).suffix not in JS_SUFFIXES or (ctx.root / t).stat().st_size <= RETURNER_MAX_JS_BYTES]
+        targets = [t for t in targets if not oversized_js(ctx, t)]
         scanned, new = targets, {}
         for depth in range(summaries_module.MAX_DEPTH):
             # Semi-naive, as in summarise: a deeper pass's sources are calls to the returners the last one added.
-            rules = summaries_module.returner_rules(custom_rules, new, base=depth == 0)
-            if depth == 0:
-                rules += summaries_module.field_rules(custom_rules)
+            rules = returner_round_rules(custom_rules, new, depth)
             if not rules or not scanned:
                 break
-            config = work / "returners.yml"
-            config.write_text(yaml.safe_dump({"rules": rules}, sort_keys=False))
-            data = self.scan(ctx, ["--config", str(config)], scanned)
-            ids = [r["id"] for r in rules]
-            found = [(next((i for i in ids if item["check_id"].endswith(i)), item["check_id"]),
-                      ctx.rel(originals.get(item["path"], item["path"])), item["start"]["line"],
-                      item["extra"]["message"].strip())
-                     for item in data["results"]]
+            found = self.rule_results(ctx, rules, scanned, (work / "returners.yml", originals, "returner"))
             stored = [f for f in found if f[0].endswith(summaries_module.FIELDS_SUFFIX)]
             fields = summaries_module.merge(fields, summaries_module.parse_fields(stored)) or fields
-            more = summaries_module.parse_returners([f for f in found if f not in stored],
-                                                    lambda rel: read_source(ctx.root / rel))
+            more = summaries_module.parse_returners(without(found, stored), lambda rel: read_source(ctx.root / rel))
             merged = summaries_module.merge(returners, more)
             if merged is None:
                 break
@@ -486,6 +478,160 @@ class Semgrep(Analyzer):
             return False
         defining = {s[4] for s in summaries if s[0] == match.group(1)}
         return bool(defining) and summaries_module.visible(path, defining, lambda rel: read_source(ctx.root / rel))
+
+
+CONFIG = "--config"
+
+
+class Learnt(NamedTuple):
+    """What the summary rounds found, which the final rules and the results' checks are built from."""
+    signatures: dict
+    js_functions: set
+    passes: dict
+    summaries: dict
+    hits: list
+    returners: dict
+    fields: dict
+
+
+class Reading(NamedTuple):
+    """What reading the main scan's results needs."""
+    ctx: object
+    originals: dict
+    custom_rules: list
+    known: Learnt
+    traced: dict
+    source: LineCache
+
+    @property
+    def custom_ids(self):
+        return [r["id"] for r in self.custom_rules]
+
+    def path(self, item):
+        return self.ctx.rel(self.originals.get(item["path"], item["path"]))
+
+
+def derived_check(check_id):
+    """(rule id without variant suffixes, a via variant, a field variant, any variant)."""
+    plain = check_id.removesuffix(summaries_module.VIA_SUFFIX)
+    via, field = plain != check_id, plain.endswith(summaries_module.FIELD_SUFFIX)
+    plain = plain.removesuffix(summaries_module.FIELD_SUFFIX).removesuffix(summaries_module.FROM_SUFFIX)
+    return plain, via, field, plain != check_id
+
+
+def result_kind(reading, item, check_id, custom_id):
+    """A result's type: the rule's, made a hotspot where it is left for review."""
+    path, metadata = reading.path(item), item["extra"].get("metadata", {})
+    kind = semgrep_type(check_id, metadata)
+    if kind != VULNERABILITY:
+        return kind
+    # codewatch's own taint rule for this weakness already followed the data here; a registry rule that matches
+    # the same weakness without seeing guards or sanitizers is left for review, not a verdict. A template's
+    # inline scripts are scanned as JavaScript, so its findings are judged like a .js file's.
+    suffix = ".js" if Path(path).suffix in TEMPLATE_EXTENSIONS else Path(path).suffix
+    if not custom_id and cwe_numbers(metadata.get("cwe")) & reading.traced.get(suffix, set()):
+        return HOTSPOT
+    # Rules for primitives that are only weak when they protect something (MD5 for a Gravatar URL is fine): a
+    # vulnerability where the code is about secrets or verification, otherwise for review.
+    if (metadata.get("security-purpose") == "required"
+            and not security_purpose(reading.source, path, item["start"]["line"])):
+        return HOTSPOT
+    # Test code isn't served to anyone, so what flows through it is for review, not a verdict.
+    return HOTSPOT if is_test_file(path) else kind
+
+
+def derived(finding):
+    return any(r.search(finding.message) for r in (summaries_module.VIA_RE, summaries_module.FROM_RE,
+                                                   summaries_module.FIELD_RE))
+
+
+def without_derived_duplicates(findings):
+    """A via/from/field finding on a line a direct finding of the same rule already reports is dropped."""
+    direct = {(f.rule, f.path, f.line) for f in findings if not derived(f)}
+    return [f for f in findings if not (derived(f) and (f.rule, f.path, f.line) in direct)]
+
+
+def still_stale(texts, gone, confirmed, summaries):
+    """{rule: functions to summarise again}: callers summarised through a function that no longer is, and
+    functions this round dropped that call one it kept."""
+    stale = {}
+    for rule, names_gone in gone.items():
+        if not names_gone:
+            continue
+        callers = ((set(summaries_module.python_callers(texts, names_gone)) & {e[0] for e in summaries.get(rule, ())})
+                   | (names_gone & set(summaries_module.python_callers(texts, confirmed.get(rule, set())))))
+        if callers:
+            stale[rule] = callers
+    return stale
+
+
+def python_texts(ctx, targets):
+    """{target: its text} for the Python targets, in order."""
+    return {t: read_source(ctx.root / t) or "" for t in targets if t.endswith(".py")}
+
+
+def names_of(entries):
+    return {e[0] for e in entries}
+
+
+def all_names(found):
+    """Every function name in a {rule: {(name, ...)}}."""
+    return {e[0] for entries in found.values() for e in entries}
+
+
+def without_stale(summaries, stale):
+    return {rule: {e for e in entries if e[0] not in stale.get(rule, ())} for rule, entries in summaries.items()}
+
+
+def only_stale(found, stale):
+    return {rule: {e for e in entries if e[0] in stale.get(rule, ())} for rule, entries in found.items()}
+
+
+def live_hits(summaries, hits):
+    """The hits of functions still summarised."""
+    live = {(rule, e[0], e[4]) for rule, entries in summaries.items() for e in entries}
+    return [h for h in hits if (h[0], h[3], h[1]) in live]
+
+
+def changed_names(found, before):
+    """Function names whose answers differ between two {rule: {(name, ...)}}."""
+    return {e[0] for rule in set(found) | set(before) for e in found.get(rule, set()) ^ before.get(rule, set())}
+
+
+def oversized_js(ctx, target):
+    return Path(target).suffix in JS_SUFFIXES and (ctx.root / target).stat().st_size > RETURNER_MAX_JS_BYTES
+
+
+def kept_passes(passes, js_ids, asked):
+    """The passes kept into the next round: a JavaScript rule's all, a Python rule's except the functions asked
+    about again."""
+    return {rule: {e for e in entries if rule in js_ids or e[0] not in asked} for rule, entries in passes.items()}
+
+
+def returner_round_rules(custom_rules, new, depth):
+    """A returner round's rules; the first also asks which self/this fields store request data."""
+    rules = summaries_module.returner_rules(custom_rules, new, base=depth == 0)
+    return rules + (summaries_module.field_rules(custom_rules) if depth == 0 else [])
+
+
+def without(items, dropped):
+    return [x for x in items if x not in dropped]
+
+
+def entry_point(func, path, known, param):
+    """Whether a summarised parameter is an uncalled entry point to report: a public function nothing calls, not
+    in a test, with a parameter that can carry text, in the focus. known: (names used, scalar parameters, focus)."""
+    used, scalars, focus = known
+    return not (func in used or func.startswith("_") or is_test_file(path) or (func, param) in scalars
+                or (focus is not None and path not in focus))
+
+
+def entry_point_finding(rule, rule_id, hit):
+    path, line, func, param = hit
+    message = (f"{rule['message'].strip()} [parameter {param} of {func}(), which nothing in the project "
+               f"calls: check what its callers pass]")
+    return Finding("codewatch", rule_id, SEMGREP_SEVERITY.get(rule.get("severity"), MINOR), HOTSPOT,
+                   message, path, line, line)
 
 
 LANGUAGE_SUFFIXES = {"python": [".py"], "javascript": [".js", ".jsx", ".mjs", ".cjs"], "typescript": [".ts", ".tsx"],
@@ -552,37 +698,47 @@ def url_routes(ctx, files):
         if (text := read_source(ctx.root / rel)) is not None)
 
 
+def rewritten_source(ctx, rel, url_views):
+    """A PHP or Python file's analysis copy text (see analysis_copy and php_copy_text), or None."""
+    if rel.endswith(".php"):
+        text = read_source(ctx.root / rel)
+        return php_copy_text(text) if text and "compact(" in text else None
+    if rel.endswith(".py"):
+        try:
+            return analysis_copy((ctx.root / rel).read_text(), url_views)
+        except (OSError, UnicodeDecodeError):
+            return None
+    return None
+
+
+def add_rewritten(rel, rewritten, copies, found):
+    """The file as a target: itself, or its rewritten copy mapped back to it. found: (targets, originals)."""
+    targets, originals = found
+    if rewritten is None:
+        targets.append(rel)
+        return
+    copy = copies / rel
+    copy.parent.mkdir(parents=True, exist_ok=True)
+    copy.write_text(rewritten)
+    targets.append(str(copy))
+    originals[str(copy)] = rel
+
+
 def analysis_copies(ctx, files, copies):
     """Targets for Semgrep: Python files that need it are scanned as rewritten copies (see analysis_copy).
     Returns the target list and {copy path: original relative path}."""
     targets, originals = [], {}
     url_views = url_routes(ctx, [rel for rel in files if rel.endswith(".py")])
-    for rel in files:
-        # Semgrep refuses a symlink given as a target and fails the whole scan; the file it points to is scanned.
-        if (ctx.root / rel).is_symlink():
-            continue
-        rewritten = None
-        if rel.endswith(".php"):
-            text = read_source(ctx.root / rel)
-            rewritten = php_copy_text(text) if text and "compact(" in text else None
-        if rel.endswith(".py"):
-            try:
-                rewritten = analysis_copy((ctx.root / rel).read_text(), url_views)
-            except (OSError, UnicodeDecodeError):
-                rewritten = None
-        if Path(rel).suffix.lower() in TEMPLATE_EXTENSIONS:
+    # Semgrep refuses a symlink given as a target and fails the whole scan; the file it points to is scanned.
+    for rel in (rel for rel in files if not (ctx.root / rel).is_symlink()):
+        rewritten = rewritten_source(ctx, rel, url_views)
+        suffix = Path(rel).suffix.lower()
+        if suffix in TEMPLATE_EXTENSIONS:
             add_inline_scripts(ctx, rel, copies, targets, originals)
-        if Path(rel).suffix.lower() in PHP_VIEWS:
+        if suffix in PHP_VIEWS:
             add_php_copy(ctx, rel, copies, targets, originals)
-            continue
-        if rewritten is None:
-            targets.append(rel)
-            continue
-        copy = copies / rel
-        copy.parent.mkdir(parents=True, exist_ok=True)
-        copy.write_text(rewritten)
-        targets.append(str(copy))
-        originals[str(copy)] = rel
+        else:
+            add_rewritten(rel, rewritten, copies, (targets, originals))
     return targets, originals
 
 
