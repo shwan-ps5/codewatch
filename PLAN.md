@@ -2408,3 +2408,24 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     C, critical D, blocker E). The default gate's "new maintainability rating worse than A" therefore fails on any
     new smell, which is the point. Stricter than SonarQube, deliberately. The ratings page and README say so, and
     the page now counts safe with won't fix and false positive as reviewed.
+
+92. **No code smells in codewatch's own report** (2026-11-19). The maintainer asked for every smell fixed rather than
+    tolerated: codewatch marks its own homework, so a reader should find nothing waived. 128 smells: 84 cyclomatic
+    (15 critical) and 13 cognitive (5 critical) complexity warnings, 29 repeated literals and 2 duplicated blocks.
+    Every complex function was split into named steps (Semgrep.run into project_rules, learn, final_rules,
+    main_scan and result_finding; the four summary rounds share one rule_results helper, which was jscpd's
+    duplicate; evaluate became a table of evaluators; and so on), each literal named once, and a shared
+    python_tree() in base.py replaced fifteen copies of parse-or-skip. No suppressions, no raised thresholds.
+    Verified, not assumed: each refactored module's old and new versions were run on the same inputs and had to
+    agree: the analyzers' rewrites and project-level passes on the learning-set apps and benchmark checkouts
+    (43,580 Python files for each per-file rewrite, 35,709 template files, 133-481 projects for the project-level
+    passes), reviewed.py's known/guard/measure on 8,223 advisories and 60 commits, benchmark scoring replayed on
+    605 cached CVE cases, eight real cases scored by both, and full scans of 15 projects (10 learning-set apps,
+    5 PHP checkouts) before and after: identical findings except Semgrep's run-to-run variation (no finding
+    always present on one side and never on the other). The self-scan after the refactor caught what the split
+    had cost and was fixed before commit: an MCP-client helper carried the request body into urlopen for
+    codewatch's own SSRF rule (call() builds its request inline again), and a constant named SECRETS_TOOL tripped
+    the secret-keyword check. The type checker, seeing the smaller functions, found a real crash: `-"text"` in a
+    constant raised TypeError in the dead-branch rewrite and stopped the Semgrep analyzer
+    (test_a_constant_that_cannot_be_evaluated_leaves_its_branch_alone). Result: 0 bugs, 0 vulnerabilities,
+    0 code smells; 22 hotspots, all reviewed as safe or false positive, none won't fix.
