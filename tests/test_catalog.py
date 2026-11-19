@@ -139,8 +139,12 @@ def test_ratings():
     assert ratings.debt_rating(0, 0) == 1 and ratings.debt_rating(60, 10) == 3  # 20% debt
     assert ratings.review_rating(0, 0) == 1 and ratings.review_rating(1, 4) == 1 and ratings.review_rating(3, 1) == 5
     out = ratings.compute([("bug", "major"), ("code_smell", "minor")], 0, {"ncloc": 100}, "")
-    assert out["reliability_rating"] == 3 and out["maintainability_rating"] == 1
-    assert out["health_score"] == 90 and ratings.score_grade(90) == "A"
+    assert out["reliability_rating"] == 3 and out["maintainability_rating"] == 2, "a minor smell is B, not A"
+    assert out["health_score"] == 85 and ratings.score_grade(85) == "B"
+    many = ratings.compute([("code_smell", "critical")] + [("code_smell", "minor")] * 127, 0, {"ncloc": 16710}, "")
+    assert many["debt_ratio_percent"] < 1 and many["maintainability_rating"] == 4, (
+        "a critical smell is D however large the project: density alone rated codewatch's own 128 smells A")
+    assert ratings.compute([], 0, {"ncloc": 100}, "")["maintainability_rating"] == 1
 
 
 def test_update_due(tmp_path, monkeypatch):

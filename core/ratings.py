@@ -1,8 +1,9 @@
 """Project ratings (A-E) and an overall health score.
 
-Reliability, security and accessibility are rated by the worst open issue of that type. Maintainability uses
-the SQALE technical-debt ratio: estimated remediation effort for code smells divided by the estimated cost of
-writing the code. Security review is the share of security hotspots that have been reviewed (resolved).
+Reliability, security and accessibility are rated by the worst open issue of that type. Maintainability is the worse
+of the SQALE technical-debt ratio (estimated remediation effort for code smells divided by the estimated cost of
+writing the code) and the worst open code smell: a density alone let a hundred complex functions in a large project
+rate A. Security review is the share of security hotspots that have been reviewed (resolved).
 """
 GRADES = "ABCDE"
 WORST_SEVERITY_RATING = {"blocker": 5, "critical": 4, "major": 3, "minor": 2, "info": 2}
@@ -47,7 +48,7 @@ def compute(rows, resolved_hotspots, metrics, scope):
     smell_minutes = sum(REMEDIATION_MINUTES[s] for s in by_type.get("code_smell", []))
     lines = metrics.get("new_lines" if scope else "ncloc", 0)
     out = {f"{scope}{name}_rating": worst(by_type.get(t, [])) for t, name in RATED_TYPES.items()}
-    out[f"{scope}maintainability_rating"] = debt_rating(smell_minutes, lines)
+    out[f"{scope}maintainability_rating"] = max(debt_rating(smell_minutes, lines), worst(by_type.get("code_smell", [])))
     out[f"{scope}technical_debt_minutes"] = smell_minutes
     if lines:
         out[f"{scope}debt_ratio_percent"] = round(100 * smell_minutes / (lines * MINUTES_PER_LINE), 2)

@@ -92,7 +92,7 @@ Issue types: bug, vulnerability, **security hotspot** (security-sensitive code t
 
 ## Ratings and the quality gate
 
-Each analysis gets A–E ratings, overall and on new code: **reliability**, **security** and **accessibility** (worst open issue of that type), **maintainability** (SQALE technical-debt ratio) and **security review** (share of hotspots reviewed), combined into a 0–100 **health score**. The `/ratings/` page explains the formulas.
+Each analysis gets A–E ratings, overall and on new code: **reliability**, **security** and **accessibility** (worst open issue of that type), **maintainability** (the worse of the SQALE technical-debt ratio and the worst open code smell) and **security review** (share of hotspots reviewed), combined into a 0–100 **health score**. The `/ratings/` page explains the formulas.
 
 The default quality gate, on new code:
 

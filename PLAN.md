@@ -2400,3 +2400,11 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     headers with two levels of brackets in their defaults (parameters again run to the first `)`, bounded by the
     next `function` keyword). test_codewatchs_own_regexes_pass_its_backtracking_check runs the check on every
     tracked Python file, so a new slow pattern fails the suite instead of reaching the report.
+
+91. **Maintainability is capped by the worst code smell** (2026-11-19). codewatch's own 128 open smells, 21 of
+    them critical, rated A: 2,950 minutes of fix estimates over 16,710 lines is a 0.59% debt ratio, far under the
+    5% an A allows, so a large project could hide any number of complex functions behind its size. The rating is
+    now the worse of the debt ratio and the worst open smell, rated as bugs and vulnerabilities are (minor B, major
+    C, critical D, blocker E). The default gate's "new maintainability rating worse than A" therefore fails on any
+    new smell, which is the point. Stricter than SonarQube, deliberately. The ratings page and README say so, and
+    the page now counts safe with won't fix and false positive as reviewed.
