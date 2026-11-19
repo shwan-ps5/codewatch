@@ -1624,6 +1624,19 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    - The 41 inline suppressions (`noqa`, `nosec`, `nosemgrep`, `pragma: allowlist secret`) each now give their
      reason, beside or above; 14 had none. Still to do: move the security ones into `codewatch-reviews.json`,
      where the run summary shows them.
+98. **npm audit of codewatch's own analyzers: 10 moderate, now 0** (2026-11-19). The first Actions run showed 10
+   moderate advisories in `tools/`, all from two packages:
+   - minimatch GHSA-g3hv-75wg-m249 (ReDoS through glob patterns; fixed in 11.0.1), reached through
+     typescript-eslint and c8's test-exclude;
+   - glob GHSA-3g3m-2fjr-6pw4 (AbortSignal bypass; fixed in 14.0.2), through test-exclude.
+   npm's own fix downgrades c8 from 12 to 9, which was refused. typescript-eslint 8.73.0 takes the fixed minimatch
+   but was 3 days old, too new to trust. No c8 or test-exclude release accepts the fixed versions. So
+   `tools/package.json` `overrides` pin minimatch 11.0.1 and glob 14.0.2 (both 23 days old) inside test-exclude
+   and typescript-estree. Checked: npm audit finds 0; c8 still writes a Cobertura report (demo project); the full
+   test suite and the JS/TS analyzer tests pass. Exposure was small: a crafted tsconfig glob in a scanned repo
+   could slow typescript-estree until the tool time limit, and c8 only runs a project's own tests. Revisit:
+   drop the override for typescript-eslint >= 8.73 after 2026-11-30. ESLint 9 is end-of-life (npm warns); it
+   stays until eslint-plugin-security and jsx-a11y support ESLint 10.
 
 ## How things work (non-obvious)
 

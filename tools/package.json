@@ -19,5 +19,14 @@
     "stylelint-config-recommended": "18.0.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1"
+  },
+  "overrides": {
+    "test-exclude": {
+      "glob": "14.0.2",
+      "minimatch": "11.0.1"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
   }
 }
