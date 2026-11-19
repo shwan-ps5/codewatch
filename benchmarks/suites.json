@@ -15658,7 +15658,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88 and 102) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-wx9g-4r9w-jjcf",
@@ -16022,6 +16022,20 @@
           "summary": "Chamilo: unvalidated request path in the CleanDeletedFiles plugin (CVE-2026-61578)",
           "scope": [
             "plugin/cleandeletedfiles/src"
+          ]
+        },
+        {
+          "id": "CVE-2026-77376",
+          "cve": "CVE-2026-77376",
+          "repo": "https://github.com/bolt/core.git",
+          "fix": "db37ed5d7563f19e57597671598e284c9b34456c",
+          "cwe": [
+            601
+          ],
+          "license": "MIT",
+          "summary": "Bolt CMS: unsafe destinations accepted for the login success and failure redirects (open redirect), fixed in 6.1.4",
+          "scope": [
+            "src/Security"
           ]
         }
       ]

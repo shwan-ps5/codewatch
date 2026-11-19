@@ -37,7 +37,9 @@ python3 -I benchmarks/reviewed.py GHSA-xxxx-xxxx-xxxx [more ids or fix commit SH
 
 It prints `new` for unseen ids and exits 1 if any is already known (in a suite, accepted, rejected or unsure).
 Skip anything known, including when only its fix commit matches. `python3 -I benchmarks/reviewed.py` with no
-arguments lists everything known. Load it once at the start of a batch and filter your candidate list with it.
+arguments lists everything known, every other id of a known advisory included (a GHSA's CVE and a CVE's GHSA, from
+`~/advisory-database`). Load it once at the start of a batch and filter your candidate list with it, by every id
+the candidate has: the same advisory under its other id is not new.
 
 ## 2. What to look for
 
