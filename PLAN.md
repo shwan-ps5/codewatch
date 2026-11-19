@@ -1660,6 +1660,22 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    pull request's commits stay readable on GitHub. Each run merges `detection-gaps` into `research` first, so the
    agent reads the current topic queue and suites. Review steps are in CLAUDE.md. Tried in a scratch clone with a
    stub `gh`: a fresh start, carrying on with a merge, and a fresh start after a closed pull request.
+101. **Three more topic 16 batches reviewed, the first through a pull request** (2026-11-19). new-3 and new-4 went
+   straight to `detection-gaps` before step 100; new-5 came as pull request #1, and the review was committed on
+   `research` and merged there. 13 advisories read, 2 accepted by the agents, 1 kept:
+   - Rejected at review: Moodle CVE-2026-133060 (Blackboard question import, CWE-22). The img src path is
+     `text_field()`'s argument, parsed out of the uploaded import archive outside the changed file, and the file
+     copy is in `store_file_for_text_field()`, also unchanged: values from an uploaded archive, as Dolibarr
+     GHSA-7pjv (step 88). The agent's fix size and flow were right; the source isn't in the diff.
+   - Added: SABnzbd CVE-2026-133238 to `cve-pairs-blind-python-27` (the agents named a new
+     `cve-pairs-blind-python-28`; merged per language as in step 88). The split was checked against the sha256 rule;
+     its diff wasn't read.
+   - The 11 agent rejections hold. Checked against GitHub: Termix CVE-2026-133116's "fix" is the v26.11.2 release
+     commit (300 files, +191k lines); ZoneMinder CVE-2024-43361 only loops an existing `str_replace('://')` strip
+     in `detaintPath()`; Tandoor CVE-2026-133235 is a "fixed various issues" commit across 6 files. The rest (two
+     tiptap and one parse5 library fixes, ros2cli's CLI argument, OpnForm's widened denylist, two modified-shop
+     fixes over the size limit, Moodle CVE-2026-133062 over 3 commits) are clear from the agents' reasons.
+   Yield: 1 of 13. The topic-16 list is empty until new advisories arrive, so later runs read only a few each.
 
 ## How things work (non-obvious)
 
