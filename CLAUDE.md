@@ -21,8 +21,12 @@ real name, and never add one to commit messages, files or pull requests.
   only. A Claude session reviews those candidates before adding them to `suites.json`: check each open fix commit
   on GitHub against step 22's limits, and record every decision in PLAN.md. `python3 -I benchmarks/reviewed.py
   ID|SHA...` says whether an advisory or fix commit has already been read. `tools/research-batch.sh` runs
-  batches unattended on that desktop, hourly from a systemd timer (pushed only after `reviewed.py guard` passes); `reviewed.py pending` lists
-  the batches waiting for review. A reviewed batch's JSON status must stop starting with "research only".
+  batches unattended on that desktop, hourly from a systemd timer. It pushes each batch, only after `reviewed.py
+  guard` passes, to the `research` branch, and one open pull request ("Research batches waiting for review") carries
+  them into `detection-gaps`. Review there: `gh pr checkout <n>`, `reviewed.py pending` lists the batches waiting,
+  commit the decisions (statuses, `suites.json`, PLAN.md) on `research`, push, and once CI passes merge with
+  `gh pr merge <n> --merge` (a merge commit, not a squash, so the runs' commits keep their place). A reviewed batch's
+  JSON status must stop starting with "research only".
 - Blind sets (`~/.cache/codewatch/blind*`, the `cve-pairs-blind-*` suites) are scanned once, at the end of a round,
   and never used to adjust rules. Held-out suites (SecurityEval Copilot/InCoder, Vulnerable-Code-Snippets JS) are
   measured, never tuned on.

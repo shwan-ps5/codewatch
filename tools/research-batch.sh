@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # One unattended research batch (AGENTS.md). opencode with a cheap cloud model reads advisories
-# and commits candidate files. This script checks those commits (benchmarks/reviewed.py guard) and pushes them to
-# detection-gaps only if they pass. A Claude session reviews the batches; the nightly run tests what's added.
+# and commits candidate files. This script checks those commits (benchmarks/reviewed.py guard) and, only if they
+# pass, pushes them to the research branch, where one open pull request into detection-gaps carries every batch
+# waiting for review (opened here when none is). A Claude session reviews the batches on that branch and merges the
+# pull request; the next batch starts a new one. Nothing unreviewed reaches detection-gaps, which the nightly run
+# measures and cloud sessions clone, and the pull request's CI checks each push.
 #
 # Runs on the desktop from its own clone (~/codewatch-research/repo, so it never touches a working checkout),
 # from the systemd user timer codewatch-research.timer, off-peak. Needs: the model pulled (`ollama pull NAME`),
@@ -24,7 +27,8 @@ if [ -z "${CODEWATCH_RESEARCH_COPY:-}" ]; then
 fi
 MODEL="${CODEWATCH_RESEARCH_MODEL:-ollama/deepseek-v4.1-flash:cloud}"
 MAX_PENDING="${CODEWATCH_RESEARCH_MAX_PENDING:-3}"
-BRANCH=detection-gaps
+BASE=detection-gaps           # where reviewed batches go, by merging the pull request
+BRANCH=research               # where each batch is pushed
 LOGS="$HOME/.cache/codewatch/research"
 mkdir -p "$LOGS"
 # Unattended, nobody can answer a permission prompt: allow what research needs and refuse the rest at once
@@ -56,12 +60,38 @@ if [ -n "$(git status --porcelain)" ]; then
     say "working tree not clean (left over from an earlier run?); skipping. Look at: git status"
     exit 1
 fi
-git checkout -q "$BRANCH" && git fetch -q origin "$BRANCH" || { say "git fetch failed"; exit 1; }
-if [ -n "$(git rev-list "origin/$BRANCH..HEAD")" ]; then
+git fetch -q origin "$BASE" || { say "git fetch failed"; exit 1; }
+remote=""
+if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+    git fetch -q origin "$BRANCH" || { say "git fetch of $BRANCH failed"; exit 1; }
+    remote="origin/$BRANCH"
+fi
+# (Merges of origin branches left by an earlier run are not counted: the checkout below replaces them.)
+if [ -n "$(git rev-list --no-merges HEAD --not --remotes=origin)" ]; then
     say "local commits not on origin (not checked by this script); skipping until they're dealt with"
     exit 1
 fi
-git merge -q --ff-only "origin/$BRANCH" || { say "can't fast-forward to origin/$BRANCH"; exit 1; }
+open_pr() { gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number // empty'; }
+pr=$(open_pr) || { say "gh pr list failed"; exit 1; }
+# Carry on from the research branch while it holds batches not yet in $BASE: under the open pull request, or with
+# none yet (an earlier run couldn't open it). Start afresh from $BASE once its pull request is merged or closed.
+start="origin/$BASE"
+if [ -n "$remote" ] && [ -n "$(git rev-list "$remote" --not "origin/$BASE")" ]; then
+    head=$(git rev-parse "$remote")
+    ended=$(gh pr list --head "$BRANCH" --state all --json headRefOid,state \
+            --jq "[.[] | select(.headRefOid == \"$head\" and .state != \"OPEN\")] | length") \
+        || { say "gh pr list failed"; exit 1; }
+    if [ -n "$pr" ] || [ "$ended" = 0 ]; then
+        start=$remote
+    else
+        say "$BRANCH's last pull request was closed without its commits reaching $BASE; starting afresh from $BASE"
+    fi
+fi
+git checkout -q -B "$BRANCH" "$start" || { say "can't check out $BRANCH at $start"; exit 1; }
+if [ "$start" = "$remote" ]; then
+    # The agent reads AGENTS.md's queue and suites.json from here, so bring in what $BASE has gained since.
+    git merge -q --no-edit "origin/$BASE" || { git merge --abort; say "can't merge $BASE into $BRANCH; resolve by hand"; exit 1; }
+fi
 
 waiting=$(python3 -I benchmarks/reviewed.py pending | head -1)
 if [ "$waiting" -ge "$MAX_PENDING" ]; then
@@ -112,4 +142,24 @@ if ! python3 -I benchmarks/reviewed.py guard "$base"; then
     say "check failed (above); commits moved to local branch $keep, not pushed"
     exit 1
 fi
-git pull -q --rebase origin "$BRANCH" && git push -q origin "$BRANCH" && say "pushed: $(git log --oneline "$base..HEAD" | tr '\n' ';')"
+if [ -n "$remote" ] && [ "$start" != "$remote" ]; then
+    # Afresh after a closed pull request: replace the branch, but only if nobody has pushed to it since we looked.
+    git push -q --force-with-lease="$BRANCH:$(git rev-parse "$remote")" origin "$BRANCH" || { say "push failed"; exit 1; }
+elif ! git push -q origin "$BRANCH"; then
+    # A review pushed to the branch meanwhile: merge its commits, never rewrite them.
+    git pull -q --no-rebase --no-edit origin "$BRANCH" && git push -q origin "$BRANCH" || { say "push failed"; exit 1; }
+fi
+say "pushed to $BRANCH: $(git log --oneline "$base..HEAD" | tr '\n' ';')"
+pr=$(open_pr) || { say "gh pr list failed; open the pull request by hand"; exit 1; }
+if [ -z "$pr" ]; then
+    gh pr create --base "$BASE" --head "$BRANCH" --title "Research batches waiting for review" --body \
+"Candidate batches from the unattended research runs (tools/research-batch.sh, following AGENTS.md). Each push
+passed \`benchmarks/reviewed.py guard\` (only candidate files and AGENTS.md changed, the project's commit identity,
+blind cases described by their entry alone). None has been reviewed.
+
+A Claude session reviews each batch on this branch (CLAUDE.md, 'How work is done here'), commits its decisions here,
+and merges this pull request. Later batches are added here until then; the next one after the merge opens a new pull
+request. Don't read anything about a blind case beyond its entry." && say "opened a pull request into $BASE"
+else
+    say "added to pull request #$pr"
+fi

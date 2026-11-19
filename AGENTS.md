@@ -20,7 +20,7 @@ Don't:
 ## Setup
 
 ```
-git checkout detection-gaps && git pull
+git checkout detection-gaps && git pull     # not in an unattended run: its script has set the branch up
 git config user.name "Shwan"
 git config user.email "344055753+shwan-ps5@users.noreply.github.com"
 ```
@@ -513,5 +513,6 @@ git add benchmarks/cve-candidates-YYYY-MM-DD-<topic>.*
 git commit -m "Research: <topic> CVE candidates (N read, A accepted: O open, B blind)"
 ```
 
-Commit to `detection-gaps` (never `main`). Push only when the maintainer says so. Your summary to the maintainer
+Commit to the branch you were started on (`detection-gaps` by hand, `research` in an unattended run; never `main`).
+Push only when the maintainer says so; an unattended run's script pushes for you. Your summary to the maintainer
 gives the counts and lists open cases by id, plus any `unsure` questions; blind cases appear as a count only.

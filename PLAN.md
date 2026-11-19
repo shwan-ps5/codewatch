@@ -1650,6 +1650,16 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      n-th test by node id, so the Semgrep tests spread evenly; shards of 88/88/87/87 cover all 350). Lint and the
      strict self-check are a fifth job in parallel. The shared setup is a local composite action,
      `.github/actions/setup`.
+100. **Research batches arrive by pull request** (2026-11-19, the maintainer asked whether the agents should push to
+   `detection-gaps` or open pull requests). Since step 97 every push to `detection-gaps` runs CI, and the hourly
+   research runs pushed unreviewed candidates straight onto the branch the nightly measures and cloud sessions
+   clone. `tools/research-batch.sh` now pushes each batch (still only after `reviewed.py guard`) to `research`,
+   with one open pull request ("Research batches waiting for review") into `detection-gaps`. Batches are added to it
+   until a review merges it (a merge commit), and the next batch opens a new one. A pull request closed unmerged
+   makes the next run start afresh from `detection-gaps`, replacing the branch with `--force-with-lease`. The
+   pull request's commits stay readable on GitHub. Each run merges `detection-gaps` into `research` first, so the
+   agent reads the current topic queue and suites. Review steps are in CLAUDE.md. Tried in a scratch clone with a
+   stub `gh`: a fresh start, carrying on with a merge, and a fresh start after a closed pull request.
 
 ## How things work (non-obvious)
 
