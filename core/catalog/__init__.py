@@ -27,6 +27,7 @@ ANY = "any"
 ISSUE_RULE_ALIASES = {
     "pip-audit": "pip-audit/vulnerable-dependency",
     "osv": "osv/vulnerable-dependency",
+    # A tool and rule name, not a secret: detect-secrets matches the word "secret".
     "detect-secrets": "detect-secrets/hard-coded-secret",  # pragma: allowlist secret
 }
 

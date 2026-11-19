@@ -62,6 +62,7 @@ def test_a_revision_is_never_taken_for_a_git_option(repo, tmp_path, settings):
 @pytest.mark.django_db
 def test_a_symlink_never_brings_a_file_from_outside_the_repository(repo, tmp_path):
     outside = tmp_path / "outside.py"
+    # A fake secret in a file outside the repository, to test that scans can't read it.
     outside.write_text("import os\nSECRET = 'server file'\n")  # pragma: allowlist secret
     (repo / "linked.py").symlink_to(outside)
     (repo / "inner.py").symlink_to("app.py")

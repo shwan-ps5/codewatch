@@ -20,5 +20,6 @@ def assign_fingerprints(findings, read_line):
         seen[key] += 1
         raw = "\0".join([*key, str(seen[key])])
         # Identity, not security; changing the algorithm would change every issue's identity.
+        # SHA-1 only names an issue so it can be matched across scans (usedforsecurity=False); nothing relies on it resisting collisions.
         fingerprints[id(f)] = hashlib.sha1(raw.encode(), usedforsecurity=False).hexdigest()  # nosemgrep
     return [fingerprints[id(f)] for f in findings]

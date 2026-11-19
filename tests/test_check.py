@@ -96,3 +96,12 @@ def _fingerprint(work):
     cfg = ScanConfig(disabled_analyzers=ONLY_RUFF)
     payload = collect(cfg, ScanInput(work, ["app.py"], "main", None, local=True), lambda m: None)
     return next(i["fingerprint"] for i in payload["issues"] if i["rule"] == "F401")
+
+
+def test_a_review_of_a_finding_that_is_gone_fails_the_strict_whole_project_check(work, capsys):
+    (work / cli.REVIEWS_FILE).write_text(json.dumps([{"fingerprint": "gone", "status": "safe", "comment": "Old.",
+                                                      "tool": "ruff", "rule": "F401", "path": "app.py"}]))
+    (work / "app.py").write_text("x = 1\n")
+    sh(work, "commit", "-qam", "clean")
+    assert check(capsys, "--all")[0] == 0
+    assert check(capsys, "--all", "--strict")[0] == 1

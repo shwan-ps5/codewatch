@@ -12,6 +12,7 @@ from core.models import Analysis, Project, ProjectMember
 from .conftest import token_for
 from .test_client import (
     scan,
+    # server is a pytest fixture, imported for the tests that name it as an argument (ruff F401 and F811).
     server,  # noqa: F401
 )
 
@@ -54,6 +55,7 @@ def test_axe_flags_contrast_on_live_page(tmp_path):
 
 @needs(Axe())
 @pytest.mark.django_db
+# The server fixture, imported above, is named as an argument here (ruff F811).
 def test_codewatch_pages_pass_axe(repo, alice, bob, server, tmp_path):  # noqa: F811
     """Render the main pages to files and require zero axe violations in both colour schemes."""
     token = token_for(alice)

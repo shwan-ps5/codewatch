@@ -494,6 +494,7 @@ class ChangePasswordView(PasswordChangeView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        # bandit B105 reads the profile flag must_change_password as a password; it is a boolean.
         Profile.objects.update_or_create(user=self.request.user, defaults={"must_change_password": False})  # nosec B105
         messages.success(self.request, "Password changed.")
         return response
@@ -556,6 +557,7 @@ def user_edit(request, pk):
         return redirect("users")
     if request.method == "POST" and form.is_valid():
         form.save()
+        # bandit B105 reads the profile flag must_change_password as a password; it is a boolean.
         Profile.objects.update_or_create(user=target, defaults={"must_change_password": True})  # nosec B105
         messages.success(request, f"Password reset for {target.username}; they must change it on next login.")
         return redirect("users")

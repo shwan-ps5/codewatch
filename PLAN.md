@@ -1612,9 +1612,18 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    - Run time locally: 3 minutes for 432 files.
    - Caveat: the Semgrep registry ruleset (`p/default`) is fetched at run time, so an upstream rule change can
      fail CI on unchanged code. That is the honest outcome, since it is a finding we didn't have before.
-   - Still to do: about 40 inline suppressions (`noqa`, `nosec`, `nosemgrep`, `pragma: allowlist secret`) are
-     exceptions a reader can't see in the summary, and 14 of them give no reason. The security ones belong in
-     `codewatch-reviews.json`. The README says so rather than claiming that nothing is suppressed.
+   - The reasons were checked against the code before the first push, since other Claude instances will read
+     them critically. Three were wrong and were rewritten:
+     - triage.py: "local Ollama" left out that the `:cloud` models relay the prompts to Ollama Cloud;
+     - dependencies.py:237: what varies there is the request body (the project's dependencies), not an advisory
+       id;
+     - catalog/sources.py: the catalogue update runs on any server on a schedule, not only in the maintainer's
+       builds.
+   - Line numbers were dropped from the file, because they go stale as code moves (matching is by fingerprint;
+     the summary shows the current line). A review that matches no finding fails `--all --strict`.
+   - The 41 inline suppressions (`noqa`, `nosec`, `nosemgrep`, `pragma: allowlist secret`) each now give their
+     reason, beside or above; 14 had none. Still to do: move the security ones into `codewatch-reviews.json`,
+     where the run summary shows them.
 
 ## How things work (non-obvious)
 

@@ -67,9 +67,11 @@ def test_known_token_formats(tmp_path):
 
 
 def test_entropy_needs_a_credential_name():
+    # Fake keys and hash-like values: the inputs of a test of secret detection.
     for line in ('API_KEY = "9f86d081884c7d65"',  # pragma: allowlist secret
                  "'Authorization': 'Bearer ab12'", "client_secret: x"):
         assert CREDENTIAL_CONTEXT_RE.search(line), line
+    # Hash-like values that aren't credentials, which the secret scanner would otherwise flag.
     for line in ('"commit_hash_like": "9f86d081884c"',  # pragma: allowlist secret
                  '"color": "a3b2c1d4e5f6"', "id = 'deadbeefcafe'"):  # pragma: allowlist secret
         assert not CREDENTIAL_CONTEXT_RE.search(line), line
@@ -267,6 +269,7 @@ def test_crypto_and_tls_misuse_rules(tmp_path):
         "    jwt.decode(token, key, algorithms=['HS256'])\n"
         "    tempfile.mkstemp()\n"
         "    ftplib.FTP_TLS('host')\n"
+        # A fake database URL with a password: the input of a test of secret detection.
         "    return 'postgresql://user:secret@db.example.com/app'\n"  # pragma: allowlist secret
     )
     ctx = Context(root=tmp_path, files=["bad.py", "good.py"], semgrep_config="",

@@ -61,6 +61,7 @@ def test_a_failed_gate_links_to_the_issues_that_failed_it(scanned_feature, djang
 
     _, feature = scanned_feature
     client = Client()
+    # A throwaway password for a superuser in the test database.
     client.force_login(django_user_model.objects.create_superuser("root", password="x"))  # pragma: allowlist secret
     page = client.get(f"/p/demo/a/{feature.pk}/").content.decode()
     for query in ("severity=critical&new=1", "type=bug&new=1"):

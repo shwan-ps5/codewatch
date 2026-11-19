@@ -38,6 +38,7 @@ from ..analyzers.multi_tools import CPPCHECK_NOISE, CPPCHECK_SEVERITY, SEMGREP_S
 from ..analyzers.python_tools import BANDIT_SEVERITY, RUFF_EXTEND_IGNORE, RUFF_RULES
 
 PYTHON, JS, C, HTML, CSS, WEB, IAC, ANY = "python", "javascript", "c/c++", "html", "css", "web", "iac", "any"
+# Tool names, not secrets: detect-secrets matches the word "secret".
 BANDIT, ESLINT, DETECT_SECRETS = "bandit", "eslint", "detect-secrets"  # pragma: allowlist secret
 VARIES = "varies"  # a tool whose findings each carry their own severity
 SEMGREP_PACK_URL = "https://semgrep.dev/c/p/default"

@@ -341,8 +341,9 @@ def cmd_check(args):
     log(f"Checking {len(files)} file(s): " + ", ".join(files[:5]) + (", ..." if len(files) > 5 else ""))
     payload = collect(cfg, ScanInput(repo.root, files, repo.branch(), changed, None, repo.root, local=True),
                       check_log(args.verbose))
-    issues, reviewed = split_reviewed(payload["issues"], load_reviews(repo.root))
-    blocking = [i for i in issues if blocks(i, changed, args.strict)]
+    reviews = load_reviews(repo.root)
+    issues, reviewed = split_reviewed(payload["issues"], reviews)
+    blocking = [i for i in issues if blocks(i, changed, args.strict)] + unused_reviews(args, reviews, reviewed)
     print_issues(issues, blocking, reviewed)
     failed = failed_tools(payload)
     where = "anywhere in these files" if changed is None else "on changed lines"
@@ -350,6 +351,19 @@ def cmd_check(args):
         f"{len(blocking)} blocking {where} (marked !)")
     write_summary(files, issues, reviewed, blocking, failed)
     return check_exit(blocking, failed)
+
+
+def unused_reviews(args, reviews, reviewed):
+    """With --all --strict, reviews that match no finding any more: a reason given for code that is gone, which
+    the file must not keep claiming. Returned as blocking entries."""
+    if not (args.all and args.strict):
+        return []
+    used = {i["fingerprint"] for i in reviewed}
+    unused = [r for fp, r in reviews.items() if fp not in used]
+    for r in unused:
+        log(f"codewatch check: {REVIEWS_FILE} reviews {r.get('tool')}:{r.get('rule')} in {r.get('path')}, which no "
+            "longer has that finding; remove the review")
+    return unused
 
 
 def split_reviewed(found, reviews):
