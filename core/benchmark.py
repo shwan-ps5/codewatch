@@ -630,8 +630,9 @@ def hits_and_still(before, after, spots):
 def score_pair(case, spots, sides, types, parents):
     """Detected: a finding of the advisory's weakness at the fixed spot, or one the fix makes go away. Still
     flagged (a false alarm on fixed code): such a finding survives the fix, or a new one appears at the fix."""
-    hits, still = hits_and_still(*(relevant_issues(sides[side], types, case, parents) for side in (BEFORE, AFTER)),
-                                 spots)
+    before = relevant_issues(sides[BEFORE], types, case, parents)
+    after = relevant_issues(sides[AFTER], types, case, parents)
+    hits, still = hits_and_still(before, after, spots)
     gave_up = sorted(side for side, flag in spots.get(GAVE_UP, {}).items() if flag)
     return {"id": case["id"], "repo": case["repo"], "cwe": case["cwe"], **({GAVE_UP: gave_up} if gave_up else {}),
             "detected": bool(hits), "still_flagged": bool(still), "by": rule_lines(hits), "still_by": rule_lines(still)}
@@ -756,7 +757,7 @@ def score_cases(ids, log=print, workers=1):
         suite["name"]: {case["id"]: scan_pair_or_none(suite, case, log) for case in suite["cases"]} for suite in chosen}
     parents = cwe_parents()
     pairs = [(suite["name"], case, scanned[suite["name"]].get(case["id"])) for suite in chosen for case in suite["cases"]]
-    return [(name, {mode: score_pair(case, *pair, types, parents) for mode, types in MODES.items()})
+    return [(name, {mode: score_pair(case, pair[0], pair[1], types, parents) for mode, types in MODES.items()})
             for name, case, pair in pairs if pair is not None]
 
 

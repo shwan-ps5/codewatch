@@ -22,6 +22,7 @@ import re
 from .base import python_tree
 
 RULE = "codewatch.python.web.xss"
+FIELD = "$FIELD"
 TEXT_FIELDS = {"CharField", "TextField", "EmailField", "URLField", "SlugField", "FileField", "ImageField",
                "FilePathField", "JSONField", "GenericIPAddressField"}
 MODEL_BASE_RE = re.compile(r"Model$")
@@ -254,7 +255,9 @@ def declared_fields(fields, model_fields):
 def form_fields(cls, models):
     """{(model, field)} a ModelForm or ModelSerializer saves: its Meta.fields ('__all__' is every field)."""
     values = meta_values(cls)
-    model = last_name(values.get("model")) if values and "model" in values else None
+    if not values or "model" not in values:
+        return set()
+    model = last_name(values["model"])
     if model not in models:
         return set()
     names = declared_fields(values.get("fields"), models[model])
@@ -347,13 +350,13 @@ def sources(stored, admins):
             {"pattern-inside": f"class {admin}(...):\n  ...\n"},
             {"pattern-inside": "def $F(self, $OBJ, ...):\n  ...\n"},
             {"pattern": "$OBJ.$FIELD"},
-            {"metavariable-regex": {"metavariable": "$FIELD", "regex": field_regex(stored[model])}},
+            {"metavariable-regex": {"metavariable": FIELD, "regex": field_regex(stored[model])}},
         ]})
     for model, fields in sorted(stored.items()):
         out.append({"patterns": [
             {"pattern-inside": f"class {model}(...):\n  ...\n"},
             {"pattern": "self.$FIELD"},
-            {"metavariable-regex": {"metavariable": "$FIELD", "regex": field_regex(fields)}},
+            {"metavariable-regex": {"metavariable": FIELD, "regex": field_regex(fields)}},
         ]})
         out.append({"patterns": [
             {"pattern-either": [
@@ -364,7 +367,7 @@ def sources(stored, admins):
                 {"pattern-inside": f"for $X in {model}.objects.$Q(...).$R(...):\n  ...\n"},
             ]},
             {"pattern": "$X.$FIELD"},
-            {"metavariable-regex": {"metavariable": "$FIELD", "regex": field_regex(fields)}},
+            {"metavariable-regex": {"metavariable": FIELD, "regex": field_regex(fields)}},
         ]})
     return out
 
@@ -377,7 +380,7 @@ def with_stored_sources(rules, texts):
     extra = sources(stored, admins)
     names = set().union(*files.values()) if files else set()
     url = [{"patterns": [{"pattern": "$X.$FIELD.url"},
-                         {"metavariable-regex": {"metavariable": "$FIELD", "regex": field_regex(names)}}]}] if names else []
+                         {"metavariable-regex": {"metavariable": FIELD, "regex": field_regex(names)}}]}] if names else []
     return [{**rule, "pattern-sources": [*rule["pattern-sources"], *extra],
              "pattern-sanitizers": [*rule.get("pattern-sanitizers", []), *url]} if rule.get("id") == RULE else rule
             for rule in rules]

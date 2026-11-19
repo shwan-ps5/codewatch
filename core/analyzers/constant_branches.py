@@ -48,7 +48,12 @@ def unary_value(node, env):
     if not isinstance(node.op, (ast.USub, ast.Not)):
         raise Unknown
     operand = evaluate(node.operand, env)
-    return (not operand) if isinstance(node.op, ast.Not) else -operand
+    if isinstance(node.op, ast.Not):
+        return not operand
+    # -"text" is a TypeError in Python, not a value: the branch it decides is left alone, not the scan stopped.
+    if isinstance(operand, str):
+        raise Unknown
+    return -operand
 
 
 def boolop_value(node, env):

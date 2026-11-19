@@ -217,6 +217,13 @@ def test_dead_constant_branches_are_blanked_keeping_lines_and_indentation():
     assert blank_dead_branches("def f(p):\n    n = 1\n    n = p\n    return 'a' if n > 0 else p\n") is None
 
 
+def test_a_constant_that_cannot_be_evaluated_leaves_its_branch_alone():
+    from core.analyzers.constant_branches import blank_dead_branches
+
+    # -"text" raises TypeError in Python: evaluating it stopped the Semgrep analyzer for the whole scan.
+    assert blank_dead_branches('def f(p):\n    x = -"text"\n    if x:\n        return p\n    return 1\n') is None
+
+
 def test_slices_become_indexes_without_moving_lines():
     import ast
 

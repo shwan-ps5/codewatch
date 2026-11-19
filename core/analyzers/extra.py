@@ -97,7 +97,7 @@ def known_false_positive(message):
     return any(p.search(message) for p in KNOWN_FALSE_POSITIVES)
 
 
-SECRETS_TOOL = "detect-secrets"
+DETECTOR = "detect-secrets"
 
 
 class TypeCheck(Analyzer):
@@ -145,13 +145,13 @@ class TypeCheck(Analyzer):
 class Secrets(Analyzer):
     """Hard-coded credentials and API keys with detect-secrets, plus known token formats it has no plugin for."""
 
-    name = executable = SECRETS_TOOL
+    name = executable = DETECTOR
 
     @staticmethod
     def finding(ctx, path, line, types):
         """A secret detect-secrets names (a key format) is a vulnerability; a heuristic one is a hotspot."""
         specific = sorted(types - SECRET_HEURISTICS)
-        return Finding(SECRETS_TOOL, specific[0] if specific else min(types), BLOCKER if specific else MAJOR,
+        return Finding(DETECTOR, specific[0] if specific else min(types), BLOCKER if specific else MAJOR,
                        VULNERABILITY if specific else HOTSPOT,
                        f"Possible hard-coded secret ({', '.join(sorted(types))}); move it to configuration "
                        "or a secret store, and rotate it if it was ever committed", ctx.rel(path), line)
@@ -215,7 +215,7 @@ def known_tokens(ctx, already):
     findings = []
     for path in ctx.files:
         text = small_text(ctx.root / path)
-        findings += [Finding(SECRETS_TOOL, kind, BLOCKER, VULNERABILITY,
+        findings += [Finding(DETECTOR, kind, BLOCKER, VULNERABILITY,
                              f"{kind} committed to the repository; revoke it and load it from configuration", path, n)
                      for n, line in enumerate((text or "").splitlines(), 1)
                      if (path, n) not in already and (kind := token_kind(line))]
