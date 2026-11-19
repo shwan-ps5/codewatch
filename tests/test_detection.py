@@ -71,7 +71,7 @@ def test_entropy_needs_a_credential_name():
                  "'Authorization': 'Bearer ab12'", "client_secret: x"):
         assert CREDENTIAL_CONTEXT_RE.search(line), line
     for line in ('"commit_hash_like": "9f86d081884c"',  # pragma: allowlist secret
-                 '"color": "a3b2c1d4e5f6"', "id = 'deadbeefcafe'"):
+                 '"color": "a3b2c1d4e5f6"', "id = 'deadbeefcafe'"):  # pragma: allowlist secret
         assert not CREDENTIAL_CONTEXT_RE.search(line), line
 
 
