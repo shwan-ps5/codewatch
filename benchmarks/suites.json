@@ -1426,6 +1426,64 @@
             "zerver/lib",
             "zerver/views/thumbnail.py"
           ]
+        },
+        {
+          "id": "CVE-2026-55796",
+          "cve": "CVE-2026-55796",
+          "repo": "https://github.com/frappe/hrms.git",
+          "fix": "a7d01fe5f01a17dc9db00f165379c03ebe16770b",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-3.0",
+          "summary": "Frappe HR Salary Payments via ECS report: report filter values reach the report SQL (CVE-2026-55796)",
+          "scope": [
+            "hrms/payroll/report/salary_payments_via_ecs"
+          ]
+        },
+        {
+          "id": "CVE-2026-55823",
+          "cve": "CVE-2026-55823",
+          "repo": "https://github.com/frappe/frappe.git",
+          "fix": "49dbde7460fa41528154088d23b6c6e12f733f9b",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Frappe desk reportview get_count: report filter and page-token values reach the count SQL (CVE-2026-55823)",
+          "scope": [
+            "frappe/desk"
+          ]
+        },
+        {
+          "id": "CVE-2026-52835",
+          "cve": "CVE-2026-52835",
+          "repo": "https://github.com/Tautulli/Tautulli.git",
+          "fix": "8c7c1a5ab09a6cca00aec995df07ce24680e7f31",
+          "cwe": [
+            22,
+            434
+          ],
+          "license": "GPL-3.0",
+          "summary": "Tautulli config/database import: the uploaded file name is joined to CACHE_DIR (CVE-2026-52835)",
+          "scope": [
+            "plexpy"
+          ]
+        },
+        {
+          "id": "CVE-2026-130156",
+          "cve": "CVE-2026-130156",
+          "repo": "https://github.com/morpheus65535/bazarr.git",
+          "fix": "d84777c61a34a90a37238cfb566e7e8cd102d303",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Bazarr: subtitles contents and PATCH endpoints read unindexed files",
+          "scope": [
+            "bazarr/api/subtitles",
+            "bazarr/app"
+          ]
         }
       ]
     },
@@ -3440,6 +3498,20 @@
             "apps/mail/components/mail",
             "apps/mail/app/(routes)/mail"
           ]
+        },
+        {
+          "id": "GHSA-p45h-7j97-qg29",
+          "cve": "CVE-2026-116045",
+          "repo": "https://github.com/1999AZZAR/designer-mcp.git",
+          "fix": "c8c2951dcbed9b1710a745993f028317f10a3f10",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "designer-mcp get_reference: path traversal in the tool's name argument",
+          "scope": [
+            "src"
+          ]
         }
       ]
     },
@@ -5015,6 +5087,65 @@
           "summary": "MISP Modules sourcecache: SSRF through a link attribute URL (CVE-2026-125871)",
           "scope": [
             "misp_modules/modules/expansion"
+          ]
+        },
+        {
+          "id": "GHSA-vvr2-h2jp-838m",
+          "cve": "CVE-2026-77604",
+          "repo": "https://github.com/vitali87/code-graph-rag.git",
+          "fix": "6541e920a27961fa8f3ff49ef38c0e0bd09cd626",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Code Graph RAG MCP read_file: path traversal in the paginated branch",
+          "scope": [
+            "codebase_rag/mcp"
+          ]
+        },
+        {
+          "id": "CVE-2026-57496",
+          "cve": "CVE-2026-57496",
+          "repo": "https://github.com/Labs64/NetLicensing-MCP.git",
+          "fix": "b8fd0ea76d533202573eb24add9fb2fbd9331496",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "NetLicensing MCP get_product: path traversal in the REST path leaks token fields (CVE-2026-57496)",
+          "scope": [
+            "src/netlicensing_mcp"
+          ]
+        },
+        {
+          "id": "CVE-2026-75612",
+          "cve": "CVE-2026-75612",
+          "repo": "https://github.com/velesnitski/yt-mcp.git",
+          "fix": "b70054b180e6ec7a03f70ee4744518d96d2fba8a",
+          "cwe": [
+            22,
+            73
+          ],
+          "license": "MIT",
+          "summary": "yt-mcp: add_attachment file_path reads files outside any allowed root (MCP tool)",
+          "scope": [
+            "src/yt_mcp/tools"
+          ]
+        },
+        {
+          "id": "CVE-2026-130154",
+          "cve": "CVE-2026-130154",
+          "repo": "https://github.com/Zyrabit-tech/zyrabit-SLM.git",
+          "fix": "bb81be4d279a4680e26213c52041c003f9b78869",
+          "cwe": [
+            22,
+            306
+          ],
+          "license": "MIT",
+          "summary": "Zyrabit SLM: import_to_vault destination escapes the vault (MCP tool)",
+          "scope": [
+            "zyrabit-slm/api-rag/app/domain/services",
+            "zyrabit-slm/api-rag/app"
           ]
         }
       ]
@@ -11289,6 +11420,154 @@
           "scope": [
             "adm_program/system/classes"
           ]
+        },
+        {
+          "id": "CVE-2026-61573",
+          "cve": "CVE-2026-61573",
+          "repo": "https://github.com/WWBN/AVideo-Encoder.git",
+          "fix": "789d75681cc9377e1cc8950ffcc0cfc9b2032b9e",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "AVideo-Encoder anonymous login: request values reflected into HTML and JavaScript without output encoding (CVE-2026-61573)",
+          "scope": [
+            "locale",
+            "view"
+          ]
+        },
+        {
+          "id": "CVE-2026-61569",
+          "cve": "CVE-2026-61569",
+          "repo": "https://github.com/WWBN/AVideo-Encoder.git",
+          "fix": "8a6e2b8aedb87702656636d3fc8d9e26e559a762",
+          "cwe": [
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "AVideo-Encoder streamer login: SQL injection through the user parameter in Streamer::get (CVE-2026-61569)",
+          "scope": [
+            "objects"
+          ]
+        },
+        {
+          "id": "CVE-2026-61564",
+          "cve": "CVE-2026-61564",
+          "repo": "https://github.com/WWBN/AVideo-Encoder.git",
+          "fix": "0faaddebd11c087885d25a7e0513745465cad411",
+          "cwe": [
+            94,
+            89
+          ],
+          "license": "AGPL-3.0",
+          "summary": "AVideo-Encoder installer: request parameters interpolated into the generated videos/configuration.php (CVE-2026-61564)",
+          "scope": [
+            "install",
+            "objects"
+          ]
+        },
+        {
+          "id": "CVE-2026-113388",
+          "cve": "CVE-2026-113388",
+          "repo": "https://github.com/opensource-socialnetwork/opensource-socialnetwork.git",
+          "fix": "40945057cb451f0f35153110bc7e889c094400e1",
+          "cwe": [
+            94
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open Source Social Network dynamic cache settings: PHP code injection through the request fields written into a config file (CVE-2026-113388)",
+          "scope": [
+            "actions/administrator/cache"
+          ]
+        },
+        {
+          "id": "CVE-2026-63130",
+          "cve": "CVE-2026-63130",
+          "repo": "https://github.com/espocrm/espocrm.git",
+          "fix": "31540a04ca8ea96519c7dbf2d8d2273218e69ce6",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "EspoCRM Label Manager: path traversal through the scope and language parameters (CVE-2026-63130)",
+          "scope": [
+            "application/Espo/Controllers",
+            "application/Espo/Core/Utils",
+            "application/Espo/Tools/LabelManager"
+          ]
+        },
+        {
+          "id": "GHSA-vrw3-f386-x9w7",
+          "cve": "CVE-2019-25783",
+          "repo": "https://github.com/tt-rss/tt-rss.git",
+          "fix": "c68ac04020d85a296c784de18f8def3f365f9f6a",
+          "cwe": [
+            601
+          ],
+          "license": "GPL-3.0",
+          "summary": "Tiny Tiny RSS: open redirect in the login 'return' parameter",
+          "scope": [
+            "classes/handler",
+            "include"
+          ]
+        },
+        {
+          "id": "CVE-2016-10084",
+          "cve": "CVE-2016-10084",
+          "repo": "https://github.com/Piwigo/Piwigo.git",
+          "fix": "9dd92959f6975099e0c62163a846a4648a6a920f",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "admin/batch_manager.php in Piwigo through 2.8.3 allows remote authenticated administrators to conduct File Inclusion attacks via the $page['tab'] variable (aka the mode parameter).",
+          "scope": [
+            "admin"
+          ]
+        },
+        {
+          "id": "CVE-2016-10082",
+          "cve": "CVE-2016-10082",
+          "repo": "https://github.com/s9y/Serendipity.git",
+          "fix": "bba6a840f4d53cbaf62971a3078a98c8ddf92b85",
+          "cwe": [
+            22,
+            94
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "include/functions_installer.inc.php in Serendipity through 2.0.5 is vulnerable to File Inclusion and a possible Code Execution attack during a first-time installation because it fails to sanitize the dbType POST parameter before adding it to an include() call in the bundled-libs/serendipity_generate",
+          "scope": [
+            "include"
+          ]
+        },
+        {
+          "id": "CVE-2026-61584",
+          "cve": "CVE-2026-61584",
+          "repo": "https://github.com/chamilo/chamilo-lms.git",
+          "fix": "5fe0d53bb5cc6830c3c339429ed5dca8d5530159",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Chamilo: path traversal in the RTC audio recording handler",
+          "scope": [
+            "main/inc/ajax"
+          ]
+        },
+        {
+          "id": "CVE-2026-55508",
+          "cve": "CVE-2026-55508",
+          "repo": "https://github.com/wavelog/wavelog.git",
+          "fix": "b65ecbfad21f4c14a4ae225b9f804c756701698c",
+          "cwe": [
+            89
+          ],
+          "license": "MIT",
+          "summary": "Wavelog: SQL injection in the OQRS search_log callsign",
+          "scope": [
+            "application/controllers",
+            "application/models"
+          ]
         }
       ]
     },
@@ -15369,6 +15648,520 @@
           "summary": "Upload whitelisted files to any directory in OctoberCMS",
           "scope": [
             "modules/cms/widgets"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-php-36",
+      "language": "php",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-wx9g-4r9w-jjcf",
+          "cve": "CVE-2024-58401",
+          "repo": "https://github.com/bagisto/bagisto.git",
+          "fix": "31234e710c81670b0025eabdc847786e19eb4f65",
+          "cwe": [
+            1336
+          ],
+          "license": "MIT",
+          "summary": "Bagisto search page: the query request parameter is rendered inside a Vue app root, allowing client-side template injection (GHSA-wx9g-4r9w-jjcf)",
+          "scope": [
+            "packages/Webkul/Shop/src/Resources/views/search"
+          ]
+        },
+        {
+          "id": "GHSA-j56q-vg23-44cm",
+          "cve": "CVE-2026-126753",
+          "repo": "https://github.com/LimeSurvey/LimeSurvey.git",
+          "fix": "4a8c484322177b6a73be2156eafddd144cd205e5",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "LimeSurvey editorLink: open redirect through the unvalidated url request parameter (GHSA-j56q-vg23-44cm)",
+          "scope": [
+            "application/controllers"
+          ]
+        },
+        {
+          "id": "CVE-2026-58205",
+          "cve": "CVE-2026-58205",
+          "repo": "https://github.com/JeromeDevome/GRR.git",
+          "fix": "4ef77f91818215c1f8e0f06023d89257dfd61c68",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-2.0",
+          "summary": "GRR maj.php: reflected XSS through the forcemaj parameter (CVE-2026-58205)",
+          "scope": [
+            "admin/controleurs",
+            "installation"
+          ]
+        },
+        {
+          "id": "CVE-2026-115457",
+          "cve": "CVE-2026-115457",
+          "repo": "https://github.com/baserproject/basercms.git",
+          "fix": "bec4776ab497457fac76da7ae67d2dd0ad964eec",
+          "cwe": [
+            79
+          ],
+          "license": "NOASSERTION",
+          "summary": "baserCMS blog comments: shortcode injection through a visitor comment rendered on the blog (CVE-2026-115457)",
+          "scope": [
+            "plugins/baser-core/src/Model/Validation",
+            "plugins/baser-core/src/View/Helper",
+            "plugins/bc-blog/src/Model/Table"
+          ]
+        },
+        {
+          "id": "GHSA-3p38-q93v-93w8",
+          "cve": "CVE-2026-114720",
+          "repo": "https://github.com/roundcube/roundcubemail.git",
+          "fix": "242c6d6a150c850bd96d20d400261e71f8d11f9b",
+          "cwe": [
+            93
+          ],
+          "license": "GPL-3.0",
+          "summary": "Roundcube mail/mark: IMAP command injection through CRLF in the _flag parameter (GHSA-3p38-q93v-93w8)",
+          "scope": [
+            "program/lib/Roundcube"
+          ]
+        },
+        {
+          "id": "GHSA-qwfm-hv5v-vc9r",
+          "cve": "CVE-2026-113386",
+          "repo": "https://github.com/roundcube/roundcubemail.git",
+          "fix": "004adaaeca4f6799715a54d12e3f657f19efcc9a",
+          "cwe": [
+            93
+          ],
+          "license": "GPL-3.0",
+          "summary": "Roundcube mail/headers and mail/viewsource: IMAP command injection through CRLF in the _uid parameter (GHSA-qwfm-hv5v-vc9r)",
+          "scope": [
+            "program/actions/mail"
+          ]
+        },
+        {
+          "id": "CVE-2026-102607",
+          "cve": "CVE-2026-102607",
+          "repo": "https://github.com/ZoneMinder/zoneminder.git",
+          "fix": "548ed87d47a49c17b4c842f6fee8a08660deb427",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-2.0",
+          "summary": "ZoneMinder exportEvents: command injection through the exportFile and connkey parameters (CVE-2026-102607)",
+          "scope": [
+            "web/skins/classic/includes"
+          ]
+        },
+        {
+          "id": "GHSA-f8ff-652m-j5rx",
+          "cve": "CVE-2026-62858",
+          "repo": "https://github.com/YOURLS/YOURLS.git",
+          "fix": "4e85972160a96e03a419a442d5bd8f21f2f02ddb",
+          "cwe": [
+            98
+          ],
+          "license": "MIT",
+          "summary": "YOURLS pages: unauthenticated path traversal and local file inclusion through the request keyword (GHSA-f8ff-652m-j5rx)",
+          "scope": [
+            "includes"
+          ]
+        },
+        {
+          "id": "CVE-2026-62679",
+          "cve": "CVE-2026-62679",
+          "repo": "https://github.com/LycheeOrg/Lychee.git",
+          "fix": "f4553f6e0145ec4e02360c6121bd169e87b5d05f",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "Lychee SecurePathController: path traversal in GET /image/{path} (CVE-2026-62679)",
+          "scope": [
+            "app/Http/Controllers",
+            "database/migrations"
+          ]
+        },
+        {
+          "id": "CVE-2026-58395",
+          "cve": "CVE-2026-58395",
+          "repo": "https://github.com/opnsense/core.git",
+          "fix": "631e14721b311badc1d3c0d29321e4d42585156b",
+          "cwe": [
+            643
+          ],
+          "license": "BSD-2-Clause",
+          "summary": "OPNsense ApiMutableModelControllerBase: XPath injection through the safe-delete token (CVE-2026-58395)",
+          "scope": [
+            "src/opnsense/mvc/app/controllers/OPNsense/Base"
+          ]
+        },
+        {
+          "id": "CVE-2026-55683",
+          "cve": "CVE-2026-55683",
+          "repo": "https://github.com/LabRedesCefetRJ/WeGIA.git",
+          "fix": "f819be361f984592c4b5a35db830495b4e2263fa",
+          "cwe": [
+            89
+          ],
+          "license": "CC-BY-4.0",
+          "summary": "WeGIA billing form: unauthenticated POST values reach SQL UPDATE/INSERT/SELECT statements (CVE-2026-55683)",
+          "scope": [
+            "web/html/socio/sistema"
+          ]
+        },
+        {
+          "id": "CVE-2026-55681",
+          "cve": "CVE-2026-55681",
+          "repo": "https://github.com/LabRedesCefetRJ/WeGIA.git",
+          "fix": "8fa3dfcd71c2058c3b6127fdb40d3f1ec068be3e",
+          "cwe": [
+            89
+          ],
+          "license": "CC-BY-4.0",
+          "summary": "WeGIA Material & Patrimonio: an authenticated id_produto value reaches SQL UPDATE statements (CVE-2026-55681)",
+          "scope": [
+            "web/html/matPat"
+          ]
+        },
+        {
+          "id": "CVE-2026-55385",
+          "cve": "CVE-2026-55385",
+          "repo": "https://github.com/InvoiceShelf/InvoiceShelf.git",
+          "fix": "d615cfb4ff4841a3b8cda7fc850a2bb335521fe5",
+          "cwe": [
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "InvoiceShelf PDF configuration: an owner-controlled host setting is fetched without rejecting private addresses (CVE-2026-55385)",
+          "scope": [
+            "app/Rules",
+            "app/Services/PDFDrivers",
+            "app/Http/Requests"
+          ]
+        },
+        {
+          "id": "GHSA-666c-5phm-cpf5",
+          "cve": "CVE-2026-108829",
+          "repo": "https://github.com/zencart/zencart.git",
+          "fix": "08f572654edee1db8f9db091c9949825c6c69339",
+          "cwe": [
+            74
+          ],
+          "license": "NOASSERTION",
+          "summary": "Zen Cart admin module configuration: the configuration key is concatenated into a SQL query (GHSA-666c-5phm-cpf5)",
+          "scope": [
+            "admin"
+          ]
+        },
+        {
+          "id": "GHSA-rv7j-2hq3-r6fq",
+          "cve": "CVE-2024-58386",
+          "repo": "https://github.com/ZoneMinder/zoneminder.git",
+          "fix": "3b379e99c0c1e539334ad4186c15ad0dc6c238b9",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "ZoneMinder files view: the path request parameter reaches the file output without traversal checks (GHSA-rv7j-2hq3-r6fq)",
+          "scope": [
+            "web/includes",
+            "web/skins/classic/views"
+          ]
+        },
+        {
+          "id": "CVE-2026-62262",
+          "cve": "CVE-2026-62262",
+          "repo": "https://github.com/Piwigo/Piwigo.git",
+          "fix": "9755d88edf38b94bafdedb0b3aba7304a94e2e5c",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "Piwigo filtered search: a crafted ratings[] value reaches the rating SQL bounds (CVE-2026-62262)",
+          "scope": [
+            "include/ws_functions",
+            "include"
+          ]
+        },
+        {
+          "id": "CVE-2026-53610",
+          "cve": "CVE-2026-53610",
+          "repo": "https://github.com/glpi-project/glpi.git",
+          "fix": "9b17a3b2b91070cf197dedae3286322a41c4bc92",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "GLPI dashboard: attacker-controlled markup reflected through a dashboard widget (CVE-2026-53610)",
+          "scope": [
+            "src/Glpi/Dashboard"
+          ]
+        },
+        {
+          "id": "CVE-2026-48482",
+          "cve": "CVE-2026-48482",
+          "repo": "https://github.com/glpi-project/glpi.git",
+          "fix": "d817cb5c17e3368c89d4a561a43a777662b9da19",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "GLPI form import: a crafted illustration or scene identifier traverses outside the custom-asset directory (CVE-2026-48482)",
+          "scope": [
+            "src/Glpi/UI",
+            "src/Glpi/Form/Export/Serializer"
+          ]
+        },
+        {
+          "id": "GHSA-4f5f-j737-pm58",
+          "cve": "CVE-2026-62998",
+          "repo": "https://github.com/redaxo/core.git",
+          "fix": "c44ba5206a28427984100c994010f2aaa6703efd",
+          "cwe": [
+            20,
+            200
+          ],
+          "license": "NOASSERTION",
+          "summary": "REDAXO rex_list: the sort GET parameter is used as an ORDER BY column without checking the sortable whitelist (GHSA-4f5f-j737-pm58)",
+          "scope": [
+            "redaxo/src/core/lib"
+          ]
+        },
+        {
+          "id": "GHSA-296v-9jwc-w27h",
+          "cve": "CVE-2026-95659",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "23b879073eefce37e1065295d180c4bea7cef95f",
+          "cwe": [
+            20
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP AnalystDataController viewForObject: reflected XSS",
+          "scope": [
+            "app/Controller",
+            "app/View/Themed/Overmind/Elements/AnalystData"
+          ]
+        },
+        {
+          "id": "CVE-2026-95679",
+          "cve": "CVE-2026-95679",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "716fc49d3816dd17d8aeeee074a12f430edc2a55",
+          "cwe": [
+            20,
+            918
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP: XML request bodies are decoded and fetched as URLs (CVE-2026-95679)",
+          "scope": [
+            "app/Controller"
+          ]
+        },
+        {
+          "id": "CVE-2016-10085",
+          "cve": "CVE-2016-10085",
+          "repo": "https://github.com/Piwigo/Piwigo.git",
+          "fix": "4b33a0fd199fd445b15a49927ea6a9a153e3877d",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-2.0",
+          "summary": "admin/languages.php in Piwigo through 2.8.3 allows remote authenticated administrators to conduct File Inclusion attacks via the tab parameter.",
+          "scope": [
+            "admin"
+          ]
+        },
+        {
+          "id": "CVE-2016-9183",
+          "cve": "CVE-2016-9183",
+          "repo": "https://github.com/exponentcms/exponent-cms.git",
+          "fix": "3b3557e9f6ba193a4c23c8ce5498fa285dddf3f3",
+          "cwe": [
+            89
+          ],
+          "license": "GPL-2.0",
+          "summary": "In /framework/modules/ecommerce/controllers/orderController.php of Exponent CMS 2.4.0, untrusted input is passed into selectObjectsBySql. The method selectObjectsBySql of class mysqli_database uses the injectProof method to prevent SQL injection, but this filter can be bypassed easily: it only sanit",
+          "scope": [
+            "framework/modules/core/controllers",
+            "framework/modules/ecommerce/controllers"
+          ]
+        },
+        {
+          "id": "CVE-2012-2762",
+          "cve": "CVE-2012-2762",
+          "repo": "https://github.com/s9y/Serendipity.git",
+          "fix": "87153991d06bc18fe4af05f97810487c4a340a92",
+          "cwe": [
+            89
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "SQL injection vulnerability in include/functions_trackbacks.inc.php in Serendipity 1.6.2 allows remote attackers to execute arbitrary SQL commands via the url parameter to comment.php.",
+          "scope": [
+            "include"
+          ]
+        },
+        {
+          "id": "CVE-2026-61578",
+          "cve": "CVE-2026-61578",
+          "repo": "https://github.com/chamilo/chamilo-lms.git",
+          "fix": "7521206e287fabd5f68d110fcaef63d64174e36e",
+          "cwe": [
+            22,
+            73
+          ],
+          "license": "GPL-3.0",
+          "summary": "Chamilo: unvalidated request path in the CleanDeletedFiles plugin (CVE-2026-61578)",
+          "scope": [
+            "plugin/cleandeletedfiles/src"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-javascript-27",
+      "language": "javascript",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of JavaScript CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-jq5x-25v9-fpxq",
+          "cve": "CVE-2026-130072",
+          "repo": "https://github.com/coderaiser/cloudcmd.git",
+          "fix": "25f496ff1c0d512354de92cb7f76c6e86c16aa8f",
+          "cwe": [
+            306
+          ],
+          "license": "MIT",
+          "summary": "cloudcmd: PUT /rename ran before the authentication middleware and without root containment (GHSA-jq5x-25v9-fpxq)",
+          "scope": [
+            "server"
+          ]
+        },
+        {
+          "id": "CVE-2026-73968",
+          "cve": "CVE-2026-73968",
+          "repo": "https://github.com/ansibleforms/ansibleforms.git",
+          "fix": "27d2064f4714c40356ac928545287548f817819d",
+          "cwe": [
+            78
+          ],
+          "license": "GPL-3.0",
+          "summary": "AnsibleForms: command injection in git repository operations (CVE-2026-73968)",
+          "scope": [
+            "server/src/models",
+            "server/src/lib"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-27",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-gcwf-c25f-p9rv",
+          "cve": "CVE-2026-77433",
+          "repo": "https://github.com/kiwitcms/Kiwi.git",
+          "fix": "65d8f7c2743d7f06a4fca77c060b9d561f02f948",
+          "cwe": [
+            601
+          ],
+          "license": "GPL-2.0",
+          "summary": "Kiwi TCMS account confirmation open redirect through protocol-relative URLs",
+          "scope": [
+            "tcms/kiwi_auth"
+          ]
+        },
+        {
+          "id": "GHSA-2265-6gg9-3q46",
+          "cve": "CVE-2026-127202",
+          "repo": "https://github.com/mlflow/mlflow.git",
+          "fix": "ab5fc795eedc22348253cf687818cf2a16c15282",
+          "cwe": [
+            22
+          ],
+          "license": "Apache-2.0",
+          "summary": "MLflow: path traversal in the FileStore run-outputs API",
+          "scope": [
+            "mlflow/store/tracking"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-frontend-5",
+      "language": "python-web",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Fifth blind set of Python front-end CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "CVE-2026-39375",
+          "cve": "CVE-2026-39375",
+          "repo": "https://github.com/frappe/lms.git",
+          "fix": "f244a6c9ff6e0b104fec48b2d97af4cc09896b60",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Frappe LMS: stored XSS through Course Management meta tag fields (CVE-2026-39375)",
+          "scope": [
+            "frontend",
+            "lms/lms"
+          ]
+        },
+        {
+          "id": "CVE-2026-45381",
+          "cve": "CVE-2026-45381",
+          "repo": "https://github.com/Tautulli/Tautulli.git",
+          "fix": "3bee54087370fc275b13565a9e58235341bb4cf7",
+          "cwe": [
+            79
+          ],
+          "license": "GPL-3.0",
+          "summary": "Tautulli /search query reflected into search.html (CVE-2026-45381)",
+          "scope": [
+            "data/interfaces/default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-pairs-blind-python-nonhttp-2",
+      "language": "python",
+      "kind": "cve-pairs",
+      "held_out": true,
+      "blind": true,
+      "about": "Second blind set of Python CVE fix pairs whose input isn't an HTTP request, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "cases": [
+        {
+          "id": "GHSA-phv8-wgjp-g4p9",
+          "cve": "CVE-2026-104102",
+          "repo": "https://github.com/9001/copyparty.git",
+          "fix": "b331bb1c8c8cc306b91e4d94221969335a7a3e86",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "copyparty FTP: upload outside defined volumes (limited path traversal)",
+          "scope": [
+            "copyparty"
           ]
         }
       ]

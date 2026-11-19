@@ -2313,3 +2313,31 @@ false-alarm checks. Their known findings are tracked locally, not in this reposi
     bearer-token API's csrf_exempt, a local Ollama call, regexes that only see file names or run in tools and
     tests), 9 false positives, 32 regex hotspots won't fix (bounded by the time limit), and the test-fixture
     vulnerability.
+
+88. **Eight more research batches reviewed: topics 15 and 16** (2026-11-19). 391 advisories read by the agents
+    (topic 15's last batch, which finishes it, and seven topic 16 batches of new arrivals), 72 accepted (40 open,
+    32 blind). None of the fix commits was already in a suite; all 40 open fixes were within the size limits with
+    one parent, and their diffs were read here. 21 rejected:
+    - stored data: Dokploy CVE-2026-129989 (build paths saved with the application, used by builder code outside
+      the diff) and CVE-2026-129985 (schedule appName), baserCMS CVE-2026-114624 (a serialized widget value
+      unserialized on read), ILIAS GHSA-hvwc (a test archive's sequence stored, then unserialized), Wavelog
+      CVE-2026-55506 (QSL file name from the database before unlink), Piwigo CVE-2026-42323 (filter values kept in
+      $_SESSION before the SQL);
+    - values from an uploaded archive: Dolibarr GHSA-7pjv (website template PHP, as Cacti CVE-2020-25706);
+    - the request read outside the changed files, the value an argument: Frappe CVE-2026-66057 (OAuth state from
+      frappe/integrations), Dokploy CVE-2026-129986 (the mount path), OpenCATS CVE-2026-54455 (DataGrid
+      parameters decoded in lib/), baserCMS CVE-2026-114623 (theme file path from the controllers), Roundcube
+      GHSA-748m (the login name from a plugin hook), EspoCRM CVE-2026-53574 (an attribute name inside the ORM),
+      GLPI CVE-2026-53629 (criteria array keys) and CVE-2026-47679 (CommonDBTM input; the containment check
+      already existed), Gnuboard5 GHSA-9r5f (a variable set by @extract($_GET) in common.php);
+    - nothing a scanner can tell apart: code-graph-rag GHSA-85gg (symlink following after a text check, as
+      ruTorrent GHSA-rh8c), fast-mcp-telegram CVE-2026-55096 and Vvveb CVE-2026-55232 (an existing private-address
+      check that missed DNS details), Piwigo CVE-2026-44642 (escaping under an inverted PHP-version condition, both
+      versions conditional), phpMyAdmin CVE-2016-5701 (already HTML-escaped values; BBCode markup).
+    Changed at review: AVideo-Encoder installer CVE-2026-61564 gets CWE-89 (the same commit prepares the INSERT of
+    $_POST values); EspoCRM CVE-2026-63130's scope widened to application/Espo/Tools/LabelManager, the step between
+    the controller and Language. Added: 4 to cve-pairs-python, 4 to -python-nonhttp (MCP tool arguments), 1 to
+    cve-pairs-javascript-nonhttp, 10 to cve-pairs-php. Blind cases merged into one suite per language as in step
+    86: cve-pairs-blind-python-27 (2), cve-pairs-blind-javascript-27 (2), cve-pairs-blind-php-36 (25); the agents'
+    cve-pairs-blind-python-frontend-5 (2) and cve-pairs-blind-python-nonhttp-2 (1) kept as named. The agents'
+    blind split was checked against the sha256 rule for all 72; no blind diff was read. Yield: 19 of 391 (5%).
