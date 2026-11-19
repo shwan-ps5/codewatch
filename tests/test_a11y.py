@@ -7,7 +7,7 @@ from django.test import Client, override_settings
 
 from core.analyzers.accessibility import Axe, HtmlA11y, JsxA11y
 from core.analyzers.base import Context
-from core.models import Project, ProjectMember
+from core.models import Analysis, Project, ProjectMember
 
 from .conftest import token_for
 from .test_client import (
@@ -62,6 +62,10 @@ def test_codewatch_pages_pass_axe(repo, alice, bob, server, tmp_path):  # noqa: 
     ProjectMember.objects.create(project=project, user=bob)
     analysis = project.analyses.get()
     issue = analysis.issues.first()
+    # A scan in progress, so its progress panel and the list's "Scanning" are checked too.
+    Analysis.objects.create(project=project, branch="feature", commit="0" * 40, progress=[
+        {"step": "Running ruff", "at": "2026-11-19T10:00:00+00:00"},
+        {"step": "Running semgrep", "at": "2026-11-19T10:00:05+00:00"}])
     admin = User.objects.get(username="admin")
     admin.profile.must_change_password = False
     admin.profile.save()

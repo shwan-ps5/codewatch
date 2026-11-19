@@ -1,0 +1,2 @@
+{% with steps=a.steps %}<p><strong>{{ a.branch }}</strong>, started {{ a.started_at|timesince }} ago: {% if steps %}{% with current=steps|last %}{{ current.step }} (for {{ current.at|timesince }}){% endwith %}{% else %}preparing the checkout{% endif %}</p>
+{% if steps|length > 1 %}<p class="muted">Finished: {% for s in steps %}{% if not forloop.last %}{{ s.step|cut:"Running " }}{% if forloop.revcounter > 2 %}, {% endif %}{% endif %}{% endfor %}</p>{% endif %}{% endwith %}

@@ -22,7 +22,9 @@ def under_root(requested):
     """The requested folder, resolved, if it is a folder under the browse root; else None."""
     root = browse_root()
     path = (root / requested).resolve()
-    return path if path.is_relative_to(root) and path.is_dir() else None
+    if not path.is_relative_to(root) or not path.is_dir():
+        return None
+    return path
 
 
 def within_root(requested):

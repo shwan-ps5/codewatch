@@ -10,7 +10,11 @@
 <p>A scan token was created with this project. Copy it now: it is not shown again (revoke it on your <a href="{% url 'account' %}">account page</a>). In {% if project.repo_url %}<code>{{ project.repo_url }}</code>{% else %}your working copy{% endif %}, run:</p>
 <pre class="token">CODEWATCH_URL={{ request.scheme }}://{{ request.get_host }} CODEWATCH_TOKEN={{ new_token }} codewatch-scan --project {{ project.key }}</pre>
 </section>
-{% endif %}{% if running %}<p class="card" role="status">Running: {% for a in running %}<strong>{{ a.branch }}</strong> (started {{ a.started_at|timesince }} ago) {% endfor %} <a href="">Refresh</a></p>{% endif %}
+{% endif %}{% if running %}<section class="card" aria-labelledby="running-h">
+<h2 id="running-h">Scan in progress</h2>
+<div id="scan-progress" data-live>{% for a in running %}{% include "core/scan_progress.html" %}{% endfor %}</div>
+<p><label><input type="checkbox" id="live-updates" checked> Update this page as the scan runs</label></p>
+</section>{% endif %}
 <div class="card"><table>
 <caption>Branches</caption>
 <thead><tr><th scope="col">Branch</th><th scope="col">Commit</th><th scope="col">Quality gate</th><th scope="col">New issues</th><th scope="col">Issues</th><th scope="col">New coverage</th><th scope="col">Analysed</th>{% if can_scan and project.repo_url %}<th scope="col"><span class="sr-only">Actions</span></th>{% endif %}</tr></thead>

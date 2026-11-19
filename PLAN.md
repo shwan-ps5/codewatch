@@ -1560,6 +1560,18 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    the working copy. The project list gains a Scan button, which returns to the list. Tests:
    `tests/test_new_project.py`, plus the picker page in the axe test. The self-scan found one new finding, bandit
    B105 on the session-key constant's name, which was renamed rather than waived.
+   Follow-up the same day: a running server scan records each analyzer as it starts (`Analysis.progress`). The
+   project page shows the current step and the finished ones, and the project list shows "Scanning: <tool>".
+   Sections marked `data-live` are re-fetched every 4 s and swapped in place, with a checkbox to stop updates
+   (WCAG 2.2.1); the page reloads when the scan ends. Project settings gained "Repository URL or folder". A project
+   created by `codewatch-scan` uploads has none, so it had no Scan button: the server had nothing to clone, and the
+   token wasn't the cause. A local folder is allowed only for an administrator's project (`trusted_owner`), as on
+   the new-project form. The self-scan flagged two shapes, rewritten rather than waived:
+   - a containment check written as a conditional expression, `path if path.is_relative_to(root) else None`, which
+     the path-traversal rule doesn't recognise as a sanitizer (only the `if not ...: return` guard form). That's
+     a gap in the rule worth closing with its own test;
+   - `el.innerHTML = fresh.innerHTML` on the page's own re-fetched HTML, now `replaceChildren(...)` with the parsed
+     nodes.
 
 ## How things work (non-obvious)
 

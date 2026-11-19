@@ -70,9 +70,11 @@ def refresh_gates(project):
 @require_safe
 def index(request):
     catalog_update.maybe_launch()
-    projects = [(p, next(iter(p.latest_analyses()), None), bool(p.repo_url) and p.can_scan(request.user))
-                for p in Project.visible_to(request.user).order_by("key")]
-    return render(request, "core/index.html", {"projects": projects})
+    visible = Project.visible_to(request.user).order_by("key")
+    running = {a.project_id: a for a in Analysis.objects.filter(project__in=visible, status=Analysis.RUNNING)}
+    projects = [(p, next(iter(p.latest_analyses()), None), bool(p.repo_url) and p.can_scan(request.user),
+                 running.get(p.pk)) for p in visible]
+    return render(request, "core/index.html", {"projects": projects, "any_running": bool(running)})
 
 
 class NewProjectForm(forms.ModelForm):
@@ -335,8 +337,11 @@ class ProjectSettingsForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ["name", "main_branch", "semgrep_config", "complexity_threshold", "cognitive_complexity_threshold",
+        fields = ["name", "repo_url", "main_branch", "semgrep_config", "complexity_threshold", "cognitive_complexity_threshold",
                   "duplicate_literal_threshold", "new_code_period", "exclusions", "a11y_urls", "disabled_analyzers"]
+        labels = {"repo_url": "Repository URL or folder"}
+        help_texts = {"repo_url": "Where server-side scans (and the Scan button) clone from: a repository URL or, for "
+                                  "an administrator's project, a folder on this server. Blank: codewatch-scan only."}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -349,6 +354,16 @@ class ProjectSettingsForm(forms.ModelForm):
 
     def clean_exclusions(self):
         return self.lines(self.cleaned_data["exclusions"])
+
+    def clean_repo_url(self):
+        """As for a new project: a local path, or a host on the server's network, only for an administrator's."""
+        url = self.cleaned_data["repo_url"].strip()
+        if not url:
+            return url
+        try:
+            return validate_repo_url(url, allow_local=trusted_owner(self.instance))
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
 
     def clean_new_code_period(self):
         value = self.cleaned_data["new_code_period"].strip()

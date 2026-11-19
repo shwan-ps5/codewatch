@@ -4,10 +4,12 @@ import subprocess
 
 import pytest
 from django.contrib.auth.models import User
+from django.forms.models import model_to_dict
 from django.test import Client
 
 from core import views
-from core.models import ApiToken, Project
+from core.models import Analysis, ApiToken, Project
+from core.runner import progress_recorder
 
 
 @pytest.fixture
@@ -90,7 +92,48 @@ def test_the_project_list_scans_a_project_and_comes_back(admin, root, launched):
     admin.post("/projects/new/", {"key": "my-app", "name": "My App", "repo_url": str(root / "Dev" / "My App")})
     Project.objects.create(key="uploaded", name="uploaded", owner=User.objects.get(username="admin"))
     page = admin.get("/")
-    assert [(p.key, scannable) for p, _a, scannable in page.context["projects"]] == [("my-app", True),
-                                                                                       ("uploaded", False)]
+    assert [(p.key, scannable) for p, _a, scannable, _running in page.context["projects"]] == [
+        ("my-app", True), ("uploaded", False)]
     resp = admin.post("/p/my-app/scan/", {"next": "/"})
     assert resp.url == "/" and launched[-1] == ("my-app", None)
+
+
+@pytest.mark.django_db
+def test_a_running_scan_shows_its_steps_on_the_project_page_and_list(admin, root, launched):
+    admin.post("/projects/new/", {"key": "my-app", "name": "My App", "repo_url": str(root / "Dev" / "My App")})
+    analysis = Analysis.objects.create(project=Project.objects.get(key="my-app"), branch="main", commit="0" * 40)
+    step = progress_recorder(analysis, log=lambda line: None)
+    for line in ("Running ruff", "  ruff failed: something", "Running semgrep"):
+        step(line)
+    assert [s["step"] for s in Analysis.objects.get(pk=analysis.pk).progress] == ["Running ruff", "Running semgrep"]
+    page = admin.get("/p/my-app/").content.decode()
+    assert 'id="scan-progress" data-live' in page and "Running semgrep (for" in page and "Finished: ruff" in page
+    listing = admin.get("/").content.decode()
+    assert 'id="projects" data-live' in listing and "<strong>Scanning</strong>: semgrep" in listing
+    analysis.status = Analysis.SUCCESS
+    analysis.save()
+    assert "scan-progress" not in admin.get("/p/my-app/").content.decode()
+
+
+def settings_form(project, **changes):
+    """The settings form as its page would post it, with changes."""
+    data = {k: v for k, v in model_to_dict(project, fields=views.ProjectSettingsForm.Meta.fields).items()
+            if v is not None}
+    data.update(exclusions="", a11y_urls="", disabled_analyzers=[], **changes)
+    return views.ProjectSettingsForm(data, instance=project)
+
+
+@pytest.mark.django_db
+def test_a_project_scanned_only_by_uploads_can_be_given_a_folder_to_scan(admin, root):
+    project = Project.objects.create(key="uploaded", name="uploaded", owner=User.objects.get(username="admin"))
+    form = settings_form(project, repo_url=str(root / "Dev" / "My App"))
+    assert form.is_valid(), form.errors
+    form.save()
+    assert Project.objects.get(key="uploaded").repo_url == str(root / "Dev" / "My App")
+
+
+@pytest.mark.django_db
+def test_only_an_administrators_project_can_be_given_a_folder(alice, root):
+    project = Project.objects.create(key="hers", name="hers", owner=alice)
+    form = settings_form(project, repo_url=str(root / "Dev" / "My App"))
+    assert not form.is_valid() and "repo_url" in form.errors

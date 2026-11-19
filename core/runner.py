@@ -31,6 +31,16 @@ def ensure_main_branch(project, mirror):
         project.save(update_fields=["main_branch"])
 
 
+def progress_recorder(analysis, log):
+    """A log function that also records each analyzer starting on the running analysis, for its page."""
+    def step(line):
+        log(line)
+        if line.startswith(("Running ", "Saving ")):
+            analysis.progress = [*analysis.progress, {"step": line, "at": timezone.now().isoformat()}]
+            analysis.save(update_fields=["progress"])
+    return step
+
+
 def scan(project, branch, coverage_report=None, coverage_base=None, log=print):
     """Server-side scan of a branch from the project's repository URL."""
     mirror = Mirror(project)
@@ -47,11 +57,13 @@ def scan(project, branch, coverage_report=None, coverage_base=None, log=print):
         project=project, branch=branch, commit=commit, reference_branch=project.main_branch,
         reference_commit=ref or "",
     )
+    step = progress_recorder(analysis, log)
     try:
         with mirror.worktree(commit, f"a{analysis.pk}") as root:
             changed = mirror.changed_lines(ref, commit) if ref else None
             payload = collect(cfg, ScanInput(root, mirror.tracked_files(commit), branch, changed,
-                                             coverage_report, coverage_base), log)
+                                             coverage_report, coverage_base), step)
+        step("Saving the results")
         payload.update(reference_analysis_commit=ref_analysis)
         ingest(analysis, payload)
         log(f"{len(payload['issues'])} issues, gate {'passed' if analysis.gate_passed else 'FAILED'}")

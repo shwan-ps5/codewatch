@@ -94,5 +94,28 @@ pre.token { white-space:pre-wrap; }
 {% if messages %}<ul class="messages" role="status">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
 {% block content %}{% endblock %}
 </main>
+<script>
+// Sections marked data-live (a running scan's progress) are fetched again every few seconds and swapped in place;
+// once the page no longer has one (the scan finished), it reloads for the results.
+(function () {
+  const live = () => document.querySelectorAll("[data-live]");
+  const toggle = document.getElementById("live-updates");
+  if (!live().length) return;
+  const timer = setInterval(async () => {
+    if (toggle && !toggle.checked) return;
+    let doc;
+    try {
+      const resp = await fetch(location.href, {credentials: "same-origin"});
+      if (!resp.ok) return;
+      doc = new DOMParser().parseFromString(await resp.text(), "text/html");
+    } catch (e) { return; }
+    for (const el of live()) {
+      const fresh = doc.getElementById(el.id);
+      if (!fresh) { clearInterval(timer); location.reload(); return; }
+      el.replaceChildren(...fresh.childNodes);
+    }
+  }, 4000);
+})();
+</script>
 </body>
 </html>

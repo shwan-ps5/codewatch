@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import models
@@ -141,6 +141,8 @@ class Analysis(models.Model):
     dirty = models.BooleanField(default=False, help_text="Scanned from a working copy with uncommitted changes")
     origin = models.CharField(max_length=10, default="server", choices=[("server", "server"), ("client", "client")])
     scanned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    # A running server scan's steps so far, [{"step", "at"}], the last one in progress.
+    progress = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["-started_at"]
@@ -151,6 +153,11 @@ class Analysis(models.Model):
     @property
     def metrics_dict(self):
         return {m.key: m.value for m in self.metrics.all()}
+
+    @property
+    def steps(self):
+        """The running scan's steps so far, each with when it started; the last is in progress."""
+        return [{"step": s["step"], "at": datetime.fromisoformat(s["at"])} for s in self.progress]
 
 
 class Issue(models.Model):

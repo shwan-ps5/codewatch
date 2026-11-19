@@ -2,11 +2,11 @@
 {% block crumbs_wrap %}{% endblock %}
 {% block content %}
 <h1>Projects</h1>
-<div class="card"><table>
+<div class="card" id="projects"{% if any_running %} data-live{% endif %}><table>
 <caption class="sr-only">Projects and their main-branch status</caption>
 <thead><tr><th scope="col">Project</th><th scope="col">Health</th><th scope="col">Reliability</th><th scope="col">Security</th><th scope="col">Maintainability</th><th scope="col">Quality gate</th><th scope="col">Coverage</th><th scope="col">Duplication</th><th scope="col">Last analysis</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
 <tbody>
-{% for p, a, scannable in projects %}{% with m=a.metrics_dict %}
+{% for p, a, scannable, running in projects %}{% with m=a.metrics_dict %}
 <tr><th scope="row"><a href="{% url 'project' p.key %}">{{ p.name }}</a><br><span class="muted">{{ p.main_branch|default:"–" }}</span></th>
 <td>{% if m.health_score is not None %}{% with g=m.health_score|score_grade %}<span class="rating rating-{{ g }}" role="img" aria-label="Health {{ g }}">{{ g }}</span>{% endwith %} {{ m.health_score|num }}{% else %}–{% endif %}</td>
 <td>{% include "core/rating.html" with value=m.reliability_rating what="Reliability" %}</td>
@@ -15,11 +15,12 @@
 <td>{% include "core/gate_badge.html" with analysis=a %}</td>
 <td>{{ m.coverage|num }}{% if m.coverage is not None %}%{% endif %}</td>
 <td>{{ m.duplicated_lines_percent|num }}{% if m.duplicated_lines_percent is not None %}%{% endif %}</td>
-<td>{% if a %}{{ a.started_at|timesince }} ago{% else %}<span class="muted">never</span>{% endif %}</td>
+<td>{% if running %}{% with current=running.steps|last %}<strong>Scanning</strong>{% if current %}: {{ current.step|cut:"Running " }}{% endif %}{% endwith %}<br>{% endif %}{% if a %}{{ a.started_at|timesince }} ago{% elif not running %}<span class="muted">never</span>{% endif %}</td>
 <td>{% if scannable %}<form class="inline" method="post" action="{% url 'scan' p.key %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'index' %}"><button aria-label="Scan {{ p.name }}">Scan</button></form>{% endif %}</td></tr>
 {% endwith %}{% empty %}
 <tr><td colspan="10" class="muted">No projects yet. <a href="{% url 'new_project' %}">Add one</a>.</td></tr>
 {% endfor %}
 </tbody></table></div>
+{% if any_running %}<p><label><input type="checkbox" id="live-updates" checked> Update this page as scans run</label></p>{% endif %}
 <p class="muted"><a href="{% url 'ratings' %}">How ratings and the health score are calculated</a></p>
 {% endblock %}
