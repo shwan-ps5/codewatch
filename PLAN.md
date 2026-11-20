@@ -1732,6 +1732,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    `test_template_name_alternations_stay_short` checks the split. `devtools.py cases CVE-2014-5016`: scans, missed
    and quiet. Unbatched alternations remain in `body_models`, `project_checks`, `jinja_sandboxes` and
    `drf_serializers`; none has failed yet, but a very large Python project could reach the limit.
+106. **A flaky self-check: one regex was polynomial only when recheck's fuzzer found it in time** (2026-11-20). Pull
+   request #3's shard 2 and the self-check of d34f4b2 failed on `accessibility.py`'s BOUND_EMPTY; other runs of
+   the same code passed. Its backreference (`</\2>`) keeps recheck off its exact automaton checker, so it fuzzes
+   within the 3-second limit: with 20 seconds every seed says polynomial (`[^<>]{0,2000}` and the `\s` after it
+   overlap; the bounds limit the damage, they don't remove it). Replaced by two linear patterns (the opening
+   tag; the binding attribute in it) and a scan for whitespace up to the closing tag (`fill_bound_empty`). Same
+   output as the old substitution on 20,000 random templates; new cases in `test_units.py`. Run once with
+   recheck given 20 seconds per regex, no other pattern in codewatch is flagged.
 
 ## How things work (non-obvious)
 
