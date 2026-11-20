@@ -2945,6 +2945,20 @@
             "plugins/dashboards/frontend",
             "plugins/star-rating/frontend"
           ]
+        },
+        {
+          "id": "CVE-2026-133486",
+          "cve": "CVE-2026-133486",
+          "repo": "https://github.com/hasan-py/Hayroo.git",
+          "fix": "9714947bb43ec8559287aa3962b70a7be8c8d6b1",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Hayroo: path traversal in the product image deletion handler (CVE-2026-133486)",
+          "scope": [
+            "server/controller"
+          ]
         }
       ]
     },
@@ -4339,6 +4353,21 @@
           "summary": "Joplin: path traversal in synchronized resource metadata (CVE-2026-49453)",
           "scope": [
             "packages/lib/models/utils"
+          ]
+        },
+        {
+          "id": "GHSA-4rj4-rcrq-gr92",
+          "cve": null,
+          "repo": "https://github.com/achiya-automation/safari-mcp.git",
+          "fix": "23f1319defefd2c5cbd06b23189ab01876a8c5d3",
+          "cwe": [
+            94,
+            116
+          ],
+          "license": "MIT",
+          "summary": "Safari MCP: JavaScript injection through single-quoted tool arguments (backslash not escaped)",
+          "scope": [
+            "."
           ]
         }
       ]
