@@ -1720,6 +1720,18 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      accepted them, and this step shows earlier rejections under the other id going wrong as often as right;
      dropping them unread would throw away cases on a coin flip. **To do after that suite's end-of-round blind
      scan:** read each one's rejection and fix, give it one decision, and correct the score if a case goes.
+104. **Large PHP projects keep their template rule** (2026-11-20). LimeSurvey CVE-2014-5016 failed to scan two
+   nights running. With step 95's `failure_detail` the 2026-11-20 nightly showed why: "Rule parse error ... invalid
+   regex" in `codewatch.php.web.template.xss`. Its named sinks put every template name in one alternation, and
+   LimeSurvey's 370 views gave 1,110 names, 40,103 characters. Semgrep's regex engine rejects any regex over about
+   30,000 characters, whatever it holds (bisected: 938 of those names, 33,368 characters, passed; a made-up
+   alternation of 32,000 failed, 30,000 passed), and the one bad rule failed the whole scan. `alternations()` now
+   splits the names into regexes of at most 10,000 characters, one named sink each, as `summaries.name_regexes`
+   already did for function names. A project under that keeps exactly the rule it had.
+   `test_a_project_with_many_views_still_gets_its_template_rule` (1,200 Twig views) failed without it;
+   `test_template_name_alternations_stay_short` checks the split. `devtools.py cases CVE-2014-5016`: scans, missed
+   and quiet. Unbatched alternations remain in `body_models`, `project_checks`, `jinja_sandboxes` and
+   `drf_serializers`; none has failed yet, but a very large Python project could reach the limit.
 
 ## How things work (non-obvious)
 

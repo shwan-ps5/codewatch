@@ -39,6 +39,9 @@ def test_an_advisorys_other_ids_are_known(tmp_path, capsys):
     assert out[1] == "CVE-2026-2\trejected\tcve-candidates-x.tsv (as GHSA-acc2)"
     assert out[2:] == ["GHSA-new1\tnew", "CVE-2026-3\tnew", "GHSA-none\tnew"]
     assert reviewed.main(["GHSA-w3fm"], root=tmp_path, db=None) == 0  # without the database, only ids as read
+    # The agents' scripts import known() directly; it reads the database unless told not to.
+    assert reviewed.known.__defaults__ == (reviewed.HERE, reviewed.ADVISORY_DB)
+    assert "GHSA-w3fm" in reviewed.known(tmp_path, db)[0]
 
 
 def test_split_rule_matches_plan():

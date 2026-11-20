@@ -85,9 +85,10 @@ def add_aliases(seen, aliases):
     return seen
 
 
-def known(root=HERE, db=None):
-    """{advisory id: (status, where recorded)} and {fix commit: advisory id}; with db, the aliases of each known
-    advisory too."""
+def known(root=HERE, db=ADVISORY_DB):
+    """{advisory id: (status, where recorded)} and {fix commit: advisory id}, with the aliases of each known advisory
+    from db (None for ids as written only). On by default: the research agents' own scripts call this, and with it
+    off they read Moodle GHSA-fr4r again though its CVE had been rejected the day before (2026-11-19)."""
     seen, fixes = tsv_decisions(root), {}
     for suite in json.loads((root / "suites.json").read_text())["suites"]:
         cases = [c for c in suite.get("cases", []) if isinstance(c, dict) and c.get("id")]
