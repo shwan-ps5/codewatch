@@ -1732,6 +1732,32 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    `test_template_name_alternations_stay_short` checks the split. `devtools.py cases CVE-2014-5016`: scans, missed
    and quiet. Unbatched alternations remain in `body_models`, `project_checks`, `jinja_sandboxes` and
    `drf_serializers`; none has failed yet, but a very large Python project could reach the limit.
+105. **Pull request #3 reviewed: eight topic 16 batches** (2026-11-20). 36 advisories read overnight, 6 accepted by
+   the agents (4 open, 2 blind), 2 kept:
+   - Added: Hayroo CVE-2026-133486 to `cve-pairs-javascript`. `postEditProduct` reads `req.body`/`req.files` in the
+     changed file and passes them to `deleteImages()`, which unlinked `basePath + name`; the fix adds `basename()`
+     and a `startsWith(basePath)` check (1 file, 16 lines). Safari MCP GHSA-4rj4 (blind; split checked, fix in no
+     suite, no other id) to `cve-pairs-blind-javascript-nonhttp`.
+   - Rejected at review: Etherpad CVE-2026-114516, the same Minify.ts flaw as GHSA-487r (step 103), the fix only
+     limiting the backslash rewrite after `sanitizePathname()` to Windows. Dolibarr CVE-2026-133327, an uploaded
+     file stored first and converted later: `dol_convert_file()`'s input is an argument and the fix checks the
+     stored file's first bytes. Moodle GHSA-fr4r, which is CVE-2026-133060 (rejected in step 101); its diff has
+     been read, so it couldn't stay blind either.
+   - Nine of the 19:00 batch's 15 advisories had been read before under their other id (Moodle GHSA-fr4r and
+     -f6vw, Tandoor GHSA-2449, OpnForm GHSA-m9x4, parse5 GHSA-63qr, typebox GHSA-79vm, modified-shop GHSA-9hc5 and
+     -47rx, sqlmap GHSA-3whw), although step 102's alias check had been merged three minutes before the run.
+     The agent's batch script imports `reviewed.known()` and calls it directly, and step 102 had turned aliases on
+     only in the command. `known()` now reads them by default (e13dfb4, tested). Later batches found few repeats
+     because few new advisories were left.
+   - The other rejections hold on their reasons: library code (eml_parser, guard-core x2, NLTK x2, typebox, parse5,
+     amqtt, Effect, undici, pydantic), fixes too large or release commits (flyto-core x3, repomanager x4,
+     modified-shop x2, October, Dokploy), fixes spread over commits (Moodle GHSA-f6vw), DNS rebinding (flyto-core x2,
+     Tamari), mixed changes (Tandoor GHSA-2449), an existing blocklist widened (OpnForm), CLI tools and non-web
+     daemons (sqlmap, storyblok-backup, iSponsorBlockTV).
+   A ninth batch arrived during the review (new-5 of 2026-11-20, 5 read): flowintel CVE-2026-133620 (blind; split
+   checked, fix and id unknown) to `cve-pairs-blind-python-27` rather than the agent's new `-28`; four WordPress
+   plugin rejections (three over the size limit, one allow-list made stricter) hold.
+   The systemd unit sets `CODEWATCH_RESEARCH_MAX_PENDING=12`, so up to 12 batches wait in one pull request.
 106. **A flaky self-check: one regex was polynomial only when recheck's fuzzer found it in time** (2026-11-20). Pull
    request #3's shard 2 and the self-check of d34f4b2 failed on `accessibility.py`'s BOUND_EMPTY; other runs of
    the same code passed. Its backreference (`</\2>`) keeps recheck off its exact automaton checker, so it fuzzes

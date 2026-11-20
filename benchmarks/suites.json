@@ -2945,6 +2945,20 @@
             "plugins/dashboards/frontend",
             "plugins/star-rating/frontend"
           ]
+        },
+        {
+          "id": "CVE-2026-133486",
+          "cve": "CVE-2026-133486",
+          "repo": "https://github.com/hasan-py/Hayroo.git",
+          "fix": "9714947bb43ec8559287aa3962b70a7be8c8d6b1",
+          "cwe": [
+            22
+          ],
+          "license": "NOASSERTION",
+          "summary": "Hayroo: path traversal in the product image deletion handler (CVE-2026-133486)",
+          "scope": [
+            "server/controller"
+          ]
         }
       ]
     },
@@ -4339,6 +4353,21 @@
           "summary": "Joplin: path traversal in synchronized resource metadata (CVE-2026-49453)",
           "scope": [
             "packages/lib/models/utils"
+          ]
+        },
+        {
+          "id": "GHSA-4rj4-rcrq-gr92",
+          "cve": null,
+          "repo": "https://github.com/achiya-automation/safari-mcp.git",
+          "fix": "23f1319defefd2c5cbd06b23189ab01876a8c5d3",
+          "cwe": [
+            94,
+            116
+          ],
+          "license": "MIT",
+          "summary": "Safari MCP: JavaScript injection through single-quoted tool arguments (backslash not escaped)",
+          "scope": [
+            "."
           ]
         }
       ]
@@ -16057,7 +16086,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88 and 101) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88, 101 and 105) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
       "cases": [
         {
           "id": "GHSA-gcwf-c25f-p9rv",
@@ -16099,6 +16128,21 @@
           "summary": "SABnzbd Sorter allows directory traversal through crafted NZB metadata names",
           "scope": [
             "sabnzbd"
+          ]
+        },
+        {
+          "id": "CVE-2026-133620",
+          "cve": "CVE-2026-133620",
+          "repo": "https://github.com/flowintel/flowintel.git",
+          "fix": "4c5e3394749147c721c2724a08a5e1fdfba58e98",
+          "cwe": [
+            22,
+            59
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Flowintel Template Repository Path Traversal and Symlink Escape Allows Arbitrary File Read",
+          "scope": [
+            "app/templating"
           ]
         }
       ]
