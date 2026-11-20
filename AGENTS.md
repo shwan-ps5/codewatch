@@ -384,6 +384,33 @@ npm advisories (step 29). Those pools are nearly used up.
    the window's dates and how many candidates were left per language. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-new.{tsv,json}`.
 
+17. **Security fixes with no advisory or CVE (silent fixes), Python web apps first.** (queued 2026-11-20) Topic
+   16's daily lists are now mostly libraries, and every earlier source was an advisory or a CVE. Many apps fix a
+   vulnerability in an ordinary commit and publish nothing. Source: GitHub's commit search
+   (`gh api -X GET search/commits -f q='...'`; 30 searches a minute at most, keep them 2 s apart, as section 7),
+   one search per phrase and per month since 2021-01 (a search returns at most 1,000 commits, so slice by
+   `committer-date:YYYY-MM-01..YYYY-MM-31`). Phrases, quoted: "xss", "cross-site scripting", "open redirect",
+   "path traversal", "directory traversal", "zip slip", "ssrf", "server-side request forgery", "sql injection",
+   "command injection", "code injection", "template injection", "ldap injection", "unsafe redirect",
+   "escape user input", "security fix". Keep commits whose repository (GraphQL as topic 1, 100 per query, cached)
+   is not archived, not a fork, has 200 stars or more, and has Python as its primary language; JS/TS repositories
+   that declare a topic 8 framework count too (front ends of Python apps, as topic 13). Then confirm a topic 8
+   framework at the fix commit, as topic 8 does. Drop: security tools, scanners, CTFs, labs, write-ups and course
+   material (the repository's description or README says so); commits by bots; merges (read the merged branch's
+   commits instead and take the one that holds the fix); anything `reviewed.py` knows by SHA. Newest first.
+   No advisory vouches for these, so the fix itself has to show the vulnerability. Accept only when the commit
+   message, its pull request or a linked issue calls it a security fix (or names the weakness), **and** the
+   vulnerable side visibly lets request input (or an agent tool argument, for -nonhttp) reach the sink in the
+   project's own code, with section 3's rules and size limits otherwise unchanged. Reject a hardening change with no
+   reachable input (a new header, a dependency bump, a stricter setting), and say why in the TSV as usual.
+   Id: `FIX-OWNER-REPO-SHA12` (the repository's owner and name as GitHub spells them, then the fix commit's first
+   12 hex characters), used as the advisory id everywhere: `reviewed.py --split FIX-...` splits it, and the suite
+   entry's `id` is it, with no `cve` field. CWE: the one the fix shows (section 2's list), named in the TSV. Suites
+   as topic 13 (`cve-pairs-python`, `cve-pairs-python-frontend`, `cve-pairs-python-nonhttp`); blind ones in the
+   next unused `cve-pairs-blind-python-N`, one per batch. Files: `benchmarks/cve-candidates-YYYY-MM-DD-silent.{tsv,json}`
+   (then `-silent-2` and so on the same day). Say in the JSON's `method` which phrases and months were searched
+   and how many commits each filter left, so the review can see how much is left.
+
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
 **Carrying on a topic** doesn't depend on anything an earlier session did. Rebuild the topic's candidate list from
