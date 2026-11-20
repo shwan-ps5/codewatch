@@ -1774,6 +1774,35 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    reaching a sink in the changed code; CVE-2026-133706 is library code (request-filtering-agent's private-address
    denylist widened to IPv4-compatible IPv6). The topic 16 list was empty after each run: new arrivals are
    being read as they appear.
+108. **The Python misses sorted again; three server-side gaps closed; research topic 17** (2026-11-20). The
+   2026-11-20 nightly's verdict-mode misses (81 open Python cases) were sorted from their fix diffs by
+   deepseek-flash, with quotes checked by hand on five. Front end, 27 of 31 missed: shipped JS writing data as HTML
+   12 (innerHTML/jQuery 7, library options that render HTML 4, an href 1; step 42's I), `|safe`/`{@html}` 7 (mostly
+   stored fields; step 42's H, templates part), template values in script strings, handlers or unquoted attributes
+   4 (J). Server side and non-HTTP, 54: an existing check too weak 15, sink not modelled 13, source not modelled 12,
+   value through several functions 10, archives 2, stored 2. cg GHSA-w228 (redirect(request.referrer)) stays missed
+   by decision: the referrer is a sanitizer (only the linking site chose it).
+   Closed, each with a test that fails without it, both cases now found and quiet at their fix:
+   - Django's HttpResponseNotFound/BadRequest/Forbidden/Gone/ServerError render their body as HTML like
+     HttpResponse (HttpResponseNotAllowed's argument is the method list). CVAT CVE-2024-47064.
+     `test_django_error_responses_render_their_body_as_html`.
+   - A DRF ViewSet's detail methods (retrieve, update, partial_update, destroy, @action(detail=True)) get the lookup
+     argument (lookup_url_kwarg, lookup_field, else pk) from the URL through lookup_value_regex, '[^/.]+' by
+     default: marked URL_TEXT on the scanned copy (route_converters.mark_viewset_lookups) as Django route
+     arguments are, unannotated or annotated str, unless the class's regex can't carry text (\d+). CVAT again.
+     `test_a_drf_viewsets_lookup_argument_is_request_input`.
+   - Flask-AppBuilder/Flask-Admin `@expose("/path/<arg>")` methods are routes: their arguments are request input
+     (converters typed as for Flask), their returned body is the XSS rule's sink, and self.render_template/render
+     (autoescaped) and self.response (JSON) clear it. Airflow GHSA-rv25-9wgj-xg75.
+     `test_flask_appbuilder_expose_methods_are_routes`.
+   No learning-set app uses @expose; the seven with ViewSets or the error responses (wger, paperless-ngx,
+   label-studio, pygoat, claude-quiz, recipes, bakerydemo) give the same 41 findings as the nightly. netbox and
+   taiga-back (15 and 38 ViewSet files) are left to tonight's run.
+   Research: topic 17 queued in AGENTS.md, security fixes with no advisory or CVE, from GitHub's commit search
+   (repositories with 200+ stars, Python first; the fix must show request input reaching the sink, and the commit
+   or its pull request must call it a security fix). Ids `FIX-OWNER-REPO-SHA12`. A trial search showed the noise
+   the filter is for: scanners, labs and toy repositories, among a few real apps.
+   Next by cases: step 42's I (fetched data written as HTML in shipped JS), then H's templates part.
 
 ## How things work (non-obvious)
 

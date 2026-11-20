@@ -44,7 +44,13 @@ from .php_template_sinks import tidy_message as tidy_php_template_message
 from .php_template_sinks import with_php_template_sinks
 from .project_checks import with_project_checks
 from .python_tools import LineCache, complexity_severity, security_purpose
-from .route_converters import django_text_parameters, mark_url_text, scalar_parameters, type_route_converters
+from .route_converters import (
+    django_text_parameters,
+    mark_url_text,
+    mark_viewset_lookups,
+    scalar_parameters,
+    type_route_converters,
+)
 from .slices import index_slices
 from .starred_targets import unstar_targets
 from .stored_fields import with_stored_sources
@@ -681,11 +687,11 @@ def read_source(path):
 def analysis_copy(source, url_views=None):
     """Python source as Semgrep should see it: dead constant branches blanked, slices made indexes, starred targets unstarred, container
     slots tracked one by one, match statements made ifs, else branches made ifs of their own, Flask converter types written on view parameters and
-    Django views' free-text URL arguments marked (url_views, from django_text_parameters). None when nothing
-    changes."""
+    Django views' free-text URL arguments marked (url_views, from django_text_parameters), and DRF ViewSets'
+    lookups. None when nothing changes."""
     current = None
     for rewrite in (blank_dead_branches, index_slices, unstar_targets, track_slots, match_as_if, split_else,
-                    type_route_converters,
+                    type_route_converters, mark_viewset_lookups,
                     lambda text: mark_url_text(text, url_views)):
         current = rewrite(current or source) or current
     return current

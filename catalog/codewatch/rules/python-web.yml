@@ -279,6 +279,26 @@ rules:
           - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
           - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
           - focus-metavariable: $PARAM
+      # Flask-AppBuilder and Flask-Admin views (Airflow 1.x, Superset): @expose("/variables/<form>") on a view
+      # class's method routes like @app.route, and its arguments come from the URL path. Converters other than
+      # string and path are typed on the scanned copy (route_converters.py) and skipped like any typed argument.
+      # Airflow GHSA-rv25-9wgj-xg75.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @expose($PATH, ...)
+                  def $VIEW(self, ..., $PARAM, ...):
+                    ...
+              - pattern-inside: |
+                  @$MODULE.expose($PATH, ...)
+                  def $VIEW(self, ..., $PARAM, ...):
+                    ...
+          - pattern-not-inside: |
+              def $VIEW(..., $PARAM: $TYPE, ...):
+                ...
+          - metavariable-regex: {metavariable: $PARAM, regex: '^(?!(self|cls)$)\w+$'}
+          - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
+          - focus-metavariable: $PARAM
       # A Django function view's arguments from its urls.py route, where the converter or regex group passes free
       # text (path("files/<path:name>", serve)); marked on the scanned copy by route_converters.py. CodeRed CMS
       # GHSA-h454-rq3m-89rc.
@@ -1229,6 +1249,10 @@ rules:
       # Jinja templates escape what they're given; redirect() escapes the URL in its body.
       - pattern: flask.render_template(...)
       - pattern: render_template(...)
+      # Flask-AppBuilder/Flask-Admin views render their templates (autoescaped) and JSON replies through self.
+      - patterns:
+          - pattern: self.$RENDER(...)
+          - metavariable-regex: {metavariable: $RENDER, regex: '^(render|render_template|response(_\d{3})?)$'}
       - pattern: django.shortcuts.render(...)
       - pattern: django.template.loader.render_to_string(...)
       # A model or helper that renders its own template, given the request for context (djangoproject.com:
@@ -1293,10 +1317,20 @@ rules:
           - focus-metavariable: $CT
       # A (body, status, headers) tuple: only the body is rendered; header values can't inject markup.
       - patterns:
-          - pattern-inside: |
-              @$APP.route(...)
-              def $VIEW(...):
-                ...
+          # Flask routes, and Flask-AppBuilder/Flask-Admin @expose methods (Airflow GHSA-rv25-9wgj-xg75).
+          - pattern-either:
+              - pattern-inside: |
+                  @$APP.route(...)
+                  def $VIEW(...):
+                    ...
+              - pattern-inside: |
+                  @expose(...)
+                  def $VIEW(self, ...):
+                    ...
+              - pattern-inside: |
+                  @$MODULE.expose(...)
+                  def $VIEW(self, ...):
+                    ...
           # A function defined inside the view returns to its caller, not to the client.
           - pattern-not-inside: |
               def $VIEW(...):
@@ -1349,6 +1383,14 @@ rules:
                   - pattern-either:
                       - pattern: flask.Response($BODY, ...)
                       - pattern: django.http.HttpResponse($BODY, ...)
+                      # Its error subclasses render their body as text/html too (CVAT CVE-2024-47064:
+                      # HttpResponseNotFound(f"There is no request with specified id: {pk}")).
+                      # HttpResponseNotAllowed's first argument is the allowed methods, not a body.
+                      - pattern: django.http.HttpResponseNotFound($BODY, ...)
+                      - pattern: django.http.HttpResponseBadRequest($BODY, ...)
+                      - pattern: django.http.HttpResponseForbidden($BODY, ...)
+                      - pattern: django.http.HttpResponseGone($BODY, ...)
+                      - pattern: django.http.HttpResponseServerError($BODY, ...)
                   # Media, JSON, plain text and downloads aren't rendered as HTML (recipes:
                   # HttpResponse(export_file, content_type='application/force-download')).
                   - pattern-not: $RESP($B, ..., mimetype="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/", ...)

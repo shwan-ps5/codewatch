@@ -4253,3 +4253,86 @@ def test_request_chosen_response_content_type_is_xss_in_node(tmp_path):
     assert found == {("server.js", 7, "xss"), ("server.js", 11, "xss"), ("server.js", 15, "xss"),
                      ("koa.js", 5, "xss")}
 
+
+
+def test_django_error_responses_render_their_body_as_html(tmp_path):
+    """CVAT (CVE-2024-47064): HttpResponseNotFound(f"There is no request with specified id: {pk}") is an
+    HttpResponse with another status, text/html like its parent. Its look-alikes: a fixed message, a plain-text type,
+    and HttpResponseNotAllowed, whose argument is the list of allowed methods."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app/views.py": (
+        "from django.http import (HttpResponseBadRequest, HttpResponseForbidden, HttpResponseNotAllowed,\n"
+        "                         HttpResponseNotFound)\n\n\n"
+        "def missing(request):\n"
+        "    return HttpResponseNotFound(f\"No item {request.GET['id']}\")\n\n\n"
+        "def bad(request):\n"
+        "    return HttpResponseBadRequest('Bad value: ' + request.POST['value'])\n\n\n"
+        "def fixed(request):\n"
+        "    return HttpResponseNotFound('No such item')\n\n\n"
+        "def text(request):\n"
+        "    return HttpResponseForbidden(request.GET['why'], content_type='text/plain')\n\n\n"
+        "def methods(request):\n"
+        "    return HttpResponseNotAllowed([request.GET['method']])\n")})
+    assert found == {("app/views.py", 6, "xss"), ("app/views.py", 10, "xss")}
+
+
+def test_a_drf_viewsets_lookup_argument_is_request_input(tmp_path):
+    """CVAT (CVE-2024-47064): a router sends /requests/<pk>/ to retrieve(self, request, pk: str) with pk matched by
+    lookup_value_regex, '[^/.]+' by default, which passes markup. So do @action(detail=True) methods, under the
+    class's lookup_url_kwarg or lookup_field. Not a list method, a ViewSet whose regex takes digits only, or a class
+    that isn't a ViewSet."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app/views.py": (
+        "from django.http import HttpResponseNotFound\n"
+        "from rest_framework import viewsets\n"
+        "from rest_framework.decorators import action\n\n\n"
+        "class RequestViewSet(viewsets.GenericViewSet):\n"
+        "    def retrieve(self, request, pk: str):\n"
+        "        return HttpResponseNotFound(f'There is no request with specified id: {pk}')\n\n"
+        "    @action(detail=True, methods=['POST'])\n"
+        "    def cancel(self, request, pk=None):\n"
+        "        return HttpResponseNotFound(f'No request {pk}')\n\n"
+        "    def list(self, request, pk=None):\n"
+        "        return HttpResponseNotFound(f'No requests {pk}')\n\n\n"
+        "class NumberViewSet(viewsets.ViewSet):\n"
+        "    lookup_value_regex = r'\\d+'\n\n"
+        "    def retrieve(self, request, pk=None):\n"
+        "        return HttpResponseNotFound(f'No number {pk}')\n\n\n"
+        "class SlugViewSet(viewsets.ModelViewSet):\n"
+        "    lookup_field = 'slug'\n\n"
+        "    def retrieve(self, request, slug=None):\n"
+        "        return HttpResponseNotFound(f'No page {slug}')\n\n\n"
+        "class Helper:\n"
+        "    def retrieve(self, request, pk=None):\n"
+        "        return HttpResponseNotFound(f'No helper {pk}')\n")})
+    assert found == {("app/views.py", 8, "xss"), ("app/views.py", 12, "xss"), ("app/views.py", 29, "xss")}
+
+
+def test_flask_appbuilder_expose_methods_are_routes(tmp_path):
+    """Airflow (GHSA-rv25-9wgj-xg75): @expose('/variables/<form>') routes like @app.route, so form is from the URL
+    and the error string returned with a 404 is the page. Not an <int:> argument, a template render (autoescaped) or
+    self.response() (JSON)."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app/views.py": (
+        "from flask import request\n"
+        "from flask_appbuilder import BaseView, expose\n\n\n"
+        "class Airflow(BaseView):\n"
+        "    @expose('/variables/<form>')\n"
+        "    def variables(self, form):\n"
+        "        return ('Error: form airflow/variables/{}.html not found.').format(form), 404\n\n"
+        "    @expose('/search')\n"
+        "    def search(self):\n"
+        "        return 'Results for ' + request.args.get('q', '')\n\n"
+        "    @expose('/number/<int:n>')\n"
+        "    def number(self, n):\n"
+        "        return 'Number %s' % n\n\n"
+        "    @expose('/page/<form>')\n"
+        "    def page(self, form):\n"
+        "        return self.render_template('page.html', form=form)\n\n"
+        "    @expose('/api/<form>')\n"
+        "    def api(self, form):\n"
+        "        return self.response(400, message=f'No form {form}')\n")})
+    assert found == {("app/views.py", 8, "xss"), ("app/views.py", 12, "xss")}

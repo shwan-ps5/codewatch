@@ -15,15 +15,18 @@ from .base import python_tree
 CONVERTER_RE = re.compile(r"<(\w+)(?:\([^()<>]*\))?:(\w+)>")
 TEXT_CONVERTERS = {"string", "path"}
 TYPES = {"uuid": "uuid.UUID"}
-ROUTE_DECORATORS = {"route", "get", "post", "put", "patch", "delete"}
+# Flask-AppBuilder and Flask-Admin route a view class's methods with @expose("/path/<arg>"), imported bare.
+ROUTE_DECORATORS = {"route", "get", "post", "put", "patch", "delete", "expose"}
+BARE_ROUTE_DECORATORS = {"expose"}
 
 
 def converter_types(node):
     """{parameter: annotation} from the converters other than string and path in a function's route decorators."""
     types = {}
     for decorator in node.decorator_list:
-        if (isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute)
-                and decorator.func.attr in ROUTE_DECORATORS and decorator.args
+        if (isinstance(decorator, ast.Call) and call_name(decorator.func) in ROUTE_DECORATORS
+                and (isinstance(decorator.func, ast.Attribute) or decorator.func.id in BARE_ROUTE_DECORATORS)
+                and decorator.args
                 and isinstance(decorator.args[0], ast.Constant) and isinstance(decorator.args[0].value, str)):
             for converter, name in CONVERTER_RE.findall(decorator.args[0].value):
                 if converter not in TEXT_CONVERTERS:
@@ -55,10 +58,10 @@ def annotated(source, edits):
     if not edits:
         return None
     lines = source.splitlines(keepends=True)
-    for row, col, text in sorted(edits, reverse=True):
-        # ast columns count UTF-8 bytes.
+    for row, col, text, *replaced in sorted(edits, reverse=True):
+        # ast columns count UTF-8 bytes. An edit may replace that many bytes (a 4-tuple) rather than only insert.
         raw = lines[row - 1].encode()
-        lines[row - 1] = (raw[:col] + text.encode() + raw[col:]).decode()
+        lines[row - 1] = (raw[:col] + text.encode() + raw[col + sum(replaced):]).decode()
     return "".join(lines)
 
 
@@ -166,3 +169,66 @@ def scalar_parameters(source):
             for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs
             if arg.annotation is not None and SCALAR_RE.match(ast.unparse(arg.annotation))}
+
+
+# Django REST framework's routers send /things/<lookup>/ to a ViewSet's detail methods (retrieve, update,
+# partial_update, destroy and @action(detail=True) ones) as the keyword argument lookup_url_kwarg, else lookup_field,
+# else pk, matched by lookup_value_regex: '[^/.]+' unless the class narrows it. That passes markup and quotes, so the
+# argument is marked URL_TEXT like a Django route's free-text argument, unless the class's regex can't carry text
+# (\d+, [0-9a-f-]+). CVAT CVE-2024-47064 (retrieve(self, request, pk: str) into an HttpResponseNotFound).
+VIEWSET_BASE_RE = re.compile(r"(ViewSet|ViewSetMixin)$")
+DETAIL_METHODS = {"retrieve", "update", "partial_update", "destroy"}
+
+
+def class_constant(cls, name):
+    """The string a class body assigns to name, if any."""
+    for stmt in cls.body:
+        if (isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in stmt.targets)
+                and isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str)):
+            return stmt.value.value
+    return None
+
+
+def viewset_lookup(cls):
+    """The URL argument a DRF ViewSet's detail methods receive, or None if it isn't a ViewSet or can't carry text."""
+    if not any(VIEWSET_BASE_RE.search(call_name(base) or "") for base in cls.bases):
+        return None
+    regex = class_constant(cls, "lookup_value_regex")
+    if regex is not None and not TEXT_GROUP_RE.search(regex):
+        return None
+    return class_constant(cls, "lookup_url_kwarg") or class_constant(cls, "lookup_field") or "pk"
+
+
+def detail_action(method):
+    """Whether a ViewSet method takes the object's lookup from the URL: a standard detail method or @action(detail=True)."""
+    return method.name in DETAIL_METHODS or any(
+        isinstance(d, ast.Call) and call_name(d.func) == "action"
+        and any(k.arg == "detail" and isinstance(k.value, ast.Constant) and k.value.value is True for k in d.keywords)
+        for d in method.decorator_list)
+
+
+def lookup_edits(method, lookup):
+    """Edits marking a detail method's lookup argument URL_TEXT: an unannotated one, or one annotated str."""
+    edits = []
+    for arg in (method.args.posonlyargs + method.args.args + method.args.kwonlyargs)[2:]:
+        if arg.arg != lookup:
+            continue
+        if arg.annotation is None:
+            edits.append((arg.lineno, arg.end_col_offset, f": {URL_TEXT}"))
+        elif isinstance(arg.annotation, ast.Name) and arg.annotation.id == "str" and arg.annotation.lineno == arg.lineno:
+            edits.append((arg.lineno, arg.annotation.col_offset, URL_TEXT, len("str")))
+    return edits
+
+
+def mark_viewset_lookups(source):
+    """The source with DRF ViewSets' free-text lookup arguments annotated URL_TEXT, or None."""
+    if "ViewSet" not in source:
+        return None
+    tree = python_tree(source)
+    if tree is None:
+        return None
+    edits = [edit for cls in ast.walk(tree) if isinstance(cls, ast.ClassDef) and (lookup := viewset_lookup(cls))
+             for method in cls.body
+             if isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)) and detail_action(method)
+             for edit in lookup_edits(method, lookup)]
+    return annotated(source, edits)
