@@ -1,9 +1,11 @@
 """PHP templates (core/analyzers/php_template_sinks.py; PLAN.md step 73): request data passed to a variable a Twig,
 Blade, Smarty or plain PHP view prints unescaped, and PHP views Semgrep doesn't parse by their extension."""
+import re
+
 import pytest
 
 from core.analyzers.multi_tools import Semgrep, php_copy_text
-from core.analyzers.php_template_sinks import kind, names, php_raw, printed_variables
+from core.analyzers.php_template_sinks import NAMES_LENGTH, alternations, kind, names, php_raw, printed_variables
 from tests.test_detection import semgrep_vulnerabilities
 
 semgrep = pytest.mark.skipif(not Semgrep().available(), reason="semgrep not installed")
@@ -151,3 +153,24 @@ def test_compact_written_out_for_semgrep():
     assert php_copy_text("<?php return view('x', compact('user', \"posts\"));") == (
         "<?php return view('x', ['user' => $user, 'posts' => $posts]);")
     assert php_copy_text("<?php compact($names);") is None
+
+
+@semgrep
+def test_a_project_with_many_views_still_gets_its_template_rule(tmp_path):
+    # LimeSurvey (CVE-2014-5016) has 370 views, 1,110 names for them: one alternation of 40,000 characters, and
+    # Semgrep's regex engine rejects any over about 30,000, which failed the whole scan. The names go in batches.
+    files = {f"templates/v{i:04d}.html.twig": "<div>{{ message|raw }}</div>" for i in range(1200)}
+    files["src/Controller/A.php"] = """<?php
+class A {
+  function raw($request) { return $this->render('v1199.html.twig', ['message' => $request->query->get('m')]); }
+}
+"""
+    assert semgrep_vulnerabilities(tmp_path, files) == {("src/Controller/A.php", 3, "xss")}
+
+
+def test_template_name_alternations_stay_short():
+    names_ = {f"views/admin/{'x' * (i % 90)}{i:05d}" for i in range(3000)}
+    regexes = alternations(names_)
+    assert len(regexes) > 1 and all(len(r) <= NAMES_LENGTH for r in regexes)
+    assert sorted(n for r in regexes for n in r.split("|")) == sorted(map(re.escape, names_))
+    assert alternations(set()) == [] and alternations({"a"}) == ["a"]

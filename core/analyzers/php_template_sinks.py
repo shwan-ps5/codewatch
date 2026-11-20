@@ -246,6 +246,23 @@ def alternation(values):
     return "|".join(re.escape(v) for v in sorted(values))
 
 
+# Characters of template names per sink. Semgrep's regex engine rejects a regex of about 30,000 characters or more,
+# and one alternation of LimeSurvey's 1,110 view names (CVE-2014-5016) was 40,000, which failed the whole scan.
+NAMES_LENGTH = 10_000
+
+
+def alternations(values):
+    """Alternations of the values, sorted, each at most NAMES_LENGTH characters (one longer value alone)."""
+    batches, batch, length = [], [], 0
+    for value in sorted(map(re.escape, values)):
+        if batch and length + len(value) + 1 > NAMES_LENGTH:
+            batches.append("|".join(batch))
+            batch, length = [], 0
+        batch.append(value)
+        length += len(value) + 1
+    return [*batches, "|".join(batch)] if batch else batches
+
+
 def filled_array(patterns):
     """The same calls given an array filled entry by entry in the function that renders it: `$data['redirect'] =
     ...;` (in an if or not) and then `$this->load->view('common/login', $data)` (OpenCart, CodeIgniter), or `return
@@ -305,7 +322,7 @@ def variable_sinks(kind_, variable, paths):
     sinks = []
     if kind_ in NAMED:
         tails = set().union(*(names(path, kind_) for path in paths))
-        sinks.append(named_sink(NAMED[kind_], alternation(tails), variable))
+        sinks += [named_sink(NAMED[kind_], regex, variable) for regex in alternations(tails)]
     if kind_ in UNNAMED:
         build = latte_sink if kind_ == LATTE else unnamed_sink
         sinks.append(build(UNNAMED[kind_], variable))
