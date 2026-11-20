@@ -1766,6 +1766,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    tag; the binding attribute in it) and a scan for whitespace up to the closing tag (`fill_bound_empty`). Same
    output as the old substitution on 20,000 random templates; new cases in `test_units.py`. Run once with
    recheck given 20 seconds per regex, no other pattern in codewatch is flagged.
+107. **Pull request #4 reviewed: three topic 16 batches, nothing kept** (2026-11-20). One advisory each, all three
+   rejections confirmed against the fix commits: CVE-2026-133652 (flowintel) is session handling (rotation at
+   login, remember-me cookies bound to the password), not a section 2 weakness, and 6 source files;
+   CVE-2026-133667 (flowintel) is stored data (case notes and MISP attributes rendered client-side, a renderer
+   flag, and session values the user set themselves served without a JSON content type), with no request value
+   reaching a sink in the changed code; CVE-2026-133706 is library code (request-filtering-agent's private-address
+   denylist widened to IPv4-compatible IPv6). The topic 16 list was empty after each run: new arrivals are
+   being read as they appear.
 
 ## How things work (non-obvious)
 
