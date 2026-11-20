@@ -1754,6 +1754,9 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      modified-shop x2, October, Dokploy), fixes spread over commits (Moodle GHSA-f6vw), DNS rebinding (flyto-core x2,
      Tamari), mixed changes (Tandoor GHSA-2449), an existing blocklist widened (OpnForm), CLI tools and non-web
      daemons (sqlmap, storyblok-backup, iSponsorBlockTV).
+   A ninth batch arrived during the review (new-5 of 2026-11-20, 5 read): flowintel CVE-2026-133620 (blind; split
+   checked, fix and id unknown) to `cve-pairs-blind-python-27` rather than the agent's new `-28`; four WordPress
+   plugin rejections (three over the size limit, one allow-list made stricter) hold.
    The systemd unit sets `CODEWATCH_RESEARCH_MAX_PENDING=12`, so up to 12 batches wait in one pull request.
 
 ## How things work (non-obvious)
