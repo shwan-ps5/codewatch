@@ -187,6 +187,11 @@ def test_manifests_requires_dependencies(tmp_path):
 def test_bound_text_is_not_empty():
     out = blank_template_syntax('<h2 x-text="team"></h2><p v-html="x">\n</p><h3></h3>')
     assert out == '<h2 x-text="team">x</h2><p v-html="x">x\n</p><h3></h3>'
+    # Not filled: content already there, another element's close, a binding in the wrong place, no binding.
+    for kept in ('<b x-text="a">hi</b>', '<b x-text="a"></i>', '<b data-x-text="a"></b>', '<b title="x-text="></b>x',
+                 '<b class="a"></b>'):
+        assert blank_template_syntax(kept) == kept, kept
+    assert blank_template_syntax('<b\nv-text = "a">' + " " * 300 + "</b>").count("x") == 1  # gap over 200: kept
 
 
 def test_rule_family_prefixes():

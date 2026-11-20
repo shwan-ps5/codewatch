@@ -9,11 +9,12 @@ from .base import ACCESSIBILITY, CRITICAL, INFO, MAJOR, MINOR, TOOLS_DIR, Analyz
 TEMPLATES = {".html", ".htm", ".djhtml", ".jinja", ".jinja2", ".j2"}
 JSX = {".jsx", ".tsx"}
 TAG_DELIMITERS = (("{%", "%}"), ("{#", "#}"), ("{{", "}}"))
-# Alpine/Vue fill these at runtime, so an empty element in the template isn't empty on the page.
-# Bounded quantifiers keep this linear on hostile input (an unclosed "<" repeated many times).
-BOUND_EMPTY = re.compile(
-    r"(<(\w{1,40})\b[^<>]{0,2000}\s(?:x-text|x-html|v-text|v-html)\s{0,20}=[^<>]{0,2000}>)(\s{0,200})(</\2>)"
-)
+# Alpine/Vue fill these at runtime, so an empty element in the template isn't empty on the page. Two plain patterns
+# and a scan, not one regex: the single regex with a backreference was polynomial under recheck's fuzzer, and failed
+# the self-check only when the fuzzer found it within its time limit (2026-11-20).
+OPEN_TAG = re.compile(r"<(\w{1,40})\b([^<>]{0,4000})>")
+BINDING = re.compile(r"\s(?:x-text|x-html|v-text|v-html)\s{0,20}=")
+MAX_GAP = 200
 AXE_SEVERITY = {CRITICAL: CRITICAL, "serious": MAJOR, "moderate": MINOR, MINOR: INFO}
 ERROR, WARN, OFF = "error", "warn", "off"
 HTML_VALIDATE_CONFIG = {
@@ -66,7 +67,24 @@ def blank_template_syntax(text):
         out += [text[i:pos], blank_tag(text[pos:end], opener == "{{")]
         i = end
     out.append(text[i:])
-    return BOUND_EMPTY.sub(r"\1x\3\4", "".join(out))
+    return fill_bound_empty("".join(out))
+
+
+def fill_bound_empty(text):
+    """An x inside each element that an Alpine/Vue binding (x-text, v-html...) fills, when the template leaves it empty
+    or holding only whitespace, so html-validate doesn't report it as empty."""
+    out, i = [], 0
+    for tag in OPEN_TAG.finditer(text):
+        if not BINDING.search(tag.group(2)):
+            continue
+        gap = tag.end()
+        while gap < len(text) and gap - tag.end() < MAX_GAP and text[gap].isspace():
+            gap += 1
+        if text.startswith(f"</{tag.group(1)}>", gap):
+            out += [text[i:tag.end()], "x"]
+            i = tag.end()
+    out.append(text[i:])
+    return "".join(out)
 
 
 class HtmlA11y(Analyzer):
