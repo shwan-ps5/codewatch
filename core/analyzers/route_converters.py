@@ -20,18 +20,21 @@ ROUTE_DECORATORS = {"route", "get", "post", "put", "patch", "delete", "expose"}
 BARE_ROUTE_DECORATORS = {"expose"}
 
 
+def route_path(decorator):
+    """The path string of a route decorator (@app.route("/x/<int:id>"), @expose("/x")), else None."""
+    if not (isinstance(decorator, ast.Call) and decorator.args and call_name(decorator.func) in ROUTE_DECORATORS):
+        return None
+    if isinstance(decorator.func, ast.Name) and decorator.func.id not in BARE_ROUTE_DECORATORS:
+        return None
+    path = decorator.args[0]
+    return path.value if isinstance(path, ast.Constant) and isinstance(path.value, str) else None
+
+
 def converter_types(node):
     """{parameter: annotation} from the converters other than string and path in a function's route decorators."""
-    types = {}
-    for decorator in node.decorator_list:
-        if (isinstance(decorator, ast.Call) and call_name(decorator.func) in ROUTE_DECORATORS
-                and (isinstance(decorator.func, ast.Attribute) or decorator.func.id in BARE_ROUTE_DECORATORS)
-                and decorator.args
-                and isinstance(decorator.args[0], ast.Constant) and isinstance(decorator.args[0].value, str)):
-            for converter, name in CONVERTER_RE.findall(decorator.args[0].value):
-                if converter not in TEXT_CONVERTERS:
-                    types[name] = TYPES.get(converter, converter)
-    return types
+    return {name: TYPES.get(converter, converter)
+            for path in filter(None, map(route_path, node.decorator_list))
+            for converter, name in CONVERTER_RE.findall(path) if converter not in TEXT_CONVERTERS}
 
 
 def type_route_converters(source):
