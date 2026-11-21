@@ -2557,3 +2557,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    innerhtml, dom xss, stored/reflected xss, html injection, escape html, escapehtml, mark_safe, autoescape, |safe,
    sanitize html, dompurify. Template- or JS-only fixes go to cve-pairs-python-frontend. Months left on the general
    phrases: 2024-06 back to 2021-01; the search API's secondary rate limit makes some runs take 1.5-3 hours.
+113. **Pull request #6 reviewed: topic 17 batches 8-10** (2026-11-21). 94 read, 9 accepted by the agents, 5 kept
+   open/blind: Pagure (an issue attachment's filename joined into a path; the commit names CVE-2024-4982, so it is
+   recorded and split as GHSA-g76q-72wv-pxqq and stays open) and 4 blind in cve-pairs-blind-python-27 (unread).
+   Rejected at review: Infrahub (source outside the diff), DjangoBlog (bleach filter replaced by an nh3 allowlist on
+   stored comments), ESP-Website module links (admin-entered module titles and docs), TypeAgent (unsure: a TypeScript
+   product, not a Python app's front end). Batch 10 was the first with the front-end XSS phrases (step 112): 6 of 56
+   accepted against 0-2 of 20 before, but the open ones it found were stored values, which section 3 rejects.
