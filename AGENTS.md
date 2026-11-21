@@ -420,12 +420,20 @@ npm advisories (step 29). Those pools are nearly used up.
    next unused `cve-pairs-blind-python-N`, one per batch. Files: `benchmarks/cve-candidates-YYYY-MM-DD-silent.{tsv,json}`
    (then `-silent-2` and so on the same day). Say in the JSON's `method` which phrases and months were searched
    and how many commits each filter left, so the review can see how much is left.
+   **Searches are kept between runs** (the search API's limits make them the slow part; a run is stopped after
+   2 hours). Keep every result in the one store `~/codewatch-research/t17_raw.json` (`items`, plus `done`: the
+   `phrase|month` keys fully searched), written after every page, and never search a `done` key again. Run the
+   collector in the foreground, a month at a time, not as a background job the session waits on. Stop collecting
+   after about an hour, or as soon as about 60 unread candidates pass the filters, and read what is there: a batch
+   from already-collected months is a full batch. If a run collects but reads nothing, commit nothing; the next run
+   carries on from the store.
 
 A batch is at most about 60 advisories read. Stop there, or when the maintainer gives a time, even mid-topic.
 
 **Carrying on a topic** doesn't depend on anything an earlier session did. Rebuild the topic's candidate list from
 its source, drop everything `reviewed.py` already knows (by id or fix SHA), sort what's left by published date,
 newest first (then by id), and read from the top. That's always the next batch: there's no position to remember.
+Topic 17 is the exception: its searches are kept in a store (topic 17).
 Say in the JSON's `method` how many candidates were left after filtering, so the review can see how much of the
 topic remains.
 

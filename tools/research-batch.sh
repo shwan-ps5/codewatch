@@ -106,7 +106,7 @@ mkdir -p "$HOME/codewatch-research"
 base=$(git rev-parse HEAD)
 started_ms=$(( $(date +%s) * 1000 - 5000 ))
 say "starting a batch with $MODEL at $base"
-timeout 3h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
+timeout 2h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
 "Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
 'Carrying on a topic'. Keep your scripts and downloads in ~/codewatch-research/ (the only folder outside this
 repository you may write to; ~/advisory-database/ is readable too). Commit only your candidate files
