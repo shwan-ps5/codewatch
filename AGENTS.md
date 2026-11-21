@@ -403,6 +403,11 @@ npm advisories (step 29). Those pools are nearly used up.
    vulnerable side visibly lets request input (or an agent tool argument, for -nonhttp) reach the sink in the
    project's own code, with section 3's rules and size limits otherwise unchanged. Reject a hardening change with no
    reachable input (a new header, a dependency bump, a stricter setting), and say why in the TSV as usual.
+   When the commit message, its pull request or a linked issue names an advisory or CVE ("GHSA-...", "CVE-..."),
+   look it up before reading the diff (`gh api repos/OWNER/REPO/security-advisories/GHSA-...`, the advisory
+   database, the CVE list): a published one is the case's id, filtered and split like any advisory (drop it if
+   `reviewed.py` knows it); only an unpublished one (404) leaves the case under its FIX id, noted in the TSV. Fireshare
+   GHSA-j6gq was read as a FIX id though its repository advisory was public, and had to be dropped (PLAN.md step 110).
    Id: `FIX-OWNER-REPO-SHA12` (the repository's owner and name as GitHub spells them, then the fix commit's first
    12 hex characters), used as the advisory id everywhere: `reviewed.py --split FIX-...` splits it, and the suite
    entry's `id` is it, with no `cve` field. CWE: the one the fix shows (section 2's list), named in the TSV. Suites
