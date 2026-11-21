@@ -392,7 +392,12 @@ npm advisories (step 29). Those pools are nearly used up.
    `committer-date:YYYY-MM-01..YYYY-MM-31`). Phrases, quoted: "xss", "cross-site scripting", "open redirect",
    "path traversal", "directory traversal", "zip slip", "ssrf", "server-side request forgery", "sql injection",
    "command injection", "code injection", "template injection", "ldap injection", "unsafe redirect",
-   "escape user input", "security fix". Keep commits whose repository (GraphQL as topic 1, 100 per query, cached)
+   "escape user input", "security fix". Since 2026-11-22 also these, aimed at the largest measured gap (XSS in
+   the templates and front-end JavaScript of Python web apps, 27 of 31 cases missed; PLAN.md open items):
+   "innerhtml", "dom xss", "stored xss", "reflected xss", "html injection", "escape html", "escapehtml",
+   "mark_safe", "autoescape", "|safe", "sanitize html", "dompurify". Search these first, for every month already
+   collected and then with the other phrases as the topic goes back; read their candidates before the rest of a
+   batch, and put a fix that changes only templates or JS files in `cve-pairs-python-frontend`. Keep commits whose repository (GraphQL as topic 1, 100 per query, cached)
    is not archived, not a fork, has 200 stars or more, and has Python as its primary language; JS/TS repositories
    that declare a topic 8 framework count too (front ends of Python apps, as topic 13). Then confirm a topic 8
    framework at the fix commit, as topic 8 does. Drop: security tools, scanners, CTFs, labs, write-ups and course

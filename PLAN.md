@@ -78,7 +78,7 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
 
 Ground truth:
 - Topic 16 (new arrivals) is standing; topic 17 (security fixes with no advisory or CVE) is the active topic
-  (step 110). Topics 4 and 8 are paused; the rest are done.
+  (step 110), searching front-end XSS phrases first since step 112; 2024-06 back to 2021-01 still to search. Topics 4 and 8 are paused; the rest are done.
 - 5 cases in `cve-pairs-blind-php-35` have a rejected other id (step 102); keep them unread and re-judge after that
   suite's end-of-round scan (step 103).
 - End of the round, not yet run: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites, each
