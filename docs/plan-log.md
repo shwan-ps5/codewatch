@@ -2578,3 +2578,9 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    review: deepseek_ocr_app (eval of OCR output read from an uploaded PDF, treated like archive contents, with
    unrelated changes mixed in) and updog (unsure: a file name picked in the user's own browser). The front-end XSS
    phrases have now been searched back to 2025-07; the months already collected have no unread candidates left.
+116. **Research runner: deadline in the prompt, leftovers cleaned** (2026-11-21). The first run under step 114's
+   2-hour limit spent it searching, was stopped while writing its batch files and left them uncommitted; the next
+   run then refused the dirty checkout, which would have stalled every run after it. The script now copies anything
+   left uncommitted to `~/.cache/codewatch/research/leftover-DATE/` and cleans the checkout, and the prompt gives
+   the clock times: stop searching an hour in, commit 15 minutes before the stop. The stalled checkout was cleaned
+   the same way by hand.

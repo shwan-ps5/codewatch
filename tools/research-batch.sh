@@ -105,8 +105,11 @@ fi
 mkdir -p "$HOME/codewatch-research"
 base=$(git rev-parse HEAD)
 started_ms=$(( $(date +%s) * 1000 - 5000 ))
+LIMIT_MIN=120                                 # the run is stopped after this; the prompt gives the clock times
+stop_reading=$(date -d "+60 min" +%H:%M); commit_by=$(date -d "+$((LIMIT_MIN - 15)) min" +%H:%M)
+stopped_at=$(date -d "+$LIMIT_MIN min" +%H:%M)
 say "starting a batch with $MODEL at $base"
-timeout 2h opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
+timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
 "Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
 'Carrying on a topic'. Keep your scripts and downloads in ~/codewatch-research/ (the only folder outside this
 repository you may write to; ~/advisory-database/ is readable too). Commit only your candidate files
@@ -114,6 +117,9 @@ repository you may write to; ~/advisory-database/ is readable too). Commit only 
 the script that started you does that. A topic marked paused is not to be worked on. If every topic in the queue
 is done or paused, stop without committing and say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
 refused: if one is, use python3 for it instead.
+Time: this run is stopped at $stopped_at (the clock, \`date +%H:%M\`), and anything not committed by then is lost.
+Stop searching and start reading by $stop_reading; commit the batch files by $commit_by, with whatever has been
+read by then (a smaller batch is fine).
 End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
 say "opencode exited $?"
 
@@ -130,7 +136,14 @@ say "usage: $used"
 echo "$(date '+%F %T') $used" >> "$LOGS/usage.log"
 
 if [ -n "$(git status --porcelain)" ]; then
-    say "uncommitted changes left behind:"; git status --short
+    # Usually a run stopped at its limit mid-batch. Keep the files for a look, then clean the checkout so the next
+    # run can start (it refuses a dirty tree). The unrecorded reads are simply read again by a later run.
+    kept="$LOGS/leftover-$(date +%F-%H%M)"
+    mkdir -p "$kept"
+    say "uncommitted changes left behind, copied to $kept and removed:"; git status --short
+    git diff > "$kept/changes.diff"
+    git ls-files --others --exclude-standard -z | xargs -0 -r cp --parents -t "$kept"
+    git reset -q --hard HEAD && git clean -q -fd
 fi
 if [ "$(git rev-parse HEAD)" = "$base" ]; then
     say "no commits; nothing to push"
