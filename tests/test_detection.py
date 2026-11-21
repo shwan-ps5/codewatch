@@ -4336,3 +4336,30 @@ def test_flask_appbuilder_expose_methods_are_routes(tmp_path):
         "    def api(self, form):\n"
         "        return self.response(400, message=f'No form {form}')\n")})
     assert found == {("app/views.py", 8, "xss"), ("app/views.py", 12, "xss")}
+
+
+def test_a_django_template_loaded_by_name_renders_escaped(tmp_path):
+    """netbox's handler_500 (nightly 2026-11-21, after HttpResponseServerError became a sink): template =
+    loader.get_template(name) inside a try, then HttpResponseServerError(template.render({'request': request})).
+    Django's templates autoescape, whether loaded with get_template or select_template; jinja2.Template doesn't."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app/views.py": (
+        "import jinja2\n"
+        "from django.http import HttpResponseServerError\n"
+        "from django.template import TemplateDoesNotExist, loader\n\n\n"
+        "def handler_500(request, template_name='500.html'):\n"
+        "    try:\n"
+        "        template = loader.get_template(template_name)\n"
+        "    except TemplateDoesNotExist:\n"
+        "        return HttpResponseServerError('<h1>Server Error (500)</h1>', content_type='text/html')\n"
+        "    return HttpResponseServerError(template.render({'request': request, 'q': request.GET.get('q')}))\n\n\n"
+        "def direct(request):\n"
+        "    return HttpResponseServerError(loader.get_template('x.html').render({'q': request.GET['q']}))\n\n\n"
+        "def chosen(request):\n"
+        "    template = loader.select_template(['a.html', 'b.html'])\n"
+        "    return HttpResponseServerError(template.render({'q': request.GET['q']}))\n\n\n"
+        "def jinja(request):\n"
+        "    template = jinja2.Template('<p>{{ q }}</p>')\n"
+        "    return HttpResponseServerError(template.render(q=request.GET['q']))\n")})
+    assert found == {("app/views.py", 25, "xss")}

@@ -1803,6 +1803,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    or its pull request must call it a security fix). Ids `FIX-OWNER-REPO-SHA12`. A trial search showed the noise
    the filter is for: scanners, labs and toy repositories, among a few real apps.
    Next by cases: step 42's I (fetched data written as HTML in shipped JS), then H's templates part.
+109. **Nightly 2026-11-21 (commit 17e3582): step 108 measured, one false alarm fixed** (2026-11-21). cve-pairs-python
+   verdict 54 -> 56 of 97 found (Airflow GHSA-rv25, CVAT CVE-2024-47064), still flagged after the fix 13 -> 13;
+   no other case moved; the JavaScript and PHP counts moved only by case-list changes. Tests 355 passed. One new
+   app finding, netbox views/errors.py:54 (triage: false alarm, confirmed): handler_500 loads its template with
+   loader.get_template() inside a try and returns HttpResponseServerError(template.render({...})), which step 108
+   made a sink. A Django template loaded by name (get_template, select_template; called directly or assigned,
+   inside a try too) renders autoescaped, so its .render() now clears the XSS rule; jinja2.Template doesn't.
+   `test_a_django_template_loaded_by_name_renders_escaped`; the real file scans clean.
 
 ## How things work (non-obvious)
 
