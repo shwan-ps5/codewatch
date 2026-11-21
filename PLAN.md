@@ -1811,6 +1811,23 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    made a sink. A Django template loaded by name (get_template, select_template; called directly or assigned,
    inside a try too) renders autoescaped, so its .render() now clears the XSS rule; jinja2.Template doesn't.
    `test_a_django_template_loaded_by_name_renders_escaped`; the real file scans clean.
+110. **Pull request #5 reviewed: topic 17's first seven batches and one topic 16 batch** (2026-11-21). Topic 17
+   (silent fixes) read 318 commits in seven batches and accepted 17; topic 16 read 14 and accepted 2 (devpi, both
+   blind). Every open fix was read here; blind ones were checked for size and repository only (isard's summary
+   line was seen in passing while checking the file format, nothing else). Kept open, all in cve-pairs-python:
+   bisheng (an OnlyOffice save callback's url fetched; the fix names GHSA-mh3h, unpublished, open under either
+   id), Counterparty (APIv1's JSON-RPC filter field interpolated into SQL), araa-search (a form field written
+   into Location), clawmetry (?session= joined into a path and opened), ubuntu.com (a query parameter
+   redirected to) and MediKeep (admin trash paths into unlink and moves). Blind: lnxlink to
+   cve-pairs-blind-python-nonhttp; isard, sapic, AutoGPT and devpi x2 to cve-pairs-blind-python-27 (the agent
+   named a -28 that doesn't exist). Rejected at review (7): VibeNVR (an admin feature that fetches the URL the
+   admin enters), gramps-web-api (evaluated inside the Gramps library), OctoPrint and local-deep-research
+   (existing guards tightened), langwatch (document.referrer, step 108's decision), blueking-paas (archive
+   member names, across files), and fireshare: its commit applies a published repository advisory,
+   GHSA-j6gq-jchg-q883, missing from the global database, whose id falls in the blind half; read at review, it
+   can't go blind or stay open under a made-up id, so it's dropped. AGENTS.md's topic 17 now says to look up an
+   advisory or CVE a commit names before reading the diff and use its id. What the open cases need, for later:
+   JSON-RPC dispatcher arguments as a source (Counterparty), Location set through response.headers (araa-search).
 
 ## How things work (non-obvious)
 
