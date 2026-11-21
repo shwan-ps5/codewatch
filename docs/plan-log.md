@@ -2572,3 +2572,9 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    requires that store (`~/codewatch-research/t17_raw.json`, written after every page, `done` keys never searched
    again), a foreground collector, and reading after about an hour of collecting; `timeout` in
    tools/research-batch.sh is 2 hours (was 3; batches have taken up to 115 minutes).
+115. **Pull request #7 reviewed: topic 17 batches 11-14** (2026-11-21). 116 read, 3 accepted by the agents and 1 unsure;
+   kept 1 open and 1 blind. Open: nextcloud-mcp-server (a Starlette path parameter echoed into an HTMLResponse; scope
+   narrowed to the routes file). Blind: pretix GHSA-f658 in cve-pairs-blind-python-frontend-5 (unread). Rejected at
+   review: deepseek_ocr_app (eval of OCR output read from an uploaded PDF, treated like archive contents, with
+   unrelated changes mixed in) and updog (unsure: a file name picked in the user's own browser). The front-end XSS
+   phrases have now been searched back to 2025-07; the months already collected have no unread candidates left.
