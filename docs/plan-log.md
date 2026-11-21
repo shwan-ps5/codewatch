@@ -1,0 +1,2553 @@
+# codewatch plan log
+
+Every step of the detection plan, in number order: what was changed or decided, which case drove it, what it was
+measured to do, and the test that holds it. `PLAN.md` holds the current state; this file is the history. A
+reference to "PLAN.md step N" (in `benchmarks/suites.json`, AGENTS.md, code comments, tests and commit messages)
+means step N here. New steps go at the end of this file, numbered on from the last.
+
+Steps 54-92 sat after the Repos table and 93-110 between step 53 and the reference sections until 2026-11-21,
+when the log moved here; the text of each step is unchanged. Step 6 was never written as a separate step (step 5
+runs into it).
+
+## Snapshots (2026-10-30 to 2026-11-14)
+
+The summary sections PLAN.md carried before 2026-11-21, kept as they were.
+
+### Baseline (commit e4d086c, 2026-10-30)
+
+| Suite | Verdict | Review |
+|---|---|---|
+| OWASP Benchmark Python (tuned) | 100% found, 0% false alarms | 100%, 35% |
+| SecurityEval (tuned) | 50/121 | 74/121 |
+| SecurityEval Copilot (held out*) | 34%, 0% | 49%, 6% |
+| SecurityEval InCoder (held out*) | 31%, 0% | 44%, 0% |
+| Juice Shop (tuned) | 15/35 | 16/35 |
+| Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
+| vulnerable-node seeds (tuned) | 11/12, 0 false alarms | 12/12, 1 false alarm |
+
+*Same prompts as SecurityEval's own samples, which were used for rules.
+
+After the standards-gap rules (CWE-209, CWE-434, CWE-915; 2026-10-30): SecurityEval 51/121 verdict, 77/121 review;
+Copilot review 51%, InCoder review 47%; no case lost, false alarms unchanged. The rules came from the coverage
+gaps, not from these suites.
+
+Remaining Juice Shop misses are business logic, data files, Solidity and a Docker image; most remaining
+SecurityEval misses are design flaws or plain functions with no request source. Don't chase those with rules.
+
+### Where things stand (2026-11-02, commit ceb95ca)
+
+Detection, measured at this commit (verdict mode first; review mode adds hotspots):
+
+| Suite | Verdict | Review |
+|---|---|---|
+| OWASP Benchmark for Python (1,230 cases) | finds 100%, false alarms 0% | finds 100%, false alarms 35% |
+| SecurityEval (121 samples) | 51 flagged | 77 flagged |
+| SecurityEval Copilot / InCoder answers (held out) | 34% / 31%, false alarms 0% / 0% | 51% / 47%, false alarms 6% / 0% |
+| Juice Shop (35 challenges) | 15 | 17 |
+| Vulnerable-Code-Snippets JS (22, held out) | 11 | 13 |
+| vulnerable-node seeds (12 + 2 clean) | 92%, false alarms 0% | 100%, false alarms 50% |
+| CVE fix pairs, Python (33; 14 until step 22) | 18 found, 5 still flagged after the fix | 20 found, 7 still flagged |
+| CVE fix pairs, Python front end (6, step 22; 27 since the second batch, not yet measured here) | 0 found | 4 found, 2 still flagged |
+| CVE fix pairs, JS/TS (10) | 2 found, 0 still flagged | 4 found, 3 still flagged |
+
+False alarms on ordinary apps (verdict mode):
+- The 30 dev apps (six deliberately vulnerable apps, nine ordinary ones, the user's 15 own projects): unchanged
+  from run to run. The vulnerable apps' findings are real; the user's projects have the real findings and the two
+  known false alarms listed in the 2026-10-31 notes after step 18.
+- Learning sets 1-3 (14 apps): 18 findings left, each classified in steps 13 and 18 (real: recipes api.py:2960,
+  outline's four TLS settings; little impact: CTFd's three session writes; the rest need models codewatch
+  doesn't have, such as an OAuth manager built from session state).
+- Learning set 4 (wiki.js, actual, habitica): 24 findings, all false alarms, grouped by shape in step 19 (27
+  until PR #1, 2026-11-02: a JS helper named like a loader, `loadIdea(req, reply)`, returns the record it looked
+  up, not request data, which removed wiki.js feedback.ts:754 (twice) and comments.ts:670).
+- Learning set 5 (netbox, label-studio, lemur): first scanned by the first nightly run (2026-11-03).
+- Blind sets: 1 had false alarms in 2 of 4 apps (12), 2 in 2 of 4 (34), 3 in 4 of 4 (24, 13 in one Express app).
+  Python is close (3 false alarms in two apps in set 3); JavaScript isn't. Set 4 is pinned and unscanned.
+
+The server: a full security review is done (step 20), each fix tested in `tests/test_security.py`. Still open:
+analyzers read repository content, so untrusted code should be scanned in a container (not built yet).
+
+Speed on the 20-thread desktop (step 21): tests 1.5 minutes, quick suites 4, the 30 apps 4, the three
+non-blind CVE-pair suites (49 pairs) about 58, the 17 learning-set apps 11; the largest app (immich, 3,488 files)
+about 3 minutes alone. Results are identical whether scans run one at a time or in parallel. So, since
+2026-11-02 (the user's call), a change is checked in isolation during the day (its tests, a probe on the case's
+files, `devtools.py cases ID...` for the CVE pairs it targets) and the full verification runs nightly:
+`benchmarks/nightly.sh` from the systemd user timer `codewatch-nightly.timer` at 01:30, over the committed tip of
+`detection-gaps`, with the apps in `~/.config/codewatch/nightly-apps.txt` (outside the repository: it names the
+user's own projects) and a report in `~/.cache/codewatch/nightly/DATE/summary.txt`, read the next morning.
+
+Focus (2026-11-02, the user's call): Python web apps (Django, Flask, FastAPI) and the JavaScript those projects
+ship (templates, static scripts, React/Vue/Angular front ends), to a very good standard first. Node-only back ends
+and other languages come later, possibly from cloud sessions, one language or framework each, adding rules in
+their own catalog files with tests and ground-truth results, merged only after a full verification here.
+
+Next, in order:
+1. Read the first nightly report (2026-11-03): the round-one changes of step 22 on every suite and app, and
+   learning set 5 for the first time.
+2. Learning set 5 (netbox, label-studio, lemur: Python apps with JS front ends), case by case.
+3. The front end (step 22): template-only fixes are now scored at the views that render the template (step 26);
+   Whoogle's `'http' in q` passing as a guard, which is now the only thing between GHSA-mxvc and a verdict find (the fix exposed paperless-ngx false alarms, so understand that flow first);
+   verdict detection for front-end JS (request data into innerHTML or jQuery HTML).
+4. The Python miss still in reach: pyLoad's SSRF through its own pycurl wrapper (`get_url`); the rest (stored
+   data, settings flags, template-built SQL, `g`-stored state) are recorded as out of reach.
+   Also from step 24 (MobSF GHSA-8m9j at its fix): `redirect(auth.login(return_to=x))` is flagged, though
+   python3-saml's login() returns the identity provider's URL with x only as RelayState, a library call's
+   result taken for the request value. And the 53 Python pairs (49 + 4) get their first full measurement
+   in the nightly run.
+5. End of the round: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites
+   (`cve-pairs-blind-python-2` to `-7`, `-python-nonhttp`, `cve-pairs-blind-python-frontend`, `-frontend-2`, `-frontend-3`, and from step 29
+   `cve-pairs-blind-javascript-2` to `-6` and `-javascript-nonhttp`), each scanned once, measurement only. The fixes in `-python-5` and the
+   JavaScript ones were never sized (steps 27 and 29), so report them with that caveat. Two are partly seen: GHSA-hh2q (`-python-2`, its diff read in step 23) and GHSA-h8pc
+   (`-frontend-2`, PR #5's description says what its fix leaves open); report each suite with and without them.
+6. A container for server-side scans of untrusted repositories; Semgrep timeouts recorded per run.
+7. Other languages and frameworks (Node/Express first), as local rule work. Cloud sessions (CLAUDE.md) gather
+   their ground truth and do self-contained engineering. The first cloud PR (#1, Express sinks) showed that rule
+   changes need the local app sets to judge false alarms: it added three false alarms in wiki.js the session
+   couldn't see.
+
+Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639), which needs app
+knowledge.
+
+#### Record of 2026-10-31 (commit 1959106)
+
+- Step 1 is built: `cve-pairs-python` (14 cases), `cve-pairs-javascript` (10), and blind `cve-pairs-blind-*`
+  (run only when named). Ordinary apps (7) give 0 vulnerability false alarms. Standards-gap rules (CWE-208, 209,
+  306, 434, 532, 614, 915, 942, 1004, 1336, 90, 643) and the OSV lockfile analyzer are in.
+- First CVE-pair run, at commit bd6b53a (before be61622's rules and the scan narrowing in 1959106):
+
+  | Suite | Verdict found / still flagged | Review found / still flagged |
+  |---|---|---|
+  | cve-pairs-python | 2/14 / 1/14 | 5/14 / 1/14 |
+  | cve-pairs-javascript | 1/10 / 1/10 | 4/10 / 4/10 |
+
+  Re-run at commit 26e7dd2 (be61622's rules plus the scan narrowing) gave exactly the same table; those result
+  files are the CVE baseline. `pytest -q` there: 134 passed, 1 skipped (cppcheck not installed, a system package
+  `make tools` doesn't install).
+- The CVE suites are slow (Python ~4.5 h on the laptop, which overheated); run them on the desktop and commit
+  the results as the CVE baseline. Fresh machine setup (needs Python 3, Node 20+, git):
+
+  ```
+  git clone https://github.com/shwan-ps5/codewatch.git && cd codewatch && git checkout detection-gaps
+  python3 -m venv venv && venv/bin/pip install -e '.[dev,mcp]'
+  make tools
+  venv/bin/python manage.py migrate
+  venv/bin/pytest -q                      # should be 135 passed
+  venv/bin/python benchmarks/devtools.py bench cve-pairs-python cve-pairs-javascript
+  ```
+
+  Suites and CVE repos download themselves into `~/.cache/codewatch/` on first run.
+- Re-run after items 1-3 below (commit dfb21c4 plus the Python path-prefix hotspot, since removed), on the
+  desktop in about 1 h 20 min for all suites:
+
+  | Suite | Verdict found / still flagged | Review found / still flagged |
+  |---|---|---|
+  | cve-pairs-python | 5/14 / 1/14 | 6/14 / 2/14 |
+  | cve-pairs-javascript | 0/10 / 0/10 | 3/10 / 3/10 |
+
+  Python: Parsl, litellm and changedetection.io are new. Parsl's "still flagged" is a correct finding the fix
+  didn't touch: it parameterised the two views named in the advisory, but `queries/pandas.py` still `%`-formats
+  `workflow_id` into SQL, reached from `views.py:169,175` (behind a lookup by the same id that injected text would
+  fail, which a scanner can't see). litellm's review-only hit at its fix was the uncalled-entry-point hotspot on
+  `limit: int = fastapi.Query(...)`; parameters typed int/float/bool/UUID/date are now skipped there. JS: the
+  oils-js hit is gone (it was a false alarm) and mockoon is found by `path-prefix-check`; the review drop from 4 to
+  3 is oils-js. Quick suites unchanged except OWASP Python review path traversal, below.
+
+What to work on next, from that run (these suites are not held out; note in `suites.json` when a case drives a
+rule):
+
+1. Done (2026-10-31), checked on both repos, CVE suites not re-run yet. Grappelli's fix calls
+   `url_has_allowed_host_and_scheme(url=...)` with a keyword, now a guard too. The oils-js hit was never the
+   advisory's bug: it was an HTTPS-upgrade redirect to `req.headers.host` + `req.url`, now quiet, so JS verdict
+   detection should drop to 0/10 and still-flagged to 0/10. What's left on oils-js is `custom-response.js:17`, a
+   real trailing-slash redirect of `req.url` (`//evil.com/`) that the fix doesn't cover. Grappelli's fix commit
+   still got a trust-boundary hit at `switch.py:73`, which stores a database user's id in the session: noise,
+   fixed by treating ORM lookups (`Model.objects.get(...)`, `get_object_or_404`, `Model.query.first()`) as
+   sanitizers for that rule.
+2. Done (2026-10-31). None of the five JS CWE-22 misses is a source/sink shape a taint rule lacks: both Backstage
+   cases (GHSA-7mfx, -9ghw) are flawed checks in front of Express's static/proxy middleware, gitlab-mcp (GHSA-cv3r)
+   is missing authentication and its path comes from MCP tool arguments, and fastify-static (GHSA-83w8) is the
+   library itself. Mockoon (GHSA-8wqc) is a prefix-only containment check (`resolved.startsWith(base)`), now the
+   `path-prefix-check` hotspot for JS. It also flags one real prefix-only check in the user's own projects.
+   A Python version was tried and removed: the OWASP Benchmark for Python labels exactly this check
+   (`str((base / name).resolve()).startswith(str(base))`) safe in 29 path traversal cases, review false alarms
+   went from 2% to 30%, and no Python case needed it.
+3. Done (2026-10-31). Python taint sources were only `request`: Flask route parameters and FastAPI parameters
+   are now sources (text-typed only; Flask converters other than string/path are written on the scanned copy as
+   annotations by `core/analyzers/route_converters.py`), with pandas `read_sql*`, Prisma `query_raw`/`execute_raw`
+   and `exec_driver_sql` as SQL sinks. Checked file by file: Parsl (GHSA-f2mf), litellm (GHSA-h6m6) and
+   changedetection.io (GHSA-8whx, XSS) flagged before the fix (confirmed by the re-run above); ordinary apps, the
+   user's repos and the Python quick suites unchanged. FastAPI Pydantic body models are not sources yet (a model parameter such as
+   `item_in: ItemCreate` looks like `session: SessionDep`; would need the class to be a BaseModel).
+   Not chased, no rule can see them: dtale (GHSA-gjxm, a settings flag), Whoogle (GHSA-2689, pickle of a cookie,
+   filed as CWE-78), Fugue (GHSA-xv5p, the fix only logs a warning), and the open-redirect misses that are
+   bypassable validators (pyload `is_safe_url`, Airflow `get_safe_url`), a stored URL (Superset) or a Referer
+   redirect, which codewatch deliberately treats as safe (cg). open-webui GHSA-frvj is an encoding bypass of a
+   guard; GHSA-8gh5 is an uploaded HTML file served inline.
+4. Then continue the steps below, re-running the CVE suites after each.
+
+
+### Open items (2026-11-14; keep this list current)
+
+The numbered steps below are a log, finished as written; this is what they leave open. Strike an item when it
+closes and name the step that closed it.
+
+Measured gaps (nightly 2026-11-13, non-blind suites, review mode, found before the fix and quiet after):
+- Python front-end XSS: 6 of 31 in cve-pairs-python-frontend, 1 of 7 in cve-pairs-python. Not done from step 32:
+  a hotspot for template values in event handlers, unquoted attributes and script strings.
+- Python SSRF 1 of 6 (0 of 2 with path traversal), open redirect 4 of 11 (a bare `reverse("index") + x` still
+  open, step 13).
+- JavaScript path traversal 1 of 24, SSRF 0 of 7, open redirect 0 of 5, outside HTTP handlers 1 of 27. Step 25's
+  open question: a one-line `require('fs').createReadStream(req.query.f).pipe(res)` missed in one probe file.
+- False alarms: cve-pairs-python verdict 15% of fixed versions still flagged (12 of 79).
+
+Analysis:
+- Step 42 D (project checks trusted by name: `*safe*`, `*sanitize*`, `*valid*`) and E (dispatch the summaries
+  can't follow: a plugin loaded by name, a handler passed as a value): not started.
+- Step 32's left-overs: pygeoapi GHSA-f6pr (E), Lektor GHSA-wv28.
+
+Speed and stability:
+- mlflow GHSA-wqmh: still missed and slow (step 68). Next: a round that gives up on a file keeps that file's
+  earlier pass and summary answers; the focus files get FOCUS_TIMEOUT in the summary rounds too; why the
+  resummary rounds' matching is slow (with_pass_through's sanitizers, likely).
+- Arches GHSA-gmpq: four sql-injection lines missing on the 2026-11-12 nightly only, same code (step 65).
+
+Ground truth:
+- Research: topics 12 (JS/TS app CVEs with no GitHub advisory) and 10 (PHP) done (steps 72-78); every topic in
+  AGENTS.md's queue was then done or paused; topic 13 (front ends of Python web apps whose repository GitHub
+  doesn't call Python) queued 2026-11-16 (step 79) and done in one batch of 39 (step 81). Topics 14 (Python and JS/TS
+  web app CVEs from before 2021) and 15 (PHP, the same years) queued 2026-11-17 (step 82). Topic 16 (new arrivals:
+  the last 60 days, all three languages) is standing, taken first once a day (step 83). Runner cap 12
+  (step 70). The 62 open cases of steps 74 and 75 (their nightly of 2026-11-16 lost its suites to a DNS outage),
+  step 76's 45 and step 78's 26 are first scanned by the nightly of 2026-11-17.
+  The 9 new cve-pairs-python/-nonhttp cases and step 72's 11 are first scanned by the nightly of 2026-11-15 if
+  committed before it (cve-pairs-php's 7 include Smarty and CakePHP view templates, which no PHP rule reads yet).
+- PHP (steps 70, 73): verdict 35 of 203 found, 9 still flagged (5 of them real incomplete fixes). Not yet: summary
+  passes across functions and files (most misses), helpers given 'escape' => false (baserCMS GHSA-66c2), lookup
+  results (a record fetched by a request id), CakePHP action parameters as request data (MISP GHSA-x452's
+  $elementId), values built through by-reference arguments (MISP GHSA-cr6c's $urlparams), Twig reading the request
+  itself (yeswiki GHSA-ggqx), old short open tags `<?` (TBDev GHSA-88jc, unparsed), oci_parse, a project's own db()
+  and Filter::filterInput (go-with-me, CRMx, phpMyFAQ GHSA-cp9c), and a PHP learning set of ordinary apps for false
+  alarms, which the template sinks' name matching (Smarty, CakePHP components) most needs.
+- Proposed, not queued: fixes using sanitizers codewatch doesn't recognise; more open-source Django, Flask and
+  FastAPI apps for the nightly's false-alarm check (step 67).
+
+Comparison (step 71):
+- CodeQL measured once on the five non-blind CVE-pair suites. Not yet: the 8 new cve-pairs-python cases against
+  codewatch's nightly of 2026-11-15; the cases only CodeQL finds (4 JS path traversal, 2 Python open redirects)
+  read as ordinary misses of codewatch's, from the cases' own fixes and not CodeQL's queries; Semgrep Pro, Snyk
+  Code and SonarQube (paid; later, if at all).
+
+## Steps
+
+1. **Real-world measurement sets** (done, see above):
+   - CVE before/after pairs: Python and JS web projects with a published advisory and a fix commit (GitHub
+     Security Advisories / OSV). Scan the vulnerable commit (detection) and the fixed commit (false alarm if
+     still flagged at that spot). Add as a suite kind in `core/benchmark.py`, pinned commits in `suites.json`.
+   - Ordinary apps: a few popular, well-maintained Django, FastAPI, Express and NestJS projects, to measure false
+     alarms on real code. Record them under "Repos" below.
+   - Keep a separate blind set (a few of each) that is scanned only at the end of this plan.
+2. **Source-returning helpers**: done (2026-10-31). Pass 3 in `core/analyzers/summaries.py` runs each taint rule
+   with `return` as the sink (per rule, so a helper returning `int(...)` isn't a SQL returner), up to MAX_DEPTH
+   deep, and the final rules get a `.from` variant whose sources are calls to those functions, checked for
+   visibility like `.via`. Not returners: values looked up with the request data (ORM queries, `find*`/`load*`/
+   `decode*`/`get_current_user*`), route handlers (a GET view returning the POST view's response gave 5 OWASP
+   XSS verdict false alarms), and handler-named methods (`get`, `post`, `dispatch`...: a Django class-based
+   view's `get` made pygoat's `requests.get(settings URL)` an SSRF). Effect: ordinary apps still 0; on the user's
+   own projects one new XSS finding, a real flow from a query parameter through two helpers into innerHTML, but
+   inside a double-quoted attribute with `"` stripped, so not exploitable; a rule can't see attribute context,
+   left as is. On the held-out vulnerable-snippets-js, "any
+   security" went from 50% to 55% only because `PostMessage Security/challenge1.js` gets an open-redirect for
+   `get_domain()` (the page's own origin) in a query string: noise on a sample vulnerable for another reason,
+   not a detection, and not tuned on. Cost: the first version made one of the user's TypeScript projects 14 s -> 153 s and dvpwa 42 s -> 117 s.
+   The JS sink `class $C { ... $FUNC(...) { ... } ... }` was 42 of 45 s per pass on that project (now
+   `$FUNC(...) { ... }`, same results, 4 s), and vendored unminified libraries (dvpwa's 366 KB materialize.js)
+   took 23 s per pass (pass 3 now skips JS files over 200 KB). Now 27 s and 47 s.
+3. **Framework sources**: FastAPI text parameters (including `Query()`/`Path()`/`Header()` defaults) done with
+   item 3 above. Pydantic/SQLModel body models done (2026-10-31, `core/analyzers/body_models.py`): the project's
+   own model classes are read with ast, and a route parameter typed with one has its text fields as sources
+   (`item.title`, inherited fields too; `item.limit: int` isn't, nor is a field name that is non-text in any
+   model). NestJS done (2026-10-31): `@Body()`/`@Query()`/`@Param()`/
+   `@Headers()` parameters are sources (`src-nest-param` in `javascript-taint.yml`), except with a Parse*Pipe or
+   a number/boolean/Date/bigint type; `@Req()` isn't, its `req.body` etc. are already covered by name. TypeORM
+   `dataSource`/`queryRunner`/`manager`/`*Repository` joined the SQL receivers. nestjs-boilerplate and
+   nestjs-realworld stay at 0. No Nest case in any suite, so this is untested against real advisories. Next.js
+   API route `req` and Fastify `request.body/query/params` were already sources by name.
+4. **Object fields**: done (2026-10-31). The returner pass's first scan also runs each rule with
+   `self.x = ...`/`this.x = ...` stores as the sink; the final rules get a `.field` variant whose sources are reads
+   of those fields, kept to the file that stores them (by name, not class: the JS class pattern is what made the
+   returner pass slow). Found while checking: Django class-based views' `self.request.GET[...]` and
+   `self.kwargs[...]` weren't sources at all; now they are (`self.kwargs`/`self.args` only in classes based on
+   a `*View`/`*ViewSet`). Two CVE repos store request data in fields (Whoogle `search.py:61`, Grappelli
+   `related.py:131`); neither advisory is about those flows.
+5. **JS dependency vulnerabilities**: done for npm, yarn and pnpm lockfiles by the `osv` analyzer
+   (`core/analyzers/dependencies.py`), which parses them itself and asks OSV's batch API, so no new binary. Go, Rust
+   and Java lockfiles would need the osv-scanner binary in `tools/`; downloading it needs the user's go-ahead.
+6. Re-run everything, then the blind set; update the README table. Non-blind re-run at fe33054 (2026-10-31):
+   quick suites unchanged (OWASP verdict 100%/0%, review 100%/35%; Juice Shop 15/17 of 35); cve-pairs-python
+   verdict 6/14 found, 3/14 still flagged (was 5/14, 1/14), review 7/14, 3/14; cve-pairs-javascript unchanged
+   (0/10, review 3/10). Two new "still flagged" come from this round's sources, both false alarms:
+   - GHSA-g3cm (pyload): `get_redirect_url()` returns `urljoin(flask.request.url_root, url_for(...))`, and the
+     returner pass now follows it into `flask.redirect`. `url_root`/`host_url` are the app's own host, like the
+     Host header the JS rule already accepts. The vulnerable-commit hits at the same lines are the same noise,
+     so that "detection" isn't one either.
+   - GHSA-6rmf (django-termsandconditions): `self.request.POST` (new source) goes into
+     `self.get_return_to(...)`, which returns it only inside `if self.is_safe_url(x):`, else "/". Semgrep taints
+     any call result with a tainted argument, and there's no positive-guard sanitizer.
+   Next (after the blind run): a pass-through summary (params as sources, `return` as sink; calls to project
+   functions that don't pass a parameter through become sanitizers), a positive-guard sanitizer
+   (`if is_safe_url(x): ...`), and `request.url_root`/`host_url` as open-redirect sanitizers. The same
+   pass-through gap is behind a known false alarm in one of the user's own projects.
+
+   Blind repos at fe33054 (first and only scan, 2026-10-31; not to be used to adjust rules), verdict findings:
+   - Django-Styleguide-Example: 3, all real at code level: `CORS_ALLOW_ALL_ORIGINS` with credentials
+     (cors.py:4) and two `jwt.decode(..., verify_signature=False)` (defensible there: the token comes straight
+     from Google's token endpoint, but it is what the rule says).
+   - FastAPI-boilerplate: 2 false alarms: a constant scrypt salt used on purpose to fingerprint configured
+     targets (readiness.py:149), and Jinja autoescape off in a CLI that generates code, not HTML (render.py:23).
+   - hackathon-starter: 10, all false alarms: four `res.redirect(`/auth/${provider}`)` (fixed relative prefix),
+     three XSS through `sendSSE` (JSON on an event stream), two SSRF to fixed hosts with
+     `encodeURIComponent`ed queries (Giphy, Wikipedia), and a redirect to the Referer, which the Python rule
+     treats as safe by design (JS and Python disagree).
+   - nestjs-prisma-starter: 0.
+   So 2 of 4 ordinary apps have verdict false alarms (12 in all, 10 in one Express app); the non-blind ordinary
+   apps' 0 was partly fitted. The shapes are general (fixed-prefix relative redirects, fixed-host URLs with an
+   encoded query, event-stream writes, Referer in JS, CLI Jinja environments), but per the ground rules they
+   can't be fixed on this evidence: they need a non-blind case first, and the blind set needs replacing before
+   it can measure again.
+
+   Blind CVE pairs at fe33054 (first and only run): cve-pairs-blind-python verdict 2/5 found, 1/5 still flagged;
+   cve-pairs-blind-javascript verdict 1/4, 1/4 (review 1/4, 2/4). Read case by case: Python's two are real
+   (archivy GHSA-28mg open redirect; GHSA-mcmc XXE), and archivy's fix-commit hit is the positive-guard gap
+   above (`if next and is_safe_redirect_url(next): return redirect(next)`), already known from GHSA-6rmf. The JS
+   one (medplum GHSA-m44r) isn't a detection: the same lines are flagged either side of the fix (a redirect to a
+   URI looked up from the client's registered list, and one after `isValidReturnToUrl(...)`), so honestly 0/4.
+   The blind set is now spent; a new one is needed before the next blind measurement.
+7. **After step 6** (2026-10-31, from non-blind cases only): a positive-guard sanitizer (`checked-inside`: a
+   value used inside `if is_safe_url(x):` or `if a and is_valid(x):`, not `if not ...`), `request.url_root`/
+   `host_url` as open-redirect sanitizers, and a pass-through summary for Python: the returner pass's first scan
+   also finds which project functions can return a parameter, and the variable assigned from a call to one that
+   can't (and isn't summarised or a returner) is clean. Driven by GHSA-6rmf and GHSA-g3cm at their fixes.
+   Python CVE pairs after it: verdict 5/14 found, 1 still flagged (was 6/14 and 3); review 6/14, 1 (was 7 and 3).
+   GHSA-6rmf is now found at the vulnerable commit and quiet at its fix. GHSA-g3cm went quiet on both sides:
+   its vulnerable code redirects only to values that passed the project's own `is_safe_url()`, and the advisory
+   is that check being incomplete, so trusting a validator by name loses it (the old "find" was the same two
+   lines on both sides of the fix, so it never told the commits apart). Considered and dropped: making a value
+   cleared only by a project-defined check (not a library one like `url_has_allowed_host_and_scheme`) a review
+   hotspot. GHSA-6rmf's fix also clears its redirect with a project-defined `is_safe_url`, so the hotspot would
+   be a review false alarm there for every one it found. The names of clean functions are split into regexes of 400: one regex listing all of
+   them (`cg`, GHSA-w228, about 70K characters) made Semgrep exit with an error.
+8. **Speed** (next, asked for 2026-11-01): the Python CVE suite took 1h45m and one large project's scan took
+   minutes per pass. A profile of one `cg` pass showed 12.7 s of 13.3 s loading the generated rules and 0.55 s
+   scanning. Budget: a typical project of around 100k lines scans in under 5 minutes; a run that misses it
+   fails like a new false alarm. In order: time each pass on `cg`; shrink generated rules (list the few
+   functions that do return a parameter instead of the thousands that don't; fewer variant copies); start
+   Semgrep fewer times (merge passes; skip summaries for files identical between the two commits of a pair).
+   Every change is checked against the same detection numbers.
+   Profile of `cg` (1,023 Python files, about 6 cores): summaries 9 s, 123 s, 161 s; returners 65 s; final
+   198 s; 567 s in all. Depth 1, with no generated names, takes 9 s. Done: one via-sink per call shape whose name
+   regex lists every function called that way (it was one sink per function), and every generated name list
+   split into regexes of 400. `cg` now takes 304 s (summaries 49 s and 61 s, final 108 s). It also finds more:
+   the old rules hit Semgrep's per-file timeout 97 times in the final scan and 6-7 times per summary pass, each
+   one silently skipping that rule for that file; now 12 and 1-2. Quick suites and the 30 apps unchanged; those
+   apps scan in 8-53 s each, so the time is a large-project problem.
+   Also done: deeper summary and returner passes rescan only the files that name a function the previous pass
+   added (a file that names none gives what it gave before: 755 then 437 of `cg`'s 1,075 files), and via-sinks for
+   a parameter passed by keyword are dropped when nothing in the project passes that keyword (`cg`'s
+   path-traversal via-variant had 309 keyword names, 107 used). `cg`: 259 s (summaries 9, 40, 39 s; returners
+   65 s; final 96 s). Quick suites 619 s to 508 s, results unchanged; 30 apps unchanged. Tried and reverted: one
+   keyword sink per callee kind with a `metavariable-comparison` naming each (keyword, function) pair; it is
+   evaluated on every keyword call and made the final scan slower (129 s).
+   Also done: the returner pass spent 60 of its 65 s on the pass-through rules' 32,868 results (1,982 functions
+   times 16 rules; Semgrep's matching was 10 s, the rest writing results out). Pass rules now ask only about
+   functions that take a parameter and whose result some code assigns (`x = f(...)`, the only form the
+   pass-through sanitizer cleans), and that same set bounds the sanitizer, so a function outside it is never
+   clean. `cg`: 160 s (summaries 10, 41, 41 s; returners 32 s; final 29 s, which also lost its timeouts because
+   the sanitizers list fewer names). Semgrep timeouts are now reported in the tool's status detail (and by
+   `devtools.py repos`) rather than dropped. Quick suites and 30 apps unchanged.
+   Also done: Python keyword via-sinks are one pattern per kind of callee whose regexes name every summarised
+   function and keyword; the message carries the (function, keyword) pair and a pair no summary names is dropped
+   after the scan (`test_keyword_arguments_to_summarised_functions`). This replaced the unused-keyword filter.
+   Only 160 s to 153 s: what remains in the summary passes is taint itself (every parameter is a source there,
+   so log-injection's and path-traversal's many via-sinks are checked against every call), not pattern count.
+   CVE suites re-run after all of this (2026-11-01): Python 90 min (was 1 h 45 min), JavaScript 22 min; every
+   number unchanged (Python verdict 5/14 found, 1 still flagged; review 6/14, 1; JavaScript verdict 0/10; review
+   3/10, 3). Large-project scans are 3-4 times faster, yet the suite is only 15% faster, so most of the suite's
+   time is elsewhere. Timing each case and tool (90 min in all): litellm alone took 46 min, 23 per side, of which
+   15 in Semgrep and 7 in codewatch's ReDoS check, nearly all on twelve minified Next.js chunks committed under
+   `litellm/proxy/_experimental/out/_next/` (one 100 KB line each, hundreds of regexes, each check allowed 3 s).
+   Done: `collect` skips JavaScript files of 20 KB or more whose lines average over 500 characters (bundler output,
+   whatever its name or folder) and logs how many. Across the 30 apps, ~/Dev and every benchmark checkout it
+   matches only bundles (Next.js, Astro, TinyMCE, archivy's static editor). litellm: 2,736 s to 476 s, its
+   codewatch check 435 s to 0.6 s per side. The whole Python CVE suite: 90 min to 48 min, every number unchanged;
+   quick suites and the 30 apps unchanged (`test_minified_bundles_are_recognised_by_content`). Left: Semgrep is now most of every case (open-webui 222 s and
+   litellm 229 s per side; dtale 135 s); Grappelli's check still takes 58 s per side on vendored, unminified
+   jQuery, jQuery UI, TinyMCE and select2 (done 2026-11-01, see below). Every case side now scans within the 5-minute budget (largest open-webui 4.3 min,
+   litellm 4.0). Measured on open-webui's first returner scan (178 files, 85 s): the pass-through rules are 50 s of
+   Semgrep's core time (9,066 results), the returns rules 4 s, the fields rules none beyond the scan's own cost. The
+   16 Python pass rules have 11 distinct sanitizer sets (six rules share one). Done: one pass rule per group of
+   rules alike apart from sources and sinks, its message naming the rules it answers for; open-webui's first
+   returner scan 78 s to 65 s, its side 252 s to 237 s, quick suites and 30 apps unchanged. Done: the deeper returner and summary passes
+   take only what the previous depth added as their extra sources or sinks (semi-naive evaluation), so they no
+   longer re-report what it found; open-webui's side 237 s to 206 s. Quick suites and 30 apps unchanged; CVE pairs
+   Python 48 to 40 min, JavaScript 22 to 11 min, findings unchanged.
+   Done (2026-11-01, at the user's direction: analyse the app's own code file by file, dependencies only through
+   the audit): vendored libraries are skipped by content. A JS/CSS file opening with a library banner (name and
+   version, `/*! jQuery v1.11.3`; a licence header alone matches Airflow's own files), and JS/CSS under a folder
+   inside static/, public/ or assets/ that holds a licence file (TinyMCE has no banner; monorepo packages have
+   licence files, but none inside an asset folder). Across the 30 apps, ~/Dev and the benchmark checkouts both
+   matched only third-party libraries. Grappelli's case 305 s to 41 s (per side: codewatch check 58 s to 0.6 s,
+   Semgrep 85 s to 15 s); CVE pairs
+   Python 40 to 35 min; quick suites, 30 apps and both CVE suites unchanged.
+9. **JavaScript CVE misses** (2026-11-01, non-blind cases only; verdict 0/10 before this). Added:
+   - GHSA-p849 (NocoBase, SQL injection): `Sequelize.literal()`/`sequelize.literal()` as a SQL sink, NocoBase's
+     `ctx.action.params` (also `ctx.action?.params`, which a plain pattern doesn't match) as a request source, and
+     names destructured with a default (`const { filter = {} } = req.body`), where Semgrep's taint drops the
+     value. The last is general: an Express handler with a defaulted query field was invisible too.
+     `test_sequelize_literal_and_resource_action_params`.
+   - GHSA-79wm (claude-code-templates, command injection): with `shell: true`, `spawn`/`spawnSync` join the
+     argument array into the shell command, so request data anywhere in it is a sink, not only in the command.
+     `test_spawn_with_a_shell_joins_its_argument_array`.
+   Not rules: GHSA-w6x9 (MagicMirror, SSRF) is paired with the wrong fix commit (58c2a5e fixes GHSA-w26r, an IP
+   allowlist for Socket.IO, not the calendar fetch), so it can't be found as listed; GHSA-vmg4 (Apostrophe,
+   prototype pollution) is a deny-list that missed inherited properties such as `toString.call`, a judgement
+   about which keys are safe rather than a source reaching a sink. The five CWE-22 misses are in step 2 above.
+   JavaScript CVE pairs after it: verdict 2/10 found, 0 still flagged (was 0/10); review 4/10, 3 (was 3/10, 3).
+   Both found cases are quiet at their fixes; GHSA-79wm is also found where the request's prompt is passed to
+   the functions that spawn it. Quick suites and the 30 apps unchanged.
+10. **Ordinary-app learning set** (2026-11-01; five new apps, cloned in `~/.cache/codewatch/fresh/`, see Repos).
+   Verdict findings before: flaskbb 22, outline 23, node-express-mongoose-demo 3, express-rest-boilerplate 1,
+   proshop-v2 1. Fixes, each in a test:
+   - Python (flaskbb, `test_sqlalchemy_statements_and_safe_redirect_helpers`): a SQLAlchemy
+     `select()/insert()/update()/delete()` chain binds its values (`sa.text("..." + x)` is still a sink); a
+     project helper named `*safe_url`/`safe_redirect`/`*_safe_next` (`get_first_safe_redirect_url`) cleans an
+     open redirect.
+   - JS open redirect (outline, `test_js_redirects_within_the_site_are_not_open`): a template or concatenation
+     with a fixed relative prefix (`/auth/${x}`, not `//`) or with the value after `?`/`#` stays on the site; a
+     `getValidated...` helper is a sanitizer. The request's own path (`req.url`, `ctx.path`) moved to a separate
+     review-only rule, `open-redirect-path`, as in Python (`//evil.com` is a valid path). This also cleared seven
+     false alarms in dvna and vulnerable-node (fixed-path redirects such as `"/products/" + id`).
+   - JS summaries (outline, `test_returner_calls_and_handlers_in_javascript`): from-source rules use `exact: true`
+     (a `perform(context)` call was both the source and, through another class's `perform`, the sink of itself),
+     and Koa/Express handlers taking `next` aren't returners of request data (`renderShare`).
+   - JS SSRF and stack traces (proshop-v2, express-rest-boilerplate,
+     `test_js_ssrf_to_a_fixed_host_and_stack_traces_dropped_outside_development`): a URL whose host is fixed
+     (`https://host/...`, `${PAYPAL_API_URL}/...`, `${config.x}/...`) is not SSRF; a `stack` field deleted from
+     the response object outside development is not exposed.
+   - Weak hash (`test_the_crypto_module_name_is_not_a_security_purpose`): `crypto` (Node's module name, in every
+     `crypto.createHash('md5')`) no longer makes a call security-related.
+   - Measurement: `devtools.py repos` now skips bundles and vendored libraries as real scans do
+     (`collect.without_third_party`); flaskbb 78 s to 33 s.
+   After: flaskbb 0, express-rest-boilerplate 0, proshop-v2 0, node-express-mongoose-demo 2 (real: `err.stack` in
+   the 500 page), outline 8: six real (four `rejectUnauthorized: false`, two md5 of the JWT secret) and two known
+   false alarms: `plugins/passkeys/server/auth/passkeys.ts:266` (`getPasskeyLoginRedirect` returns a fixed
+   string; JS has no pass-through analysis) and `server/routes/app.ts:320` (`share.canonicalUrl` from a lookup
+   by request id; JS has no lookup-result sanitizer). Those two are the next JS candidates.
+   Then a JS `lookup-result` sanitizer (`san-lookup-result`, every JS taint rule; outline's
+   `const result = await loadPublicShare({id: ctx.params...})`): the variable assigned from a bare
+   `getX`/`fetchX`/`loadX`/`findX`/`lookupX` call, not the call, and not request- or redirect-shaped names
+   (`getQuery`, `getRedirectUrl`, `findNext`); the summary passes drop it as they do Python's, so a project helper
+   found returning request data still counts. `test_what_a_javascript_helper_looks_up_is_stored_data`. outline
+   7 (6 real). Left: passkeys.ts:266, a call inline in the sink to a helper that returns a fixed string; JS
+   pass-through would not reach it either (Python's cleans only assigned results, because cleaning the call hid
+   a real path traversal in one of the user's own projects), so one case doesn't justify it.
+   Quick suites unchanged; CVE pairs unchanged (Python verdict 5/14, 1; review 6/14, 1; JavaScript verdict 2/10,
+   0; review 4/10, 3); the 30 apps lose only the seven dvna/vulnerable-node redirects above.
+11. **Second ordinary-app learning set** (2026-11-01; Django, FastAPI, NestJS and Next.js to match blind set 2's
+   frameworks without using it; cloned in `~/.cache/codewatch/fresh/`, see Repos). Verdict findings before:
+   taiga-back 52, immich 11, wger 9, dispatch 8, linkwarden 6 (86). Fixes, each in a test:
+   - Python summaries (taiga, `test_view_actions_builtins_and_orm_chains_are_not_returner_calls`): DRF's
+     `ViewSet.list`/`create` were returners, so every bare `list(...)` and, through `$MODULE.$RET_FUNC(...)`,
+     every `Project.objects.create(...)` became request data (52 importer and SQL findings). A returner named like
+     a Python builtin no longer counts; the module form takes one name, not a chain; a `return` of a response
+     (`Response(...)`, `response.Ok(...)`, `HttpResponse*`, `render`, `jsonify`, `redirect`) isn't data for a
+     caller. Taiga's scan went from 151 s to 109 s with fewer returners.
+   - Python sources (taiga, wger, `test_signed_in_user_model_metadata_and_compiled_django_sql`): `request.user`
+     (the signed-in account) and `Model._meta` are the server's data (`known-safe`); Django's
+     `queryset.query.where.as_sql(...)` is SQL with placeholders (`str(queryset.query)` stays tainted); a quoted
+     `_meta.db_table` isn't a `sql-value-formatting` value.
+   - Python redirects (wger, `test_django_redirect_replaced_after_a_failed_check_and_reverse`):
+     `checked-or-replaced`, `if not url_has_allowed_host_and_scheme(x, ...): x = reverse(...)`; Django's
+     `reverse()` and `get_absolute_url()` join `url_for()` in `known-safe`.
+   - SQLAlchemy (dispatch): a session's ORM `query(...)` chain binds values like `select()`.
+   - `sql-value-formatting` (dispatch, `test_sql_value_formatting_skips_migrations_and_constant_identifiers`):
+     not in Alembic's `upgrade`/`downgrade`/`run_migrations_*` or Django `migrations/` folders, and not an
+     upper-case constant interpolated (`"{CORE_SCHEMA_NAME}"`, an identifier).
+   - JS (linkwarden, immich): `Math.random()` for a username or other display value isn't a secret even inside an
+     auth function (`test_a_generated_username_is_not_a_secret`); the Host and X-Forwarded-* headers aren't XSS
+     sources (a victim's browser sends the real host) and `http.request({...})` is SSRF only through
+     host/hostname/url, not path or headers (`test_host_headers_and_request_option_paths`); the request getter
+     source is exact and the `request` library sink only matches its verbs, since Semgrep resolves a function
+     imported from a project's `utils/request` module as `request.$NAME`
+     (`test_a_request_getter_argument_is_not_request_data`).
+   - JS weak hash (immich, `test_a_javascript_hash_is_judged_by_its_own_function`): the security-purpose context is
+     the enclosing function by indentation (through if/for blocks), not a ±10-line window that reached a
+     neighbouring signature check.
+   - Test files: `e2e/`, `specs/`, `cypress/` folders and `.e2e-spec.ts`/`-spec.js` names are test code (hotspots).
+   - Tools: `devtools.py repos --messages` prints each finding's message tail (via/from/field helper names).
+   After: wger 0, taiga-back 0, linkwarden 0, immich 0 (its e2e findings are now hotspots), dispatch 1;
+   taiga's scan 151 s → 111 s. Quick suites and CVE pairs unchanged (Python verdict 5/14, 1; JavaScript 2/10, 0);
+   the 30 apps lose only pygoat `challenge/views.py:383` path-traversal (an image name cut to `[A-Za-z0-9_-]` and a
+   build path from the lab's own config, not a real path); learning set 1 unchanged. Known false alarm left: dispatch
+   `plugins/dispatch_core/plugin.py:225` (JWT `kid` in the path of `https://public-keys.auth.elb.{region}.amazonaws.com/{kid}`; a regex can't tell which interpolation is
+   tainted, and a tainted region would be real).
+12. **Second blind run** (2026-11-01, at 81ce0e3; first and only scan of blind set 2, not to be used to adjust
+   rules). Verdict findings:
+   - express-typescript-boilerplate: 0.
+   - ghostfolio: 1, real at code level: `request.originalUrl` interpolated unescaped into
+     `<meta content="${rootUrl}${path}">` (html-template.middleware.ts:185; browsers percent-encode `"` in a path,
+     so hard to exploit, but nothing escapes it).
+   - mealie: 7. Real at code level: the session cookie is `httponly=False` (auth.py:163; commented as needed by
+     the SPA). False alarms: 4 path traversal via `_save_recipe_asset()` (the name goes through `slugify()` and
+     the extension through an allowlist; two lines, each reported twice), a `window.open` of a group-configured
+     action URL (stored settings, not a redirect), and `sql-value-formatting` of a value the database itself
+     returned (`PRAGMA`/`session_replication_role` state).
+   - healthchecks: 28, all false alarms: 10 open redirects (7 behind the project's own `_allow_redirect()`
+     check, which rejects any netloc and resolves the path against a list of routes, 3 `url = reverse(...);
+     url += query`), 7 trust-boundary session writes (OAuth state, a project code, a form's cleaned values),
+     6 weak-hash (SHA-1 of a code, or of a value plus `SECRET_KEY`, used as a key or unsubscribe token, not a
+     password), an insecure cookie (`secure=bool(settings.X)`, `httponly=True`, value "1"), and XSS
+     (`HttpResponse(csrf.get_token(request))`).
+   So 2 of 4 apps have verdict false alarms (34 in all, 28 in one Django app), the same rate as blind set 1
+   (2 of 4, 12). The two learning sets fixed the frameworks' common shapes, but each new app brings its own
+   helpers. Lessons (to act on only with non-blind cases): a positive guard is often a project function, so a
+   guard-shaped call (`if x and f(x): redirect(x)`) where `f` returns a bool might be better as a hotspot than
+   a verdict; trust-boundary on ordinary apps is almost always noise and might be review-only; weak-hash needs
+   a password-shaped context, not just a security-sounding function. The blind set is now spent.
+13. **Third ordinary-app learning set** (2026-11-01, after blind set 2; two Django apps since Django was the
+   weak framework there, plus Flask and Next.js; cloned in `~/.cache/codewatch/fresh/`, see Repos; blind set 3
+   pinned before any of this). Verdict findings before: CTFd 23, paperless-ngx 13, recipes 12, umami 0 (48).
+   Fixes, each in a test:
+   - Stored rows (`test_orm_rows_and_self_lookups_are_stored_data`): lookup-result now covers an ORM query run to
+     its row (`Users.query.filter_by(...).first()`, `manager.only(...).filter(id=v).first()`, also in the
+     returner pass), `x, created = Model.objects.get_or_create(...)`, and `self._get_X()` methods (paperless's
+     version resolver made every document path request data: 8 path traversals). Not `self.get_serializer`,
+     `get_form`, `get_success_url`/`get_redirect_*`/`get_next_*`, which hand back the request's own data.
+   - Python (`test_site_urls_session_ids_equal_values_and_plain_text`): a `reverse()`/`url_for()` URL (or
+     `build_absolute_uri(request, reverse(...))`) followed by text that doesn't start with "/" stays on the
+     site (recipes; a bare `reverse("index") + x` is still open, "/" + "/evil.example"); `request.script_root`
+     is the server's mount point (CTFd); trust-boundary: a record's `.id`/`.pk` and a hash or signature aren't
+     request data (CTFd's `login_user(user)` after sign-up); validated-guard: `if x != expected: abort(...)`/
+     `return`/`raise` (CTFd share.py), plain comparisons only; XSS: `HttpResponse`/`Response` typed as plain
+     text, CSV or a download (`application/force-download`), or re-typed on a later line (`r.mimetype =
+     "text/plain"`), isn't HTML; insecure-cookie: only a missing or literal-False `secure=`, not a value from
+     config (CTFd's session interface); SQL: a model's `__table__.select()/insert()/...` binds values (CTFd).
+   - JS (`test_same_page_jumps_and_the_configured_root_are_not_open_redirects`): `location.href.split("#")[0]`
+     plus anything is this page (its path is included, so nothing appended moves the host; `location.origin` is
+     not cleaned, "@evil.example" would); the configured base URL (`*.urlRoot`, `baseUrl`, `rootUrl`, ...)
+     followed by a fixed path or "?"/"#" is the fixed-prefix case (CTFd).
+     The prefix is matched deep in the left operand of each value after it, so a long `+` chain counts.
+   - Python, also: Django `Model.objects.*(...)` rows are stored data wherever used (a `for` over a query), not
+     `raw()`/`extra()`; `mimetypes.guess_extension()`/`guess_type()` are known-safe (recipes). The equality guard
+     needs an expected value that is neither a bare variable nor request data: the first version hid vulpy's
+     real SQL injection behind `if password != password_again: return`.
+   - Bundles: a JS file of 1-20 KB on one line is a bundler chunk (CTFd's Vite pages: 27 files skipped, was 11),
+     not source.
+   After: CTFd 7, paperless-ngx 9, recipes 3, umami 0 (19 of 48). Quick suites and CVE pairs unchanged; the 30
+   apps lose two trust-boundary findings that store a user's database id after login or sign-up (dvpwa
+   sqli/views.py:42, pygoat insecure_design_lab app.py:80) and a known XSS false alarm in one of the user's projects;
+   learning sets 1 and 2 unchanged. Left:
+   - Real: recipes api.py:2960 (`traceback.format_exc()` in the response). CTFd git.py:132/150/169 store a route
+     parameter in the session: the rule's shape, little impact.
+   - paperless views.py:1461-1479: a DRF view's whole `request` is a source, so any helper called with it
+     returns tainted data (`resolve_requested_version_for_root(root_doc, request)` only reads an int from it).
+     Pass-through summaries are per function; per-parameter ones (a call is clean when only arguments that
+     aren't passed through are tainted) would fix it. Fixed in item 14.
+   - Objects built from request data taint every attribute (paperless_mail: an OAuth manager made with the
+     session's state, then its configured redirect URL); a serializer's related-object field is a model
+     (paperless views.py:4226); a file-like result of a project function given to send_file (CTFd exports);
+     an Angular bypass after an origin allowlist (safeurl.pipe.ts); Jinja for LLM prompts (render.py); a
+     quote check before formatting a table name (CTFd exports:416); rows read back from a cache
+     (recipes automation_helper.py:221/222); `${location.pathname}?...` (CTFd submissions.js:122, which a
+     "//host" path could in principle turn into another host).
+14. **Per-parameter pass-through** (2026-11-02; the paperless-ngx shape from item 13,
+   `test_arguments_a_helper_does_not_hand_back_are_not_its_result`). The pass rules now report which parameter
+   comes back (`$FUNC|$OWNER|$PARAM`), and each call to a project function cleans the arguments at positions or
+   keywords that no def of that name hands back: `self._resolve_file_doc(root_doc, request)` is the document's
+   data when only an int is read from the request. It is a fixpoint (a helper that hands its argument to one that
+   drops it doesn't pass it either; up to 4 rounds, each asking again only about functions that call one whose
+   answer changed), and the returner pass now uses it too. Guards (the first and third in tests):
+   - Only an argument without a call is cleaned: one with a call can hold a sink (a first version lost 6 OWASP
+     Benchmark path traversals, `escape_for_html(p.read_text()[:1000])`).
+   - Never builtins, handlers, names in the rule's sinks, or (in the final scan) summarised functions.
+   - `*args`/`**kwargs` and differing defs of one name keep their arguments.
+   Speed: a straightforward version made Python apps 30-90% slower (djangoproject.com 30s -> 56s, paperless 154s
+   -> 260s). Now within 2-10%: the first round shares pass 1's first scan; the pass rules are one variant with the
+   sanitizers every rule shares (was eleven; fewer sanitizers can only mean more pass-through, the safe side);
+   keyword arguments are one sanitizer with a `metavariable-comparison` pairing function and keyword (was a
+   pattern per keyword); and outside the pass rules only functions that hand back some parameter get argument
+   sanitizers (one that hands back none keeps the cheaper result sanitizer).
+   After: paperless views.py:1461-1479 gone (4); quick suites, both CVE-pair suites, the 30 apps and learning
+   sets 1-3 otherwise unchanged.
+15. **Weak hash only where it stores a password or vouches for data** (2026-11-02; item 12's lesson, acted on with
+   non-blind cases only: outline Team.ts:327/User.ts:337, `test_a_weak_hash_of_a_secret_is_not_a_password_hash`).
+   A weak-hash verdict now needs a password, salt, credential, encryption, certificate, signature, integrity or
+   verification context; a token or code derived from a secret, an HMAC, an OTP or a cache key is for review
+   (MD5/SHA-1 preimages are still out of reach; speed and collisions are what break them). Ground truth checked
+   first: all 151 OWASP Benchmark hash cases write a password file; SecurityEval's are a certificate and
+   passwords. After: quick suites unchanged; outline's 2 deletion-code hashes and vulpy's S/KEY hash chain
+   (utils/skey.py:11/16/25, never recorded as real; an S/KEY chain relies on preimage resistance) moved to
+   review; nothing else changed.
+16. **Four learning-set false alarms by shape** (2026-11-02; learning sets only, each with a test):
+   - Prompt templates aren't HTML (`test_prompt_templates_are_not_html`, paperless paperless_ai/prompts/render.py:29):
+     an `Environment(autoescape=False)` whose loader names prompts, SQL, queries, plain text, Markdown, YAML or
+     code generation renders no page.
+   - A value checked for quotes isn't SQL value formatting (`test_a_value_checked_for_quotes_is_not_sql_value_formatting`,
+     CTFd utils/exports/__init__.py:416): `if "'" not in name:` guards the formatted string.
+   - A regex with a timeout isn't regex injection (`test_a_regex_with_a_timeout_is_not_regex_injection`, recipes
+     helper/automation_helper.py:221/222): the `regex` module's `timeout=` bounds the ReDoS.
+   - A path's name or extension isn't a file opened (`test_a_path_name_or_extension_is_not_a_file_opened`,
+     paperless documents/views.py:4226): `Path(x).suffix`/`.suffixes`/`.stem`/`.name`/`.parts` read the string only.
+   After: those 5 gone; quick suites, both CVE-pair suites, the 30 apps and the other learning-set findings unchanged.
+17. **A named check that ends the request** (2026-11-02; item 12's guard lesson, from Django's documented idiom,
+   no ground-truth case; `test_a_named_check_that_ends_the_request_guards_what_follows`). `if not
+   url_has_allowed_host_and_scheme(nxt, ...): abort(400)` was a verdict open redirect: only `return`/`raise` ended
+   the request there, and a project's own `if not is_safe_url(nxt): return ...` wasn't a guard at all (only its
+   yes-branch form, item 7). Now both clear what follows, with the same check names as item 7; the no-branch itself
+   isn't cleared. After: quick suites, both CVE-pair suites, the 30 apps and the learning sets unchanged. Known gap
+   in the older guards: their `if <... check(x) ...>: ... return` form also clears the branch body, so
+   `if not url_has_allowed_host_and_scheme(x): return redirect(x)` is missed.
+18. **Third blind run** (2026-11-02, at 293fdba; first and only scan of blind set 3, not to be used to adjust
+   rules). Verdict findings (first scan; 26):
+   - babybuddy (Django): 2, both false alarms. The Home Assistant ingress middleware prefixes a redirect's path
+     with the `X-Ingress-Path` header (`"/" + x.lstrip("/")`, host kept: open-redirect) and writes it into HTML
+     (xss); the header is set by the proxy in front, which a victim's browser can't send cross-site.
+   - papermerge-core (FastAPI): 2. Real: `allow_origins=["*"]` with `allow_credentials=True` (app.py:20;
+     Starlette then echoes any Origin). False alarm: sql-injection via `create_document()`, whose helpers only
+     build SQLAlchemy `select(...).where(col == value)` statements for `session.execute(stmt)`.
+   - uptime-kuma (Express): 13, all false alarms. 4 xss of SVG badges from `makeBadge()` (badge-maker escapes
+     its text); 2 xss through status-page helpers whose slug is only a parameterised lookup key; ssrf and xss of
+     an RSS feed (the `feed` library builds XML; the request's Host is only a link in it; nothing is fetched);
+     a response cache's stored body (looked up by a key built from the request); 2 tls-verification-disabled
+     behind a per-notification opt-in (`if (notification.teltonikaUnsafeTls)`); DES-ECB in a vendored
+     `server/modules/axios-ntlm` (with its own LICENSE; NTLM requires it).
+   - postiz-app (NestJS): 9. Real: ssrf, `fetch(query.url)` in an authenticated webhook test endpoint
+     (webhooks.controller.ts:59). False alarms: 5 cookie-without-secure where `secure: true` is spread in unless
+     `process.env.NOT_SECURED`; ssrf and path traversal of an AI image result's URL (`generateImage()`); ssrf of
+     a URL read from Redis by a key from the request.
+   So 4 of 4 apps have verdict false alarms (24, 13 in one Express app), worse than blind sets 1 and 2 (2 of 4
+   each). Python is now close (3 false alarms in two apps); JavaScript isn't. Also: a second scan of uptime-kuma
+   gave two more badge findings (api-router.js:744/827), so a scan isn't fully deterministic on large files
+   (suspect per-file timeouts; check on non-blind apps). Lessons (to act on only with non-blind cases):
+   - A value looked up by a key from the request (Redis, Map, cache stores) is stored data, as Python's
+     lookup-result already says.
+   - A JS cookie's `secure` from config or env, including a conditional spread, isn't a missing flag (Python has
+     this since item 13).
+   - An opt-in TLS bypass behind a per-record or per-config flag is the user's choice: review, not verdict.
+   - SQLAlchemy Core/ORM statements built with `select()/where()` passed to `execute()` bind their values.
+   - Vendored modules inside the app tree (`server/modules/<lib>` with a LICENSE) aren't app code.
+   - Libraries that escape what they render (SVG badges, RSS/XML feeds) need to be known as sanitizers.
+   The blind set is now spent. Next: a fourth learning set weighted to JS/Express and Node apps, cloned and
+   pinned along with a fourth blind set before any scan.
+19. **Fourth learning set and JS pass-through** (2026-11-02; wiki.js, actual, habitica, cloned with blind set 4
+   before any scan, see Repos; kitchenowl's clone stalled and was dropped). Verdict findings before: wiki 20,
+   actual 17, habitica 8 (45), all false alarms. First fix, `test_a_javascript_helper_that_never_returns_its_argument_cleans_its_result`:
+   item 7's pass-through for JS, per function. A call to a project function that can't return a parameter
+   (`const err = requireFileAccess(file, userId); res.send(err)`, which returns a fixed string or null) is
+   clean. Only a plain or `this.` call; only shapes the pass rule sees into (functions, `const` arrows, class and
+   object methods, `obj.f = ...`), never a class field, a reassigned name or an object literal's property;
+   only names whose result is assigned in a file that reads the request. Matching every object literal and every
+   assigned call made actual's scan 92s -> 142s; with those limits 91s -> 97s. After: actual's 8 sync-server XSS
+   gone (37 left); everything else unchanged. Then, each with a test (`test_a_javascript_check_that_ends_the_request_guards_what_follows`,
+   `test_a_signed_cookie_is_the_servers_own_data`, `test_input_escaped_for_a_regex_is_not_regex_injection`,
+   `test_a_url_that_starts_as_a_path_on_this_site_stays_there`):
+   - JS `san-guard` takes a named check that ends the request (`if (!isValidRedirectUrl(url)) return`; names
+     starting is/check/can and containing safe/valid/allowed/permitted/trusted/whitelist/allowlist), not in its
+     own branch, and not a bare `if (!url)`.
+   - `req.unsignCookie(...)` is a sanitizer and `req.signedCookies` no longer a source: what the server signed is
+     its own data, like a session.
+   - regex-injection: `x.replace(<regex>, '\\$&')` escapes the value.
+   - open-redirect: a `let`/`var` that starts as a same-site path stays clean through appends (`url += ...`);
+     known gap, in the rule: a variable set to request data and then appended to would be missed.
+   After: 27 left (wiki's five auth-flow redirects, actual's OpenID redirect, CORS-proxy SSRF and one sync XSS,
+   habitica's Apple redirect and admin regex gone); quick suites, CVE pairs, the 30 apps and learning sets 1-3
+   unchanged. With the focus now on Python (see "Where things stand"), the rest waits. Shapes left:
+   - A fixed same-site path built in a helper: `` `/login?${params}` `` (wiki 1272); an OAuth provider's
+     authorization URL from a library call (wiki 1268).
+   - A value hashed by a project helper before it names a file (habitica content.js, `hashForFilter()` with
+     `charCodeAt` arithmetic): the summary pass treats a helper's result as carrying its argument, so this needs
+     pass-through in pass 1 too; and a value used only inside `if (x && allowed.includes(x)) { ... }` in JS.
+   - A hash digest isn't markup (wiki notifications.ts:156, an ETag); `path.relative()` containment (actual
+     serve-build.mjs:87); an opt-in TLS bypass (wiki hooks.ts:95) is review, as blind set 3 said.
+   - `WIKI.models.x.y(...)` model-registry lookups and summaries through `this.getEntry(...)` (wiki
+     navigation.ts:705, feedback.ts:754, assets.ts:951); PayPal's approval link (habitica paypal.js:41/105).
+20. **Security review of the server** (2026-11-02; a review at the user's work found the first four, the rest from
+   a full review; `tests/test_security.py`, each test failing without its fix):
+   - Uploaded commits were git options: `reference_commit = "--output=/path"` made `git diff` overwrite any file
+     the server could write, and through the project config the same on developers' machines. Uploads now
+     need full hashes and a branch name; every revision passed to git follows `--end-of-options`.
+   - Symlinks: a repository's `a.py -> ~/.ssh/id_rsa` was linted, flagged and its content stored and shown.
+     Server checkouts lose their symlinks; files resolving outside the project are never scanned or uploaded.
+   - Server scans ran repository code: basedpyright ran the repo's `venv/bin/python`, pip-audit built its
+     packages. Both only for the developer's own copy (`Context.local`, codewatch-scan); the server checks
+     pinned requirements as written (`--no-deps --disable-pip`). A container is still the real answer.
+   - The server's git credentials: anyone could register a private repository the server's keys or credential
+     helper could read. Only projects an administrator owns (or added with `addproject`) clone with them; others
+     get no global config, an empty HOME and no SSH keys or agent.
+   - A deleted project's mirror served the next project with its key (another user's repository): deleting a
+     project deletes its cache, and a mirror whose remote differs is re-cloned.
+   - Requests to the server's own network: repository and accessibility URLs must resolve to public addresses
+     (checked when saved and again at scan time) and `semgrep_config` must be a registry ruleset, unless an
+     administrator owns the project. Axe had echoed internal pages back as findings.
+   - The client sent its token to a `serverUrl` named by the repository's committed config, and over plain http:
+     now only to a server its user chose (`codewatch init --url`, `~/.config/codewatch/servers.txt` or
+     `CODEWATCH_URL`), and only over https except to localhost; the MCP server likewise.
+   - Defaults: DEBUG off, allowed hosts from `CODEWATCH_ALLOWED_HOSTS`, secure cookies and HSTS with
+     `CODEWATCH_HTTPS=1`, a secret key generated once (0600), the first admin password random (or
+     `CODEWATCH_ADMIN_PASSWORD`) instead of admin/admin, ten wrong passwords lock a username out for 15 minutes.
+   - Tool upgrades install from hashed locks (`tools/*.lock`, `npm ci`), pinned at the installed versions;
+     `make lock` makes new ones to review.
+   - Scans per branch (main included) and across the server (`CODEWATCH_MAX_SCANS`, 4) are limited, scans of one
+     project take a lock, coverage uploads are capped, uploaded severities and types are checked, uploaded
+     results are marked self-reported, a path starting with "-" reaches tools as `./-...` (ruff took
+     `--output-file=x.py` as an option), API numbers are checked and issues sorted in the database, and the MCP
+     server tells agents that issue text and snippets are data.
+21. **Parallel tests and benchmarks** (2026-11-02, asked for: 20 threads, 64 GB). pytest-xdist (`-n auto`): tests
+   9m41s -> 1m06s. `devtools bench` and `codewatch benchmark` scan suites and CVE cases in a process pool, and
+   `devtools repos` the apps (`CODEWATCH_BENCH_WORKERS`, a third of the CPUs); scoring and output are unchanged.
+   Two things went wrong first:
+   - Concurrent Semgrep runs failed with `io_uring_queue_init: Cannot allocate memory`: semgrep-core gives each
+     worker an io_uring, charged to the user's 8 MB locked-memory limit. Semgrep now runs with
+     `EIO_BACKEND=posix` (paperless 169s -> 172s alone).
+   - Six scans each with a job per CPU stretched rules past Semgrep's timeouts and dropped findings silently
+     (litellm's SQL injection, recipes api.py:2960) while running slower than one at a time. Each parallel
+     Semgrep run now gets its share of the CPUs (`CODEWATCH_SEMGREP_JOBS`).
+   After: identical results to sequential runs everywhere; quick suites 470s -> 250s, Python CVE pairs 36 -> 13
+   min, learning sets about 25 -> 10 min, check.sh (lint, tests, quick suites, 30 apps) about 25 -> 7 min.
+22. **More Python ground truth** (2026-11-02, the focus on Python web apps). From GitHub's reviewed pip advisories
+   since 2021 with CWE 22, 79, 89, 94, 502, 601, 611, 78, 918 or 1336 (2,321), those with exactly one fix commit
+   (1,019, 1,003 fetched), at most three non-test source files and 120 changed lines touching web code (189),
+   each fix read by hand: 41 accepted, the rest rejected for being library or framework code (Authlib, aiohttp,
+   urllib3, Django's own ORM...), Tornado apps, stored data with no request path, validator bypasses no rule can
+   see, settings flags, missing authentication, or a fix mixing unrelated changes. Excluded too: InvenTree's
+   advisory (InvenTree is in blind set 4). The 41 were split before any scan by a fixed rule (blind when
+   `int(sha256(id), 16) % 3 == 0`): 19 joined `cve-pairs-python` (now 33), 6 template and front-end JS cases form
+   `cve-pairs-python-frontend` (new `python-web` language: templates and scripts count as source), and 11 + 5
+   form `cve-pairs-blind-python-2` and `cve-pairs-blind-python-frontend` (scanned once, at the end of a round).
+   The old blind CVE suites were spent in step 6.
+   Baseline at this commit (none of the new cases used for rules yet):
+   - cve-pairs-python: verdict 14/33 found, 7 still flagged after the fix (was 5/14, 1); review 16/33, 8.
+     New finds: DB-GPT, TinyScientist and pyLoad upload path traversal, and six that stay flagged at their fix
+     (MindsDB zip slip, pyLoad CNL, LLaMA Factory, label-studio file:// import, MLflow XSS and path traversal),
+     each to be read: an unrecognised guard shape is a false alarm to fix, an incomplete fix is a real finding.
+   - cve-pairs-python-frontend: verdict 0/6; review 4/6 (template `|safe`, jQuery HTML), 2 still flagged.
+   Next: the six still-flagged fixes, then the misses whose flow is visible (changedetection.io's filter that
+   keeps ".", Fides and CodeRed paths, Scout and pyLoad SSRF), then the front end. (This line first listed
+   Gerapy's shell commands too: Gerapy, GHSA-9w7f, is in the blind suite `cve-pairs-blind-python-2`, so it was
+   struck on 2026-11-02 without being looked at.)
+
+   First round on the new cases (2026-11-02), each change with a test in `tests/test_detection.py`:
+   - Still-flagged fixes read one by one. Real (kept): MindsDB (the request's `file` still reaches a path),
+     label-studio (only `file://` blocked), LLaMA Factory (`os.path.isfile(url)` runs before the new check),
+     Scout (its fix is an allowlist check whose name, `check_session_tracks`, says nothing about URLs). False
+     alarms fixed: a validator that raises named for what it checks (`check_lfi_path(url)`,
+     `validate_path_is_safe(path)`; GHSA-527m, GHSA-wc6j); `abspath/realpath/normpath(p).startswith(base +
+     os.sep)` (GHSA-48rp; not without the separator); Flask `make_response({...})` is JSON (GHSA-vwhf); a record
+     looked up through a store or call chain, `_get_tracking_store().get_run(id)` (GHSA-wc6j).
+   - Misses found: Django URL arguments are request input when their urls.py route passes free text
+     (`route_converters.py` marks them on the scanned copy; `<int:pk>`, `<slug:...>`, `\d+` stay clean; CodeRed
+     GHSA-h454); route parameters are tainted where declared (`focus-metavariable`), so `name =
+     secure_filename(name)` clears them (changedetection.io GHSA-9jj8, which also needed `re.sub(r'[^a-z0-9_]+',
+     '', x)` as a path sanitizer; `[^\w.-]` keeps ".." and doesn't count); FastAPI/Starlette `FileResponse(path)`
+     and `sanitise_*` (British spelling) as a validator name (Fides GHSA-r25m); `requests.request(...,
+     url=...)` (Scout GHSA-g53g); and a new rule, `codewatch.python.web.template.xss`: request data passed to a
+     variable a template prints with `|safe` or under `autoescape off` (`template_sinks.py`; Whoogle
+     GHSA-mxvc). Whoogle's vulnerable view still passes for checked, because a forbidden-character guard
+     (`if "'" in x: return`) accepts any literal, `'http' in q` too; requiring non-word characters fixed it but
+     exposed four false alarms in paperless-ngx (views.py:1461-1479, a document resolved through several
+     helpers), so it was reverted until that flow is understood.
+   - False alarms these exposed on the 30 apps, fixed: a session key with a fixed prefix (`f"player_{code}"`)
+     isn't a trust-boundary sink; a model's own `render_to_string(request=request)` isn't request data
+     (djangoproject.com); `{{ form.field|safe }}` renders an escaping widget (pygoat). On the learning sets: an admin-only view (`@admins_only`) renders the administrator's own HTML (CTFd's page preview). New real findings: four
+     XSS in pygoat's labs, and djangoproject.com docs/views.py:57 (a `[\w./-]*` URL part reaches
+     `docroot / Path(*bits)`: any `.fjson` file outside the docs root).
+   - Result: cve-pairs-python verdict 18/33 found (was 14), still flagged 5 (was 7); review 20/33, 7. Front
+     end unchanged at 0/6 verdict: Whoogle's flow needs the guard change above, and its fix changes only error.html,
+     while a pair is scored only in the files its fix changed. Scoring a template fix against the views that render
+     the template is next for the front-end suite.
+   Second batch of front-end cases (2026-11-02, a cloud session; no rules changed). The same advisory source, widened
+   to all years, to fixes over three files or 120 lines when every change is the same weakness (OctoPrint's Jinja2
+   escapes, Indico's confirmation prompts, changedetection.io renaming `.jinja` templates to `.html` so Flask
+   autoescapes them), and to advisories whose extra commits are backports of one fix (the main-branch commit is
+   used). 123 advisories read: 30 accepted, 93 rejected, each with its reason in
+   `benchmarks/reviews-python-frontend-2.md` (blind cases there only by app and file kind). Split before any scan by
+   the same sha256 rule: 21 joined `cve-pairs-python-frontend` (now 27), 9 form `cve-pairs-blind-python-frontend-2`
+   (scanned once, at the end of a round). Rejections were mostly frameworks and libraries (Django REST framework,
+   Flask-AppBuilder, NiceGUI, Dash, Bleach), apps on other servers (Jupyter and WebSSH on Tornado, CherryMusic,
+   Maloja, Roundup, Synapse, copyparty), fixes only in Python, and fixes only in `.svelte` files (Open WebUI five
+   times, Fava): `.svelte` isn't in `SOURCE_EXTENSIONS["python-web"]`, so such a pair can't be scored; adding it is
+   a scorer change for a later session. Baseline: not measured in the cloud session (`devtools.py cases` over the
+   20 large-repository pairs hit the session's two-hour limit; only cabot GHSA-mqwh-r366-4224 finished: verdict
+   missed, review found by `codewatch.templates.unescaped-output`, quiet after the fix). The nightly run measures it.
+   Faster loop from here (the user's call): during the day, each change is checked in isolation (its tests, a
+   probe on the case's files, `devtools.py cases ID...` for the CVE pairs it targets); the full verification runs
+   nightly (`benchmarks/nightly.sh` from a systemd user timer at 01:30, the app list in
+   `~/.config/codewatch/nightly-apps.txt`, a dated report in `~/.cache/codewatch/nightly/`) and is read the next
+   morning.
+23. **More Python ground truth, second batch** (2026-11-02, cloud session; no rules changed). The same rule as
+   step 22, aiming for about 30 more cases. GitHub's advisory API isn't reachable from a cloud session, so the
+   candidates came from OSV's PyPI export (`osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip`), which
+   carries GitHub's reviewed advisories with their CWEs and references: reviewed, published since 2021, CWE 22,
+   78, 79, 89, 94, 502, 601, 611, 918 or 1336, exactly one fix-commit link, not already in a suite: 960 (step 22
+   had 1,003 from the API). Each fix was fetched (`git fetch --depth=2 --filter=blob:none`) and sized: at most
+   three non-test source files (`.py`, templates, scripts) and 120 changed lines: 627. Of those, the ~500 in
+   libraries, frameworks, CLIs, ML toolkits and servers that aren't Django/Flask/FastAPI (aiohttp, Tornado,
+   CherryPy, Twisted, http.server, gRPC, Gradio, Streamlit, NiceGUI, Mesop...) were set aside by repository
+   without reading the diff; the 120 in web applications were read one by one, plus 9 of the 46 pre-2021
+   advisories (the only ones in applications), 129 in all. Every decision and reason is in
+   `benchmarks/cve-candidates-2026-11-02.tsv`.
+   - Accepted 22 (3 of them pre-2021: xmpp-http-upload, graphite-web, Superset). Split before any scan by the
+     sha256 rule: 16 joined `cve-pairs-python` (now 49), 6 form the new `cve-pairs-blind-python-3` (their reasons
+     are withheld in the TSV). Only 22, not 30: the pool under this rule ran out; the rest were rejected for the
+     step 22 reasons (validator and allowlist changes, stored data, missing authentication or authorization,
+     settings flags, library code, mixed or refactoring commits), plus several advisories sharing one fix commit
+     (one case per commit) and a few fixes over the size rule once short commit ids were resolved.
+   - GHSA-q97g-c29h-x2p7 (Whoogle) was accepted, then dropped: its fix commit, 3a2e0b262e, is already the blind
+     case GHSA-hh2q-qv66-jcqg in `cve-pairs-blind-python-2` (two more advisories, GHSA-3q6g and GHSA-phg6, share
+     it too). The diff of that blind case was read in this session before the overlap was noticed; nothing was
+     done with it, but say so if that case is ever discussed. Later batches should drop candidates whose fix
+     commit is in any suite before reading them.
+   - Scopes are the app's package folder, or the two folders a flow crosses (Dagster webserver and log manager,
+     Langflow API and `lfx/custom`). Nothing was scanned in the session; the nightly run measures
+     `cve-pairs-python`. Shapes likely to matter there (open cases only): Quart's Flask-like `request` (AstrBot),
+     flows into a store class (MLflow FileStore, Dagster log manager), an upload into `ZipFile.extractall`
+     (Gramps), `cursor.execute` with `str.format` behind Flask-RESTful (postgraas), and code reaching `exec`/`eval`
+     (Langflow, pgAdmin).
+24. **More Python ground truth, third batch, widened rule** (2026-11-02, cloud session; no rules changed). Step 23's
+   pool ran out at 22, so the rule was widened, each widening recorded here:
+   - Weaknesses: CWE 23, 36 and 73 (path variants), 77, 90 (LDAP), 113 (header injection), 643 (XPath), 943
+     (NoSQL) and 1333 (ReDoS from request data), still request input reaching a sink in the app's own code.
+   - Fix size: up to five non-test source files and 200 changed lines, when the vulnerable flow is still clear
+     from the diff (step 22: three and 120).
+   - Frameworks: Quart, Starlette and Flask-RESTful/Flask-AppBuilder apps count as Flask/FastAPI (step 23 already
+     did this); Tornado, aiohttp, Gradio and Streamlit stay excluded.
+   - Pre-2021 advisories in Django/Flask/FastAPI apps, read the same way.
+   Method as in step 23 (OSV's PyPI export of GitHub's reviewed advisories, fixes sized with a blobless fetch),
+   with one change from CLAUDE.md: candidates whose fix commit is already in any suite, blind ones included, were
+   dropped before reading (6). Only candidates a widening newly admits were considered; ones step 22 or 23's rule
+   already covered were not re-read (step 23's two size rejections were reconsidered: GHSA-j74f was read and
+   rejected). 1,103 candidates, 228 within the widened size rule and newly admitted, about 60 of them in web apps
+   and read one by one (59 lines in `benchmarks/cve-candidates-2026-11-02-batch3.tsv`); the rest are libraries,
+   CLIs and other servers, set aside by repository. Eleven LoLLMS advisories and a few others couldn't be
+   fetched (their commits are gone or their ids are short), so they weren't read.
+   - Accepted 11, not the 30 aimed for: the widened pool is mostly libraries and validator changes too. Split by
+     the sha256 rule: 4 joined `cve-pairs-python` (now 53), 7 form `cve-pairs-blind-python-4` (an uneven split
+     for so few cases; reasons withheld in the TSV). By widening: 7 through the new CWEs, 4 through the size limit,
+     pre-2021 none (the nine pre-2021 app advisories read were frameworks, libraries or stored data).
+   - Open cases: django-wiki's search keyword into `re.compile` (CWE 1333, through a template tag), MLflow's model
+     name into the model-registry FileStore path (36), MobSF's `next` behind `startswith("/")` (601), pgAdmin's
+     backup/import file name into the storage path (22, five files).
+   - Probed with `devtools.py cases` (two allowed): django-wiki found in review mode only (`regex-injection` at
+     the `re.compile`), quiet at the fix; MobSF found in verdict mode, but still flagged at the fix, at saml2.py:146,
+     `redirect(auth.login(return_to=redirect_url))`: the target is the identity provider's URL from python3-saml,
+     so that's a false-alarm shape (a library call's result treated as the request value). Separately, the fix's
+     `sanitize_redirect` still accepts `/\host`, which browsers read as `//host`, so a finding on the login view
+     at the fix would be an incomplete fix, not a false alarm. The nightly run measures `cve-pairs-python`.
+25. **Express/Node sinks** (PR #1, 2026-11-02, the first cloud session; rules finished after local review). New sinks
+   in `javascript-taint.yml` for module shapes the rules missed: `node:` specifiers, fs-extra/graceful-fs,
+   `fs/promises`, inline `require('fs').x`, move/copy destinations, `res.sendFile` without `root`, promisified
+   `exec`, execa with a shell, superagent/needle/ky/undici. Creating a directory isn't a path-traversal sink.
+   multer's generated `req.file.path`/`filename` aren't request data (`originalname` is). `summaries.py`'s returner
+   pass gained `JS_LOOKUP_SANITIZER`, the JS twin of Python's lookup-result. Driven by probes of common shapes, not
+   benchmark cases; the first version added three false alarms in wiki.js that the cloud session couldn't see, the
+   reason rule work now stays local. Verified locally: quick suites, 30 apps and cve-pairs-javascript unchanged;
+   learning set 4 down from 27 to 24. Open question from the session: a one-line
+   `require('fs').createReadStream(req.query.f).pipe(res)` was missed in one probe file but not another.
+26. **Template-only fixes scored at the rendering call** (2026-11-02, cloud session; no rules changed). A CVE pair was
+   scored only on findings in the files its fix changed, and Semgrep's per-file pass was narrowed to them. When the
+   fix changes only a template (Whoogle GHSA-mxvc drops `|safe` from `app/templates/error.html`), the finding is at
+   the Python call that renders it, `render_template('error.html', error_message=...)` (rule
+   `codewatch.python.web.template.xss`), in an unchanged file, so the pair could only count as missed. Now, in
+   `core/benchmark.py`, for Python suites (`python`, `python-web`):
+   - each non-test template the fix changes is named as a view names it (`template_sinks.template_name`), and the
+     Python files in the checkout that render it by that name are found with `ast` (`render_template` /
+     `render_to_string` first argument, Django `render` / `TemplateResponse` second, or `template_name` keyword);
+   - those files join the scan focus and are kept in the scored findings on each side, but only for findings of the
+     template rule inside a call that names a changed template (`spots["renders"]`): an unrelated finding in a
+     rendering file, or the template rule on another template, isn't counted;
+   - a finding that survives the fix still counts as still flagged, as before.
+   It also turned out the template rule could never be scored at all: it's built at scan time, has no catalogue
+   entry, and so carried no CWE. The scorer now gives it the XSS rule's CWEs (`DERIVED_RULES`). Its catalogue gap
+   (no title or CWE on the finding page) is left for a local session. Tests: `tests/test_benchmark.py` builds a
+   Whoogle-like pair in a temporary git repository (found at the render call, quiet after the fix; another
+   template's `|safe` and a direct echo in the same file not counted), and `semgrep_vulnerabilities(...,
+   full_ids=True)` in `tests/test_detection.py` keeps the whole rule id where the last part is ambiguous (`.xss`).
+   - Probe, `devtools.py cases GHSA-mxvc` (cve-pairs-python-frontend): still missed in verdict mode, quiet at the fix;
+     review mode finds `codewatch.templates.unescaped-output` in error.html, as before. The scorer now looks in the
+     right place: it finds the four `render_template('error.html', ...)` calls in `app/routes.py`, but the template
+     rule fires on none of them at the vulnerable commit. The vulnerable call (routes.py:446) is in the `else` of
+     `if len(q) > 0 and 'http' in q: return redirect(q)`, which passes as a guard (next step 3, rule work); the
+     others pass `session['error_message']`, a translation string, and an exception message.
+   - May change other pairs' scores: any Python pair whose fix touches a template now also counts the template rule
+     at that template's render calls. The nightly run measures it.
+27. **More Python ground truth, fourth batch** (2026-11-03, research session; no rules changed). Step 24's rule,
+    read from OSV's PyPI export of GitHub's reviewed advisories (published since 2021, one fix commit, not already
+    in a suite or read before). Most candidates were libraries, frameworks, CLIs and servers, set aside by repository
+    without reading. 74 read, 5 accepted: 2 open and 3 blind. The pool under step 24's rule is nearly used up. The
+    research session didn't add them to the suites. That happened at review the same evening, after checking the
+    open fix commits on GitHub:
+    - Arches GHSA-gmpq joined `cve-pairs-python`. It's 244 changed lines, but most are re-indented SQL: 147
+      ignoring whitespace, in 2 files, so within step 24's limits.
+    - Modoboa GHSA-wwv8 was rejected: its fix touches 10 source files.
+    - The three blind cases form `cve-pairs-blind-python-5`. Their fixes weren't sized (that would mean reading
+      them).
+
+    Decisions are in `benchmarks/cve-candidates-2026-11-03.tsv`.
+28. **Flask's extension-based autoescape** (2026-11-03; from the front-end inventory, driven by
+    GHSA-pwgc-w4x9-gw67 (changedetection.io) in `cve-pairs-python-frontend`). Flask only autoescapes
+    `.html/.htm/.xml/.xhtml/.svg`, so a `.jinja/.jinja2/.j2` template prints every `{{ }}` raw. The template analyzer
+    treated those extensions as autoescaping, and the Semgrep analyzer never scanned them at all (its targets ended
+    at `.html`), so both the `|safe`/autoescape-off hotspot and the generated template rule missed them. Now:
+    `.jinja/.jinja2/.j2/.djhtml` are Semgrep targets (the last was already in the hotspot's paths but unscanned);
+    the generated template rule treats every variable in a Flask-raw extension as a sink for
+    `render_template`/`flask.render_template` only, so Django's `render` calls stay safe (its Jinja backend
+    autoescapes); and a new hotspot, `codewatch.templates.not-autoescaped`, reports the raw variable in those
+    extensions for stored data (review, since Django's Jinja backend autoescapes them too). Test:
+    `test_flask_jinja_templates_are_not_autoescaped` (the hotspot, the taint rule at the Flask render call, and
+    `|e`/`.html`/Django render quiet). The suite is not held out; the nightly run measures GHSA-pwgc.
+29. **JavaScript ground truth from npm** (2026-11-03; candidates gathered in a separate local research session,
+    then reviewed here; no rules changed). Four batches from OSV's npm export (first batch, Next/React/Vue and DOM
+    XSS, long tail, non-HTTP sources), each fix read and split by step 22's rule before any scan: 49 accepted,
+    32 open and 17 blind (`cve-pairs-blind-javascript-2` to `-5`). Reviewed the same day, still before any scan,
+    by checking each open fix commit on GitHub against step 22's limits. Ten were dropped: six fix commits over
+    the limits (Tutanota GHSA-24v3, RSSHub GHSA-2wqw, lobe-chat GHSA-2xcc, claudecodeui GHSA-7fv4, NocoBase
+    GHSA-p853, tts-api GHSA-jx6q), three sanitizer-denylist or renderer-setting fixes in Joplin (GHSA-cgc7, -mrmf,
+    -m6mf) and a DNS-rebinding race (9router GHSA-cmhj). Four whose input isn't an HTTP request (Renovate
+    GHSA-rqgv and -xjr7, Electerm GHSA-v5ff, matrix-appservice-irc GHSA-ffwf) went to a new suite,
+    `cve-pairs-javascript-nonhttp`, so they don't weigh on the web-app numbers. That leaves `cve-pairs-javascript`
+    with 28 cases (10 + 18). Three of the 18 are stored data rendered into the DOM with no request path
+    (Dependency-Track GHSA-7xvh, Outerbase GHSA-wwf9, NocoDB GHSA-h6r4). Step 22 rejected the Python
+    equivalents; they're kept here for the front-end DOM work and may be dropped on review. The blind halves
+    weren't checked against the limits (that would mean reading their fix commits), so the blind suites may hold
+    cases the same review would drop; when scored, report them with that caveat. Decisions and reasons are in
+    `benchmarks/cve-candidates-2026-11-03-*.tsv`. The first nightly run after this step gives the baseline.
+30. **Python ground truth from unreviewed advisories** (2026-11-03; research by a separate agent following
+    `AGENTS.md`, topic 1, reviewed here; no rules changed). Python web apps that aren't on PyPI get advisories GitHub
+    never reviews, so steps 22-27 never saw them. Source: `advisories/unreviewed` in github/advisory-database, since
+    2021, with one GitHub fix commit and a CWE from the list, in Django/Flask/FastAPI repositories. The agent read 65
+    and accepted 13 (8 open, 5 blind). At review, Skyvern GHSA-57gg was rejected: its values come from stored
+    workflow-run context, with no request in sight. Formspree GHSA-2wvm, a fix to one template, went to
+    `cve-pairs-python-frontend`. Added: 6 to `cve-pairs-python` (pgAdmin GHSA-7r93 and -v395, LoLLMS GHSA-8wv4 and
+    -hq38, AIL GHSA-mcpq, OpenResolve GHSA-h3h4), 1 to the front-end suite, and the 5 blind ones as
+    `cve-pairs-blind-python-6`. Their sizes come from `reviewed.py size`. The topic isn't finished: the next batch
+    carries on, and `reviewed.py` skips what this one read.
+    Second batch, the same evening, from the laptop: 70 read, 10 accepted (6 open, 4 blind), 173 Python candidates
+    left in the topic. Added: agent-zero GHSA-8j45 and pyLoad GHSA-3mmf to `cve-pairs-python`; bird-lg GHSA-xjrp
+    (a template `|safe` on request data kept in the session) to the front end; hermes-agent GHSA-xq87 and
+    Vibe-Trading GHSA-mjrq to a new suite, `cve-pairs-python-nonhttp` (paths from LLM-agent and MCP tool arguments);
+    3 + 1 blind as `cve-pairs-blind-python-7` and `cve-pairs-blind-python-frontend-3`. Rejected: Dify GHSA-hw83.
+    Its query reaches the SQL only through the retrieval service and the vector factory. The batch also had it in
+    the JSON but not the TSV, so `reviewed.py guard` now checks that the two agree.
+    Third batch, the first unattended run (`tools/research-batch.sh`): 60 read, 2 accepted, both blind (added to
+    `cve-pairs-blind-python-7`). The rejections are sound, mostly library code and oversized fixes; 150 Python
+    candidates are left in the topic, mostly library code by the look of this batch.
+    Fourth batch, the first run on the desktop timer (10 min, about $0.07): 60 read, 0 accepted. Two rejections were
+    overturned at review: CowAgent's fixes add the first host check on URLs that agent tools fetch (an added check,
+    which passes). GHSA-2xj7 went to `cve-pairs-python-nonhttp`, and the blind one to a new
+    `cve-pairs-blind-python-nonhttp`. Topic 1 is closed: accepted cases fell from 13 to 10, 2 and 2, and the 92 left
+    are mostly libraries. Research moves to topic 2 (Node web apps not on npm).
+31. **JavaScript ground truth from unreviewed advisories** (2026-11-04; topic 2, Node web apps not on npm, research
+    by a separate agent on the desktop timer, reviewed here; no rules changed). Two batches: the newest 60 of 70
+    candidates whose package.json declares a web framework, then all 33 left once the filter was rebuilt. 24
+    accepted (17 open, 7 blind). Every open fix commit was checked on GitHub (`reviewed.py size`, all within the
+    limits with one parent) and read. Four were dropped: RapidRAW GHSA-2jwx (the fix is Rust), PeerTube GHSA-xpfq
+    (an IP check added in a validator; the fetch is in the import job, outside the changed file), fallstudie
+    GHSA-vm92 (the fix still concatenates the email into one query, so the fixed side isn't safe) and MicrobeTrace
+    GHSA-99f9 (a regex tag-stripper on files the user opens, like the Joplin denylist fixes in step 29). Added:
+    8 to `cve-pairs-javascript` and 5 to `cve-pairs-javascript-nonhttp` (chat commands, MCP tool arguments, LLM
+    output, RSS and WebRTC peer content). The agent gave each blind case its own suite; they are regrouped by the
+    same web/non-HTTP split, judged from the advisory text only: 2 in `cve-pairs-blind-javascript-6` and 5 in a new
+    `cve-pairs-blind-javascript-nonhttp`. Their fixes weren't sized. Reasons are in
+    `benchmarks/cve-candidates-2026-11-04-javascript-unreviewed*.tsv`. The JavaScript/TypeScript web-app filter is
+    exhausted, so topic 2 is closed. Topic 3 is queued: the about 380 JS/TS candidates topic 2's framework filter
+    skipped (desktop apps, extensions, bots, plain-Node servers). With that, this source has little left for
+    Python or JavaScript (32 Python candidates, mostly libraries); the rest is mostly PHP (about 1,100). `AGENTS.md` now says one blind suite
+    per batch, with non-HTTP cases in `cve-pairs-blind-javascript-nonhttp`.
+32. **Where the Python misses are** (2026-11-04, from the nightly run's cached scans of `cve-pairs-python` and
+    `-frontend`; open suites only). Each missed pair was sorted mechanically (`score_pair` in both modes): Python 31
+    missed = 5 found only as a hotspot, 5 flagged but the flag survives the fix (the fix's check isn't recognised),
+    21 with nothing of that weakness; front end 28 = 10 hotspot only, 1 survives, 17 nothing. What is behind the
+    "nothing" ones (from the fix diffs, read by an Ollama model, 7 checked by hand with probes): missing sinks or
+    sources (pgAdmin's `conn.execute_scalar()` isn't a SQL sink; `req.form` where `req` is the request passed in
+    as a parameter isn't a source; a cookie decompressed and unpickled; `abort(400, message=...)`), project checks
+    trusted by name that the advisory says are incomplete (pyLoad twice, a weak `get_safe_url`, a homemade
+    `sanitized_join`, an unquote bypass), flows through framework layers in other files (pygeoapi providers,
+    Dagster, Lektor, a DRF serializer feeding a Jira client), and 4 with no data flow at all (a settings flag, an
+    unauthenticated RPC, an ownership check, a stored URL). Front end: about 11 are browser JS writing fetched
+    data as HTML (`innerHTML`, `.html(response)`, notification and select2 markup), about 5 are template contexts
+    autoescape doesn't cover (`href="{{ request.args.next }}"`, `onclick="location.href='{{ x }}'"`, unquoted
+    attributes, `'{{ x }}'` in a script), and the 10 hotspot-only ones are `|safe`/`autoescape off` on stored data.
+    Work order, local: (1) the hotspot-only Python flows that are request data (FastAPI `UploadFile.filename`),
+    (2) project SQL helpers such as `execute_scalar` as sinks, (3) the request passed in as a parameter as a
+    source, (4) the fixes' checks recognised, (5) template-context XSS. The browser-JS block and the
+    incomplete-check cases are the hard part and wait.
+    (1) done the same day: a FastAPI route's `UploadFile` parameter (or a list of them) is request data through
+    `.filename` (libre-chat GHSA-3864, LightRAG GHSA-v9w6, both now found and quiet at their fixes). LightRAG also
+    needed `match` statements whose `case` pattern spans lines (`case (\n ".txt"\n | ".md"\n ):`) rewritten:
+    the rewrite skipped them, and the unrewritten `match` lost the route's finding further down the file. The six
+    learning apps with uploads or `match` statements (paperless-ngx, recipes, wger, dispatch, immich, netbox)
+    gave the same findings as the nightly run.
+    (2)-(4), same day: pgAdmin's driver methods (`conn.execute_scalar/_dict/_2darray/_void`) are SQL sinks
+    (GHSA-v395); `req.form/.args/.values/.files/.get_json()` is request data unless `req` was assigned from a call
+    (GHSA-cr8c, the file manager's `add(self, req)`); a `Path` built only for `.relative_to()` isn't a path sink,
+    and `try: Path(os.path.abspath(...)).relative_to(base) except ValueError: return` (or `.resolve()` first)
+    clears the value, the lexical `Path(name).relative_to(base)` the fix replaced doesn't (GHSA-cr8c);
+    `if ... or not _is_safe_redirect_url(x): x = url_for(...)` clears x unless an `and` can skip the check, and
+    Flask-Login's `login_url()` is an internal URL (GHSA-7r93). All five targets now found and quiet at their fixes.
+    Found on the way: psiturk GHSA-9mq4 was lost because `if not ('hitId' in request.args and ...): raise` matched
+    the forbidden-character guard (`if "'" in name: raise`) with `request.args` as the checked value, which cleared
+    every request value after it; the request's own mappings are now excluded from that guard. That one can add
+    findings on ordinary apps (a key-presence check before reading the value is common), so the nightly run should
+    be read for new findings after such checks. Not done: a hotspot for template values in event handlers,
+    unquoted attributes and script strings (5 hotspots on the learning apps for 2 review-mode cases).
+    (5), part: `codewatch.templates.request-in-url-attribute`, a vulnerability for `request.args/GET/form/...`
+    printed at the start of an href/src/action or inside an event handler (Formspree GHSA-2wvm, now found and
+    quiet at its fix); no match in any learning app or ~/Dev project.
+33. **Topic 3, first batch** (2026-11-04; JS/TS repos without a listed web framework, research by the desktop agent,
+    reviewed here): 60 read, 2 accepted (servor GHSA-pcvv, open: request URL to path.join(); one blind, to
+    `cve-pairs-blind-javascript-nonhttp`). Two "fix too large" rejections were the size tool's fault, which counted
+    locale JSON and `vitest.config.ts` as source; `reviewed.py`'s NOT_SOURCE now skips translation catalogs and
+    test-runner configs, and both were overturned: SQLBot GHSA-fghj (a Python FastAPI backend: a body model's
+    filePath joined to the upload folder) to `cve-pairs-python`, and Openpanel GHSA-wfxj (a WebSocket route's
+    projectId in a ClickHouse query) to `cve-pairs-javascript`. Their split was checked after their diffs were read
+    (both open, so no harm, but the order is split first). Every earlier "too large" rejection whose case would be
+    open (99 rejections across the batches) was re-sized with the corrected tool: none other fits the limits.
+    Measured the same day: servor found (still flagged after its fix, `path.normalize()` plus stripping leading
+    `../` isn't recognised), Openpanel missed (the projectId crosses packages). SQLBot was only a hotspot because
+    its request model sat outside the case's scope, and widening the scope did nothing: `fetch_pair` set the
+    sparse checkout only when it first cloned. It now sets it every time, so the nightly run picks up any scope
+    changed since a clone was made (numbers can move for that reason alone). With `if os.path.commonpath([p, base])
+    != base: raise` accepted as a containment check (its fix), SQLBot is found and quiet. Left as designed:
+    cg GHSA-w228 (a redirect back to the Referer is not treated as open; only the linking site chose it) and
+    OpenResolve GHSA-h3h4 (request values in a JSON error message are not XSS). Whoogle GHSA-2689 is a cross-file
+    flow (a cookie reaching pickle.loads inside a model class).
+34. **Inline scripts in templates** (2026-11-04): the JavaScript rules never saw `<script>` blocks in .html/.jinja
+    templates, where Python apps keep much of their front end. `inline_scripts.py` writes a `.js` copy of each
+    template with only its inline code, on the same lines (markup, `src` scripts and non-JS script types blanked,
+    `{{ x }}` made a number, `{% %}` blanked), and findings map back to the template. Measured: no front-end case
+    changes (their data comes from fetch responses and stored values, not DOM sources) and the 32 Python apps give
+    the same findings, so it adds coverage for DOM sources with no new false alarms there. JavaScript misses
+    (cve-pairs-javascript, 25) sorted like step 32: 8 logic/authorization, 6 path checks that look safe, 4 stored
+    data, 3 missing sinks (a Koa error message, Ghost's postMessage preview in an HTML file, an EJS value in a
+    script), 1 cross-package (Openpanel). No cheap rule there yet.
+35. **Python fixes still flagged** (2026-11-04, the 11 of the nightly run; Ollama drafts, the doubtful ones read
+    by hand). Real, the fix incomplete or another flow left open: MindsDB GHSA-2g5w (`data["file"]` still reaches
+    `os.remove`), LLaMA Factory GHSA-527m (`check_lfi_path` compares without `os.sep`), MobSF GHSA-8m9j (`/\\host`
+    passes `sanitize_redirect`), Parsl GHSA-f2mf (two query helpers left unparameterised), AIL GHSA-mcpq (the same
+    raw error string in another view), label-studio GHSA-pc6f (as read in step 24: SSRF protection is a setting).
+    False alarms whose shapes aren't worth a rule yet: agent-zero GHSA-8j45 (a helper that resolves, checks
+    `relative_to()` and raises, flagged at the call because `Path(value)` is itself a sink), pgAdmin GHSA-9crj
+    (`check_access_permission` checks containment, but by name it's an authorization check, which step 24 chose
+    not to trust), LoLLMS GHSA-8wv4 (a FastAPI body parameter named `request` makes its int fields request data,
+    and an argv list with a fixed program and no shell is still a command sink; lines 290/292 carry a real path
+    either way), Scout GHSA-g53g (as read in step 24), arches GHSA-gmpq (`sql-value-formatting` on a stored id: a
+    pattern finding, not taint).
+36. **MCP tool arguments** (2026-11-04): FastMCP's `@mcp.tool` / `@mcp.tool()` parameters typed as text are a source
+    (a model chooses them, and text it reads can steer it), in the shared Python sources. Driven by Vibe-Trading
+    GHSA-mjrq (`cve-pairs-python-nonhttp`), which stays missed: its sink is in another file, behind
+    `store.load_run(run_id)` on a store object. No learning app or ~/Dev project is an MCP server, so the nightly
+    apps can't show false alarms from it; hermes-agent and CowAgent register tools through their own registries.
+37. **Topic 3, batches 2-4** (2026-11-04; desktop agent, reviewed here; no rules changed): 180 read, 26 accepted
+    (16 open, 10 blind). Every open fix commit was sized (`reviewed.py size`, all within the limits, one parent)
+    and read on GitHub. Seven dropped: open-notebook GHSA-wr7p (the route validates the URL, but the fetch is in a
+    background command outside the changed file) and Omnivore GHSA-w562 (a webhook URL stored and fetched later
+    by a job), both like PeerTube GHSA-xpfq; DatoCMS GHSA-x8p2 (the path only becomes the redirect parameter of the
+    customer's draft-mode URL; the redirect happens on their site); sim GHSA-23hh (upload allowlist and served
+    content-type hardening mixed into a `..`-stripping fix); AnythingLLM GHSA-xcfw (`dumpENV` writes values read
+    from process.env, with a character denylist); and NginxProxyManager GHSA-mhxx and -5rqg, whose fix commit is
+    also a blind case's fix: they were left unread and only the blind one is kept. **New check for the review:
+    an open case whose fix commit is also a blind case's is dropped unread** (the agent split by advisory id, and
+    three advisories shared one commit). Added: 5 to `cve-pairs-javascript` (Omnivore GHSA-w9wc scanFeeds URL to
+    axios.get; openstatus GHSA-952x callbackURL to router.push; double-take GHSA-q9xj a request header in an
+    inline script; AnythingLLM GHSA-f6rh a body sessionId object in a Prisma where, and GHSA-866h multer upload
+    names to disk), 3 to `cve-pairs-javascript-nonhttp` (SiYuan GHSA-358r clipboard HTML, Netron GHSA-wfq7 model
+    names to innerHTML, la-forge-mcp GHSA-h7vv an MCP tool argument to writeFileSync), 1 to
+    `cve-pairs-python-frontend` (cti-transmute GHSA-fq55, ECharts tooltip HTML). Blind: 2 in
+    `cve-pairs-blind-javascript-7`, 5 in `-8`, 2 in `cve-pairs-blind-python-frontend-4`, 1 in
+    `cve-pairs-blind-javascript-nonhttp`; their fixes weren't sized. 147 topic-3 candidates remain.
+38. **Cross-file method calls** (2026-11-04/05; step 32's "flows through framework layers in other files"). The six
+    Python misses read first: each needs something different. Done:
+    - A summarised Python method also connects through another receiver (`store.load_run(run_id)`), only where
+      the calling file imports the defining module (`visible`) and the name isn't in `GENERIC_METHODS` (builtins,
+      dict/list/str methods, `get`/`save`/`update`/`run`...). A method that hands nothing back is clean on such a
+      receiver too, and so is a call to one used inside an expression (`self.run_dir(x) / "run.json"`) when no
+      argument holds a call.
+    - Path traversal gets its own pass-through answer (`OWN_PASS_RULES`): a helper that checks containment before
+      returning a path hands nothing back for that rule. Pass 1 ran before the passes were known, so summaries
+      that rest on such a helper are redone (`resummarise`, only their defining files).
+    - `pathlib.Path(x)` assigned to a variable is no longer a sink by itself (its uses are); `candidate.name`
+      through a variable is a basename.
+    - Starred assignment targets (`[*log_key, ext] = request...split("/")`) lost taint; the analysis copy unstars
+      them (`starred_targets.py`).
+    - A package-qualified import resolves to a project file under another folder (monorepos: Dagster's
+      webserver imports `dagster._core.storage...` from `python_modules/dagster/dagster/`).
+    - Lookup results: an outbound `requests`/`httpx` reply and a django-filter `.qs` aren't request data.
+    - Scorer: files importing a changed Python module are scanned too; their findings count when the fix makes
+      them go away, never as still flagged (Dagster's fix is in the log manager, the sink in the webserver).
+    Measured with `devtools.py cases`: Vibe-Trading GHSA-mjrq and Dagster GHSA-q93c now found and quiet at their
+    fixes. Whoogle GHSA-2689: a probe of its two files finds the flow (`g.user_config.from_params(...)` to
+    pickle.loads, routes.py:161), but the case is still missed; not yet explained. Left: pygeoapi GHSA-f6pr (plugin
+    loaded by name, the handler passed as a value), Lektor GHSA-wv28, firefighter GHSA-fqvv (DRF `validated_data`
+    as a source, and `http_client.get(url)` on a project wrapper: needs receiver types).
+    Fifteen Python learning apps against the 2026-11-04 nightly run: 4 findings gone, all triaged false alarms the
+    night before (label-studio's safe_join-guarded local files, a serializer save); 1 new, then removed (netbox,
+    FilterSet rows); 3 lines new in taiga's importers and left: jira/api.py:137 and :166, github/api.py:89, flows
+    through the project's own API client wrappers (`self._client.get(...)`, a generic name). Typed receivers
+    (`self._client = GithubClient(...)`) would both clean those and connect firefighter: next.
+39. **The 2026-11-05 nightly run and a suite crash** (2026-11-05). Lint and tests passed on 7e7b1b0, but the suites
+    stopped after 256 minutes without results: Postiz GHSA-2p7p's scope is a Next.js route folder,
+    `[[...path]]`, which `git sparse-checkout set` refuses as a pattern, and `scan_parallel` let the error end the
+    run. `fetch_pair` now passes `--skip-checks`, and a case that fails to fetch or scan is logged as "scan
+    failed" and left out of that night's scores instead of stopping every suite (`scan_pair_or_none`; tests in
+    `tests/test_benchmark.py`). Postiz itself now scans (missed | quiet in verdict mode). Step 38's suite numbers
+    wait for the next run. The `results/` copied by the nightly that night were the old committed files.
+    Apps, against 2026-11-04: 6 findings gone, all triaged false alarms (label-studio's four, netbox
+    bulk_views.py:183 open-redirect, pygoat ssrf_lab/app.py:39 xss on a fetched reply), and 4 new in taiga's
+    importers. Correction to step 38: the two jira/api.py SSRF lines (137, 166) are real flows, triage agreeing: the
+    Jira server URL comes from `request.DATA` and the importer's client fetches it (an import feature, but
+    request-controlled server-side requests all the same). github/api.py:89 SSRF (a fixed host) and
+    jira/api.py:166 path-traversal stay false alarms. Typed receivers have to keep the first and drop the second.
+40. **Topic 3 batches 5-7 reviewed; PHP held; a Python topic** (2026-11-05). 25 accepted by the research model,
+    16 open: every open fix sized on GitHub (all within 3 files/120 lines). Three dropped: dash-live GHSA-532m (the
+    filenames are the user's own upload or a stored file's, the kid values stored media metadata: no attacker
+    request), hoppscotch GHSA-4rhc (a renderer-setting fix, `sandbox=""` on the preview iframe, like step 29's
+    Joplin cases; the HTML is the user's own API response) and maps-js-icoads GHSA-269f (same fix commit as
+    GHSA-5pph, kept, so one fix would be scored twice). Added: 10 to `cve-pairs-javascript` (AnythingLLM GHSA-cw8v
+    and -72wm, Gladys GHSA-r67g, Lightdash GHSA-x8qg, scanservjs GHSA-h5q9, maps-js-icoads GHSA-5pph, Planka
+    GHSA-5c4f, Etherpad GHSA-wm6p and -487r, Gitpod GHSA-r48p), 3 to `cve-pairs-javascript-nonhttp` (ajaxlife
+    GHSA-cqf6, fittr-flickr GHSA-vj8w, ss15-this-is-sparta GHSA-c74p); blind: 6 in a new
+    `cve-pairs-blind-javascript-9`, 1 in `-10`, 2 more in `cve-pairs-blind-javascript-nonhttp`. Topic 3 is done.
+    The research model went on to topic 4 (PHP) and wrote three batches (180 read, 45 accepted). With no PHP rules
+    those don't help now and only filled the six-batch limit, which stopped research at 07:00: they are marked
+    held (status "held ...", not counted by `reviewed.py pending`) and topic 4 paused. New topic 5 in AGENTS.md
+    goes back to Python: the advisories topic 1 dropped for their references (one pull request and no commit,
+    about 2,300 in all languages; several commits in one repository, about 1,100, mostly a fix and its backports)
+    and GitHub-reviewed PyPI advisories from before 2021 (about 170).
+41. **Topic 5, first batch reviewed** (2026-11-05). A supervised run of the new topic took 43 minutes (it wrote
+    its own pull-request resolver first; its first version marked every pull request "not found" and dropped the
+    several-commits group, and it fixed both before reading) and $0.08. 832 raw candidates came down to 64 Python
+    Django/Flask/FastAPI apps not already known; 60 read, 6 accepted (4 open, 2 blind), 54 rejected (23 pull
+    requests never merged, 4 fixes over several commits, the rest by section 3). So the whole Python pool left in
+    GitHub's advisory database is about 64 advisories: 4 remain for one more batch. Of the 4 open, all within
+    5 files/200 lines: added Roxy-WI GHSA-2f7r (request parameters into a `systemctl` shell command) and PostHog
+    GHSA-jrwm (a POST body's subdomain into the URL of an outbound request made in an imported module; scope
+    widened to `pipelines/zendesk` and `pipelines/vitally`, where the fetch is) to `cve-pairs-python`, and
+    Vibe-Trading GHSA-3j25 (an MCP tool argument into a file path) to `cve-pairs-python-nonhttp`. Dropped NetBox
+    GHSA-hwq6: the request object reaches a custom-link template a user wrote and saved, so it is stored data and
+    an exposure through template context, not request input reaching a sink. Blind: 2 in a new
+    `cve-pairs-blind-python-8`. Once topic 5 is done, every topic is done or paused and the research runs stop
+    without committing until a new topic is written.
+42. **The Python gaps and how to close them** (2026-11-05). New ground truth is nearly used up (step 41), so the
+    gaps close by the scanner's own work, not by waiting for cases. Last full numbers (2026-11-04, verdict mode):
+    `cve-pairs-python` 31 of 62 found, `-frontend` 1 of 29 (11 in review mode), `-nonhttp` 0 of 3. Steps 32
+    (1)-(5), 36 and 38 came after that run and target about ten of the misses; the 2026-11-05 run crashed
+    (step 39), so the first measurement of them is the next nightly run. First job after it: sort the misses again
+    as step 32 did (hotspot only / flag survives the fix / nothing), with the new cases, and check this list
+    against it. The gaps, from what the fixes show, with the cases behind each and the way to close it:
+
+    **Back end (views and handlers)**
+    - **A. Allowlist checks that end the flow.** The fix rejects anything outside a pattern and returns:
+      `if not re.match(r'^[a-zA-Z0-9.-]+$', x): return ...` (Roxy-WI GHSA-2f7r, PostHog GHSA-jrwm, new today), or
+      `if x not in ALLOWED: raise` (Vibe-Trading GHSA-3j25). Without it as a sanitizer those fixes stay flagged.
+      Close: a guard sanitizer for `re.match/fullmatch` with an anchored pattern (`^...$` or `\A...\Z`) whose
+      character class has no `/`, `.` run or `%` for paths and no shell metacharacters, when the failing branch
+      returns, raises or aborts; set/tuple/dict membership the same way. Safe look-alikes: an unanchored
+      `re.search`, a check whose failing branch only logs. Cheap; do first.
+    - **B. Which class an object is.** `self._client = JiraClient(...)` then `self._client.get(url)` (taiga, the
+      false alarms of step 39; firefighter GHSA-fqvv, a DRF serializer feeding a Jira client). Generic method names
+      (`get`, `save`, `update`) aren't connected across files today, to avoid false alarms. Close: an ast pass that
+      records, per file, names and `self.` fields assigned from a project class's constructor (and parameters
+      annotated with one), and rewrites the analysis copy's `recv.method(` to a qualified via-sink name only for
+      those, so `Class.get` gets its own summary. Keeps taiga's real Jira SSRF (step 39) and drops the GitHub one.
+    - **C. DRF serializer data as a source.** `serializer.validated_data[...]`, `serializer.data`, and
+      `validate_<field>(self, value)` / `create(self, validated_data)` in a `Serializer` subclass (firefighter).
+      Close: sources in `python-web.yml`, kept to classes based on `*Serializer`; text fields only where the
+      serializer declares them (`CharField`, `URLField`...), as `body_models.py` does for Pydantic.
+    - **D. Project checks trusted by name.** A function named `*safe*`, `*sanitize*`, `*valid*` clears its result
+      today whatever it does; pyLoad (twice), a weak `get_safe_url`, a homemade `sanitized_join` and an unquote
+      bypass were all missed that way (step 32), and MobSF GHSA-8m9j / LLaMA Factory GHSA-527m are incomplete
+      checks still flagged (step 35). Close: trust a project helper only when the pass-through analysis (step 38)
+      shows it doesn't hand the parameter back unchecked, or its body contains a recognised check (a containment
+      check after `realpath`/`resolve`, a `urlparse(...).netloc` comparison, an allowlist from A); a name alone no
+      longer clears. Risk: more false alarms where a sound helper isn't recognised, so measure on the learning
+      apps before keeping it.
+    - **E. Dispatch the summaries can't follow.** pygeoapi GHSA-f6pr (a provider plugin loaded by name) and
+      Lektor GHSA-wv28 (a handler passed as a value). Close, later: summarise a method over every class in the
+      project that defines it under a common base (`BaseProvider.query` stands for each subclass's `query`), only
+      when the base is the project's own. Costly and wide; after A-D.
+    - **F. Small source and sink gaps** from step 32 still open: `abort(400, message=...)` reflecting request
+      data, a cookie decompressed then unpickled. One rule line each, with a test.
+    - **G. Whoogle GHSA-2689**: a probe of its two files finds the flow (`routes.py:161 [via from_params()]`) but the
+      case doesn't (step 38). Find out why (likely the scope or the importer visibility in the real tree) before
+      building more on the cross-file pass.
+
+    **Front end (templates and the JavaScript they ship), the larger gap**
+    - **H. Stored data rendered unescaped** (about 10 front-end misses found only as hotspots: `|safe`,
+      `autoescape off`, `mark_safe` on a model field). These are stored XSS: the request reaches the database in
+      one view and the page in another. Close: a store-and-read pass. Find model fields the project writes from
+      request data (`obj.field = request...`, `Model.objects.create(field=request...)`, a form or serializer
+      save), then make reads of those fields (`obj.field`, `{{ obj.field|safe }}`) a source for the XSS rule only.
+      A field the project never writes from a request stays a hotspot. This moves hotspot-only cases to found
+      without making every database read tainted.
+    - **I. Browser JS writing fetched data as HTML** (about 11 misses): `fetch(...).then(r => r.json())` or
+      `$.ajax({success: d => $el.html(d.x)})`, `innerHTML` of a notification or select2 option. Close in two
+      steps: first a review-mode hotspot for a fetched/AJAX response reaching an HTML sink (no data-flow claim);
+      then, where the fetched URL is a literal path that matches one of the project's own routes, follow it to
+      that view and use H to decide whether the field it returns is request-written.
+    - **J. Template contexts autoescape doesn't cover** (about 5): `'{{ x }}'` inside a `<script>`, unquoted
+      attributes, event handlers with values other than `request.*` (step 32 (5) covered the request ones). Close:
+      extend `request-in-url-attribute` to H's request-written fields, and a hotspot for any variable in a
+      script string or unquoted attribute (5 hotspots on the learning apps for 2 cases, step 32: review mode only).
+
+    **Input that isn't an HTTP request** (`-nonhttp`, 0 of 3 Python, 0 of 12 JS): MCP tools are done (step 36). Next
+    by the cases: agent tool arguments in frameworks other than FastMCP (LangChain `@tool`, OpenAI function
+    tools), bot message handlers (discord.py, python-telegram-bot), Electron IPC handlers on the JS side.
+
+    **Order**: G, A, B, C, F (small and measurable on existing cases), then H, I and J (the front end, where the
+    numbers are worst), then D (needs care with false alarms), then E. Each one: its tests (a vulnerable case and
+    a safe look-alike), `devtools.py cases` for the cases behind it, the learning apps compared with the last
+    nightly run, and an entry here with what moved.
+43. **Step 42's G, A, B, C and F** (2026-11-05). Each change has a test in `tests/test_detection.py` that fails
+    with it switched off (checked one by one); cases scored with `devtools.py cases`.
+    - **G, Whoogle GHSA-2689**: not a scanner gap. The scan finds the cookie reaching `pickle.loads` through
+      `from_params()` at routes.py:161, quiet after the fix, but the advisory is filed as CWE-78; the fix swaps
+      pickle for json, so CWE-502 was added to the case (78 kept). Now found.
+    - **Checks trusted by name hid their own sinks** (part of D): Semgrep clears everything inside a sanitized call,
+      arguments included, so a summarised function named like a check (`validate_credentials`, PostHog
+      GHSA-jrwm: it *is* the outbound request) lost its via-sink. The summary passes' rules no longer trust, by
+      name, a summarised function whose name a check sanitizer could match (`unshielded`). Also: functions
+      imported under an alias (`import validate_credentials as validate_zendesk_credentials`) are summarised
+      under the alias too, rebuilt after resummarise (`python_aliases`, `realiased`).
+    - **A**: the allowlist guards (`re.match`/`fullmatch`, `in`/`not in`) already existed; a compiled pattern
+      (`subdomain_regex.match(x)` then return/raise) joined them, for receivers named as a pattern.
+    - **Partial pass-through**: resummarise now also re-checks summarised functions that call a helper handing
+      back only some parameters (PostHog's `get_base_url(region, subdomain)`, where region is compared), the
+      pass-through analysis asks about calls inside f-strings (Python only), and a rule left with no summaries
+      by resummarise is still rescanned (it was skipped).
+    - **B, receivers of a project class**: a generic-named method (`add`, `get`) is connected through variables and
+      self fields assigned an instance of the project class that defines it (`self._memory = memory or
+      PersistentMemory()`, `http_client = HttpClient()`), keyed by the original path (a rewritten file is scanned
+      from its copy, which first hid it). Other objects with an add() stay unconnected.
+    - **Agent tool classes as sources** (the non-HTTP item): the method an agent framework calls (`execute`,
+      `_run`, `forward`, ...) in a `*Tool` class that describes itself to the model (`description`,
+      `args_schema`, `parameters`); `**kwargs` included, numeric parameters not. XPath's ElementTree find/findall
+      sinks no longer match a regular expression's (`_TOKEN_RE.findall`), a false alarm this source reached.
+    - **C, DRF serializers**: `validated_data` in create/update, `attrs` in validate, a value in
+      validate_<field>, and `.validated_data`/`.initial_data` are sources; a field with its own
+      `validate_<field>` method is clean in that serializer (`drf_serializers.py`, generated per project).
+    - **SSRF through client objects**: `requests.Session()`, `httpx.Client()`/`AsyncClient()` made in the
+      function, in a `with`, or kept in a field by __init__, including `getattr(self._client, method)(url)`.
+    - **F**: Flask-RESTful/RESTX Resource handler parameters are sources where `api.add_resource(Class, url)`
+      fills them with text (`flask_resources.py`; `<int:id>` isn't). OpenResolve GHSA-h3h4 stays missed by
+      design: its sink is `abort(400, message=...)`, a JSON body, which codewatch doesn't count as XSS. The
+      cookie-unpickle item was Whoogle (G).
+    - **A substring check isn't a forbidden-character check**: the guard `if "'" in name: return` cleared name for
+      any string literal, so `if 'http' in q: return redirect(q)` cleared q for the rest of the function (Whoogle
+      GHSA-mxvc: the else branch put q into an error page printed `|safe`; the redirect itself is an open redirect
+      the guard hid as well). Now only literals of up to three punctuation characters or a control escape.
+    - **A fixed host kept in a field**: `self.api_url = "https://api.github.com/{}"` in __init__, then
+      `self.api_url.format(path)`, counts as the fixed-prefix URL it is. Meant for taiga's GithubClient.get, but
+      taiga's github/api.py:89 (a false alarm since step 38) stays: its path is the avatar fetch in
+      import_project, `requests.get(repo['organization']['avatar_url'])` with `repo = self._client.get(...)`,
+      because the pass-through rules drop lookup-result, and with it the remote-reply sanitizer, so the wrapper
+      is taken to hand its URL argument back. Putting that sanitizer back in the pass rules didn't clear it in a
+      probe of the importer files; left for later.
+    Cases: found and quiet at their fixes: Whoogle GHSA-2689 and GHSA-mxvc (front end), Roxy-WI GHSA-2f7r (its route was outside the scope;
+    scope widened to `app/routes/admin`), PostHog GHSA-jrwm, firefighter GHSA-fqvv; Dagster GHSA-q93c and
+    Vibe-Trading GHSA-mjrq unchanged. Vibe-Trading GHSA-3j25 stays missed as scored: the flow is found, at the
+    tool's entry (`return self._save(kwargs)`), outside the fix's lines, and the memory name still reaches the
+    path after the fix through a slug that only a regex built from a constant (`rf"[^a-z0-9_\-{RANGES}]"`)
+    makes safe.
+    - **Shapes the new sources reached on the learning apps**: a project's `sql, params = build(...)` (the SQL
+      text isn't request data when the values come back to be bound: label-studio's summary updates), and a Jinja
+      sandbox made in another module (paperless-ngx's `JinjaEnvironment(SandboxedEnvironment)` instance, found
+      through the project's classes: `jinja_sandboxes.py`), and a regular expression compiled alone in a try only
+      to check it (paperless-ngx's validate_regex_pattern; matching happens elsewhere with a timeout).
+    **Learning apps** (all 50, the nightly's list, against the 2026-11-05 nightly run): gone, taiga's
+    jira/api.py:166 path traversal (a triaged false alarm). New, all from the serializer and validator sources
+    and real at code level: label-studio projects/api.py:571 and projects/serializers.py:356 (a label config's
+    regular expressions, sent by a user who can change the project, compiled), netbox
+    extras/api/serializers_/scripts.py:64 (an uploaded custom script loaded as Python: NetBox's design, admin
+    only). Three more were false alarms and are fixed above (label-studio tasks/serializers.py:752/768, paperless
+    serialisers.py:2556 and :208), each checked with a rescan of the app. taiga github/api.py:89 stays (see above).
+    **H, measured before building**: of the 10 front-end cases found only as hotspots, Whoogle GHSA-mxvc was a
+    reflected flow (fixed above), bird-lg GHSA-xjrp is request arguments kept in the session and printed from
+    `session` in the template, and the rest are stored data (calibre-web author fields, Invenio and GeoNode
+    descriptions, Cabot, modoboa logs). A prototype rule listing the fields a project writes from request data
+    (`obj.field = ...`, `Model.objects.create(field=...)`, `Model(field=...)`) showed matching by field name alone
+    is too coarse: calibre-web writes `shelf.name` and `user.name` from requests, so `{{ author.name|safe }}`
+    would count for the wrong reason, and keyword calls such as `Q(date__gte=...)` read as model writes. H needs
+    the model: the class a template variable comes from (the render call's argument, traced to `Model.query...`
+    / `Model.objects...`) and the class a write goes to (`obj = Model(...)`, `Model.objects.create`, a ModelForm's
+    or serializer's Meta.model). Next session.
+44. **Topic 5 done; research has no topic left** (2026-11-05). Topic 5's second batch read the last 4 candidates and
+    accepted 1, MoinMoin 1.9 GHSA-42fp, rejected at review: its own WSGI framework on Python 2, not Django, Flask or
+    FastAPI as the topic requires. With topic 5 done the research model went back to the paused PHP topic (batches
+    4 and 5, 120 read, 21 accepted): the runner's prompt said to stop only when no topic was "left unfinished",
+    and a paused one is unfinished. Both batches are held like the first three, and `tools/research-batch.sh` now
+    says a paused topic isn't to be worked on and to stop when every topic is done or paused. Until a new topic is
+    written the hourly runs stop without committing.
+45. **Shapes from a Django app: noise, stored XSS through models, sign-in and CSP settings, LDAP**
+    (2026-11-05). A full scan of a Django app with single sign-on, a CSP and file uploads spent almost all its
+    time in Semgrep's summary passes and main scan. Its own code had no injection; what it showed:
+    - **Slow regexes in developer tools were verdicts.** Every super-linear regex was a vulnerability, including
+      the changelog regexes of version-bump scripts and a management command. A regex in a Django management
+      command, or in a script run under `if __name__ == "__main__"` that builds no web app (`Flask(`, `FastAPI(`,
+      `urlpatterns`, `@x.route(`), is now a minor hotspot (`developer_tool` in `codewatch_checks.py`). Not
+      polynomial-vs-exponential: django-wiki GHSA-wj85 is a polynomial regex on user markdown and stays found.
+      Test: `test_a_slow_regex_in_a_developer_tool_is_a_hotspot` (test_catalog.py).
+    - **A registry open redirect in a template's inline script**: `location.href = '{% url ... %}?x=' + param`
+      is a same-site path. Registry verdicts already defer to codewatch's taint rules for the same CWE in `.js`
+      files; a template's findings are now judged by `.js`'s set too (inline scripts are JavaScript).
+      Test: `test_a_registry_finding_in_a_template_script_defers_like_one_in_a_js_file`.
+    - **Stored XSS through model fields (step 42's H, first part).** `stored_fields.py` reads the project with
+      ast for each model's text fields (CharField, TextField, file fields...; not `choices=`, numbers, dates or
+      keys) that the project fills from request data: `Model.objects.create(field=...)`/`Model(field=...)`,
+      `obj.field = ...` on an object made or looked up from the model, a ModelForm's or ModelSerializer's
+      Meta.fields. Request data is followed through the project's own functions (into parameters, back out of
+      returns; names defined once only), since uploads typically go view -> helper -> service -> `create()`.
+      `request.user` is the server's. Reads of those fields where the model is known become sources for the
+      Python XSS rule only: `obj.field` in a ModelAdmin registered for the model, `self.field` in the model,
+      `x.field` after `x = Model.objects...` / `get_object_or_404(Model, ...)`. `format_html($BODY, ...)` is a
+      sink (its format string isn't escaped). Templates (`{{ obj.field|safe }}`) are the next part.
+      Test: `test_model_fields_written_from_the_request_and_read_back_as_html`.
+    - **A check cleared the branch where it failed.** Building that, `if ext in IMAGES: ... else:
+      mark_safe(f"...{ext}...")` stayed quiet for two reasons: Semgrep's range for `pattern-inside: if <... $X
+      in $ALLOWED ...>: ...` is the whole if statement, else included, and the "check, then return" guard
+      `if <... $X in $ALLOWED ...>: ... return ... ...` also matched the positive form, after which the code
+      runs for the values that were *not* allowed. The analysis copy now makes `else:` `if E:` and `elif c:`
+      `if   c:` (`else_branches.py`, same lines and columns; for/while/try else untouched), and the membership
+      return/raise guard needs the negation (`if <... not $X in $ALLOWED ...>:`). Test:
+      `test_a_check_clears_its_own_branch_not_the_else` (fails without either change). Open: the same guard
+      block's other checks (`startswith`, `isdigit`, `isalnum`, `isidentifier`, `re.match`) have the same
+      polarity looseness; usually written negated, so left for now.
+    - **Sign-in and CSP settings** (`python-django.yml`, hotspots): `codewatch.django.allauth-microsoft-any-tenant`
+      (a Microsoft provider with tenant common/organizations/consumers, or none: allauth's default is common;
+      a tenant from an unset environment variable gives `None` and sign-in fails, so it isn't flagged),
+      `codewatch.django.allauth-trusts-provider-email` (`VERIFIED_EMAIL: True`, `SOCIALACCOUNT_EMAIL_AUTHENTICATION
+      = True`: the nOAuth shape), `codewatch.python.csp-allows-inline-script` ('unsafe-inline'/'unsafe-eval' in
+      script-src or default-src as a header string, a django-csp / Django 6 setting, a directive dict or an
+      append; not for styles, and not next to a nonce, hash or 'strict-dynamic', where browsers ignore it).
+      Test: `test_django_sign_in_and_csp_settings`.
+    - **LDAP connectors**: ldap3's `extend.standard.paged_search` filter and a bind DN built from the user name
+      (`Connection(server, user=f"uid={name},...")`, `rebind`, python-ldap's `simple_bind_s`/`bind_s`) are
+      sinks of `codewatch.python.web.ldap-injection`; `escape_rdn` is an escape like the others.
+      Test: `test_ldap_paged_searches_and_bind_dns_from_the_request`.
+
+    Measured before committing (rules frozen during the run): OWASP Benchmark Python unchanged (100%, 0%
+    false alarms), SecurityEval 51/121 verdict and 77/121 review unchanged, CVE pairs Python 43/65 found with 11
+    still flagged, front end 2/30. Every case found since the 2026-11-04 nightly was also found with this
+    step's changes stashed (they came from step 43), and none was lost to them. Two losses since 11-04 that
+    predate this step, to look at: fava GHSA-xrf4 (front end; its template XSS at line 347 is no longer
+    reported) and SecurityEval CWE-020/codeql_3 (an unanchored `regex.match(target)` now clears an open redirect:
+    step 43's compiled-pattern guard trusts any match, even of a pattern that doesn't pin the host).
+46. **Research topic 6: Python advisories every earlier pass skipped** (2026-11-06). The hourly runs had been
+    idle since topic 5 finished. The pools were counted locally before writing the topic (repository languages
+    from the earlier topics' GraphQL lookups, no new API calls): about 235 GitHub-reviewed PyPI advisories since
+    2021 with a listed CWE and references in one repository that no TSV or suite holds (77 with one commit, 70
+    commit plus pull request, 57 several commits, 32 pull request only); about 140 PyPA advisories since 2021 with
+    no GHSA alias; about 50 in Python repositories whose CWE is missing or unlisted but whose text names a listed
+    weakness. Most are library code (Django itself, LangChain, NLTK, vLLM, Airflow providers), so the topic lists
+    those to reject unread and expects a low yield, perhaps 15-30 accepted; the apps among them (Wagtail, NetBox,
+    Home Assistant, Frappe, pgAdmin, web2py, Invenio) are read. Considered and not used: the CVE list (GitHub
+    imports NVD, so it overlaps the unreviewed advisories) and fix commits without an advisory (step 22 needs an
+    advisory). PHP (topic 4) stays paused. Topic 6 also takes PyPI advisories in repositories that are mostly
+    JavaScript (about 20; usually Python apps with a large front end, for the weak `cve-pairs-python-frontend`).
+    The same count for JavaScript found about 240 unread GitHub-reviewed npm advisories and about 170
+    unreviewed ones topics 2 and 3 couldn't take (pull requests and several commits, which topic 5's method
+    covers, and about 40 single commits neither read): topic 7, queued to start after topic 6.
+47. **Nightly 2026-11-06; topic 6's first six batches reviewed** (2026-11-06). The nightly (commit fc795c0) matched
+    step 45's measurements on every suite; the 2026-11-05 comparison had crashed on a sparse-checkout path with
+    brackets, so its case diffs list everything as new. New app findings: five, all false alarms (triage agreed,
+    each checked by hand). Two came from step 45's stored-field sources and are fixed here:
+    - NetBox `ImageAttachment.html_tag`: `mark_safe('<img src="{url}" ...>'.format(url=self.image.url))`. A file
+      field's `.url` is the storage's URL for the stored name, percent-encoded by Django (`filepath_to_uri`), so
+      `$X.<file field>.url` is now a sanitizer for the stored fields' file fields.
+    - NetBox bulk export: `HttpResponse(self.export_yaml(), content_type='text/yaml')` with an attachment
+      disposition. YAML (`text/yaml`, `text/x-yaml`, `application/yaml`, `application/x-yaml`) joined the
+      non-HTML response types in `python-web.yml`.
+    Test: `test_model_fields_written_from_the_request_and_read_back_as_html` (an `ImageField`'s `.url` and a YAML
+    response; each half fails without its change). The other three are left: two label-studio regex-injection
+    findings where `label_config` goes to a validator, and NetBox's uploaded-script `validate_script_content`
+    reported as code injection (it compiles the source to check it, which a later run does execute; a hotspot
+    at most).
+
+    Topic 6's agent counted far more candidates than step 46 (1,326 after the language filter, about a quarter
+    of them Django, Flask or FastAPI), because it looked up the languages of repositories no earlier topic had.
+    Six batches, 360 read, 24 accepted. Four were rejected at review: Weblate GHSA-cwcx (a URL persisted from a
+    project backup and used as a git remote later: stored data), LLaMA-Factory GHSA-xj56 (a Gradio app),
+    Superset GHSA-jfxj (the values come from the user's own SQL template through an in-app Jinja macro; no request
+    flow a scanner can see) and MoviePilot GHSA-8gr5 (the context is saved from the request and unpickled later by
+    the executor: stored data). That leaves 20: 11 open (cve-pairs-python: Open WebUI GHSA-j657, Langflow
+    GHSA-79ph, alerta GHSA-8prr, OpenHands GHSA-7h8w, Swing Music GHSA-pj88, Horizon GHSA-f8fh, -rhjj and -j72v;
+    cve-pairs-python-frontend: Fava GHSA-q8hg; plus bbot GHSA-m54h and -3mp7 for cve-pairs-python-nonhttp) and
+    9 blind ones, unread. The 11 open ones are in suites.json (8 in cve-pairs-python, 1 front end, 2 nonhttp),
+    first measured by the nightly run; the 9 blind ones went into cve-pairs-blind-python-9 to -13 and
+    cve-pairs-blind-python-nonhttp unread, for the end of the round. The research runs had
+    stopped at 09:00 on their cap of 6 batches waiting for review (`CODEWATCH_RESEARCH_MAX_PENDING`, set in the
+    maintainer's systemd override); it is now 12, about a day of hourly runs between reviews.
+48. **Topic 6 done; topic 7's first six batches reviewed** (2026-11-07). Topic 6's seventh batch read the last 46
+    framework-confirmed candidates and accepted none: of the ~970 Python-repository candidates left on 2026-11-06,
+    most are in repositories that declare none of Django, Flask or FastAPI (Zope, OpenStack, IPython, LangChain,
+    pylint...), which the topic's framework check drops without a row. Topic 6 in all: 7 batches, 406 read, 20
+    kept. Topic 7 (JavaScript) started on its own at 20:00: six batches, 360 read, 11 accepted. Two were rejected at
+    review: Eclipse Che GHSA-7c8p (the private-host check already existed; the fix closes an IPv4-mapped IPv6
+    bypass: a validator made stricter) and NoteGen GHSA-4fc4 (the path comes from synced conversation data in the
+    app's store; no input source in the code the fix touches). Added to suites.json: cve-pairs-javascript Openwhyd
+    GHSA-224m and Waline GHSA-jf75 (NoSQL operator objects from the body), Claw Orchestrator GHSA-95f6 (request
+    pattern into new RegExp); cve-pairs-javascript-nonhttp jupyterlab-git GHSA-f962 (file names into diff header
+    HTML); cve-pairs-python lollms GHSA-37c2 (SPA catch-all path joined to the static directory) and FTS3 Web
+    Monitoring GHSA-xf3h (query parameters %-formatted into SQL; both Python apps in JavaScript-primary
+    repositories). Three blind ones went unread into cve-pairs-blind-javascript-11 and -nonhttp. Topic 7 yields
+    about 2 per batch against topic 6's 3-4, as expected for a pool that is mostly npm library code.
+49. **Where the gaps are; topic 8; the front-end misses sorted** (2026-11-07). From the 2026-11-06 nightly
+    (verdict mode, found/cases): Python server-side path traversal 19/26 and SQL 5/6, open redirect 4/9, XSS 3/7;
+    Python front end 2/30; JavaScript path traversal 3/19, XSS 1/11, redirect and SSRF 0/8; JavaScript non-HTTP
+    0/15. The front end, redirects and JavaScript have enough cases: those gaps are rule work. What research can
+    fill is the weaknesses with almost no Python cases (SSRF 5, command injection 5, code injection 3, ReDoS 1,
+    deserialization 1; template injection, XXE, LDAP and header injection none), so rules for them are tested by
+    unit tests only. Topics 1, 5 and 6 used up the Django/Flask/FastAPI advisories, so topic 8 (queued after topic
+    7) takes only those weaknesses and widens two filters for them: the framework may be declared in a nested
+    dependency file (`backend/requirements.txt`), and Starlette, Litestar, Quart, Falcon, Pyramid, Bottle and
+    agent/MCP tool input count. About 430 unread advisories in Python repositories matched on 2026-11-07, mostly
+    library code (picklescan, vLLM, LangChain, NLTK, Keras), across about 200 repositories.
+
+    The 28 missed front-end cases, sorted by the cheap model from their fix diffs (a few quotes checked by hand):
+    - Template output marked safe: `|safe` on a model field 5 (calibre-web, modoboa, invenio-communities,
+      GeoNode, fava), `|safe` inside a script string 1 (bird-lg), `{% autoescape off %}` 2 (cabot,
+      changedetection.io), a template variable in a JS string or inline handler 2 (pgAdmin layout, Airflow
+      onclick), an unquoted attribute 1 (nautobot). Most read a stored field: the templates half of step 45's
+      stored XSS (`{{ obj.field|safe }}` with obj from the view's context) would reach about 5.
+    - Shipped JS writing HTML: jQuery `.html()`/`html:` 6 (modoboa x2, indico, horizon, calibre-web, OctoPrint),
+      `innerHTML` 2 (pgAdmin, fava), a template literal returned to a chart tooltip 1 (cti-transmute), an
+      `href` from data 2 (Weblate, pyload), library options that render HTML 2 (PNotify text, select2
+      escapeMarkup). The data is mostly an API response or a form field's value: step 42's gap I (fetched data
+      written as HTML in JS).
+    - Other: Graphite query parameters, Airflow ANSI link allowlist, MLflow `yaml.load` (not XSS as such), and
+      one Python string built into HTML (OctoPrint).
+    Next rule work, by cases reached: stored fields into `|safe`/autoescape-off templates (about 7), then fetched
+    or form data into jQuery `.html()`/`innerHTML` (about 8).
+50. **Topic 7 batch 7 reviewed** (2026-11-07). 60 read, 11 accepted, 3 rejected at review, all OpenClaw:
+    GHSA-r39h (plugin setup code loaded from the working directory; the fix removes a lookup location, no input
+    reaches a sink), GHSA-f7fh (the CDP WebSocket target comes from the endpoint's own response and the
+    operator's config) and GHSA-c9h3 (the fix adds a key to the parameter list an existing sandbox check covers).
+    Added: cve-pairs-javascript MCPHub GHSA-p3h2 (an upload's manifest name in the extraction path);
+    cve-pairs-javascript-nonhttp Summarize GHSA-2r69 (a page's link URL reaches the daemon's fetch), OpenClaw
+    GHSA-c4qg (a chat image URL fetched for upload) and GHSA-jf25 (a tool's outPath written without the workspace
+    check); 4 blind ones unread into cve-pairs-blind-javascript-12 and -nonhttp. Agent apps like OpenClaw now
+    supply many advisories; their tool arguments and chat messages are the nonhttp suite's input.
+51. **Nightly 2026-11-07 (commit 52d3e4b) and a scorer fix** (2026-11-07). The netbox false alarms of step 47
+    are gone and no app finding is new. New cases found: Langflow GHSA-79ph and Swing Music GHSA-pj88 (the
+    latter still flagged after the fix); missed: Open WebUI, alerta, OpenHands, Horizon x3, Fava, bbot x2.
+    mlflow GHSA-wqmh showed as detected in review mode only, by 6 hotspots away from the fix that were missing
+    from the fixed side; re-run alone it is missed and quiet in both modes, as on every earlier night. Semgrep
+    gives up on rules in a file under load and drops their findings without an error (only a note), so a
+    finding "the fix made go away" is now counted only when the fixed side's scan didn't give up; the case's
+    result says `gave_up` when either side did (test_a_finding_gone_from_an_incomplete_fixed_scan_is_not_detection).
+    Front-end template work (step 49): of the 7 |safe / autoescape-off misses only GeoNode GHSA-rwcv and Modoboa
+    GHSA-jm3m print Django model fields; calibre-web GHSA-h56g and invenio GHSA-mfv8 are SQLAlchemy models,
+    Cabot GHSA-mqwh prints check errors, bird-lg GHSA-xjrp session data, OctoPrint GHSA-xvxq an autoescape
+    setting. Stored fields into |safe would need SQLAlchemy model support to reach more than two cases.
+52. **Form field values into HTML (codewatch.js.xss)** (2026-11-07). The JavaScript side of step 49's front-end
+    misses, read at the vulnerable lines: only two have a source a rule can see. Modoboa GHSA-c467
+    (`$span.html("@" + $("#id_name").val())`) and calibre-web GHSA-wrp6 (`$(this).val()`, an upload's file name,
+    into `$("#upload-format").html()`). Added to the XSS rule only: sources `$(...).val()` (also one find step
+    deep) and `document.getElementById/querySelector(...).value`; sinks `.html()`/`.append()` on a variable named
+    with a leading `$` (jQuery's convention); sanitizers htmlEncode/encodeHTML/htmlEntities-named functions and
+    `fetch(...)` (the server's reply, not the posted value: pygoat's comparison lab sends a select's value and
+    renders the response). calibre-web's edit_books.js was skipped as vendored: its opening comment "Created by
+    SpeedProg on 05.04.2015" matched the library banner with the date as a version; a d.m.yyyy date no longer
+    counts (no file among the 50 apps' 3302 JS/CSS files changes status). Both cases found, fixed sides quiet;
+    double-take GHSA-q9xj, vulnerable-snippets-js and vulnerable-node-seeds unchanged. App probe (the 18 app JS
+    files and 8 templates with both a form value and an HTML sink): two findings, both pygoat's package labs
+    (a typed package name into an activity log's innerHTML, real). Left out on purpose: AJAX/fetch responses as a
+    source (Horizon GHSA-j772, Weblate GHSA-6wxc): loading a server fragment into .html() is the ordinary pattern.
+    pgAdmin GHSA-2rrx and Modoboa GHSA-mgmm have no visible source; django-ucamlookup GHSA-pjx4 (select2's
+    escapeMarkup turned off) and Fava GHSA-6hcj (d3 tooltip HTML) need library-specific rules. Test:
+    test_form_field_values_written_into_html; test_vendored_libraries_are_recognised_by_their_banner.
+53. **Topic 7 batches 4-13 of 2026-11-07 reviewed** (2026-11-08). 600 read by the agent, 45 accepted: 29 open
+    read here, 16 blind. Added: cve-pairs-javascript 12 (Rocket.Chat GHSA-8fhh redirect query into Location,
+    FalkorDB Browser GHSA-2987 and Swetrix GHSA-6q94 upload names into paths, Actual GHSA-27vg a header file id
+    into a path, Ghost GHSA-gjrp filter post_id into SQL and GHSA-f7qg a bookmark URL fetched, PsiTransfer
+    GHSA-xphh upload names into archive entries, deco.cx GHSA-qwwx a loader prop fetched, React Native CLI
+    GHSA-399j req.body.url into open(), hackmd-mcp GHSA-g5cg a header/query config as the API base URL,
+    url-to-png GHSA-vvmv query params into the image path, HFS GHSA-5f4x an upload path into execSync);
+    cve-pairs-javascript-nonhttp 8 (OpenClaw GHSA-f6pf model-output MEDIA: paths, GHSA-qf48 and GHSA-r5fq tool
+    paths read and written, GHSA-c6hr a chat mention into RegExp; mobile-mcp GHSA-3p2m tool output paths;
+    mcp-maigret GHSA-2g7v tool arguments into exec; sequa-mcp GHSA-9pw5 and mcp-cli GHSA-p6rm a remote server's
+    authorization URL into open(), the OAuth provider method's parameter being the source). Blind, unread:
+    8 into cve-pairs-blind-javascript-nonhttp, 1 into -javascript-12, 3 into a new -javascript-13, and a Python
+    one (frappe/crm) into a new cve-pairs-blind-python-14. Rejected at review: create-mcp-server-stdio GHSA-3ch2
+    (port is z.number()), mcp-remote GHSA-6xpm (an existing sanitizer made stricter), url-to-png GHSA-665w (a
+    protocol refine on an existing zod validator), Parse Server GHSA-x4qj (framework code, as the agent's own
+    GHSA-792q), OpenClaw GHSA-hggm (same fix commit as GHSA-f6pf), GHSA-w76h (an allowlist extended to
+    redirects) and GHSA-xw4p (a name from an installed skill package), Mockoon GHSA-w7f9 (request values reach
+    the path only through the operator's route template). Deferred: LimeSurvey GHSA-wj23 and a blind Tainacan
+    case are PHP, kept for a PHP suite. The agent began topic 8 before topic 7 was done (two python-thin batches,
+    1 accepted of 120 read); left as is. Both reviewed here too: GeoNode GHSA-9fpx added to cve-pairs-python (a layer
+    name from an uploaded vector file into ogr2ogr run with shell=True, through a Celery task; CWE-78).
+
+Also 2026-10-31, the rest of the user's ~/Dev projects (the set differs per machine; list ~/Dev first). New
+findings were mostly false alarms that route parameters as sources exposed, now fixed (each in
+`test_false_alarms_from_small_flask_apps`): a return inside a function nested in a view isn't the
+response; `lookup-result` sanitizer for the variable assigned from a bare call to a `get_X`/`fetch_X`/`load_X`/
+`find_X` helper, also inside `try:` (not `get_json`/`get_param`-style names; the returner pass's variants drop it
+so a real `get_cmd()` returner still counts). It cleans the variable, not the call: a first version cleaned the
+call and hid a real path traversal inside a `load_X(...)` call, a via-sink among its arguments; `Response(..., mimetype="video/...")` and other media/JSON types aren't XSS, nor is
+`return Response(...)` built inline; command injection: `secure_filename()` output and a literal
+`https://host/...` argv element are clean; weak-random-token's `$SESSION[...] =` sink needs a session-named
+target (any dict matched; pygoat's OTP stored in a plain dict is still flagged by bandit's B311 as a
+secret-purpose random); and `cache_key`/`sort_key`-style names no longer make a function security-related for
+weak-hash. Real findings in those projects (an open proxy, a path traversal, an open
+redirect) are measurement only: fixing them is not part of this plan. Two known false alarms are left: an id
+reaching a helper's Response through Semgrep's call-result propagation, and an attribute value with `"` stripped.
+
+Also 2026-10-31: `**/site-packages/**` joined the default exclusions (a committed virtualenv made one of the user's
+projects 9,910 files and timed out the final scan; existing projects keep their saved list).
+`devtools.py repos` also scans directories that aren't git working copies, and prints as it goes. A tool
+timeout used to kill only semgrep's Python wrapper: semgrep-core kept running (1.6 GB, 30 min) and the next
+scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec` now kills the process group.
+54. **Nightly 2026-11-08 (commit 9dbec85) and a narrower fetch sanitizer** (2026-11-08). Step 52's rule found
+    Modoboa GHSA-c467 and calibre-web GHSA-wrp6 with both fixed sides quiet (python-frontend verdict 2 to 4 of
+    31, no false alarm); the other suites are unchanged. Step 51's scorer took mlflow GHSA-wqmh and GHSA-cr8c
+    out of cve-pairs-python's detections: both sides of each gave up, and the only credit was findings missing
+    from the incomplete fixed scan. Semgrep giving up is common (most front-end pairs, a dozen Python ones), so
+    scans of large repos aren't complete; worth its own look. Of the 10 cases from step 50's review measured
+    here, Python GHSA-37c2 and GHSA-xf3h are found, 7 of 8 JS ones missed. One app finding was lost: actual's
+    app-cors-proxy.js:248, a route that fetches a URL from the request and sends the reply's text on with the
+    remote content type (text/html included). Step 52's `fetch(...)` sanitizer hid it; it now covers only a
+    fetch of a same-origin path (a string or template literal starting with one `/`), which still covers
+    pygoat's comparison lab. actual's proxy is reported again; pygoat's findings are the nightly's exactly;
+    c467 and wrp6 unchanged. Test: test_form_field_values_written_into_html (proxy.js). README table updated
+    to this night.
+55. **Topic 7's last batches, of 2026-11-08, reviewed** (2026-11-08). Six batches, 310 read by the agent (the
+    topic's list is now used up: the sixth batch read the last 10), 14 accepted: 6 open read here, 8 blind.
+    Added to cve-pairs-javascript: n8n GHSA-c8hm (a request's mimeType query parameter becomes the Content-Type
+    of a stored upload, so text/html runs; the fix adds a CSP sandbox, and codewatch has no rule for a
+    request-chosen Content-Type), github-readme-stats GHSA-jqwf (a GitHub API error that echoes the username into
+    renderError's SVG), code-server GHSA-2gp3 (err.message, which carries the requested path, into the HTML
+    error page), browserless GHSA-8p9r (a request file name joined to the workspace directory and read) and
+    web-node-server GHSA-3fwq (request.url appended to the template root and read). Blind, unread: 7 into a new
+    cve-pairs-blind-javascript-14 (the agent proposed -14, -15 and -16 by batch; one suite is enough) and 1 into
+    cve-pairs-blind-javascript-nonhttp. Rejected at review: snyk-broker GHSA-gq75 (the fix makes an existing URL
+    allowlist stricter, and the path is proxied to an upstream API, not read from disk).
+56. **SecurityEval's misses read again; a request-chosen Content-Type is XSS** (2026-11-08). Of the 70 samples
+    missed in verdict mode: about 15 are flagged already, under a sibling weakness the CWE-family scorer doesn't
+    relate to the folder's (CWE-434 uploads and CWE-099/641/425 as path traversal, CWE-020 codeql_1 as XSS,
+    CWE-116 author_1 as command injection), left as they are rather than widen the scorer; about 35 are design
+    flaws or not request input (input(), races, off-by-one, missing auth). Added to codewatch.python.web.xss:
+    sinks for the response type taken from request data (Response/HttpResponse/FileResponse/make_response
+    mimetype= or content_type=, `.mimetype`/`.content_type` and `headers['Content-Type']`/`r['Content-Type']` on
+    a response built in the function, `Headers()`'s add/set): SecurityEval CWE-113 sonar_1/sonar_2, and the
+    shape of n8n GHSA-c8hm (step 55). Werkzeug and Django refuse newlines in header values, so it is reported as
+    XSS (text/html), not response splitting; the scorer therefore still counts both samples as missed (52.1% to
+    53.7% with some security finding). Not covered: an attachment (as_attachment=True: downloaded, never
+    rendered; label-studio's export was the one app finding among 161 app files that set a type, now quiet), a
+    type looked up in an upper-case table, and send_file(mimetype=...) (send_file is a sanitizer of this rule).
+    OWASP, Copilot and InCoder unchanged. CWE-611 sonar_4 is missed only because the sample never imports
+    feature_external_ges; the imported form is already matched. Left for later: CWE-943 (a DynamoDB
+    FilterExpression built by concatenation): Python has no NoSQL rule yet (pymongo `$where` and operator
+    injection from a JSON body, boto3 condition expressions). Test: test_request_chosen_response_content_type_is_xss.
+57. **Python NoSQL injection (codewatch.python.web.nosql-injection)** (2026-11-08). Python had no rule for
+    CWE-943 (step 56). One rule, three sinks, with Semgrep taint labels to keep operator injection honest:
+    a parsed JSON body (request.get_json()/request.json, json.loads of request data, DRF request.data in an
+    APIView/ViewSet or @api_view) is the only request data that can be an object, so only it counts in a MongoDB
+    collection method's filter or pipeline (find/find_one/update_one/.../aggregate on a receiver named for a
+    database or collection: mongo.db.users, db["items"], items_collection); `{"$where": ...}` and DynamoDB
+    expression keywords (FilterExpression, KeyConditionExpression, ConditionExpression, UpdateExpression,
+    ProjectionExpression, PartiQL Statement) take request text of any kind. Sanitizers: str/int/float/bool,
+    ObjectId, UUID, a schema's load()/model_validate()/parse_obj(), isinstance(x, str), and boto3's Key()/Attr()
+    builders. Known limit: the summary passes give parameters unlabelled sources, so a JSON value handed to a
+    helper that runs the find isn't followed (the $where and DynamoDB sinks are). xpath-injection's
+    ElementTree find/findall sink no longer takes a dict query or a receiver named like a database, collection or
+    soup (Mongo's find({...}) and BeautifulSoup's find(tag) are no XPath). SecurityEval CWE-943 sonar_1 is now a
+    hotspot (a function nothing calls; review 77 to 78 of 121); OWASP, Copilot and InCoder unchanged. False-alarm
+    evidence is thin: of the 53 app and own-project files touching find/Mongo/DynamoDB none changed, and only
+    two projects use boto3 at all, none Mongo from a web view. No CVE pair for Python NoSQL exists yet; a
+    research topic for one (Flask/Django apps on pymongo or DynamoDB) would give ground truth.
+    Tests: tests/test_python_nosql.py.
+58. **Research: topic 8 paused, topic 9 (Python NoSQL) queued** (2026-11-08). Topic 8 accepted 1 of 240 read; its
+    pool is mostly library code. Topic 9 looks for ground truth for step 57's rule: advisories with CWE-943 or
+    naming MongoDB/DynamoDB/NoSQL operators, in Python app code, from repositories of any primary language
+    (full-stack apps often report JavaScript), stopping after one full pass if it yields fewer than 5.
+59. **A request-chosen Content-Type in Node is XSS too** (2026-11-09). Step 56's sinks, for codewatch.js.xss:
+    res.setHeader/set/header('Content-Type', ...), res.set({...})/writeHead(status, {...}) with a Content-Type
+    key, res.type()/contentType(), and Koa's `ctx.type =`, on res/response/reply/ctx. Drove it: n8n GHSA-c8hm
+    (step 55; the query's mimeType as the type of a stored upload), now flagged before the fix (line 41) and
+    quiet at it. Not reported: a handler that also sends `Content-Security-Policy: sandbox` (n8n's fix) or calls
+    res.attachment(), a type looked up in an upper-case table, and a type from mime.getType/lookup/contentType
+    (new sanitizer: the type follows the file served). Probe of 121 app and own-project files that set a type or
+    load records: the four new findings in wiki's asset, file, site-asset and avatar handlers were stored records
+    loaded through `await WIKI.models.<name>.get.../resolve...(...)`, which the data-layer sanitizer missed; it
+    now accepts a `models.<name>` receiver and `resolve...` methods, and they are quiet. actual's CORS proxy gets
+    two more lines (it copies the upstream's Content-Type for a URL the request chose), as does the synthetic
+    proxy in test_form_field_values_written_into_html. Test: test_request_chosen_response_content_type_is_xss_in_node.
+60. **Topic 8's last batches and topic 9 reviewed** (2026-11-09). Six batches (topic 8's five of 2026-11-08,
+    topic 9's single pass), 8 accepted by the agent: 6 open read here and accepted, 1 rejected, 1 blind.
+    Added to cve-pairs-python: moonraker GHSA-3jqf (the login username into an LDAP filter; the fix escapes it),
+    mcp-atlassian GHSA-7r34 (Jira/Confluence URLs from request headers fetched by the header-based clients: SSRF)
+    and cve-search GHSA-3fmp (a form field names the MongoDB collection and DataTables column names the
+    projection and sort, so a request reads mgmt_users; filed as CWE-20, CWE-943 added so the scorer counts the
+    NoSQL rule). Added to cve-pairs-python-nonhttp: CHIRP GHSA-6rmm (a CSV file's tone fields into eval()),
+    meta-ads-mcp GHSA-45gf (an MCP tool's image_url fetched with redirects followed) and mcp-for-stata GHSA-4p62
+    (an MCP tool's log name into a Stata `log using` command). Blind, unread: 1 into a new
+    cve-pairs-blind-python-15. Rejected at review: adx-mcp-server GHSA-vphc (KQL from table_name, but the same
+    server's execute_query tool runs any KQL the client sends, so no trust boundary is crossed). Topic 9's pool
+    was 123 advisories, 107 in non-Python repositories and nearly all the Python ones library or driver code; it
+    stopped after one pass as its rule says. Every research topic is now done or paused.
+61. **Research: PHP again, as topic 10** (2026-11-09). With every other topic done or paused, topic 4's PHP search
+    is carried on as topic 10 (same source, filter and rules; other-language size limit; files
+    `cve-candidates-YYYY-MM-DD-php.*`; blind suites numbered from cve-pairs-blind-php-6). Topic 4's five held
+    batches (300 read, 66 accepted by the agent, `held` status) stay held until a review session takes them, and
+    so do the PHP cases deferred at step 53 (LimeSurvey GHSA-wj23 and one blind Tainacan case). Still no PHP rules:
+    these suites are ground truth for the PHP rule work that comes after them.
+62. **PHP ground truth reviewed: cve-pairs-php (deferred) and 15 blind PHP suites** (2026-11-10). Topic 4's five held
+    batches of 2026-11-05 and topic 10's ten batches of 2026-11-09/10: 900 read by the agent, 181 accepted (124
+    open, 57 blind). Each open fix diff was pre-screened by deepseek-v4.1-flash against the agent's stated flow
+    (19 flagged); the flagged ones were read here and the rest checked from the screen's one-line reasons.
+    Rejected at review: Kirby GHSA-fw82 and GHSA-x275 (the snippet or collection name reaches the sink only if a
+    site's own template passes request data in: a framework API), Kirby GHSA-9p3p (the router of PHP's built-in
+    development server), Open-Web-Analytics GHSA-6w8r and VuFind GHSA-wx24 (denylist fixes), AzuraCast GHSA-q4ph
+    (a bypassable sanitizer swapped for a stricter one), and four advisories whose fix commit is another accepted
+    case's (Ecommerce-CodeIgniter GHSA-pgmp and GHSA-mxrp share GHSA-pj54's, FrontAccounting GHSA-8ccm shares
+    GHSA-w5j4's, OpenCart GHSA-pqhq shares GHSA-qx44's) plus one blind duplicate (GHSA-78fv, GHSA-6q4c's commit).
+    Accepted although flagged as Composer packages: CMS cores and plugins handling their own requests (Sulu,
+    Pimcore, Craft Commerce, TypiCMS, Contao cookiebar, the SimpleSAMLphp CAS server module), which the topic
+    includes; and fixes that also harden something unrelated within the size limit (wp-downloadmanager, pureblog,
+    moneymanagerex). Added: 114 to a new cve-pairs-php plus LimeSurvey GHSA-wj23 (deferred at step 53), 56 blind
+    into cve-pairs-blind-php-1..15 as the batches named them plus Tainacan GHSA-37g4 (deferred unread at step 53)
+    into -1. codewatch has no PHP rules, so cve-pairs-php carries `"deferred": true`: `benchmark.run()` now skips
+    deferred suites, like blind ones, unless they are named (test_run_skips_blind_and_deferred_suites_unless_named).
+    The research runner's waiting-batch limit (CODEWATCH_RESEARCH_MAX_PENDING in its systemd drop-in) was 12, which
+    let ten batches pile up overnight; it is 4 now.
+    Nightlies of 2026-11-09 and -10 (steps 57-61): n8n GHSA-c8hm found and quiet at the fix; no suite moved
+    otherwise; the six step-60 cases: meta-ads-mcp GHSA-45gf found (codewatch SSRF), the rest missed in verdict mode.
+    New app findings were actual's proxy (expected, step 59) and label-studio's storage proxy (proxy_api.py:368: a
+    stored object served inline with its stored or extension-guessed type, through the Python Content-Type sink of
+    step 56). Triage calls it real (the stored-upload XSS shape), but it is a stored type, which step 59 made quiet
+    for wiki's assets: left reported for now, to settle when the Content-Type sinks get a stored-type policy.
+63. **Topic 10's batches 5-8 reviewed** (2026-11-10). 240 read by the agent, 51 accepted (38 open, 13 blind). The
+    open fix diffs were pre-screened by deepseek-v4.1-flash as in step 62 (2 flagged); those two and four more whose
+    one-line reasons raised a doubt were read here. Rejected: php-login GHSA-5cpm (the fixed side doesn't parse and
+    the same file keeps another interpolated query), baserCMS GHSA-8vqx (a `javascript:` denylist), mh_httpbl
+    GHSA-5ch9 (the value is a reverse-DNS name, not request input), LibreNMS GHSA-jp3c (one escaper swapped for
+    another in a JavaScript string, as AzuraCast GHSA-q4ph), phpMyFAQ GHSA-v6g2 (two fixes in one commit, the input
+    reaching the page through a global exception handler), and three sharing a fix commit with a kept case
+    (flusity-CMS GHSA-9962, `core` GHSA-3m8r, and the blind chamilo GHSA-28gg). Kept after reading:
+    ipandlanguageredirect GHSA-4xf2 (an allowlist that strips everything but digits and dots). Added: 31 to
+    cve-pairs-php (146 now) and 12 blind to cve-pairs-blind-php-16 and -17 (69 blind PHP now); the agent put three
+    batches in -16, which doesn't matter for a blind suite. AGENTS.md topic 10 now numbers blind suites on from
+    the highest existing one, since topic 10 had already passed its "from 6".
+    Noted for later, from an outside review of the nightly: a suite whose inputs haven't changed (its language's
+    rule files, `core/`, the tool locks and its own `suites.json` entry) gives the same results, so the nightly
+    could reuse yesterday's. First find out why suite time went from 136 min (2026-11-04) to 315 min (2026-11-10)
+    while the scanned cases grew 3%: the result files show no more Semgrep timeouts than before.
+64. **The nightly says where its time goes** (2026-11-10). Suite time went from 136 min (2026-11-04) to 315 min
+    (2026-11-10) and the run logged only the total. File times in the case clones put most of it in the Python
+    pairs (about 425 min of before-side scanning in cve-pairs-python and 278 in -frontend, summed over processes,
+    against 76 for every JS suite), led by a few whole-package cases: mlflow GHSA-wqmh 102 min with Semgrep giving
+    up on both sides, airflow GHSA-52gm 51, weblate GHSA-6wxc 34. Now every fetch and scan logs a `timing` line
+    (suite, case, phase, seconds, each analyzer's seconds, "prep" for the template renderers and importers, and
+    whether Semgrep gave up); `devtools.py bench` writes them to $CODEWATCH_BENCH_TIMINGS, nightly.sh keeps them as
+    DATE/timings.tsv and adds a "== time" section to the summary (`devtools.py timings`: per suite, per analyzer,
+    the slowest scans, the cases whose time moved by half or more since the previous night, the slowest apps).
+    One case timed at both commits (pgAdmin GHSA-g73c, 4,726 files, 2-3 of them scored; one CPU): 969 s at
+    3cea097 (the 2026-11-04 run's code) and 1,480 s now. Semgrep is about 95% of it (846 s then, 1,372 s now; every
+    other analyzer together about 40 s a side), and it now gives up on 2 files where it gave up on none. Its time
+    is the summary rounds over the whole package (summaries, passes, returners, fields), which this week's
+    cross-file work made heavier; only the final pass is limited to the scored files. So restricting the
+    single-file analyzers would save nothing worth having. Next, once the "== time" section confirms the case is
+    typical: limit the summary rounds to the scored files, the modules they import (transitively) and the modules
+    importing them. The risk is code reached without an import (handlers registered by name, plugin hooks), so
+    the gate is every non-blind pair scanned both ways with identical scores before it is switched on. Reusing a
+    night's results when a suite's inputs haven't changed (step 63) comes after that.
+65. **Summary rounds limited to the focus and its imports, on by default** (2026-11-12, commits d81d3ba, 97e742c).
+    With a focus (benchmark pairs), Semgrep's summary, pass, resummary and returner rounds scan only the focus
+    files (the changed files, their render calls and the changed modules' importers) and the project files they
+    import, transitively (`summaries.import_closure`, resolved as `visible()` is). Modules named in dotted strings
+    (ROOT_URLCONF, MIDDLEWARE, `include()`, `import_module()`, entry points) count as imported, for the risk step 64
+    named. `CODEWATCH_SUMMARY_SCOPE=all` scans every file again, to compare. App scans have no focus and are
+    unchanged. Across the non-blind Python pairs the closure keeps 7,155 of 31,939 Python files; the dotted
+    strings add 335 of them (mlflow's lazy `import_module("mlflow...")` loads most). A depth limit was measured
+    and dropped: mlflow GHSA-wqmh keeps 916 of 958 files at three imports deep (the summary rounds' MAX_DEPTH),
+    and the other slow cases are already small. Same idea elsewhere: Infer's reactive mode (changed code and its
+    dependencies), CodeQL's diff-informed analysis (alerts limited to changed lines, filtered again afterwards, as
+    the scorer does), demanded summarization (TOPLAS 2024: summaries computed only where a query needs them).
+    Gate, the five non-blind pair suites (458 case scores, verdict and review) against the nightly at the same
+    code with the scope off: imports only (2026-11-11) 168 min instead of 312 for every suite, 724 worker-minutes
+    of pair scans instead of 1,668, Semgrep giving up on 23 scans instead of 64-66; with dotted strings
+    (2026-11-12) 184 min, 751 worker-minutes, 23, and the same scores as without them. The one score that moved
+    is a gain: pgAdmin GHSA-cr8c, found and quiet at its fix (path-traversal@992) now that neither side gives up
+    (135 s a side instead of 1,250), as step 4's rules meant it to be. Nothing lost. Arches GHSA-gmpq's lines
+    behind its detection differed between the nightlies of 2026-11-11 and -12 (four sql-injection lines missing
+    on the 12th) on the same code with no Semgrep timeout either night; the gates match the 11th, and so does
+    the nightly of 2026-11-13 (scope on), so the 12th is the odd one out, not the scope change. Still
+    unexplained. Also seen: netbox's seven open-redirects in dcim/views.py went missing on 2026-11-11 and came
+    back on the 12th: a case scan running alongside the nightly's app scans slowed netbox from 1,422 s to 1,884 s.
+    Don't run scans while the nightly runs. Still slow: mlflow GHSA-wqmh (3,800-4,800 s a side, Semgrep giving
+    up), its time in per-file rule time on large files rather than the number of files. First nightly with the
+    scope on (2026-11-13, commit b200e1d): suites 184 min instead of 312, the whole run 3 h 45 min instead of
+    5 h 55 min, 764 worker-minutes of scans instead of 1,682; the same scores as the gate (cr8c the one gain,
+    GHSA-gmpq as on the 11th), the same 207 app findings. mlflow GHSA-wqmh is now a sixth of all scan time.
+66. **Topic 10's batches of 2026-11-11 reviewed** (2026-11-13). 240 read by the agent, 92 accepted (64 open, 28 blind),
+    a higher rate than step 63's (21%). No fix commit repeats within the batches or any suite. The open fix diffs
+    were pre-screened by deepseek-v4.1-flash against step 22's rules and the agent's stated flow (14 flagged); the
+    14 were read here, and the other 50 checked from their flows, with the WordPress URL builders, the escape-only
+    SQL fixes (escaping only helps inside quotes) and one `$_SERVER` source read too. Rejected (13): Drupal
+    email_registration GHSA-gx8c (already escaped by db_query's placeholder before the fix), phpIPAM GHSA-vmmw,
+    WebFinance GHSA-9fp7 and web-cyradm GHSA-54q9 (incomplete fixes: fieldType, column names, a third query),
+    WebFinance GHSA-9jjr (escaping in an unquoted context), vBulletin Gimmie GHSA-fh9m (a session user id),
+    yii2-gii GHSA-3mpg (an unanchored check), froxlor GHSA-w7w4 (filed as XSS, sink in the cron writer),
+    resend-welcome-email GHSA-gwq5 and mark-user-as-spammer GHSA-4mx9 (wp_nonce_url() already esc_html()s the
+    URL), weblabyrinth GHSA-q542 (the fixed query reads unset properties), BigTree events GHSA-9mvr (a new feature
+    in the same commit), cimage GHSA-6hv3 (SERVER_SOFTWARE). Kept although flagged: FlatPress GHSA-2qf9 and
+    QSF-Portal GHSA-2rwp (separators stripped or refused from a single name, so it can't leave its folder, as
+    step 22's sanitizers), OpenMage GHSA-5vpv (NUL and `..` segments refused). Kept after a closer look: debug-bar
+    GHSA-2mv3 (add_query_arg() with no base builds on the raw REQUEST_URI) and web-cyradm GHSA-x38j (the escaped
+    login is quoted in lib/crypto.php's query). The flash screen missed two of the 13 (GHSA-4mx9, GHSA-6hv3) and
+    flagged three sound fixes: worth reading the WordPress and `$_SERVER` cases by hand next time too. Added: 51 to
+    cve-pairs-php (197 now), 28 blind into cve-pairs-blind-php-18..21 as the batches named them (97 blind PHP).
+    Blind diffs were not read.
+67. **Research: topic 11, Python app CVEs with no GitHub advisory, ahead of PHP** (2026-11-13). The nightly of
+    2026-11-13 (review mode, a case caught when found before its fix and quiet after) shows where the non-blind
+    suites miss most: Python template and front-end XSS 6 of 31 (cve-pairs-python-frontend) and 1 of 7, Python SSRF
+    1 of 6, Python open redirect 4 of 11; JavaScript path traversal 1 of 24, SSRF 0 of 7, open redirect 0 of 5,
+    and 1 of 27 outside HTTP handlers. Those are rule work, but the Python ones also have too few cases, and
+    GitHub's advisory database is nearly mined out for them (topic 8: 1 of 240). Topic 11 reads the CVE list
+    (cvelistV5) instead, for Python web app CVEs with one GitHub fix commit and no GitHub advisory or PYSEC entry,
+    the pool CVEfixes and MoreFixes draw on; ids are CVE ids. PHP (topic 10, 1,062 candidates left) waits behind it,
+    since codewatch has no PHP rules yet. Also proposed and not queued: fixes using sanitizers codewatch doesn't
+    recognise (cve-pairs-python's verdict false-alarm rate is 15%), and more open-source Django, Flask and FastAPI
+    apps for the nightly's false-alarm check.
+68. **mlflow GHSA-wqmh profiled: keyword sanitizers behind a name filter, the focus never cut short** (2026-11-13).
+    Each Semgrep round of the case's before side timed at 6 jobs (`--time`): pass 1 440 s, passes 622 s,
+    resummaries 941 s, returners 207 s, the final scan of its 6 focus files 36 s; 2,246 s in all. The passes and
+    resummary rounds took a median file 10-15 times pass 1's, a 44 KB file as long as a 400 KB one: the rules,
+    not the files. argument_sanitizers' keyword comparisons (one `re.match(...) and re.match(...)` per function and
+    keyword set, slow to evaluate) sat behind a name filter only when the project had at most NAME_BATCH (400)
+    functions; mlflow's closure has 3,282, so every keyword argument in every file ran up to 2,000 comparisons.
+    Now each batch of functions gets its own sanitizer and filter (the same question asked): passes 339 s, Semgrep
+    giving up 18 times instead of 112. Resummaries barely moved (850 s): their time is matching (1,213 s of
+    1,505 against 18 s of taint), not yet explained. The final scan gave up on file_store.py and handlers.py, the
+    fix's files, on both sides: the focus now gets FOCUS_TIMEOUT (60 s a rule) and no file is skipped for its
+    timeouts (`--timeout-threshold 0`), the only scan where findings count and a few files. Both sides now
+    complete it (202 s, the slowest rule 25 s on handlers.py); app scans are unchanged. The case is still missed:
+    the flow (DeleteTraces' request_ids through `_get_request_message()` to FileStore.delete_traces, os.path.join
+    and shutil.rmtree) needs summaries of handlers.py and file_store.py, and the summary rounds still give up on
+    them. Worse, a passes or resummary round that gives up on a file drops its functions' earlier answers: a
+    function with no pass entry counts as handing nothing back (its result clean), a stale summary not found
+    again is gone. Both err towards missing flows, in any project. Tests: test_units
+    test_keyword_comparisons_filtered_by_name_in_projects_with_many_functions, test_detection
+    test_final_scan_of_the_focus_is_never_cut_short. To read on the next nightly: suite times, and any finding
+    new to a focus file that used to time out.
+69. **Topic 11 reviewed: Python app CVEs with no GitHub advisory** (2026-11-14). Four batches of 2026-11-13 read
+    the whole pool: 3,937 CVEs since 2021 with one GitHub fix commit and no GHSA or PYSEC alias, 227 of them in
+    non-archived Python repositories using a listed framework; 27 accepted (14 open, 13 blind), 200 rejected.
+    The open fix diffs were read here (no flash pre-screen: few enough). Rejected (5): SABnzbd CVE-2026-62965
+    (CherryPy, not a listed framework; the agent said Flask), YETI CVE-2026-63500 (to_archive writes objects
+    loaded from the database: stored data), Dify CVE-2025-58747 (window.open of a URL a remote MCP server returns,
+    no request source in the change), JumpServer CVE-2025-58044 (a Referer redirect, safe by design since step
+    13, fixed by a global middleware), EverOS CVE-2026-58499 (source and sink both touched, the flow between
+    them in the memory-extraction pipeline outside the diff). Kept: Roxy-WI CVE-2026-33076/-33077/-33078 (one
+    fix commit, three weaknesses: path traversal by server_ip and by oldconfig, SQL injection by server_ip;
+    a shared commit has precedent, GHSA-g3cm and -3mmf) and CVE-2026-22265 (a raw grep into an ssh command),
+    openedX CVE-2026-35404 (open redirect), Aperi'Solve CVE-2026-34977 (command injection), CVAT CVE-2024-47064
+    (XSS in a 404), YETI CVE-2026-63502 (path traversal), UFO CVE-2026-105793 (MCP tool argument to adb:
+    -nonhttp). Added: 8 to cve-pairs-python, 1 to cve-pairs-python-nonhttp; 13 blind into
+    cve-pairs-blind-python-16..19 as the batches named them. The blind repositories' frameworks were checked
+    from their dependency files (Flask, FastAPI, Django, Quart), not their diffs; no blind diff was read. Ids are
+    CVE ids; nothing in the scorer or reviewed.py assumed GHSA. Yield: 12% of what passed the filters, against
+    topic 8's 0.4%, so CVE-only fixes are a richer Python pool than the advisory database now is.
+70. **PHP rules: catalog/codewatch/rules/php-web.yml** (2026-11-14). cve-pairs-php (197 cases) had never been
+    scanned: the benchmark had no PHP source extensions, so every case failed before its scan; they are now .php,
+    .phtml, .inc, Drupal's .module/.install/.theme, Twig/Smarty/Latte templates and the JS a PHP app ships. Eight
+    taint rules, each `interprocedural: false` (summaries.py's patterns are Python and JavaScript, and every summary
+    function filters through taint_rules()): xss, sql-injection, path-traversal (include/require too),
+    command-injection, code-injection (eval, assert, create_function, a variable as the function or class name),
+    ssrf, open-redirect, unsafe-deserialization. Sources: the superglobals ($_SERVER only for REQUEST_URI, PHP_SELF,
+    PATH_INFO, QUERY_STRING and HTTP_*), filter_input, php://input, and the request objects of Laravel, Symfony,
+    CakePHP, CodeIgniter, Yii, Craft, Slim/PSR-7, Joomla and PrestaShop. Sanitizers: casts, numeric and boolean
+    results (arithmetic and dates included), the escapers of PHP, WordPress, Laravel, CakePHP and Yii, escapers
+    called by name as functions or methods (Strings::htmlentities, escape_input; not a bare `escape`, which is also
+    a database escaper), CakePHP view helpers, filter_var/filter_input's HTML-escaping filters, SQL escaping and
+    $wpdb->prepare (escaping only holds inside quotes, but flagging every escaped value would bury the rest),
+    basename/realpath, escapeshellarg, and two guard shapes after the Python ones: inside `if (isLocalUrl($x))`,
+    and after `if (!isSafe($x)) { ...; exit/return/die/throw/wp_die }`. SQL sinks exclude query-builder methods
+    that take arrays (where, select) and PDOStatement::execute, whose argument is the bound values. First run:
+    verdict 31 of 197 found, 15 still flagged; Semgrep's registry rules alone found 0 in verdict mode (4 in review).
+    The 15 read: 6 real incomplete fixes (WP Download Manager GHSA-w2w8's upload folder, cherry-plugin GHSA-f9fh's
+    strpos() path check, pheditor GHSA-jvc5's prefix-only command allowlist, read.php GHSA-vphm's searchnum, an SQL
+    error echoed in GHSA-7h3q, phpIPAM GHSA-xjqw's `escape_input(print ...)`), 9 false alarms of five shapes, fixed
+    as above. Second run: verdict 30 found (XSS 10 of 86, SQL 4 of 54, path 2 of 24, command 1 of 4), 9 still
+    flagged (4.6%; review 34 found, 16 still flagged); the one lost, baserCMS GHSA-66c2, was found by chance on the
+    line beside its bug (a form helper given 'escape' => false fills itself from the request, which no taint rule
+    sees). The 4 false alarms left: LMS GHSA-3vrh (a page title from a record looked up by a request id),
+    Admidio GHSA-6j68 (the SSRF check is on the resolved IP, not the URL), WP SMS GHSA-q2g5 (an allowlisted ORDER BY
+    through a custom prepare), and a codewatch.js.xss hit in GHSA-x224. 85 worker-minutes for the suite, the
+    slowest scan 23 s, so cve-pairs-php is no longer deferred: the nightly runs it from 2026-11-15. Tests:
+    tests/test_php_web.py. The research runner's cap (CODEWATCH_RESEARCH_MAX_PENDING in its systemd drop-in) is
+    12 again, the maintainer's choice: at 4 (step 61) it sat idle for days waiting on reviews.
+71. **CodeQL on the CVE pairs, as a comparison** (2026-11-14). The question: is codewatch rebuilding what GitHub
+    already gives away? benchmarks/codeql_compare.py runs CodeQL 2.27.4 (GitHub's bundle, in
+    ~/.cache/codewatch/codeql) on both sides of each case and scores it with core.benchmark's own fix spots and
+    score_pair; each finding's CWEs come from its query's tags. Verdict: the queries GitHub's code scanning runs by
+    default; review: all of security-extended. Python suites get a Python database, plus JavaScript when the
+    checkout has any. CodeQL's terms allow it only on code under an OSI-approved licence (paid GitHub Advanced
+    Security for anything else, private code included), so a case is scanned only when GitHub's SPDX id is OSI or,
+    for NOASSERTION, its licence files read as one; 16 of 229 skipped (mostly open-core repositories with
+    commercial terms beside the open licence). Results in ~/.cache/codewatch/codeql-compare, not
+    benchmarks/results; no blind suite. 311 worker-minutes, 50 minutes at 6 workers.
+    Against codewatch's nightly of 2026-11-14, on the cases both scored (found, then still flagged after the fix):
+
+    | Suite | Cases | CodeQL verdict | codewatch verdict | CodeQL review | codewatch review |
+    |---|---|---|---|---|---|
+    | cve-pairs-python | 76 | 23, 11 | 47, 12 | 23, 11 | 49, 16 |
+    | cve-pairs-python-frontend | 31 | 4, 1 | 4, 0 | 4, 1 | 14, 8 |
+    | cve-pairs-javascript | 65 | 8, 1 | 8, 6 | 8, 1 | 23, 19 |
+    | cve-pairs-python-nonhttp | 8 | 0, 0 | 1, 0 | 0, 0 | 3, 1 |
+    | cve-pairs-javascript-nonhttp | 24 | 2, 2 | 1, 0 | 3, 2 | 6, 5 |
+
+    Python: codewatch finds twice what CodeQL does (19 both, 28 codewatch only, 4 CodeQL only: two open redirects
+    in one project's two advisories, GHSA-3mmf and GHSA-g3cm; path traversal in GHSA-hwv5; reflected XSS in
+    GHSA-rv25) with about the same false alarms. JavaScript verdict: a tie at 8 with 2 in common, CodeQL quieter
+    (1 still flagged to 6); its 6 are path traversal (GHSA-5c4f, -5pph, -p3h2, -x8qg), regex injection and
+    prototype pollution, where codewatch's JS path traversal is weakest (1 of 24 in review). codewatch's review
+    mode finds far more in both languages, at the cost of findings left on fixed code. Answer to the question:
+    codewatch is not chasing something GitHub already has for Python; for JavaScript CodeQL's taint tracking is
+    as good and cleaner, and its misses show where codewatch's should go next.
+72. **Batches of 2026-11-14 reviewed: topic 12's five and topic 10's PHP batch** (2026-11-14). 360 read by the
+    agents, 33 accepted (18 open, 15 blind). The 18 open fix diffs were read here; 7 rejected:
+    Chartbrew CVE-2026-65980 and CVE-2026-85726 (escaping changed inside a shared variable-substitution helper,
+    request source and query execution both outside the changed file), Joplin CVE-2026-59814 (the MIME type served
+    is stored metadata; the fix hardens response headers), nterchange GHSA-cp2p (quote escaping swapped for base64
+    in generated PHP), contact_app GHSA-gpxg (escaping added inside a view helper, no request source visible),
+    FlatPress GHSA-mpfm (the posted name becomes a gallery folder shown later: stored), w2wiki GHSA-q3hj (saved wiki
+    pages: stored). Kept: SparkyFitness CVE-2026-92263 (an upload's originalname into a shell tar command in
+    another file; its own repository advisory GHSA-jh96 was new to reviewed.py), Portabase CVE-2026-67449 (a
+    request header into path.join and rename), Markdown Preview Enhanced CVE-2026-54703 (-nonhttp: a VS Code
+    webview's message forwarded to a file-writing command; a release commit, its one unrelated hunk a preview-tab
+    fix), SQLBot CVE-2026-53556 (a request body's table name into an f-string query; FastAPI), and in PHP OpenMage
+    GHSA-qxw7 (scope widened to errors/, where processor.php reads SCRIPT_NAME), go-with-me GHSA-52gv ($_POST into
+    oci_parse), TBDev GHSA-88jc ($_GET echoed into input values; the file isn't UTF-8), MISP GHSA-x452 (CakePHP view
+    variables echoed unescaped; the controller is outside the scope), CRMx GHSA-h8mf ($_POST['id'] into an UPDATE
+    through the app's own db()), oc-server3 GHSA-w8rr (a Smarty template's {$username} without |escape; the source
+    is outside the scope) and phpMyFAQ GHSA-cp9c (an action read with FILTER_UNSAFE_RAW printed into admin links).
+    Added: 2 to cve-pairs-javascript, 1 to -javascript-nonhttp, 1 to cve-pairs-python, 7 to cve-pairs-php. Blind,
+    as the batches named them except one: cve-pairs-blind-python-20..23 (Docat and Browsertrix FastAPI, Redash
+    Flask, Plane Django, from their dependency files), cve-pairs-blind-php-22/-23, cve-pairs-blind-javascript-17/-18,
+    and 2 into cve-pairs-blind-javascript-nonhttp: Chartbrew's AI tool case, and JupyterLab Desktop CVE-2026-86044,
+    moved there from -15 because its advisory's title is an Electron app's one-click link, not an HTTP request. No
+    blind diff was read. Topic 12's yield: 18 of 300 (6%), half Python or PHP code in repositories GitHub calls
+    JavaScript.
+73. **PHP templates and views** (2026-11-14). Of cve-pairs-php's 203 cases, about 17 fix a template or a view:
+    Twig (5), Blade (1), CakePHP views (MISP's .ctp, about 8), Smarty (oc-server3). Three things were missing:
+    - PHP Semgrep never parsed: .ctp, .phtml, .inc, Drupal's .module/.install/.theme and PHP-written .tpl
+      (base.PHP_VIEWS) went unscanned, because the analyzer took .php only and Semgrep picks a language by
+      extension. They are scanned as .php copies mapped back (multi_tools.add_php_copy; a file with no PHP tag is
+      left out). FrontAccounting GHSA-9fmm, whose fix is in an .inc, is found by this alone.
+    - CakePHP 2's request properties: $this->request->data/query/pass/named/here/url, params['named'/'pass'] (not
+      ['action'] or ['controller'], which the router matched), $this->params['named'...], $this->passedArgs;
+      OpenCart's $this->request->get/post/cookie; CakePHP's referer() (a source for XSS, a sanitizer for
+      open-redirect, where going back to it is the idiom). The view-helper sanitizer no longer takes a
+      component's $this->Controller for a helper (MISP GHSA-p8fp).
+    - Template sinks (core/analyzers/php_template_sinks.py, rule codewatch.php.web.template.xss, a copy of the PHP
+      XSS rule), after the Python one (step 32): a variable a template prints unescaped makes the argument that
+      sets it a sink. Unescaped: Twig |raw and autoescape false blocks, or every print when the project builds
+      Twig with 'autoescape' => false (OpenCart); Blade {!! !!}; Latte |noescape; Smarty {$x} without an escaping
+      modifier (unless the project turns escape_html on); a PHP view's echo, print or <?= ?> of a variable outside
+      h()/htmlspecialchars()/esc_*()/a $this-> helper/a cast, per variable (a small scanner: MISP's genericForm
+      element prints $data['description'] beside h($data['title']) in one sprintf), not counting a variable the
+      view assigns itself. The call that sets it: one naming the template (render, renderView, display,
+      load->view, element, view(), View::make, ->with; also a $data array filled anywhere in the function that
+      renders it, OpenCart); a CakePHP controller's $this->set() in an action whose view (View/<Controller>/
+      <action>.ctp or templates/..., or a $this->render('other')) or its elements print the variable; by name
+      alone for Smarty's assign() and a component's $this->Controller->set(). compact('a') is written out as
+      ['a' => $a] in the scanned copy. The message names the template and variable; the scorer
+      (benchmark.php_template_renders, php_template_callers) adds the files that set a changed template's
+      variables to the scan's focus and credits a template fix with the finding at the controller. A first
+      version matched CakePHP's set() by variable name across all views: it reported MISP's populate action for a
+      $fileArray another view prints, hence the action matching.
+    Scopes widened (non-blind): MISP GHSA-p9m5 (+ the generic form element), GHSA-x452, -cr6c, -mj6h
+    (+ app/Controller), oc-server3 GHSA-w8rr (htdocs), OpenCart GHSA-qx44 (+ its Twig library). benchmark.git()
+    decodes with errors="replace" (TBDev GHSA-88jc's non-UTF-8 diff failed the case).
+    cve-pairs-php: verdict 35 of 203 found (was 30 of 197), 9 still flagged, the same 9 as step 70; review 41, 17.
+    New: FrontAccounting GHSA-9fmm, MISP GHSA-p9m5 and -p8fp, OpenCart GHSA-qx44, oc-server3 GHSA-w8rr (new
+    today). Still missed among the template cases: stored values (facturascripts GHSA-g6w2's log messages,
+    phpMyFAQ GHSA-pgwp's FAQ content, MISP GHSA-4hg7's homepage setting), panel GHSA-mgr9's flash message, and the
+    items in Open items. Tests: tests/test_php_templates.py.
+74. **Topic 12's batches 6-12 and the 2026-11-15 batch reviewed** (2026-11-15). 480 read by the agents, 54
+    accepted (37 open, 17 blind). The 37 open fix diffs were read here; 13 rejected: tarkov-data-manager
+    CVE-2026-21856 (a missing bound-parameter argument, no request value in the query text), AnythingLLM
+    CVE-2026-32719 (adm-zip extractAllTo on the whole archive; the fix is a validation loop before it, no flow
+    changes), SiYuan CVE-2026-59855 (an asset path from a note: stored), openmcp-client CVE-2025-58062 (a method
+    parameter whose source is an MCP server's authorization URL inside the SDK), LibreChat CVE-2026-22252 (stdio
+    dropped from an input schema union; the command runs elsewhere), VDO.Ninja CVE-2025-62613 (a demo page under
+    examples/), The Scratch Channel CVE-2025-53903 (posted profiles rendered later: stored), Dokploy
+    CVE-2026-72875 and -72884 (stored app names and compose paths into shell commands), PeerTube CVE-2026-73211 (a
+    federated actor's stored inbox URL), Firecrawl CVE-2026-72904 (json-schema-ref-parser's external $ref
+    resolution, the request schema arriving through a controller outside the diff), Homarr CVE-2025-64759 (a stored
+    SVG upload, plus header and sandbox hardening) and Twenty CVE-2026-73069 (stored field metadata into DDL).
+    Kept, cve-pairs-javascript (15): dbgate CVE-2025-50184, Docmost CVE-2026-22249 (an import zip's entry names),
+    WeKan CVE-2026-52891 (an upload's file name into exec in another file), Plunk CVE-2026-32096, Blinko
+    CVE-2026-23485 (tRPC input), Vertex CVE-2024-40646, Activepieces CVE-2026-73084 (JSON.stringify inside a
+    <script>), Dokploy CVE-2025-53375 (scope widened to packages/server/src/utils/traefik, where readConfigInPath
+    reads the path) and CVE-2026-72736 (tRPC input into docker commands), FastGPT CVE-2026-34163, Kan
+    CVE-2026-32255, Audiobookshelf CVE-2025-57800 (a callback stored in a cookie and redirected to), Grist
+    CVE-2026-55665 (location.search's next into a link) and CVE-2026-55659 (request values through
+    String.replace into an inline script), Jellystat CVE-2026-41167. cve-pairs-javascript-nonhttp (9): AnythingLLM
+    CVE-2026-32626 and -41318 (LLM replies and chart captions rendered as HTML) and CVE-2026-48116 (agent tool
+    arguments into ripgrep without "--"), electerm CVE-2026-73225 and -73224 (remote SFTP names into local paths
+    and shell commands), Tabby CVE-2026-72903 (the same, SFTP), Zero CVE-2025-52557 (email HTML), appium-mcp
+    CVE-2026-58500 (a device's UI element data into an MCP UI page), Anchorr CVE-2026-32890 (Discord avatars into
+    innerHTML). Blind, as the batches named them: cve-pairs-blind-javascript-19..24 (new), 2 into
+    cve-pairs-blind-javascript-nonhttp, and cve-pairs-blind-python-24 (new). No blind diff was read. Yield 24 of
+    480 (5%); 6 of the 13 rejections are stored data, the agents' commonest miss.
+75. **Topic 12's last batch and topic 10's five PHP batches of 2026-11-15 reviewed** (2026-11-15). 368 read by
+    the agents, 78 accepted (53 open, 25 blind); topic 12 is done. The 53 open fix diffs were read here; 15
+    rejected: OpenEMR GHSA-5376 (an encoded JSON response, no source shown), gnuboard GHSA-57g7 ($fm_id set from the
+    request by common.php), MantisBT GHSA-4rrc (filter values through the filter API), phpMyAdmin GHSA-x37v (a JS
+    page global), Froxlor GHSA-6fvw, podlove GHSA-2c3j and Everest Forms GHSA-4xpc (method or function arguments,
+    callers outside the diff), Contao GHSA-m8x6 (a service's values printed by a template outside the diff),
+    osTicket GHSA-v3wf (an upload served inline: stored), LibreNMS GHSA-325v (the same fix commit as GHSA-5229,
+    kept), Revive GHSA-4925 (a property set in another file), Cacti GHSA-7q49 (file names from an imported
+    package's XML), FileGator GHSA-rrhw (dots stripped inside a storage service), openmediavault GHSA-f68r (a
+    closure added beside create_function, which stays), Firecrawl CVE-2024-56800 (a dispatcher refusing private
+    addresses in a scraper whose job is fetching URLs). Kept: 3 in cve-pairs-javascript (Audiobookshelf
+    CVE-2025-46338, an id echoed in an error; binance-trading-bot CVE-2025-27106 and DumbDrop CVE-2025-24971, upload
+    names into shell commands) and 35 in cve-pairs-php, 15 of them FusionPBX's (mostly echoed $_GET/$_REQUEST values; its
+    own event_socket_request as a command sink in GHSA-gfg4, base64 request paths into unlink in GHSA-952f,
+    PHP_SELF in paging.php). The others: request values into SQL (Piwigo, LibreNMS customoid, Centreon, Contao's
+    tl_field, WP Statistics' page URI, OpenEMR eye_mag), into HTML (phpRedisAdmin, pfSense, Dolibarr's GETPOST,
+    DokuWiki's $INPUT, fecshop's Yii request, Chamilo, All-In-One WP Security, LibreNMS's YAML errors), MISP
+    GHSA-9wr9 (a CakePHP action parameter set into a view), Melis (a request value into unserialize), dotplant2
+    (XXE), BookStack (a route parameter into a file response). Scopes widened: Firefly III GHSA-mrc2
+    (+ app/Http/Controllers, whose controller passes the query to the Twig |raw) and Revive GHSA-r4jw (+ www/admin,
+    which assigns the Smarty $status). Blind, as the batches named them: cve-pairs-blind-javascript-25 and
+    cve-pairs-blind-php-24..27 (all new). No blind diff was read. Yield: topic 12's last batch 4 of 68 (3 kept),
+    the PHP batches 74 accepted of 300 (35 kept); FusionPBX is now a large share of cve-pairs-php (239 cases).
+76. **Topic 10's PHP batches php-6..9 of 2026-11-15 reviewed** (2026-11-16). 240 read by the agents, 87 accepted
+    (65 open, 22 blind). The 65 open fix diffs were read here, with the fixed files where the source was not in the
+    diff; 20 rejected. Source outside the diff (arguments or a value set elsewhere): SilverStripe GHSA-f93v, Pimcore
+    GHSA-g7pj, Exponent GHSA-w946, GOsa GHSA-7v8f, Revive GHSA-5j5m, BigTree GHSA-4xfw, OpenCart GHSA-w3h9, Piwigo
+    GHSA-5r63, phpMyAdmin GHSA-xhqq (common.inc.php's import, as gnuboard at step 75), MantisBT GHSA-46x9 (the
+    filter API, as GHSA-4rrc), Shibboleth GHSA-h754 (add_query_arg's default inside WordPress). Client-side values:
+    ownCloud GHSA-pmqr (a hidden input's DOM value), phpMyAdmin GHSA-jqmr (a JS page global). Stored: MyBB GHSA-7g92,
+    TYPO3 GHSA-xx7m, MISP GHSA-gr95. Sink outside the diff: Jojo GHSA-mwx5 (a Smarty template). Not flow fixes:
+    phpThumb GHSA-3747 (fetching src is its job; only schemes narrowed), Exponent GHSA-wjr7 (router-wide id
+    normalisation), MantisBT GHSA-x3h6 (an existence check away from the unchanged output). Kept 45 in
+    cve-pairs-php. Rule applied for app-wide request accessors: kept when the source is named as the request
+    (MantisBT gpc_get_*, Cacti get_nfilter_request_var, b2evolution param(), Moodle optional_param, Jojo/Spoon
+    getters, Zend getParam, Exponent's controller and router params, Serendipity's $serendipity['GET'], Saurus's
+    $site->fdat, Ushahidi's API $this->request); rejected when it is a plain variable or property filled elsewhere.
+    Kept shapes: direct $_GET/$_REQUEST/$_SERVER echoes (phpPgAdmin, gpEasy, tdm, BigTree, Cacti REQUEST_URI,
+    ownCloud print_r($_POST)), request values into SQL (Piwigo's check_input_parameter fixes x4, Exponent search,
+    notfound, pixidou and navigation, Ushahidi, Pragyan), unserialize of cookies or request data (SilverStripe,
+    MISP, MantisBT), paths (Pimcore, b2evolution, ForkCMS, WordPress upgrader, WonderCMS), redirects (Serendipity
+    Referer, WordPress wp_redirect, ILIAS return_to_url), templates (MODX Smarty $smarty.get, October Twig
+    form_value, MISP $this->here, ILIAS setVariable) and phpMyAdmin GHSA-jfjq (htmlspecialchars in a JS string,
+    the wrong encoder for the context). Scopes widened: ZfcUser GHSA-33rh (+ src/ZfcUser/Controller, which passes
+    the redirect query to the view) and OpenCart GHSA-c83f (+ the account templates, which echo zone_id into
+    script). Blind, as the batches named them: cve-pairs-blind-php-28 and -29 (new). No blind diff was read. Yield
+    45 kept of 240 read (19%).
+77. **SQLBot CVE-2026-53556 found; a JSONPath find is not XPath** (2026-11-15, finished 2026-11-16). The case was
+    missed in every nightly. Three changes: its scope widened (+ datasource/api, datasource/models, apps/db) so the
+    route and the request model are checked out; `core/analyzers/body_models.py` reads a body model's fields one
+    level down (`data.table.table_name`, a field typed with another model) and treats a model passed whole to a call
+    as request data there (a model with no text fields, even nested, stays out); `core/analyzers/multi_tools.py`
+    keeps a summary resting on another one summarised again in the same round (SQLBot's preview() and exec_sql()
+    both call a permission helper that hands back only some parameters, and preview() lost its summary). Tests:
+    `test_request_body_models_nested_and_passed_whole`, `test_a_summary_resting_on_another_summarised_again_in_the_same_round`,
+    each failing without its change. SQLBot is now found at the route's `preview(...)` call (api/datasource.py:232)
+    and quiet at its fix. On the three FastAPI apps of the learning set the change added one false alarm: dispatch's
+    `jpath.find(signal_instance.raw)` in find_entities (the entity type's body model passed whole to create()) as
+    xpath-injection, ElementTree's `$TREE.find($QUERY)` sink matching a compiled JSONPath, whose argument is the
+    document searched. The sink's receiver exclusion now also skips names ending jpath/jsonpath/json_path
+    (`test_a_jsonpath_find_is_not_xpath`); dispatch is back to the nightly's one finding (plugin.py:225 ssrf),
+    fastapi-realworld-example-app and full-stack-fastapi-template unchanged. The nightly of 2026-11-17 measures
+    the rest of the apps and suites.
+78. **Topic 10's last seven PHP batches, of 2026-11-16, reviewed** (2026-11-16); topic 10 is done. 408 read by the
+    agents, 94 accepted (59 open, 35 blind). The 59 open fix diffs were read here, with the fixed files where the
+    source was not in the diff; 33 rejected, reasons in the batch TSVs. Source outside the diff (13): arguments of
+    functions or methods whose callers are elsewhere (Symphony, MantisBT SOAP, Pimcore's grid helper, Fork CMS,
+    YOURLS' edit_link, Cachet, Mautic, phpMyAdmin x2, Shopware), Dolibarr's product properties, phpMyAdmin GHSA-mgpp
+    ($db from common.inc.php, as GHSA-xhqq), Pimcore GHSA-7hqr (unserialized data read back from a temp file the
+    request named). Stored (9): PrivateBin, Fork CMS module XML, Pimcore rule names, media2click, Flarum x2 (JS),
+    Moodle's content bank, Cerebrate's form descriptions, Contao's head bag. Sink outside the diff or scope (6):
+    FacturaScripts (Twig), GOsa (Smarty), Solr (template markers), php-proxy-app, emlog, e107 (values only compared).
+    Not flow fixes (4): phpsysinfo (basename() already there), LiveHelperChat's CSS proxy (fetching is its job),
+    phpMyAdmin GHSA-97x5 (where clauses are SQL by design), Firefly III GHSA-5fvx (the redirect is Laravel's own
+    handler). Duplicate (1): MODX GHSA-6gcw, the same header.tpl change as GHSA-jv4m on another branch. Kept 26 in
+    cve-pairs-php: direct request echoes (Dolibarr REQUEST_URI and GETPOST, Evolution CMS, GetSimple, wp-youtube-live's
+    var_export($_POST), Pi's markdown preview, YOURLS' upgrade page, phpMyAdmin GIS settings), request values into
+    SQL (GLPI, Pimcore x3 filter JSON and storeId, Dolibarr GETPOST arrays, phpIPAM), unserialize of cookies or
+    request (FreePBX, Subrion, Chamilo's hash), paths (tinyfilemanager, Pimcore exportFile, Revive's layerstyle
+    through MAX_commonRegisterGlobalsArray), MantisBT view_type, MISP's request params in a layout, BigTree upload
+    names, Adminer's REQUEST_URI through remove_from_uri into a script string, Moodle tag filter (s() into an
+    unquoted attribute) and Moodle GHSA-6jhm (an external function's sort parameter: a web-service entry point,
+    kept like a CakePHP action parameter). Blind, as the batches named them: cve-pairs-blind-php-30..34 (new). No
+    blind diff was read. Yield 26 kept of 408 read (6%); the agents' accepts were 44% right (step 76: 69%), lower at
+    the old end of the pool (2021 and earlier, more stored and argument-only fixes).
+79. **Research topic 13 queued** (2026-11-16): front ends of Python web apps whose repository GitHub doesn't call
+    Python. Every Python topic kept repositories whose primary language is Python and the JavaScript topics kept
+    JS/TS servers, so a Django, Flask or FastAPI app with a large front end (TypeScript, JavaScript, Svelte, Vue or
+    HTML on GitHub) fell between them. Sources: GitHub's advisory database (reviewed and unreviewed) and cvelistV5,
+    since 2021, one fix commit; a Python web framework declared in the tree; fixes in the app's templates, shipped
+    JS or views. For cve-pairs-python-frontend (4 of 31 found in verdict mode), the weakest Python suite.
+80. **Nightly of 2026-11-17 read; README refreshed; main fast-forwarded** (2026-11-17). The 2026-11-16 run lost its
+    suite scores to a DNS outage, so the case-by-case check was against 2026-11-15: lint and 307 tests pass; no
+    existing case went from found to missed or became flagged after its fix, in either mode; six went from missed
+    to found (SQLBot CVE-2026-53556, step 77, and five PHP cases: GHSA-9fmm, -p8fp, -p9m5, -qx44, -w8rr); verdict
+    false alarms stay at 0% on OWASP, the SecurityEval Copilot/InCoder answers and vulnerable-node. Apps: nothing
+    new; taiga's github/api.py:89 SSRF, a false alarm since step 38, is gone. The 107 PHP, 18 JS/TS and 9
+    non-HTTP JS/TS cases added since 2026-11-15 were scored for the first time (PHP: 33 found, 12 still flagged in
+    verdict mode). Time-outs moved between cases (27 to 28) without changing any case's result. README: the
+    benchmark table from this run, a PHP row in the Languages table, and the current CVE and blind-suite counts.
+81. **Topic 13's only batch reviewed** (2026-11-17). The agent's filter (front-end repositories on GitHub whose
+    tree declares a Python web framework) left 39 candidates, all read in one batch, so the topic is done; 5
+    accepted, all fixed in Python views rather than templates or JS, so the open ones go to cve-pairs-python.
+    Kept: Horilla HR CVE-2026-41513 (request.GET['next'] into redirect() in four views of its own copy of
+    django-notifications, kept in the app tree, not vendored), Scout CVE-2024-47530 (request.args.get('next') into
+    redirect() after login; a different advisory from Scout's SSRF case GHSA-g53g), munhak-moa GHSA-4q38 (a
+    `<path:path>` route parameter joined onto the app directory and sent with send_file). Rejected: Tandoor
+    CVE-2026-25964 (the path is a stored RecipeImport.file_path passed in as an argument; the request that stored
+    it is outside the diff). Blind: Horilla CVE-2025-47789, in the new cve-pairs-blind-python-25. First scores
+    (`devtools.py cases`): Horilla and Scout found and quiet after the fix in both modes; munhak-moa missed: the
+    route parameter reaches os.path.join through a helper defined inside the view (`def get_absolute_path(path)`
+    nested in get_image), which the summary passes don't follow. Left for a rule session.
+82. **Research usage log fixed; topics 14 and 15 queued** (2026-11-17). Since 2026-11-08 every run's usage line
+    was an error: opencode 2.x moved `export` to `opencode session export` and flattened its messages (`type`,
+    `model.id`, `tokens` and a `content` list on each message; a tool's text under `state.content` instead of
+    `state.output`). tools/research_usage.py now reads both formats (checked on the runs of 2026-11-16/17: topic
+    13's batch was 34 min, 416k characters read, about $0.07). Research only, not rules. The research queue had been
+    empty since topic 13 closed after its one batch, and every topic so far kept entries published since 2021, whose
+    Python and JS/TS pools are read to the bottom. Counted locally on 2026-11-17 for the years before (cvelistV5
+    records with one GitHub fix commit and a listed weakness, plus GitHub-reviewed advisories), unread: about 45
+    Python, 150 JS/TS and 30 HTML/CSS repositories' CVEs, 150 in repositories not yet looked up, 55 PyPI and 205
+    npm reviewed advisories (mostly libraries); about 530 PHP CVEs and 45 Packagist advisories. Topic 14 takes the
+    Python and JS/TS ones, Python first, aimed at the measured gaps (XSS in Python front ends and JS apps, Python
+    open redirect and command injection, JS SSRF and path traversal); topic 15, PHP, starts after it. Together
+    about 20 batches, more than the runner's cap of 12 batches waiting for review, so the cap rather than the
+    queue limits them until the next review.
+83. **A standing research topic for new arrivals** (2026-11-17). Topics were marked done when read to the bottom,
+    and nothing went back for later advisories: about 100-140 a week pass the basic filters (a listed CWE, one fix
+    commit in one repository; all languages, libraries included), and about 190 from November and 150 from October
+    had never been read on 2026-11-17. Most CVEs are published once the fix is out; the delay that matters is NVD
+    adding the CWE and the fix link later, so topic 16 looks back 60 days each time and relies on reviewed.py to
+    skip what an earlier day read. It is never marked done and is taken first once a day (when no
+    cve-candidates-<today>-new file is on the branch), then the backlog topics. Expected yield: a handful of cases a
+    week, all recent code.
+84. **A helper passed straight to another call is asked what it hands back** (2026-11-17). munhak-moa GHSA-4q38
+    (step 81) was "missed": not nested functions, as step 81 guessed. Before the fix codewatch reported the
+    send_file argument at line 274, four lines from the fixed line 270 (scored only within 3), and the same line
+    after the fix, so the finding didn't go away either. The fix moved safe_join into a helper,
+    `send_file(get_absolute_path(f"./images/{path}"))`, and pass_rules only asked about helpers whose result is
+    assigned, returned, a keyword argument (`=`) or in an f-string, so the helper got no answer and the call kept
+    its taint. The same miss held for a top-level helper. summaries.ARGUMENT_CALL_RE adds, for Python only, a call
+    passed positionally to another call (`(` or `,` before it); assigned_calls' `fstrings` flag became `python`.
+    It can only clear findings (a helper found to hand nothing back), never add one; the cost is more helpers asked
+    about in large apps, for the nightly to time (netbox, paperless-ngx, label-studio). Measured with
+    `devtools.py cases`: GHSA-4q38 found and quiet after the fix in both modes; Dagster GHSA-q93c, PostHog
+    GHSA-jrwm and Vibe-Trading GHSA-mjrq (earlier pass-through cases) unchanged. Tests:
+    test_a_helper_passed_straight_to_a_sink_is_asked_what_it_hands_back (fails without the change) and a unit
+    check in test_pass_rules_only_ask_about_functions_whose_result_is_assigned. A side note from the
+    investigation: a case scope of "." checks out only the repository's top-level files (cone-mode sparse
+    checkout); 80 cases use it, and none of last night's scans failed from it, but deeper files are absent.
+85. **False alarms on codewatch's own code** (2026-11-17). The maintainer scanned codewatch itself: 230 issues, 56
+    "vulnerabilities". 35 were regex backtracking in the analyzers' own parsers; 21 were critical taint findings in
+    the server, CLI client and MCP server, every one a false alarm from five shapes no CVE pair or app set had shown:
+    - XPath `.find()` on a module (`catalog.find(rule_id)`, a rule lookup): the sink now skips a receiver the file
+      imports as a module (no XML library has a module-level find).
+    - A module with its own `def request(...)` (the CLI client): the bare `request` source skips such a module.
+    - A check in a helper that answers with a message (`scan_refusal(project, branch)`: a regex test of the branch,
+      returning "That isn't a branch name."), and a caller that stops when it answers (`if scan_refusal(...):
+      return None`, or the answer stored then tested). New core/analyzers/project_checks.py finds such helpers by
+      their body (every return None, a constant or an f-string; an `if` testing a parameter with a regex or `not in`
+      returns a message) and adds a guard sanitizer to every Python taint rule. launch_scan stops being a sink for
+      the branch, which cleared its three callers.
+    - A URL whose host is configuration: `base = os.environ.get("CODEWATCH_URL", ...).rstrip("/")`, then
+      f"{base}/api/{path}" (the MCP server). Semgrep can't tie an f-string's first part to an assigned variable (a
+      regex group doesn't unify with a metavariable), so project_checks lists the names assigned from os.environ,
+      os.getenv or Django settings and the SSRF rule clears an f-string starting with one of them and a `/`; without
+      the slash (`f"{base}{path}"`, path `@evil.com`) or with the request's value first it is still found. And a
+      urllib Request assigned to a variable carries only its body to urlopen (its URL is a sink where it's built);
+      sanitizing the call itself hid that sink, so the variable is cleaned, as lookup-result does.
+    - A row the ORM just created (`Project.objects.create(owner=owner, **fields)`, fields from the request body)
+      returned by a helper: pass-through drops lookup-result, so the whole row was request data and its key reached
+      the coverage upload's path. summaries.ORM_CREATED (objects.create/get_or_create/update_or_create) is kept in
+      every pass-through variant.
+    Regex backtracking: exponential stays a critical vulnerability; polynomial, which needs long input and whose
+    input the check can't see, is now a major security hotspot (developer tools stay a minor one).
+    Measured: the codewatch repository has no Semgrep vulnerabilities (21 before); the 23 Python CVE cases with
+    SSRF, command-injection or XPath weaknesses are unchanged in both modes (`devtools.py cases`). Tests:
+    tests/test_python_own_code.py (each fails without its change, each beside a real flow still found) and
+    test_polynomial_backtracking_is_a_hotspot_and_exponential_a_vulnerability. For the nightly: app findings can
+    only drop; any that drops is to be read, since a helper wrongly taken for a refusal check or a configured name
+    reused for request data would hide a real one. Lesson: no measure had a person read a whole report as a user
+    would; codewatch is a Django app nobody tuned on, and was never scanned.
+    Since 2026-11-18 the nightly scans codewatch itself as an app (~/.cache/codewatch/fresh/codewatch, a link to
+    the nightly's own checkout, so it scans the commit measured): expected result no vulnerabilities (none at
+    9c799d9, 416 files, 148s); any line under it in the app diff is a false alarm to fix.
+86. **Twelve research batches reviewed: topics 14, 15 and 16** (2026-11-18). The runner had stopped at its cap of
+    12 batches waiting. 664 advisories read by the agents (topic 14's six batches, which finish it; topic 15's first
+    three; topic 16's first three days of new arrivals), 81 accepted (57 open, 24 blind). All 57 open fixes were
+    within the size limits with one parent; their diffs were read here and 23 rejected:
+    - generated or stored data, no request in the changed code: misp-modules CVE-2026-97863 (a shell script written
+      for the user to run, never executed by the server), cloudcmd GHSA-m8fw, glance GHSA-7375 and crud-file-server
+      GHSA-h24f (file names read from disk into a listing), MantisBT CVE-2019-15539 and CVE-2019-15074 (attachment
+      names from the database), PrivateBin GHSA-8j72 (a decrypted paste's attachment name), Tiny File Manager
+      CVE-2019-16790 (shell stat on files already on disk);
+    - values parsed out of an uploaded file outside the changed code: LimeSurvey CVE-2018-20322 (ZIP entry names),
+      Cacti CVE-2020-25706 (template archive), OctoberCMS GHSA-gg6x (CSV columns), Solidtime CVE-2026-76806 (ZIP
+      JSON ids), phpMyAdmin CVE-2018-15605 (the database server's warnings for an imported file);
+    - nothing a scanner can follow: noVNC GHSA-49rv (the VNC server's text through the RFB library), JupyterLab
+      GHSA-6966 (a clipboard trust flag), ruTorrent GHSA-rh8c (symlink following after a text check), FreeScout
+      CVE-2026-62856 (LIKE wildcards in an already bound value), phpMyFAQ CVE-2017-15727 (an upload type check),
+      Grav CVE-2020-11529 and WordPress CVE-2020-4048 (flaws inside the redirect helper, the value an argument),
+      GLPI CVE-2020-15226 (request read and SQL both outside the changed file);
+    - duplicates: phpMyAdmin CVE-2018-7260 is GHSA-gqmj, already in cve-pairs-php; OpenEMR CVE-2018-17181 shares
+      CVE-2018-17180's fix commit and is merged into it (CWE 22 and 89).
+    Changed at review: misp-modules sourcecache GHSA-vmhf to cve-pairs-python-nonhttp (a MISP module request, not
+    a web request) with CWE-918 added; Zulip CVE-2019-19775's scope widened to zerver/views/thumbnail.py, where the
+    url parameter is read; wiki-plugin-datalog GHSA-pm52 gets CWE-78 (req.query into exec). Added: 2 to
+    cve-pairs-python, 1 to -python-nonhttp, 9 to cve-pairs-javascript, 22 to cve-pairs-php. The agents named
+    seven new blind suites; merged here into one per language: cve-pairs-blind-python-26 (1),
+    cve-pairs-blind-javascript-26 (4), cve-pairs-blind-php-35 (18), and 1 into cve-pairs-blind-javascript-nonhttp.
+    No blind diff was read. Yield: 34 of 664 (5%) open cases kept.
+    First scores (`devtools.py cases`, verdict mode; review mode the same except where noted): 7 of 33 found.
+    Python: MISP GHSA-jwxw found but still flagged after the fix (its _safe_next_url rebuilds the URL with
+    urlunsplit after urlsplit checks, not recognised as a redirect check); Zulip missed (the redirect target comes
+    back from generate_thumbnail_url in zerver/lib). JS: wiki-plugin-datalog found and quiet after the fix;
+    localhost-now found and still flagged (its fix strips ../ with a regex, arguably still unsafe); m-server and
+    Countly found only in review mode by Semgrep's registry path-join rules; NocoBase, NodeBB, glance, Etherpad
+    and Nango missed. misp-modules sourcecache missed (no module-request source). PHP: Shaarli and three FusionPBX
+    XSS cases found, all still flagged after their fixes (escape() and is_uuid() not recognised, and in
+    fifo_interactive the replacement $fifo_name); the other 15 missed. LimeSurvey CVE-2014-5016 couldn't be
+    scored: Semgrep exited 2 after fixpoint timeouts in conditionsaction.php and participantsaction.php. That
+    failure made `devtools.py cases` crash and lose every other score; score_cases now leaves a failed case out
+    and logs it, as run() already did (test_scoring_named_cases_leaves_out_one_that_fails_to_scan). For a rule
+    session: FusionPBX's escape()/is_uuid(), the urlsplit-based redirect helper, and the Semgrep exit on
+    LimeSurvey.
+87. **The rest of codewatch's own report** (2026-11-18). After step 85 the maintainer's scan of codewatch showed 22
+    bugs, 1 vulnerability and 65 hotspots. The 22 bugs were basedpyright type errors in tooling (a possibly
+    unbound variable, Optional values used unchecked, `*args` calls it couldn't count, loose annotations): fixed,
+    no behaviour changed except that an empty opencode export now raises a clear TypeError. The vulnerability and
+    four secret hotspots were test fixtures: marked `# pragma: allowlist secret`, the project's convention. A
+    scanner false alarm fixed: Semgrep's registry rule django-no-csrf-token reported every POST form over about
+    ten lines, token or not (its `...` stops there in generic mode); codewatch now drops the finding when the
+    matched form has {% csrf_token %} (multi_tools.form_has_csrf_token, test in tests/test_python_own_code.py).
+    The 38 regex-backtracking hotspots (step 85 made them hotspots) were timed on their attack inputs at 200 KB:
+    most take 2-20 s or more, so a repository crafted for it could hold a server scan slot, and server scans had
+    no time limit (STALE_SCAN only stopped counting them after an hour). Scans the server launches now get
+    `--time-limit` (jobs.SCAN_TIME_LIMIT, CODEWATCH_SCAN_MINUTES, 45 by default): past it the running analyses are
+    recorded as failed and the scan's process group, analyzers included, is killed. The regexes themselves were
+    left as they are. A new resolution status, "Safe (reviewed)", for a hotspot that is acceptable where it is
+    (migration 0009). Resolved on the maintainer's server: 24 safe (fixed-URL or checked-URL urlopen calls, the
+    bearer-token API's csrf_exempt, a local Ollama call, regexes that only see file names or run in tools and
+    tests), 9 false positives, 32 regex hotspots won't fix (bounded by the time limit), and the test-fixture
+    vulnerability.
+88. **Eight more research batches reviewed: topics 15 and 16** (2026-11-19). 391 advisories read by the agents
+    (topic 15's last batch, which finishes it, and seven topic 16 batches of new arrivals), 72 accepted (40 open,
+    32 blind). None of the fix commits was already in a suite; all 40 open fixes were within the size limits with
+    one parent, and their diffs were read here. 21 rejected:
+    - stored data: Dokploy CVE-2026-129989 (build paths saved with the application, used by builder code outside
+      the diff) and CVE-2026-129985 (schedule appName), baserCMS CVE-2026-114624 (a serialized widget value
+      unserialized on read), ILIAS GHSA-hvwc (a test archive's sequence stored, then unserialized), Wavelog
+      CVE-2026-55506 (QSL file name from the database before unlink), Piwigo CVE-2026-42323 (filter values kept in
+      $_SESSION before the SQL);
+    - values from an uploaded archive: Dolibarr GHSA-7pjv (website template PHP, as Cacti CVE-2020-25706);
+    - the request read outside the changed files, the value an argument: Frappe CVE-2026-66057 (OAuth state from
+      frappe/integrations), Dokploy CVE-2026-129986 (the mount path), OpenCATS CVE-2026-54455 (DataGrid
+      parameters decoded in lib/), baserCMS CVE-2026-114623 (theme file path from the controllers), Roundcube
+      GHSA-748m (the login name from a plugin hook), EspoCRM CVE-2026-53574 (an attribute name inside the ORM),
+      GLPI CVE-2026-53629 (criteria array keys) and CVE-2026-47679 (CommonDBTM input; the containment check
+      already existed), Gnuboard5 GHSA-9r5f (a variable set by @extract($_GET) in common.php);
+    - nothing a scanner can tell apart: code-graph-rag GHSA-85gg (symlink following after a text check, as
+      ruTorrent GHSA-rh8c), fast-mcp-telegram CVE-2026-55096 and Vvveb CVE-2026-55232 (an existing private-address
+      check that missed DNS details), Piwigo CVE-2026-44642 (escaping under an inverted PHP-version condition, both
+      versions conditional), phpMyAdmin CVE-2016-5701 (already HTML-escaped values; BBCode markup).
+    Changed at review: AVideo-Encoder installer CVE-2026-61564 gets CWE-89 (the same commit prepares the INSERT of
+    $_POST values); EspoCRM CVE-2026-63130's scope widened to application/Espo/Tools/LabelManager, the step between
+    the controller and Language. Added: 4 to cve-pairs-python, 4 to -python-nonhttp (MCP tool arguments), 1 to
+    cve-pairs-javascript-nonhttp, 10 to cve-pairs-php. Blind cases merged into one suite per language as in step
+    86: cve-pairs-blind-python-27 (2), cve-pairs-blind-javascript-27 (2), cve-pairs-blind-php-36 (25); the agents'
+    cve-pairs-blind-python-frontend-5 (2) and cve-pairs-blind-python-nonhttp-2 (1) kept as named. The agents'
+    blind split was checked against the sha256 rule for all 72; no blind diff was read. Yield: 19 of 391 (5%).
+    First scores (`devtools.py cases`, verdict mode): 7 of 19 found, 2 of them quiet after the fix. Found and
+    quiet after: AVideo-Encoder CVE-2026-61573 (XSS) and Chamilo CVE-2026-61584 (audio_dir). Found but still
+    flagged after: AVideo-Encoder installer CVE-2026-61564 (var_export() and the prepared INSERTs not
+    recognised), tt-rss GHSA-vrw3 (an is_absolute_url() check before the redirect), Serendipity CVE-2016-10082 (a
+    preg_replace() character allowlist), yt-mcp CVE-2026-75612 and Zyrabit CVE-2026-130154 (realpath containment
+    helpers). Review mode adds Frappe CVE-2026-55796 and CVE-2026-55823 (bandit B608, quiet after), Tautulli
+    CVE-2026-52835 (still flagged after its basename()) and designer-mcp GHSA-p45h (ESLint and Semgrep path rules,
+    still flagged). Missed: Bazarr, both code-graph-rag/NetLicensing MCP cases, AVideo Streamer::get (three calls
+    deep), OSSN's config template, EspoCRM's label paths, Piwigo's batch manager include and Wavelog's OQRS
+    search. For a rule session: var_export() as a PHP code sanitizer, is_absolute_url()-style redirect checks,
+    preg_replace() allowlists, and realpath/commonpath containment in Python.
+89. **A failed gate points at its issues** (2026-11-19). The maintainer's scan of codewatch failed the gate with
+    every rating A and no bugs, vulnerabilities or hotspots on the cards: the cause was one new critical code smell
+    (argument_sanitizers, complexity 30, new because step 87 edited its def line), but nothing on the page led to
+    it, and the gate table showed "New maintainability rating: 1", which reads as one issue rather than A. The
+    analysis page now shows a rating condition as a letter ("worse than A", value A), links every failed
+    condition to the new issues behind it (test_a_failed_gate_links_to_the_issues_that_failed_it), and the
+    maintainability card shows the code-smell count, overall and new, next to the debt ratio.
+    argument_sanitizers itself is split rather than marked won't fix: clean_positions, clean_keywords and
+    clean_arguments find the arguments a function can't hand back, positional_sanitizers and keyword_sanitizers
+    (with keyword_terms and keyword_batch_sanitizers per batch) build the patterns. Cyclomatic complexity 30 -> at
+    most 9, cognitive at most 9; the old and new versions gave identical sanitizers on 3,000 generated signature
+    sets, including ones over NAME_BATCH. README now gives both complexity thresholds (cyclomatic 10 for
+    radon/lizard, cognitive 15 for complexipy, critical above twice either); it named only the cognitive one.
+90. **codewatch's own regexes: rewritten, not waived** (2026-11-19). Step 87 marked 32 polynomial-backtracking
+    hotspots won't fix on the strength of the scan time limit; the maintainer asked for them to be fixed instead,
+    since a reader of the report sees them waived on our own code. Checking with the analyzer itself (not a copy of
+    it) found two scanner gaps first:
+    - a pattern starting with an inline flag group, `(?i)...`, is a JavaScript syntax error, so recheck never saw
+      it and the check skipped it silently (five of our own, one of them vulnerable). inline_flags() now moves a
+      leading (?imsx) into the flags, and verbose patterns (re.X or (?x)) lose their layout before the check
+      (test_inline_and_verbose_flags_reach_the_regex_check);
+    - a compiled pattern only ever used as NAME.match(...) or NAME.fullmatch(...) tries one position, but was
+      analysed as a search. compiled_uses() now analyses it anchored, as re.match(...) already was; a name that is
+      also searched, passed on or put in a list stays a search
+      (test_a_compiled_pattern_only_matched_at_a_position_is_analysed_anchored).
+    With every pattern checked, 39 were vulnerable (the 32 plus developer tools and file-name helpers marked safe,
+    and the one the inline flag hid). Each was rewritten so it can't backtrack: one place for optional whitespace
+    (`\s*\*?\s*` -> `(?:\*\s*)?`), a name that ends where filters start (`(?!\w)`), block contents that can't
+    hold another opener (`<?= ... ?>`, `{!! !!}`, `{{ }}`, `{% %}`, `<script>`), word lists by lookahead
+    (`(?=\w*escape)\w+` for `\w*escape\w*`), return types and annotations that stop at a colon or line end,
+    matching from an unescaped `(?P<` only, and plain string handling where a regex wasn't needed (a trailing
+    `| None`, the pnpm peer suffix, CakePHP element names, translation catalogs). No atomic groups or possessive
+    quantifiers: the check can't parse them, so they would hide a pattern rather than fix it, and neither would
+    an f-string or a pattern built in a variable (the check reads string literals only).
+    Old and new were compared on every template, JS/TS and Python file of the learning-set apps and benchmark
+    checkouts (40,000 to 94,000 files per pattern; no blind set). Fourteen patterns give identical results. The
+    rest differ only where the old pattern was wrong: `\breturn` matched inside `returns(` and `return_value.x(`
+    (525 names), `function\s*(\w+)` read `functionalUpdate(` as `alUpdate`, a `<script` in a PHP string or an IE
+    conditional comment swallowed every script up to the next `</script>` (43 files), an annotation ran across
+    lines to a later `= function` (739 object keys taken for class fields; 202 real fields those matches had
+    hidden are now found), and assignments of bracketed expressions were read as function headers. Three
+    regressions the comparison caught were fixed before commit: multi-line method return types (now allowed),
+    attributes holding template tags (`src="<?= ... ?>"`, now allowed up to the first `>` as before), and
+    headers with two levels of brackets in their defaults (parameters again run to the first `)`, bounded by the
+    next `function` keyword). test_codewatchs_own_regexes_pass_its_backtracking_check runs the check on every
+    tracked Python file, so a new slow pattern fails the suite instead of reaching the report.
+91. **Maintainability is capped by the worst code smell** (2026-11-19). codewatch's own 128 open smells, 21 of
+    them critical, rated A: 2,950 minutes of fix estimates over 16,710 lines is a 0.59% debt ratio, far under the
+    5% an A allows, so a large project could hide any number of complex functions behind its size. The rating is
+    now the worse of the debt ratio and the worst open smell, rated as bugs and vulnerabilities are (minor B, major
+    C, critical D, blocker E). The default gate's "new maintainability rating worse than A" therefore fails on any
+    new smell, which is the point. Stricter than SonarQube, deliberately. The ratings page and README say so, and
+    the page now counts safe with won't fix and false positive as reviewed.
+92. **No code smells in codewatch's own report** (2026-11-19). The maintainer asked for every smell fixed rather than
+    tolerated: codewatch marks its own homework, so a reader should find nothing waived. 128 smells: 84 cyclomatic
+    (15 critical) and 13 cognitive (5 critical) complexity warnings, 29 repeated literals and 2 duplicated blocks.
+    Every complex function was split into named steps (Semgrep.run into project_rules, learn, final_rules,
+    main_scan and result_finding; the four summary rounds share one rule_results helper, which was jscpd's
+    duplicate; evaluate became a table of evaluators; and so on), each literal named once, and a shared
+    python_tree() in base.py replaced fifteen copies of parse-or-skip. No suppressions, no raised thresholds.
+    Verified, not assumed: each refactored module's old and new versions were run on the same inputs and had to
+    agree: the analyzers' rewrites and project-level passes on the learning-set apps and benchmark checkouts
+    (43,580 Python files for each per-file rewrite, 35,709 template files, 133-481 projects for the project-level
+    passes), reviewed.py's known/guard/measure on 8,223 advisories and 60 commits, benchmark scoring replayed on
+    605 cached CVE cases, eight real cases scored by both, and full scans of 15 projects (10 learning-set apps,
+    5 PHP checkouts) before and after: identical findings except Semgrep's run-to-run variation (no finding
+    always present on one side and never on the other). The self-scan after the refactor caught what the split
+    had cost and was fixed before commit: an MCP-client helper carried the request body into urlopen for
+    codewatch's own SSRF rule (call() builds its request inline again), and a constant named SECRETS_TOOL tripped
+    the secret-keyword check. The type checker, seeing the smaller functions, found a real crash: `-"text"` in a
+    constant raised TypeError in the dead-branch rewrite and stopped the Semgrep analyzer
+    (test_a_constant_that_cannot_be_evaluated_leaves_its_branch_alone). Result: 0 bugs, 0 vulnerabilities,
+    0 code smells; 22 hotspots, all reviewed as safe or false positive, none won't fix.
+93. **A scan never changes the scanned repository** (2026-11-19). After the 2026-11-19 nightly, 39 of flaskbb's files
+   had been rewritten at 05:52, during its scan. flaskbb's pyproject sets `[tool.ruff] fix = true`, and
+   codewatch's ruff runs under the project's own config, so it applied ruff's fixes (RUF022 re-sorting `__all__`,
+   among others). That rewrote a working copy, and the fixed issues then went unreported. ruff now gets
+   `--no-fix`. A probe of the other tools found a second case. Checkov reads `.checkov.yaml` from its working
+   directory, so a repository's config could write report files into it (`output-file-path`) or load Python from it
+   (`external-checks-dir`). Checkov now runs from an empty temporary directory, with absolute file paths.
+   basedpyright already runs from a temporary config, and jscpd and complexipy are given their own output paths.
+   Tests: `tests/test_python_tools_config.py` has one per tool, and
+   `test_a_scan_with_every_analyzer_leaves_the_repository_as_it_was` runs a full scan with every analyzer over hostile
+   configs and checks `git status --ignored` is empty. Each test fails without its fix. flaskbb's checkout still
+   has to be restored (`git checkout .`) before the next nightly, or its numbers stay off.
+94. **Add a local repository from the new-project page** (2026-11-19, the maintainer's request). A browser's
+   folder picker uploads files and never gives the page a path, so the server lists folders itself, for
+   administrators only. It lists names under `CODEWATCH_BROWSE_ROOT` (home by default), resolved and kept under that
+   root, and reads no file contents. "Use" fills in the path, the folder's name as the title and a free slug key.
+   Creating the project issues a scan token, shown once on the project page with the `codewatch-scan` command for
+   the working copy. The project list gains a Scan button, which returns to the list. Tests:
+   `tests/test_new_project.py`, plus the picker page in the axe test. The self-scan found one new finding, bandit
+   B105 on the session-key constant's name, which was renamed rather than waived.
+   Follow-up the same day: a running server scan records each analyzer as it starts (`Analysis.progress`). The
+   project page shows the current step and the finished ones, and the project list shows "Scanning: <tool>".
+   Sections marked `data-live` are re-fetched every 4 s and swapped in place, with a checkbox to stop updates
+   (WCAG 2.2.1); the page reloads when the scan ends. Project settings gained "Repository URL or folder". A project
+   created by `codewatch-scan` uploads has none, so it had no Scan button: the server had nothing to clone, and the
+   token wasn't the cause. A local folder is allowed only for an administrator's project (`trusted_owner`), as on
+   the new-project form. The self-scan flagged two shapes, rewritten rather than waived:
+   - a containment check written as a conditional expression, `path if path.is_relative_to(root) else None`, which
+     the path-traversal rule doesn't recognise as a sanitizer (only the `if not ...: return` guard form). That's
+     a gap in the rule worth closing with its own test;
+   - `el.innerHTML = fresh.innerHTML` on the page's own re-fetched HTML, now `replaceChildren(...)` with the parsed
+     nodes.
+95. **The default gate covers the whole codebase too** (2026-11-19, the maintainer's choice). VibeVoice passed its
+   first scan with 129 bugs, 497 smells and 12 unreviewed hotspots (reliability C, maintainability D, security
+   review E, health 55): every default condition was on new code, and a first scan has none. Options weighed:
+   - treat all code as new on a first scan: the second, unchanged scan would then pass with the same issues;
+   - show "not checked yet" on a first scan;
+   - add conditions on the whole codebase (chosen).
+   `OVERALL_GATE` fails reliability, security, security review or maintainability worse than C. Migration 0011 adds
+   these conditions to existing projects that have no condition on the metric yet. A failed overall condition
+   links to all issues of its type, a new-code one to the new ones. Tests: the first-scan case in
+   `tests/test_scan.py`; `test_branch_new_code_and_gate` now also expects `reliability_rating`, since its new
+   critical bug makes the whole branch D. Stored gate results are re-evaluated on the next scan or settings save.
+96. **`codewatch check`: a commit-time check of the changed files** (2026-11-19, the maintainer's request). Every
+   analyzer runs on the staged files (else every changed file, or the named ones), locally: nothing is uploaded,
+   no project code is run, and the whole-project tools are left out (pip-audit, osv, coverage, axe). The project's
+   own settings come from the server when one is configured. Blocking follows the default gate's new-issue
+   conditions: a bug, a vulnerability or a blocker/critical issue on a changed line, exit 1. Older issues in a
+   touched file are listed with no `!` mark. An analyzer error exits 2, because a check that didn't run mustn't
+   read as clean. `init --hook pre-commit` now installs `codewatch check` instead of coverage plus a full scan and
+   upload. Not blocking: hotspots, which can only be reviewed on the server, and code smells; both are listed.
+   One file of a demo repo took 12 s. Tests: `tests/test_check.py`. Installed as codewatch's own pre-commit hook.
+   Its first run, on `core/client.py`, found two radon cyclomatic-complexity smells (cmd_check and cmd_scan at 13)
+   that the self-scan had missed: the self-scan went through `benchmark.scan`, whose SKIPPED_ANALYZERS leave radon
+   out. A self-scan has to run every analyzer, as the server does. Both functions were split. Known gap: `check`
+   can't see hotspot reviews stored on the server, so reviewed hotspots are listed again (not blocking).
+97. **codewatch checks itself on every push, in public** (2026-11-19, the maintainer's request: show that our own
+   code is as good as our rules can make it).
+   - `.github/workflows/codewatch.yml` installs the pinned analyzers (tools/*.lock and package-lock.json), then runs
+     ruff, pytest and `codewatch check --all --strict`. `--all` covers every file and every line; `--strict` lets
+     every open issue of any kind block. The actions are pinned by commit.
+   - Hotspot reviews lived only in the maintainer's local database, so CI couldn't see them. They are now in
+     `codewatch-reviews.json`: fingerprint, verdict (safe or false_positive) and a reason, which is required.
+     `check` honours the file, and the summary written to `$GITHUB_STEP_SUMMARY` lists every review.
+   - The 22 reviews were exported from the stored ones that match today's findings. One false positive had no
+     reason (a test's throwaway password) and got one; every reason was read for private references.
+   - The first strict whole-project run found three things the earlier self-scans hadn't, all fixed in code: a
+     basedpyright error on the new `Analysis.steps` (a JSONField read through `self`, moved to a module function),
+     and radon complexity in the new `cmd_check` and `write_summary`.
+   - Run time locally: 3 minutes for 432 files.
+   - Caveat: the Semgrep registry ruleset (`p/default`) is fetched at run time, so an upstream rule change can
+     fail CI on unchanged code. That is the honest outcome, since it is a finding we didn't have before.
+   - The reasons were checked against the code before the first push, since other Claude instances will read
+     them critically. Three were wrong and were rewritten:
+     - triage.py: "local Ollama" left out that the `:cloud` models relay the prompts to Ollama Cloud;
+     - dependencies.py:237: what varies there is the request body (the project's dependencies), not an advisory
+       id;
+     - catalog/sources.py: the catalogue update runs on any server on a schedule, not only in the maintainer's
+       builds.
+   - Line numbers were dropped from the file, because they go stale as code moves (matching is by fingerprint;
+     the summary shows the current line). A review that matches no finding fails `--all --strict`.
+   - The 41 inline suppressions (`noqa`, `nosec`, `nosemgrep`, `pragma: allowlist secret`) each now give their
+     reason, beside or above; 14 had none. Still to do: move the security ones into `codewatch-reviews.json`,
+     where the run summary shows them.
+98. **npm audit of codewatch's own analyzers: 10 moderate, now 0** (2026-11-19). The first Actions run showed 10
+   moderate advisories in `tools/`, all from two packages:
+   - minimatch GHSA-g3hv-75wg-m249 (ReDoS through glob patterns; fixed in 11.0.1), reached through
+     typescript-eslint and c8's test-exclude;
+   - glob GHSA-3g3m-2fjr-6pw4 (AbortSignal bypass; fixed in 14.0.2), through test-exclude.
+   npm's own fix downgrades c8 from 12 to 9, which was refused. typescript-eslint 8.73.0 takes the fixed minimatch
+   but was 3 days old, too new to trust. No c8 or test-exclude release accepts the fixed versions. So
+   `tools/package.json` `overrides` pin minimatch 11.0.1 and glob 14.0.2 (both 23 days old) inside test-exclude
+   and typescript-estree. Checked: npm audit finds 0; c8 still writes a Cobertura report (demo project); the full
+   test suite and the JS/TS analyzer tests pass. Exposure was small: a crafted tsconfig glob in a scanned repo
+   could slow typescript-estree until the tool time limit, and c8 only runs a project's own tests. Revisit:
+   drop the override for typescript-eslint >= 8.73 after 2026-11-30. ESLint 9 is end-of-life (npm warns); it
+   stays until eslint-plugin-security and jsx-a11y support ESLint 10.
+99. **The CI run is cached, and nothing in it waits on apt** (2026-11-19). The first Actions run hung for its whole
+   60 minutes in `playwright install --with-deps`. The log stops after `apt-get update` fetched noble-security from
+   an unresponsive EC2 Ubuntu mirror. Changes:
+   - `--with-deps` is gone, since ubuntu-24.04 runners carry Chrome and its libraries; Chromium has its own step
+     with a 10-minute limit;
+   - the install step has a 15-minute limit;
+   - the installed analyzers (the venvs, `tools/node_modules` and Playwright's browser) are cached under a key
+     hashed from every pinning file. A later run only reinstalls codewatch itself, unless a pin changed.
+   - The first good runs took 30 and 42 minutes, because the 4-core runner needs 21-31 minutes for tests that take
+     3 locally. Tests now run as 4 parallel shards (`CODEWATCH_TEST_SHARD=i/n` in tests/conftest.py keeps every
+     n-th test by node id, so the Semgrep tests spread evenly; shards of 88/88/87/87 cover all 350). Lint and the
+     strict self-check are a fifth job in parallel. The shared setup is a local composite action,
+     `.github/actions/setup`.
+100. **Research batches arrive by pull request** (2026-11-19, the maintainer asked whether the agents should push to
+   `detection-gaps` or open pull requests). Since step 97 every push to `detection-gaps` runs CI, and the hourly
+   research runs pushed unreviewed candidates straight onto the branch the nightly measures and cloud sessions
+   clone. `tools/research-batch.sh` now pushes each batch (still only after `reviewed.py guard`) to `research`,
+   with one open pull request ("Research batches waiting for review") into `detection-gaps`. Batches are added to it
+   until a review merges it (a merge commit), and the next batch opens a new one. A pull request closed unmerged
+   makes the next run start afresh from `detection-gaps`, replacing the branch with `--force-with-lease`. The
+   pull request's commits stay readable on GitHub. Each run merges `detection-gaps` into `research` first, so the
+   agent reads the current topic queue and suites. Review steps are in CLAUDE.md. Tried in a scratch clone with a
+   stub `gh`: a fresh start, carrying on with a merge, and a fresh start after a closed pull request.
+101. **Three more topic 16 batches reviewed, the first through a pull request** (2026-11-19). new-3 and new-4 went
+   straight to `detection-gaps` before step 100; new-5 came as pull request #1, and the review was committed on
+   `research` and merged there. 13 advisories read, 2 accepted by the agents, 1 kept:
+   - Rejected at review: Moodle CVE-2026-133060 (Blackboard question import, CWE-22). The img src path is
+     `text_field()`'s argument, parsed out of the uploaded import archive outside the changed file, and the file
+     copy is in `store_file_for_text_field()`, also unchanged: values from an uploaded archive, as Dolibarr
+     GHSA-7pjv (step 88). The agent's fix size and flow were right; the source isn't in the diff.
+   - Added: SABnzbd CVE-2026-133238 to `cve-pairs-blind-python-27` (the agents named a new
+     `cve-pairs-blind-python-28`; merged per language as in step 88). The split was checked against the sha256 rule;
+     its diff wasn't read.
+   - The 11 agent rejections hold. Checked against GitHub: Termix CVE-2026-133116's "fix" is the v26.11.2 release
+     commit (300 files, +191k lines); ZoneMinder CVE-2024-43361 only loops an existing `str_replace('://')` strip
+     in `detaintPath()`; Tandoor CVE-2026-133235 is a "fixed various issues" commit across 6 files. The rest (two
+     tiptap and one parse5 library fixes, ros2cli's CLI argument, OpnForm's widened denylist, two modified-shop
+     fixes over the size limit, Moodle CVE-2026-133062 over 3 commits) are clear from the agents' reasons.
+   Yield: 1 of 13. The topic-16 list is empty until new advisories arrive, so later runs read only a few each.
+102. **Pull request #2 reviewed; an advisory's other ids count as known** (2026-11-19). Two topic 16 batches (new-6
+   and new-7), 15 read, 1 accepted: bolt/core CVE-2026-77376 (blind; split checked, fix in no suite, no other id),
+   added to `cve-pairs-blind-php-36` rather than the agent's new `-37`. The 14 rejections hold on their reasons:
+   library code (janephp x3, tiptap x2, NLTK x3, typebox, django-docutils), fixes too large (Termix, modified-shop
+   x2) and a CLI tool (sqlmap).
+   Five of the 15 had been read before: four under their other id (Termix GHSA-w3fm is CVE-2026-133116, likewise
+   the two tiptap GHSAs and modified-shop GHSA-3v6p), since `reviewed.py` matched only the id as written. It now
+   also counts every alias of a known advisory, from the local github/advisory-database clone
+   (`CODEWATCH_ADVISORY_DB`, default `~/advisory-database`, about 3 seconds for 400,000 advisories; without a clone,
+   ids as written only), in both the full list the agents filter with and single lookups
+   (`test_an_advisorys_other_ids_are_known`). Against the branch before new-6 it flags those four. The fifth,
+   modified-shop CVE-2026-133248, shares GHSA-3v6p's fix commit rather than an id, and reject rows carry no fix SHA.
+   - **Open: 14 advisories are recorded under two ids, with different decisions.** 136 advisories in all were read
+     twice. Most agree, or differ only by topic (LimeSurvey GHSA-f764, -v854, -x533 rejected as "PHP, not
+     JavaScript" in a JavaScript batch, then accepted as PHP) or by the duplicate rule (CVE-2018-7260 rejected as
+     GHSA-gqmj, which is in the suite); GHSA-wrxc's "unsure" was answered as CVE-2020-11529 (rejected). On merits,
+     4 cases in open suites were rejected under their other id: CVE-2018-19994 (as GHSA-78hj: values set outside
+     the diff), CVE-2018-17180 (as GHSA-c98x: the fix mixes unrelated changes), GHSA-487r (as CVE-2015-3297: no
+     check added) and CVE-2015-4085 (as GHSA-5m5m: a test-only fix, perhaps a different commit). Each needs its
+     fix read again and one decision. 5 cases in `cve-pairs-blind-php-35` (CVE-2020-35136, CVE-2015-5078,
+     CVE-2019-13575, CVE-2018-12588, CVE-2020-26124) have a rejected other id; their rejection reasons were not
+     read, since they describe blind cases. Whether to keep them is the maintainer's call, made without reading.
+   - The blind split is by the id an advisory is recorded under, so an advisory's other id can split the other way
+     (GHSA-487r open, its CVE blind). It stays by recorded id; the alias check now stops a second reading.
+103. **The four open-suite conflicts from step 102 settled** (2026-11-19). Each suite case's fix commit was read
+   again on GitHub. All four were "missed" in the 2026-11-19 nightly, so none was raising a score.
+   - Removed: Dolibarr CVE-2018-19994 from `cve-pairs-php`. The fix casts `Product::update()`'s object properties;
+     the request is read in `product/card.php`, outside the diff and the case's scope. That is step 88's "the value
+     an argument" rejection, which GHSA-78hj already had.
+   - Removed: Etherpad GHSA-487r from `cve-pairs-javascript`. Minify.js's `indexOf(ROOT_DIR)` containment check is
+     there before and after; the fix deletes a backslash-to-slash rewrite that ran after it. An existing guard
+     tightened, as ZoneMinder CVE-2024-43361 and OpnForm CVE-2026-133240 (step 101), and as CVE-2015-3297 had it.
+   - Kept: OpenEMR CVE-2018-17180. The commit fixes the portal's path traversal and CVE-2018-17181's SQL injection
+     (merged into this case on purpose); the rest is a one-line session flag rename no scanner reports. GHSA-c98x's
+     "mixes unrelated changes" was too strict; its row now says duplicate.
+   - Kept: Etherpad CVE-2015-4085. `src/node/hooks/express/tests.js` is a server route serving /tests/frontend, not
+     test code: the URL reaches the file path through `replace("..", "")` and the fix adds a containment check.
+     GHSA-5m5m's "test-only fix" misread the file name; its row now says duplicate.
+   Rows of the removed cases keep their old reason after "Before:".
+   - The 5 blind-suite conflicts (`cve-pairs-blind-php-35`: CVE-2020-35136, CVE-2015-5078, CVE-2019-13575,
+     CVE-2018-12588, CVE-2020-26124) stay as they are, unread (the maintainer left it to Claude). A later review
+     accepted them, and this step shows earlier rejections under the other id going wrong as often as right;
+     dropping them unread would throw away cases on a coin flip. **To do after that suite's end-of-round blind
+     scan:** read each one's rejection and fix, give it one decision, and correct the score if a case goes.
+104. **Large PHP projects keep their template rule** (2026-11-20). LimeSurvey CVE-2014-5016 failed to scan two
+   nights running. With step 95's `failure_detail` the 2026-11-20 nightly showed why: "Rule parse error ... invalid
+   regex" in `codewatch.php.web.template.xss`. Its named sinks put every template name in one alternation, and
+   LimeSurvey's 370 views gave 1,110 names, 40,103 characters. Semgrep's regex engine rejects any regex over about
+   30,000 characters, whatever it holds (bisected: 938 of those names, 33,368 characters, passed; a made-up
+   alternation of 32,000 failed, 30,000 passed), and the one bad rule failed the whole scan. `alternations()` now
+   splits the names into regexes of at most 10,000 characters, one named sink each, as `summaries.name_regexes`
+   already did for function names. A project under that keeps exactly the rule it had.
+   `test_a_project_with_many_views_still_gets_its_template_rule` (1,200 Twig views) failed without it;
+   `test_template_name_alternations_stay_short` checks the split. `devtools.py cases CVE-2014-5016`: scans, missed
+   and quiet. Unbatched alternations remain in `body_models`, `project_checks`, `jinja_sandboxes` and
+   `drf_serializers`; none has failed yet, but a very large Python project could reach the limit.
+105. **Pull request #3 reviewed: eight topic 16 batches** (2026-11-20). 36 advisories read overnight, 6 accepted by
+   the agents (4 open, 2 blind), 2 kept:
+   - Added: Hayroo CVE-2026-133486 to `cve-pairs-javascript`. `postEditProduct` reads `req.body`/`req.files` in the
+     changed file and passes them to `deleteImages()`, which unlinked `basePath + name`; the fix adds `basename()`
+     and a `startsWith(basePath)` check (1 file, 16 lines). Safari MCP GHSA-4rj4 (blind; split checked, fix in no
+     suite, no other id) to `cve-pairs-blind-javascript-nonhttp`.
+   - Rejected at review: Etherpad CVE-2026-114516, the same Minify.ts flaw as GHSA-487r (step 103), the fix only
+     limiting the backslash rewrite after `sanitizePathname()` to Windows. Dolibarr CVE-2026-133327, an uploaded
+     file stored first and converted later: `dol_convert_file()`'s input is an argument and the fix checks the
+     stored file's first bytes. Moodle GHSA-fr4r, which is CVE-2026-133060 (rejected in step 101); its diff has
+     been read, so it couldn't stay blind either.
+   - Nine of the 19:00 batch's 15 advisories had been read before under their other id (Moodle GHSA-fr4r and
+     -f6vw, Tandoor GHSA-2449, OpnForm GHSA-m9x4, parse5 GHSA-63qr, typebox GHSA-79vm, modified-shop GHSA-9hc5 and
+     -47rx, sqlmap GHSA-3whw), although step 102's alias check had been merged three minutes before the run.
+     The agent's batch script imports `reviewed.known()` and calls it directly, and step 102 had turned aliases on
+     only in the command. `known()` now reads them by default (e13dfb4, tested). Later batches found few repeats
+     because few new advisories were left.
+   - The other rejections hold on their reasons: library code (eml_parser, guard-core x2, NLTK x2, typebox, parse5,
+     amqtt, Effect, undici, pydantic), fixes too large or release commits (flyto-core x3, repomanager x4,
+     modified-shop x2, October, Dokploy), fixes spread over commits (Moodle GHSA-f6vw), DNS rebinding (flyto-core x2,
+     Tamari), mixed changes (Tandoor GHSA-2449), an existing blocklist widened (OpnForm), CLI tools and non-web
+     daemons (sqlmap, storyblok-backup, iSponsorBlockTV).
+   A ninth batch arrived during the review (new-5 of 2026-11-20, 5 read): flowintel CVE-2026-133620 (blind; split
+   checked, fix and id unknown) to `cve-pairs-blind-python-27` rather than the agent's new `-28`; four WordPress
+   plugin rejections (three over the size limit, one allow-list made stricter) hold.
+   The systemd unit sets `CODEWATCH_RESEARCH_MAX_PENDING=12`, so up to 12 batches wait in one pull request.
+106. **A flaky self-check: one regex was polynomial only when recheck's fuzzer found it in time** (2026-11-20). Pull
+   request #3's shard 2 and the self-check of d34f4b2 failed on `accessibility.py`'s BOUND_EMPTY; other runs of
+   the same code passed. Its backreference (`</\2>`) keeps recheck off its exact automaton checker, so it fuzzes
+   within the 3-second limit: with 20 seconds every seed says polynomial (`[^<>]{0,2000}` and the `\s` after it
+   overlap; the bounds limit the damage, they don't remove it). Replaced by two linear patterns (the opening
+   tag; the binding attribute in it) and a scan for whitespace up to the closing tag (`fill_bound_empty`). Same
+   output as the old substitution on 20,000 random templates; new cases in `test_units.py`. Run once with
+   recheck given 20 seconds per regex, no other pattern in codewatch is flagged.
+107. **Pull request #4 reviewed: three topic 16 batches, nothing kept** (2026-11-20). One advisory each, all three
+   rejections confirmed against the fix commits: CVE-2026-133652 (flowintel) is session handling (rotation at
+   login, remember-me cookies bound to the password), not a section 2 weakness, and 6 source files;
+   CVE-2026-133667 (flowintel) is stored data (case notes and MISP attributes rendered client-side, a renderer
+   flag, and session values the user set themselves served without a JSON content type), with no request value
+   reaching a sink in the changed code; CVE-2026-133706 is library code (request-filtering-agent's private-address
+   denylist widened to IPv4-compatible IPv6). The topic 16 list was empty after each run: new arrivals are
+   being read as they appear.
+108. **The Python misses sorted again; three server-side gaps closed; research topic 17** (2026-11-20). The
+   2026-11-20 nightly's verdict-mode misses (81 open Python cases) were sorted from their fix diffs by
+   deepseek-flash, with quotes checked by hand on five. Front end, 27 of 31 missed: shipped JS writing data as HTML
+   12 (innerHTML/jQuery 7, library options that render HTML 4, an href 1; step 42's I), `|safe`/`{@html}` 7 (mostly
+   stored fields; step 42's H, templates part), template values in script strings, handlers or unquoted attributes
+   4 (J). Server side and non-HTTP, 54: an existing check too weak 15, sink not modelled 13, source not modelled 12,
+   value through several functions 10, archives 2, stored 2. cg GHSA-w228 (redirect(request.referrer)) stays missed
+   by decision: the referrer is a sanitizer (only the linking site chose it).
+   Closed, each with a test that fails without it, both cases now found and quiet at their fix:
+   - Django's HttpResponseNotFound/BadRequest/Forbidden/Gone/ServerError render their body as HTML like
+     HttpResponse (HttpResponseNotAllowed's argument is the method list). CVAT CVE-2024-47064.
+     `test_django_error_responses_render_their_body_as_html`.
+   - A DRF ViewSet's detail methods (retrieve, update, partial_update, destroy, @action(detail=True)) get the lookup
+     argument (lookup_url_kwarg, lookup_field, else pk) from the URL through lookup_value_regex, '[^/.]+' by
+     default: marked URL_TEXT on the scanned copy (route_converters.mark_viewset_lookups) as Django route
+     arguments are, unannotated or annotated str, unless the class's regex can't carry text (\d+). CVAT again.
+     `test_a_drf_viewsets_lookup_argument_is_request_input`.
+   - Flask-AppBuilder/Flask-Admin `@expose("/path/<arg>")` methods are routes: their arguments are request input
+     (converters typed as for Flask), their returned body is the XSS rule's sink, and self.render_template/render
+     (autoescaped) and self.response (JSON) clear it. Airflow GHSA-rv25-9wgj-xg75.
+     `test_flask_appbuilder_expose_methods_are_routes`.
+   No learning-set app uses @expose; the seven with ViewSets or the error responses (wger, paperless-ngx,
+   label-studio, pygoat, claude-quiz, recipes, bakerydemo) give the same 41 findings as the nightly. netbox and
+   taiga-back (15 and 38 ViewSet files) are left to tonight's run.
+   Research: topic 17 queued in AGENTS.md, security fixes with no advisory or CVE, from GitHub's commit search
+   (repositories with 200+ stars, Python first; the fix must show request input reaching the sink, and the commit
+   or its pull request must call it a security fix). Ids `FIX-OWNER-REPO-SHA12`. A trial search showed the noise
+   the filter is for: scanners, labs and toy repositories, among a few real apps.
+   Next by cases: step 42's I (fetched data written as HTML in shipped JS), then H's templates part.
+109. **Nightly 2026-11-21 (commit 17e3582): step 108 measured, one false alarm fixed** (2026-11-21). cve-pairs-python
+   verdict 54 -> 56 of 97 found (Airflow GHSA-rv25, CVAT CVE-2024-47064), still flagged after the fix 13 -> 13;
+   no other case moved; the JavaScript and PHP counts moved only by case-list changes. Tests 355 passed. One new
+   app finding, netbox views/errors.py:54 (triage: false alarm, confirmed): handler_500 loads its template with
+   loader.get_template() inside a try and returns HttpResponseServerError(template.render({...})), which step 108
+   made a sink. A Django template loaded by name (get_template, select_template; called directly or assigned,
+   inside a try too) renders autoescaped, so its .render() now clears the XSS rule; jinja2.Template doesn't.
+   `test_a_django_template_loaded_by_name_renders_escaped`; the real file scans clean.
+110. **Pull request #5 reviewed: topic 17's first seven batches and one topic 16 batch** (2026-11-21). Topic 17
+   (silent fixes) read 318 commits in seven batches and accepted 17; topic 16 read 14 and accepted 2 (devpi, both
+   blind). Every open fix was read here; blind ones were checked for size and repository only (isard's summary
+   line was seen in passing while checking the file format, nothing else). Kept open, all in cve-pairs-python:
+   bisheng (an OnlyOffice save callback's url fetched; the fix names GHSA-mh3h, unpublished, open under either
+   id), Counterparty (APIv1's JSON-RPC filter field interpolated into SQL), araa-search (a form field written
+   into Location), clawmetry (?session= joined into a path and opened), ubuntu.com (a query parameter
+   redirected to) and MediKeep (admin trash paths into unlink and moves). Blind: lnxlink to
+   cve-pairs-blind-python-nonhttp; isard, sapic, AutoGPT and devpi x2 to cve-pairs-blind-python-27 (the agent
+   named a -28 that doesn't exist). Rejected at review (7): VibeNVR (an admin feature that fetches the URL the
+   admin enters), gramps-web-api (evaluated inside the Gramps library), OctoPrint and local-deep-research
+   (existing guards tightened), langwatch (document.referrer, step 108's decision), blueking-paas (archive
+   member names, across files), and fireshare: its commit applies a published repository advisory,
+   GHSA-j6gq-jchg-q883, missing from the global database, whose id falls in the blind half; read at review, it
+   can't go blind or stay open under a made-up id, so it's dropped. AGENTS.md's topic 17 now says to look up an
+   advisory or CVE a commit names before reading the diff and use its id. What the open cases need, for later:
+   JSON-RPC dispatcher arguments as a source (Counterparty), Location set through response.headers (araa-search).
+111. **PLAN.md split: current state there, this log here** (2026-11-21). PLAN.md had reached 2,719 lines (about 67,000
+   tokens), too long to read at a session's start, with its summary sections stale (the "where things stand" of
+   2026-11-02, open items of 2026-11-14) and steps 54-92 filed after the Repos table. Steps 1-110 moved here
+   unchanged, in number order, with the old summaries under "Snapshots"; a line-by-line check found nothing lost.
+   PLAN.md (240 lines) keeps the ground rules, a table from the 2026-11-21 nightly, current open items, next steps,
+   "How things work", Tools and Repos (`restore_repos.py` reads that table). AGENTS.md gained the review precedents
+   the reviews kept re-deciding (source outside the diff, archive contents, Referer redirects, admin-entered values,
+   library sinks, replaced checks) and one rule for blind suite names: the highest-numbered existing one.

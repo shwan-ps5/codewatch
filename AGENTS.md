@@ -11,7 +11,7 @@ Do: find advisories, read each fix commit, accept or reject it with a reason, an
 files (below). Then commit them.
 
 Don't:
-- edit `benchmarks/suites.json`, `PLAN.md`, `CLAUDE.md`, rules (`catalog/`), analyzers (`core/`) or tests. A review
+- edit `benchmarks/suites.json`, `PLAN.md`, `docs/`, `CLAUDE.md`, rules (`catalog/`), analyzers (`core/`) or tests. A review
   session on the maintainer's desktop checks your candidates and adds the accepted ones to the suites.
 - run scans, benchmarks or the test suite. This machine is too slow for that, and the desktop runs them overnight.
 - read anything about a blind case after it's split (see "Blind split").
@@ -291,7 +291,7 @@ npm advisories (step 29). Those pools are nearly used up.
    Python topic kept repositories whose primary language is Python, and the JavaScript topics kept JS/TS servers,
    so a Django, Flask or FastAPI app with a large front end (GitHub calls it TypeScript, JavaScript, Svelte, Vue or
    HTML) fell between them. Their templates and shipped JS are what `cve-pairs-python-frontend` measures, and it is
-   the weakest Python suite (PLAN.md, measured gaps). Sources, both filtered locally with no API calls, merged and
+   the weakest Python suite (PLAN.md, open items). Sources, both filtered locally with no API calls, merged and
    deduplicated (a CVE that is an alias of an advisory counts once, under the advisory's id): GitHub's advisory
    database, reviewed and unreviewed (`advisories/**/GHSA-*.json`, as topic 1), and `CVEProject/cvelistV5` (as topic
    11). Keep entries published since 2021 with a CWE from section 2 whose references hold exactly one
@@ -463,6 +463,22 @@ Reject, and say which reason applies:
   Flask/FastAPI); test-only fixes; CLI-only tools
 - the advisory's fix commit doesn't match its description
 
+Decisions the reviews have made, applied the same way every time (each rejected cases you might otherwise accept):
+- **The source isn't in the diff**: the vulnerable function gets the value as an argument and the request is read
+  in a file the fix doesn't touch. Reject (Moodle CVE-2026-133060, step 101).
+- **Values from inside an uploaded archive** (member names, files or fields parsed out of an import or package):
+  reject (Dolibarr GHSA-7pjv step 88, blueking-paas step 110).
+- **A redirect to the Referer or `document.referrer`**: only the linking site chose it, so it isn't an open
+  redirect. Reject (cg GHSA-w228 step 108, langwatch step 110).
+- **A feature whose job is to use what an admin or operator enters** (a node URL an admin adds, a configured
+  endpoint): fetching or opening that value isn't the bug. Reject (OpenClaw GHSA-f7fh step 50, VibeNVR step 110).
+- **The dangerous call is inside a library** even though the app passes it the request value, and the app's fix
+  is a validator in front: library code. Reject (gramps-web-api step 110).
+- **A check replaced by a better one**, including after a CodeQL or linter alert, a post-check rewrite, or a
+  Windows-only path guard: an existing validator made stricter. Reject (OctoPrint, local-deep-research step 110).
+- **A fix commit that names an advisory or CVE**: look that id up before reading the diff and use it (filter,
+  split and record under it); see topic 17.
+
 **Not an HTTP request** (repository config read by a bot, desktop/Electron IPC, chat-protocol ids, files on disk):
 accept only if it passes every other rule, and set the suite to `cve-pairs-javascript-nonhttp` (or
 `cve-pairs-python-nonhttp`). Never put these in the web suites.
@@ -481,9 +497,11 @@ python3 -I benchmarks/reviewed.py --split GHSA-xxxx-xxxx-xxxx
 
 - `open`: write the flow in the reason column, as in the examples below.
 - `blind`: the reason is exactly `accepted; reason withheld so the case stays blind`. Don't describe its flow,
-  files or fix anywhere: not in the reason, the JSON, the commit message or your chat summary. Its suite is
-  `cve-pairs-blind-<language>-N`. Use the next unused N; `python3 -I benchmarks/reviewed.py | grep blind` shows the
-  ones in use.
+  files or fix anywhere: not in the reason, the JSON, the commit message or your chat summary. Its suite is the
+  highest-numbered existing `cve-pairs-blind-<language>-N` for its language and kind (for example
+  `cve-pairs-blind-python-27`, `cve-pairs-blind-python-nonhttp`, `cve-pairs-blind-php-36`); don't start a new one,
+  whatever a topic says about "the next unused N" (reviews merged every new one back, step 88).
+  `python3 -I benchmarks/reviewed.py | grep blind` shows the ones in use.
 
 Rejected cases are never split. Write their reasons in full.
 

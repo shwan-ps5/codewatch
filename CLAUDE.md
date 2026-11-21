@@ -16,21 +16,24 @@ real name, and never add one to commit messages, files or pull requests.
 
 ## How work is done here
 
-- `PLAN.md` is the plan and the record of every decision: read the ground rules at its top before changing a rule.
+- `PLAN.md` is the plan as it stands now (ground rules, current numbers, open items, next steps): read it before
+  changing a rule, and keep its sections current. Every change and decision is a numbered step in
+  `docs/plan-log.md`; add new steps at the end of that file, short (the log's header says what goes in one).
+  "PLAN.md step N" anywhere means step N of the log.
 - Research-only agents (opencode or Ollama models on the maintainer's always-on desktop) follow `AGENTS.md`. They write candidate files
   only. A Claude session reviews those candidates before adding them to `suites.json`: check each open fix commit
-  on GitHub against step 22's limits, and record every decision in PLAN.md. `python3 -I benchmarks/reviewed.py
+  on GitHub against step 22's limits, and record the decisions as a step in `docs/plan-log.md`. `python3 -I benchmarks/reviewed.py
   ID|SHA...` says whether an advisory or fix commit has already been read. `tools/research-batch.sh` runs
   batches unattended on that desktop, hourly from a systemd timer. It pushes each batch, only after `reviewed.py
   guard` passes, to the `research` branch, and one open pull request ("Research batches waiting for review") carries
   them into `detection-gaps`. Review there: `gh pr checkout <n>`, `reviewed.py pending` lists the batches waiting,
-  commit the decisions (statuses, `suites.json`, PLAN.md) on `research`, push, and once CI passes merge with
+  commit the decisions (statuses, `suites.json`, the log step) on `research`, push, and once CI passes merge with
   `gh pr merge <n> --merge` (a merge commit, not a squash, so the runs' commits keep their place). A reviewed batch's
   JSON status must stop starting with "research only".
 - Blind sets (`~/.cache/codewatch/blind*`, the `cve-pairs-blind-*` suites) are scanned once, at the end of a round,
   and never used to adjust rules. Held-out suites (SecurityEval Copilot/InCoder, Vulnerable-Code-Snippets JS) are
   measured, never tuned on.
-- Every rule change gets a test in `tests/test_detection.py` that fails without it; record in `PLAN.md` and
+- Every rule change gets a test in `tests/test_detection.py` that fails without it; record in the log (`docs/plan-log.md`) and
   `benchmarks/suites.json` which case drove it.
 - Before committing: `venv/bin/ruff check .` and `venv/bin/pytest -q -n auto`.
 - Benchmarks: `venv/bin/python benchmarks/devtools.py bench [SUITE...]` (parallel; `CODEWATCH_BENCH_WORKERS`
