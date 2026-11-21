@@ -2564,3 +2564,11 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    stored comments), ESP-Website module links (admin-entered module titles and docs), TypeAgent (unsure: a TypeScript
    product, not a Python app's front end). Batch 10 was the first with the front-end XSS phrases (step 112): 6 of 56
    accepted against 0-2 of 20 before, but the open ones it found were stored values, which section 3 rejects.
+114. **Research runs: searches kept, 2-hour limit** (2026-11-21). Runs already go back to back (a timer start that
+   falls during a run is queued and starts when it ends); topic 17's runs take 33 minutes to 3 hours, nearly all of
+   it waiting on the search API's secondary rate limit, so more frequent or parallel runs (one GitHub account, one
+   branch) would add nothing. One run waited 3 hours on a background collector and was stopped with nothing
+   committed; its searches survived only because the agents had started a store of their own. AGENTS.md now
+   requires that store (`~/codewatch-research/t17_raw.json`, written after every page, `done` keys never searched
+   again), a foreground collector, and reading after about an hour of collecting; `timeout` in
+   tools/research-batch.sh is 2 hours (was 3; batches have taken up to 115 minutes).
