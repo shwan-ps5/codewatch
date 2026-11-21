@@ -2551,3 +2551,9 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    "How things work", Tools and Repos (`restore_repos.py` reads that table). AGENTS.md gained the review precedents
    the reviews kept re-deciding (source outside the diff, archive contents, Referer redirects, admin-entered values,
    library sinks, replaced checks) and one rule for blind suite names: the highest-numbered existing one.
+112. **Topic 17 aimed at the front-end gap** (2026-11-21). Its batches fell from about 3 kept in 50 to 0 of 20 (PR #6:
+   libraries, bumps, authentication bugs), and its general phrases rarely find the largest gap, XSS in Python apps'
+   templates and front-end JS (27 of 31 missed, step 108). Twelve phrases added, searched and read first:
+   innerhtml, dom xss, stored/reflected xss, html injection, escape html, escapehtml, mark_safe, autoescape, |safe,
+   sanitize html, dompurify. Template- or JS-only fixes go to cve-pairs-python-frontend. Months left on the general
+   phrases: 2024-06 back to 2021-01; the search API's secondary rate limit makes some runs take 1.5-3 hours.
