@@ -20,6 +20,12 @@ real name, and never add one to commit messages, files or pull requests.
   changing a rule, and keep its sections current. Every change and decision is a numbered step in
   `docs/plan-log.md`; add new steps at the end of that file, short (the log's header says what goes in one).
   "PLAN.md step N" anywhere means step N of the log.
+- Keep the summaries current; they go stale fast and a new session trusts them first:
+  - After reading a nightly report, refresh PLAN.md's "Where things stand" table and date when the numbers moved.
+  - When a step closes or opens an open item, edit PLAN.md's open items and next steps in the same commit.
+  - When a change alters what the README describes (the benchmark table and its paragraph, sources and sinks
+    listed under Benchmarks, commands, setup), update the README in the same commit; refresh its benchmark table
+    from the nightly at least weekly. Stale numbers in the README are public.
 - Research-only agents (opencode or Ollama models on the maintainer's always-on desktop) follow `AGENTS.md`. They write candidate files
   only. A Claude session reviews those candidates before adding them to `suites.json`: check each open fix commit
   on GitHub against step 22's limits, and record the decisions as a step in `docs/plan-log.md`. `python3 -I benchmarks/reviewed.py
