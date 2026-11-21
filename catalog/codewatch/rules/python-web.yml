@@ -1258,6 +1258,36 @@ rules:
       # A model or helper that renders its own template, given the request for context (djangoproject.com:
       # instance.render_to_string(request=request)).
       - pattern: $OBJ.render_to_string(...)
+      # A Django template loaded by name renders autoescaped too (netbox's handler_500:
+      # template = loader.get_template(name), then HttpResponseServerError(template.render({...}))). Not Jinja's
+      # Template, which doesn't escape unless its environment says so.
+      - pattern: django.template.loader.get_template(...).render(...)
+      - pattern: django.template.loader.select_template(...).render(...)
+      - patterns:
+          - pattern: $T.render(...)
+          - pattern-either:
+              - pattern-inside: |
+                  $T = django.template.loader.get_template(...)
+                  ...
+              - pattern-inside: |
+                  $T = django.template.loader.select_template(...)
+                  ...
+              - pattern-inside: |
+                  try:
+                    ...
+                    $T = django.template.loader.get_template(...)
+                    ...
+                  except ...:
+                    ...
+                  ...
+              - pattern-inside: |
+                  try:
+                    ...
+                    $T = django.template.loader.select_template(...)
+                    ...
+                  except ...:
+                    ...
+                  ...
       - pattern: django.template.response.TemplateResponse(...)
       - pattern: flask.redirect(...)
       - pattern: redirect(...)
