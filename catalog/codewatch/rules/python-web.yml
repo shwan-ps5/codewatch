@@ -1421,6 +1421,12 @@ rules:
                       - pattern: django.http.HttpResponseForbidden($BODY, ...)
                       - pattern: django.http.HttpResponseGone($BODY, ...)
                       - pattern: django.http.HttpResponseServerError($BODY, ...)
+                      # Starlette's (and so FastAPI's) HTMLResponse sends its content as text/html, by position
+                      # or as content= (nextcloud-mcp-server, PLAN.md step 119).
+                      - pattern: starlette.responses.HTMLResponse($BODY, ...)
+                      - pattern: starlette.responses.HTMLResponse(..., content=$BODY, ...)
+                      - pattern: fastapi.responses.HTMLResponse($BODY, ...)
+                      - pattern: fastapi.responses.HTMLResponse(..., content=$BODY, ...)
                   # Media, JSON, plain text and downloads aren't rendered as HTML (recipes:
                   # HttpResponse(export_file, content_type='application/force-download')).
                   - pattern-not: $RESP($B, ..., mimetype="=~/^(image|video|audio|font)\/|^application\/(json|octet-stream|pdf|zip|force-download|x-download|(x-)?yaml)|^text\/(plain|csv|(x-)?yaml)/", ...)

@@ -2595,3 +2595,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    under vendor/, which isn't scanned, and tightens an existing SVG sanitizer) and CVE-2026-54065 (the attach value
    is stored and unlinked by a later request in a file the fix doesn't touch). Topic 17's batches since 2026-11-22
    04:00 read 3-10 commits each: the older months leave few candidates once the filters run.
+119. **Starlette/FastAPI HTMLResponse is an XSS sink** (2026-11-22). nextcloud-mcp-server (step 115) returned
+   HTMLResponse(content=f'...{preset_id}...') with preset_id from request.path_params; the request source already
+   covered path_params, but HTMLResponse wasn't a sink. Added `starlette.responses.HTMLResponse` and
+   `fastapi.responses.HTMLResponse`, content by position or `content=`. The case is now found, quiet at its fix.
+   Apps: one new finding, full-stack-fastapi-template login.py:122, read as real but low-risk: a path parameter
+   (email) goes into a jinja2 Template with autoescape off and back as HTMLResponse; only a superuser can call it
+   and the email must match an existing user's. Test: `test_a_starlette_html_response_renders_its_content`.
