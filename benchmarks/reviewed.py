@@ -13,7 +13,8 @@ of a CVE) count as known too, from a local github/advisory-database clone (CODEW
                                                          a fix commit's size as the review counts it (needs gh)
     python3 -I benchmarks/reviewed.py guard BASE [HEAD]  checks a research agent's commits since BASE before they
                                                          are pushed (tools/research-batch.sh); exits 1 on a problem
-    python3 -I benchmarks/reviewed.py pending            how many candidate batches are waiting for review
+    python3 -I benchmarks/reviewed.py pending [--gaps]   how many candidate batches (or gap notes) are waiting for
+                                                         review
 
 A status is "suite:<name>" (in that suite), "rejected", "accepted" (accepted but not in a suite yet) or "unsure".
 Blind cases show only their suite name: their reasons are never written down.
@@ -164,7 +165,8 @@ def size(repo, sha, python=False):
     return 0 if within and parents == 1 else 1
 
 
-ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|AGENTS\.md)$")
+ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|benchmarks/gap-notes-[A-Za-z0-9._-]+\.json"
+                     r"|AGENTS\.md)$")
 IDENTITY = "Shwan <344055753+shwan-ps5@users.noreply.github.com>"
 WITHHELD = "accepted; reason withheld so the case stays blind"
 UNREVIEWED = "research only"
@@ -233,9 +235,34 @@ def batch_problems(name, text, head, repo):
     return problems + shared_fix_problems(name, accepted, head, repo)
 
 
+def gap_note_problems(name, text, head, repo):
+    """A gap note (AGENTS.md section 9) about anything but an open CVE-pair case, or filed under the wrong suite."""
+    try:
+        notes = json.loads(text).get("notes", [])
+    except (ValueError, AttributeError) as error:
+        return [f"{name}: not a JSON object with notes ({error})"]
+    try:
+        suites = json.loads(_git("show", f"{head}:benchmarks/suites.json", cwd=repo)).get("suites", [])
+    except (subprocess.CalledProcessError, ValueError):
+        suites = []
+    where = {c.get("id"): s["name"] for s in suites if s.get("kind") == "cve-pairs" and not s.get("blind")
+             and "blind" not in s.get("name", "") for c in s.get("cases", []) if isinstance(c, dict)}
+    blind = {c.get("id") for s in suites if s.get("blind") or "blind" in s.get("name", "")
+             for c in s.get("cases", []) if isinstance(c, dict)}
+    problems = []
+    for note in notes:
+        case_id = note.get("id") if isinstance(note, dict) else None
+        if case_id in blind or case_id not in where:
+            problems.append(f"{name}: {case_id} is not an open CVE-pair case; gap notes are for those only")
+        elif note.get("suite") != where[case_id]:
+            problems.append(f"{name}: {case_id} is in {where[case_id]}, not {note.get('suite')}")
+    return problems
+
+
 def guard(base, head="HEAD", repo=HERE.parent):
-    """Problems with the commits since base, which an unattended research run made: only candidate files (and
-    AGENTS.md) touched, the maintainer's noreply identity, and blind cases described by nothing but their entry."""
+    """Problems with the commits since base, which an unattended research run made: only candidate files, gap notes
+    (and AGENTS.md) touched, the maintainer's noreply identity, blind cases described by nothing but their entry, and
+    gap notes about open cases only."""
     problems = identity_problems(base, head, repo)
     changed = [f for f in _git("diff", "--name-only", "--diff-filter=AM", f"{base}..{head}", cwd=repo).splitlines() if f]
     problems += [f"{name}: not a file research may change" for name in changed if not ALLOWED.match(name)]
@@ -243,7 +270,10 @@ def guard(base, head="HEAD", repo=HERE.parent):
         if not ALLOWED.match(name) or name == "AGENTS.md":
             continue
         text = _git("show", f"{head}:{name}", cwd=repo)
-        problems += tsv_problems(name, text) if name.endswith(".tsv") else batch_problems(name, text, head, repo)
+        if name.startswith("benchmarks/gap-notes-"):
+            problems += gap_note_problems(name, text, head, repo)
+        else:
+            problems += tsv_problems(name, text) if name.endswith(".tsv") else batch_problems(name, text, head, repo)
     return problems
 
 
@@ -256,10 +286,10 @@ def _blind_fixes(head, repo):
     return {c.get("fix") for s in suites if s.get("blind") for c in s.get("cases", []) if isinstance(c, dict)}
 
 
-def pending(root=HERE):
-    """Candidate batches a review session hasn't looked at yet."""
+def pending(root=HERE, prefix="cve-candidates-"):
+    """Candidate batches (or, with prefix "gap-notes-", gap notes) a review session hasn't looked at yet."""
     waiting = []
-    for path in sorted(root.glob("cve-candidates-*.json")):
+    for path in sorted(root.glob(f"{prefix}*.json")):
         try:
             status = str(json.loads(path.read_text()).get("status", ""))
         except ValueError:
@@ -294,8 +324,8 @@ def guard_command(argv, _root):
     return 1 if problems else 0
 
 
-def pending_command(_argv, root):
-    waiting = pending(root)
+def pending_command(argv, root):
+    waiting = pending(root, "gap-notes-" if "--gaps" in argv else "cve-candidates-")
     print(len(waiting), *waiting, sep="\n")
     return 0
 

@@ -11,25 +11,32 @@
 # gh logged in, and the clone's credential helper set as in the main checkout. Run it by hand once after a change
 # to it, and read the log.
 # Settings: CODEWATCH_RESEARCH_MODEL (default ollama/deepseek-v4.1-flash:cloud),
-#           CODEWATCH_RESEARCH_MAX_PENDING (default 3: skip while that many batches wait for review).
-# Logs: ~/.cache/codewatch/research/; usage.log has one line per run (characters read, tokens used). Commits that
-# fail the check are kept on a local research-rejected-* branch, never pushed.
+#           CODEWATCH_RESEARCH_MAX_PENDING (default 3: skip while that many batches wait for review),
+#           CODEWATCH_RESEARCH_KIND (default candidates; "gaps" writes gap notes on the cases the last nightly
+#           missed instead, AGENTS.md section 9, on its own branch research-gaps and its own pull request; run it
+#           from a second clone, ~/codewatch-research/repo-gaps, with codewatch-research-gaps.timer).
+# Logs: ~/.cache/codewatch/research/ (research-gaps/ for gap notes); usage.log has one line per run (characters
+# read, tokens used). Commits that fail the check are kept on a local research-rejected-* branch, never pushed.
 
 set -uo pipefail
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 export GIT_TERMINAL_PROMPT=0                  # fail at once on a credential problem instead of waiting
 REPO="${CODEWATCH_RESEARCH_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
+KIND="${CODEWATCH_RESEARCH_KIND:-candidates}"
+case "$KIND" in
+    candidates) BRANCH=research LOGS="$HOME/.cache/codewatch/research" ;;
+    gaps) BRANCH=research-gaps LOGS="$HOME/.cache/codewatch/research-gaps" ;;
+    *) echo "CODEWATCH_RESEARCH_KIND must be candidates or gaps, not $KIND" >&2; exit 2 ;;
+esac
 # Each run fast-forwards this checkout, which can rewrite this file while bash is still reading it: run a copy.
 if [ -z "${CODEWATCH_RESEARCH_COPY:-}" ]; then
-    mkdir -p "$HOME/.cache/codewatch/research"
-    copy="$HOME/.cache/codewatch/research/research-batch.running.sh"
+    mkdir -p "$LOGS"
+    copy="$LOGS/research-batch.running.sh"
     cp "$0" "$copy" && CODEWATCH_RESEARCH_COPY=1 CODEWATCH_RESEARCH_REPO="$REPO" exec bash "$copy" "$@"
 fi
 MODEL="${CODEWATCH_RESEARCH_MODEL:-ollama/deepseek-v4.1-flash:cloud}"
 MAX_PENDING="${CODEWATCH_RESEARCH_MAX_PENDING:-3}"
-BASE=detection-gaps           # where reviewed batches go, by merging the pull request
-BRANCH=research               # where each batch is pushed
-LOGS="$HOME/.cache/codewatch/research"
+BASE=detection-gaps           # where reviewed batches go, by merging the pull request; each is pushed to $BRANCH
 mkdir -p "$LOGS"
 # Unattended, nobody can answer a permission prompt: allow what research needs and refuse the rest at once
 # (tools/opencode-research.json). An ollama/ model is registered here too, so opencode finds it without
@@ -93,12 +100,25 @@ if [ "$start" = "$remote" ]; then
     git merge -q --no-edit "origin/$BASE" || { git merge --abort; say "can't merge $BASE into $BRANCH; resolve by hand"; exit 1; }
 fi
 
-waiting=$(python3 -I benchmarks/reviewed.py pending | head -1)
+if [ "$KIND" = gaps ]; then
+    waiting=$(python3 -I benchmarks/reviewed.py pending --gaps | head -1)
+else
+    waiting=$(python3 -I benchmarks/reviewed.py pending | head -1)
+fi
 if [ "$waiting" -ge "$MAX_PENDING" ]; then
     say "$waiting batches waiting for review; skipping"
     exit 0
 fi
-if [ -d "$HOME/advisory-database/.git" ]; then
+if [ "$KIND" = gaps ]; then
+    # The agent never sees the nightly's results (blind suites are in there too): only this list of open misses.
+    misses=$(python3 -I tools/export_misses.py --out "$HOME/codewatch-research/gaps/misses.tsv") \
+        || { say "can't list the nightly's misses"; exit 1; }
+    if [ "$misses" = 0 ]; then
+        say "no missed open case without a gap note; skipping"
+        exit 0
+    fi
+    say "$misses missed open cases without a gap note"
+elif [ -d "$HOME/advisory-database/.git" ]; then
     git -C "$HOME/advisory-database" fetch -q --depth 1 origin main && git -C "$HOME/advisory-database" reset -q --hard FETCH_HEAD
 fi
 
@@ -108,24 +128,37 @@ started_ms=$(( $(date +%s) * 1000 - 5000 ))
 LIMIT_MIN=120                                 # the run is stopped after this; the prompt gives the clock times
 stop_reading=$(date -d "+60 min" +%H:%M); commit_by=$(date -d "+$((LIMIT_MIN - 15)) min" +%H:%M)
 stopped_at=$(date -d "+$LIMIT_MIN min" +%H:%M)
+ALLOWLIST="Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
+refused: if one is, use python3 for it instead."
+TIME="Time: this run is stopped at $stopped_at (the clock, \`date +%H:%M\`), and anything not committed by then is lost."
 say "starting a batch with $MODEL at $base"
-timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
+if [ "$KIND" = gaps ]; then
+    timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "codewatch gap notes $(date +%F-%H%M)" \
+"Read AGENTS.md in full, then write one batch of gap notes as its section 9 says: no research topic, no
+candidates. The cases to note are in ~/codewatch-research/gaps/misses.tsv, in the order to take them. Keep your
+scripts and downloads in ~/codewatch-research/gaps/ (the only folder outside this repository you may write to).
+Commit only your benchmarks/gap-notes-*.json file, with the identity AGENTS.md gives. Don't push, pull or switch
+branches: the script that started you does that. $ALLOWLIST
+$TIME Commit the notes file by $commit_by with whatever has been noted by then (a smaller batch is fine).
+End with the counts: cases noted, by category, and cases left in misses.tsv."
+else
+    timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
 "Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
 'Carrying on a topic'. Keep your scripts and downloads in ~/codewatch-research/ (the only folder outside this
 repository you may write to; ~/advisory-database/ is readable too). Commit only your candidate files
 (and AGENTS.md if you mark a topic done), with the identity AGENTS.md gives. Don't push, pull or switch branches:
 the script that started you does that. A topic marked paused is not to be worked on. If every topic in the queue
-is done or paused, stop without committing and say so. Shell commands outside an allowlist (git, gh, python3, curl, unzip, jq and simple file viewers) are
-refused: if one is, use python3 for it instead.
-Time: this run is stopped at $stopped_at (the clock, \`date +%H:%M\`), and anything not committed by then is lost.
+is done or paused, stop without committing and say so. $ALLOWLIST
+$TIME
 Stop searching and start reading by $stop_reading; commit the batch files by $commit_by, with whatever has been
 read by then (a smaller batch is fine).
 End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
+fi
 say "opencode exited $?"
 
 # What the run read and spent (characters its tools returned, model tokens): one line in usage.log, and into the
 # batch's JSON (amending the batch commit) so the review sees it too.
-batch_json=$(git diff --name-only "$base..HEAD" -- 'benchmarks/cve-candidates-*.json' | tail -1)
+batch_json=$(git diff --name-only "$base..HEAD" -- 'benchmarks/cve-candidates-*.json' 'benchmarks/gap-notes-*.json' | tail -1)
 if [ -n "$batch_json" ] && [ -z "$(git status --porcelain)" ]; then
     used=$(python3 -I tools/research_usage.py --dir "$REPO" --since "$started_ms" --into "$batch_json" 2>&1 | tail -1)
     git add "$batch_json" && git commit -q --amend --no-edit
@@ -164,7 +197,14 @@ elif ! git push -q origin "$BRANCH"; then
 fi
 say "pushed to $BRANCH: $(git log --oneline "$base..HEAD" | tr '\n' ';')"
 pr=$(open_pr) || { say "gh pr list failed; open the pull request by hand"; exit 1; }
-if [ -z "$pr" ]; then
+if [ -z "$pr" ] && [ "$KIND" = gaps ]; then
+    gh pr create --base "$BASE" --head "$BRANCH" --title "Gap notes waiting to be read" --body \
+"Gap notes from the unattended runs (tools/research-batch.sh with CODEWATCH_RESEARCH_KIND=gaps, AGENTS.md section
+9): for each open CVE-pair case the last nightly missed, where its source and sink are and why codewatch doesn't
+connect them. Each push passed \`benchmarks/reviewed.py guard\` (gap notes about open cases only). A Claude session
+reads them, marks each file read, and merges this pull request; rule work follows in its own commits." \
+        && say "opened a pull request into $BASE"
+elif [ -z "$pr" ]; then
     gh pr create --base "$BASE" --head "$BRANCH" --title "Research batches waiting for review" --body \
 "Candidate batches from the unattended research runs (tools/research-batch.sh, following AGENTS.md). Each push
 passed \`benchmarks/reviewed.py guard\` (only candidate files and AGENTS.md changed, the project's commit identity,

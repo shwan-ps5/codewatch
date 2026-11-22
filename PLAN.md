@@ -84,6 +84,8 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
 Ground truth:
 - Topic 16 (new arrivals) is standing; topic 17 (security fixes with no advisory or CVE) is the active topic
   (step 110), searching front-end XSS phrases first since step 112; 2024-06 back to 2021-01 still to search. Topics 4 and 8 are paused; the rest are done.
+- Gap notes (step 122): a second runner explains the nightly's missed open cases (466 on 2026-11-22: 83 Python,
+  118 JavaScript, 265 PHP), about 15 a run, as leads for the rule work above. Read them as they come.
 - 5 cases in `cve-pairs-blind-php-35` have a rejected other id (step 102); keep them unread and re-judge after that
   suite's end-of-round scan (step 103).
 - End of the round, not yet run: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites, each
@@ -108,7 +110,7 @@ Housekeeping:
 1. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group).
 2. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 3. The small server-side sources and sinks above, each with its case.
-4. Review topic 17's batches as they come; read the nightly each morning.
+4. Review topic 17's batches and read the gap notes as they come; read the nightly each morning.
 
 ## How things work (non-obvious)
 

@@ -58,7 +58,14 @@ def test_a_stalled_runner_is_a_warning(tmp_path):
     write_runs(tmp_path, {"2026-11-22-0100": ["2026-11-22 01:00:06 working tree not clean; skipping."]})
     states = {"codewatch-research.timer": "inactive", "codewatch-research.service": "failed"}
     report = research_report.report(tmp_path, 24, now=NOW, states=states)
-    assert "WARNING: the research timer is inactive" in report
-    assert "WARNING: the last research run failed" in report
+    assert "WARNING: the codewatch-research timer is inactive" in report
+    assert "WARNING: the last codewatch-research run failed" in report
     assert "WARNING: no batch pushed in 24 h" in report
     assert "WARNING: no research runs in 1 h" in research_report.report(tmp_path, 1, now=NOW, states=states)
+
+
+def test_the_gap_notes_runner_is_asked_about_its_own_units(tmp_path):
+    write_runs(tmp_path, {"2026-11-22-0830": ["2026-11-22 08:30:06 starting a batch"]})
+    states = {"codewatch-research-gaps.timer": "inactive", "codewatch-research.timer": "active"}
+    report = research_report.report(tmp_path, 24, now=NOW, states=states, unit="codewatch-research-gaps")
+    assert "WARNING: the codewatch-research-gaps timer is inactive" in report

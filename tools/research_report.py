@@ -2,10 +2,12 @@
 went wrong (a failed or timed-out agent, a skipped run, a batch left uncommitted), so a stalled runner shows up in
 the morning report instead of as a quiet run of empty hours.
 
-    python3 -I tools/research_report.py [--logs DIR] [--hours N]
+    python3 -I tools/research_report.py [--logs DIR] [--unit NAME] [--hours N]
 
 Reads tools/research-batch.sh's logs (one file per run, named YYYY-MM-DD-HHMM.log, lines "YYYY-MM-DD HH:MM:SS
-message") from ~/.cache/codewatch/research by default. Standard library only.
+message") from ~/.cache/codewatch/research by default, and asks systemd about NAME.timer and NAME.service
+(codewatch-research by default; the gap-notes runner's are research-gaps and codewatch-research-gaps). Standard
+library only.
 """
 
 import argparse
@@ -104,14 +106,14 @@ def tally_runs(runs):
     return tally, totals, pushed, problems
 
 
-def warnings(states, runs, pushed, hours):
+def warnings(states, runs, pushed, hours, unit="codewatch-research"):
     """What needs a look before anything else: the timer stopped, the last run failed, nothing coming through."""
     found = []
-    timer = states.get("codewatch-research.timer")
+    timer = states.get(f"{unit}.timer")
     if timer not in (None, "active"):
-        found.append(f"WARNING: the research timer is {timer}")
-    if states.get("codewatch-research.service") == "failed":
-        found.append("WARNING: the last research run failed (systemctl --user status codewatch-research.service)")
+        found.append(f"WARNING: the {unit} timer is {timer}")
+    if states.get(f"{unit}.service") == "failed":
+        found.append(f"WARNING: the last {unit} run failed (systemctl --user status {unit}.service)")
     if not runs:
         found.append(f"WARNING: no research runs in {hours} h")
     elif not pushed:
@@ -119,7 +121,7 @@ def warnings(states, runs, pushed, hours):
     return found
 
 
-def report(logs, hours, now=None, states=None):
+def report(logs, hours, now=None, states=None, unit="codewatch-research"):
     now = now or datetime.now().astimezone()
     since = now - timedelta(hours=hours)
     runs = runs_since(logs, since)
@@ -128,8 +130,8 @@ def report(logs, hours, now=None, states=None):
               f"{tally['skipped']} skipped, {tally['problem']} with problems); read {totals[0]}, accepted by the "
               f"agents {totals[1]} ({totals[2]} open, {totals[3]} blind)")]
     if states is None:
-        states = {unit: unit_state(unit) for unit in ("codewatch-research.timer", "codewatch-research.service")}
-    lines += warnings(states, runs, pushed, hours) + problems
+        states = {name: unit_state(name) for name in (f"{unit}.timer", f"{unit}.service")}
+    lines += warnings(states, runs, pushed, hours, unit) + problems
     oldest = f"leftover-{since:%Y-%m-%d-%H%M}"
     leftovers = sorted(p.name for p in logs.glob("leftover-*") if p.is_dir() and p.name >= oldest)
     if leftovers:
@@ -140,12 +142,13 @@ def report(logs, hours, now=None, states=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="What the unattended research runs did lately.")
     parser.add_argument("--logs", type=Path, default=Path.home() / ".cache/codewatch/research")
+    parser.add_argument("--unit", default="codewatch-research", help="the systemd units' name, without .timer")
     parser.add_argument("--hours", type=int, default=24)
     args = parser.parse_args(argv)
     if not args.logs.is_dir():
         print(f"no research logs ({args.logs})")
         return 0
-    print(report(args.logs, args.hours))
+    print(report(args.logs, args.hours, unit=args.unit))
     return 0
 
 

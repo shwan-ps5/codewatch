@@ -139,3 +139,29 @@ def test_pending_counts_unreviewed_batches(tmp_path):
     (tmp_path / "cve-candidates-a.json").write_text(json.dumps({"status": "research only: not reviewed"}))
     (tmp_path / "cve-candidates-b.json").write_text(json.dumps({"status": "reviewed 2026-11-03"}))
     assert reviewed.pending(tmp_path) == ["cve-candidates-a.json"]
+
+
+def test_guard_takes_gap_notes_about_open_cases_only(tmp_path):
+    git = _repo(tmp_path)
+    (tmp_path / "benchmarks" / "suites.json").write_text(json.dumps({"suites": [
+        {"name": "cve-pairs-python", "kind": "cve-pairs", "cases": [{"id": "GHSA-open"}]},
+        {"name": "cve-pairs-blind-python-3", "kind": "cve-pairs", "blind": True, "cases": [{"id": "GHSA-blind"}]},
+    ]}))
+    git("add", "-A")
+    git("commit", "-qm", "suites")
+    notes = tmp_path / "benchmarks" / "gap-notes-2026-11-23-1.json"
+    notes.write_text(json.dumps({"status": "research only", "notes": [{"id": "GHSA-open", "suite": "cve-pairs-python"}]}))
+    git("add", "-A")
+    git("commit", "-qm", "notes")
+    assert reviewed.guard("HEAD~1", repo=tmp_path) == []
+    assert reviewed.pending(tmp_path / "benchmarks", "gap-notes-") == ["gap-notes-2026-11-23-1.json"]
+
+    notes.write_text(json.dumps({"status": "research only", "notes": [
+        {"id": "GHSA-blind", "suite": "cve-pairs-blind-python-3"}, {"id": "GHSA-open", "suite": "cve-pairs-php"},
+        {"id": "GHSA-unknown", "suite": "cve-pairs-python"}]}))
+    git("add", "-A")
+    git("commit", "-qm", "leak")
+    problems = reviewed.guard("HEAD~1", repo=tmp_path)
+    assert any("GHSA-blind is not an open CVE-pair case" in p for p in problems)
+    assert any("GHSA-unknown is not an open CVE-pair case" in p for p in problems)
+    assert any("GHSA-open is in cve-pairs-python, not cve-pairs-php" in p for p in problems)

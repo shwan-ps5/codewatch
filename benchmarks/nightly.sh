@@ -88,6 +88,8 @@ fi
     fi
     # The unattended research runs (tools/research-batch.sh): a stalled or failing runner shows here.
     echo; echo "== research (last 24 h)"; python3 -I tools/research_report.py
+    echo; echo "== gap notes (last 24 h)"
+    python3 -I tools/research_report.py --logs "$HOME/.cache/codewatch/research-gaps" --unit codewatch-research-gaps
     if [ -s "$OUT/timings.tsv" ]; then
         echo; echo "== time"
         previous=(); [ -n "$PREV" ] && [ -s "$PREV/timings.tsv" ] && previous=("$PREV/timings.tsv")

@@ -8,7 +8,7 @@ Don't ask the maintainer about the rules below. Follow them, and when a case is 
 ## What you do and don't do
 
 Do: find advisories, read each fix commit, accept or reject it with a reason, and write the results as candidate
-files (below). Then commit them.
+files (below). Then commit them. The gap-notes runner instead explains cases codewatch misses (section 9).
 
 Don't:
 - edit `benchmarks/suites.json`, `PLAN.md`, `docs/`, `CLAUDE.md`, rules (`catalog/`), analyzers (`core/`) or tests. A review
@@ -581,3 +581,69 @@ git commit -m "Research: <topic> CVE candidates (N read, A accepted: O open, B b
 Commit to the branch you were started on (`detection-gaps` by hand, `research` in an unattended run; never `main`).
 Push only when the maintainer says so; an unattended run's script pushes for you. Your summary to the maintainer
 gives the counts and lists open cases by id, plus any `unsure` questions; blind cases appear as a count only.
+
+## 9. Gap notes (the second runner)
+
+A second unattended runner (`tools/research-batch.sh` with `CODEWATCH_RESEARCH_KIND=gaps`) doesn't look for new
+cases. It explains the open CVE-pair cases codewatch already misses, so a Claude session can write the rules that
+find them. In that run, ignore the topic queue and section 5's files: write gap notes only.
+
+**Input.** `~/codewatch-research/gaps/misses.tsv` (written by the runner from the last nightly run): one row per
+missed open case, `suite language id repo fix cwe scope`, Python first, then JavaScript, then PHP. Take them in
+that order, about 15 per run. Note only cases in that file. Never read a blind suite's entries in
+`benchmarks/suites.json` or any `benchmarks/results/*blind*` file; never note a blind case.
+
+**Reading.** For each case, fetch the fix commit's diff and, where the diff doesn't show them, the files at the fix
+commit's parent that hold the source and the sink (`gh api repos/O/R/contents/PATH?ref=SHA^`, raw). This uses
+GitHub's ordinary API, not its search: section 7's manners still apply. One script for the next 5 cases, as
+section 6 says.
+
+**What to write for each case**, read from the vulnerable side (the fix's parent):
+- `source`: where the attacker's value comes in: `file:line` and the code, and the framework API it uses
+  (`request.args.get`, a route parameter, `self.request.path_qs` in webapp2, `$_GET`, `req.query`, a JSON-RPC
+  method argument).
+- `sink`: where it does harm: `file:line`, the code, and the call (`open()`, `redirect()`, `Markup()`, `cursor.execute`,
+  `innerHTML =`).
+- `between`: every step from source to sink: project functions it passes through (name and file), checks it goes
+  through on the way, values stored and read back.
+- `fix`: what the fix changed, one line.
+- `category`: one of
+  - `source` — the input comes from an API codewatch may not know as a source (say which);
+  - `sink` — the dangerous call may not be a known sink (say which);
+  - `check` — the vulnerable code already had a check, too weak, that codewatch may take for a sanitizer;
+  - `functions` — the value crosses project functions or files;
+  - `framework` — the framework itself (routing, handlers) may be unknown: webapp2, CherryPy, Tornado, a custom
+    dispatcher;
+  - `front-end` — browser JavaScript writes the value into the page;
+  - `template` — a template renders the value without escaping (`|safe`, `{% autoescape off %}`, `{@html}`,
+    `{!! !!}`, `<?= ?>` without escaping);
+  - `stored` — the value is stored by one request and used by another;
+  - `archive` — the value comes from inside an uploaded file or archive;
+  - `not-a-flow` — the flaw isn't a value reaching a call (a missing permission check, a configuration); say why.
+  Pick the one that best explains the miss; name a second in `between` if it applies.
+- `probe`: the shortest code that has the same shape, 5 to 30 lines, in the case's language and framework, with
+  the source and the sink and nothing else (no project names, no copied comments): what a test of the rule would
+  scan. Leave it empty for `not-a-flow`.
+- `confidence`: `sure` when the diff and the files show source and sink, `unsure` otherwise (say what's missing in
+  `between`).
+
+**Output.** One file per run, `benchmarks/gap-notes-YYYY-MM-DD-N.json` (N counting up from 1 per day):
+
+```json
+{"batch": "gap-notes-2026-11-23-1", "status": "research only: not read yet",
+ "method": "<which rows of misses.tsv, what was read, anything skipped and why>",
+ "notes": [{"id": "GHSA-...", "suite": "cve-pairs-python", "cwe": [22], "category": "sink",
+            "source": "app/views.py:41 name = request.args['name'] (Flask query parameter)",
+            "sink": "app/views.py:47 shutil.rmtree(base / name) (rmtree)",
+            "between": "joined to the data directory with pathlib's / ; no check",
+            "fix": "resolves the path and refuses one outside the data directory",
+            "probe": "from flask import request\n...", "confidence": "sure"}]}
+```
+
+`id` and `suite` exactly as in `misses.tsv`; the push check refuses a note about any case that isn't an open
+CVE-pair case in that suite. Commit with:
+
+```
+git add benchmarks/gap-notes-YYYY-MM-DD-N.json
+git commit -m "Gap notes: N cases (S source, K sink, ...)"
+```

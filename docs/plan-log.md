@@ -2620,3 +2620,16 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    fix narrows it to an allowlist. `reviewed.py` now finds a rejected FIX- case by its commit hash too: a SHA
    lookup only searched accepted cases' fix commits, so a rejected silent fix looked new and could be read again.
    Test: `test_a_rejected_fix_commit_is_found_by_its_hash`.
+122. **A second research runner: gap notes on the missed cases** (2026-11-22). Topic 17's runner spends much of
+   each run waiting out GitHub's search rate limits (about 115 secondary-limit errors on 2026-11-22), so a second
+   agent on the same topic would mostly wait too; and closing gaps is now held up by rule work, not ground truth.
+   The second runner (`tools/research-batch.sh` with CODEWATCH_RESEARCH_KIND=gaps, its own clone, branch
+   research-gaps, timer codewatch-research-gaps at half past the hour) reads the fix of each open CVE-pair case the
+   last nightly missed and writes a gap note (AGENTS.md section 9): source, sink, what's between, a category
+   (source, sink, check, functions, framework, front-end, template, stored, archive, not-a-flow) and a probe. No
+   search API. It sees only `tools/export_misses.py`'s list (open cve-pairs suites, verdict-mode misses, none
+   already noted; 466 on the 2026-11-22 nightly), never the result files, which hold blind suites too.
+   `reviewed.py guard` accepts gap-note files and refuses a note about anything but an open case in its suite;
+   `pending --gaps` counts the unread ones. The nightly summary reports both runners. Tests:
+   `test_guard_takes_gap_notes_about_open_cases_only`, tests/test_export_misses.py,
+   `test_the_gap_notes_runner_is_asked_about_its_own_units`.

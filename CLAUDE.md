@@ -36,6 +36,11 @@ real name, and never add one to commit messages, files or pull requests.
   commit the decisions (statuses, `suites.json`, the log step) on `research`, push, and once CI passes merge with
   `gh pr merge <n> --merge` (a merge commit, not a squash, so the runs' commits keep their place). A reviewed batch's
   JSON status must stop starting with "research only".
+- A second runner (`CODEWATCH_RESEARCH_KIND=gaps`, its own clone and timer at half past the hour) writes gap notes
+  (AGENTS.md section 9): for each open CVE-pair case the last nightly missed, its source, sink, what's between and
+  a probe. They come to the `research-gaps` branch and the pull request "Gap notes waiting to be read";
+  `reviewed.py pending --gaps` lists them. Treat a note as a lead and check its quotes against the diff before
+  writing a rule from it; mark the file read (status "read DATE (PLAN.md step N)") and merge as above.
 - Blind sets (`~/.cache/codewatch/blind*`, the `cve-pairs-blind-*` suites) are scanned once, at the end of a round,
   and never used to adjust rules. Held-out suites (SecurityEval Copilot/InCoder, Vulnerable-Code-Snippets JS) are
   measured, never tuned on.
