@@ -41,6 +41,7 @@ def is_blind(advisory_id):
 
 
 ACCEPTED = "accepted"
+CASES, SUITE, BLIND = "cases", "suite", "blind"
 
 
 def tsv_rows(lines):
@@ -92,7 +93,7 @@ def known(root=HERE, db=ADVISORY_DB):
     off they read Moodle GHSA-fr4r again though its CVE had been rejected the day before (2026-11-19)."""
     seen, fixes = tsv_decisions(root), {}
     for suite in json.loads((root / "suites.json").read_text())["suites"]:
-        cases = [c for c in suite.get("cases", []) if isinstance(c, dict) and c.get("id")]
+        cases = [c for c in suite_cases(suite) if c.get("id")]
         for case in cases:
             seen[case["id"]] = (f"suite:{suite['name']}", "suites.json")
         fixes |= {case["fix"]: case["id"] for case in cases if case.get("fix")}
@@ -206,10 +207,10 @@ def case_problems(name, case, accepted_rows, stem):
     blind = is_blind(case.get("id", ""))
     if case.get("id") not in accepted_rows:
         problems.append(f"{name}: {case.get('id')} is accepted here but has no accept row in {stem}.tsv")
-    extra = set(case) - {"id", "suite", "entry", "reason_withheld"}
+    extra = set(case) - {"id", SUITE, "entry", "reason_withheld"}
     if blind and extra:
         problems.append(f"{name}: blind case {case['id']} has {sorted(extra)}")
-    if ("blind" in str(case.get("suite", ""))) != blind:
+    if (BLIND in str(case.get(SUITE, ""))) != blind:
         problems.append(f"{name}: {case.get('id')} is in the wrong half ({case.get('suite')})")
     return problems
 
@@ -235,28 +236,48 @@ def batch_problems(name, text, head, repo):
     return problems + shared_fix_problems(name, accepted, head, repo)
 
 
+def suite_cases(suite):
+    """A suite's cases that are entries (some suites list plain names)."""
+    return [c for c in suite.get(CASES, []) if isinstance(c, dict)]
+
+
+def is_blind_suite(suite):
+    return bool(suite.get(BLIND)) or BLIND in suite.get("name", "")
+
+
+def _suites_at(head, repo):
+    """The suites in benchmarks/suites.json at head, or [] when it can't be read."""
+    try:
+        return json.loads(_git("show", f"{head}:benchmarks/suites.json", cwd=repo)).get("suites", [])
+    except (subprocess.CalledProcessError, ValueError):
+        return []
+
+
+def _case_index(suites):
+    """({open CVE-pair case id: its suite}, {blind case ids})."""
+    open_cases = {c.get("id"): s["name"] for s in suites if s.get("kind") == "cve-pairs" and not is_blind_suite(s)
+                  for c in suite_cases(s)}
+    return open_cases, {c.get("id") for s in suites if is_blind_suite(s) for c in suite_cases(s)}
+
+
+def _note_problem(name, note, open_cases, blind_cases):
+    """What's wrong with one gap note, or None."""
+    case_id = note.get("id") if isinstance(note, dict) else None
+    if case_id in blind_cases or case_id not in open_cases:
+        return f"{name}: {case_id} is not an open CVE-pair case; gap notes are for those only"
+    if note.get(SUITE) != open_cases[case_id]:
+        return f"{name}: {case_id} is in {open_cases[case_id]}, not {note.get(SUITE)}"
+    return None
+
+
 def gap_note_problems(name, text, head, repo):
     """A gap note (AGENTS.md section 9) about anything but an open CVE-pair case, or filed under the wrong suite."""
     try:
         notes = json.loads(text).get("notes", [])
     except (ValueError, AttributeError) as error:
         return [f"{name}: not a JSON object with notes ({error})"]
-    try:
-        suites = json.loads(_git("show", f"{head}:benchmarks/suites.json", cwd=repo)).get("suites", [])
-    except (subprocess.CalledProcessError, ValueError):
-        suites = []
-    where = {c.get("id"): s["name"] for s in suites if s.get("kind") == "cve-pairs" and not s.get("blind")
-             and "blind" not in s.get("name", "") for c in s.get("cases", []) if isinstance(c, dict)}
-    blind = {c.get("id") for s in suites if s.get("blind") or "blind" in s.get("name", "")
-             for c in s.get("cases", []) if isinstance(c, dict)}
-    problems = []
-    for note in notes:
-        case_id = note.get("id") if isinstance(note, dict) else None
-        if case_id in blind or case_id not in where:
-            problems.append(f"{name}: {case_id} is not an open CVE-pair case; gap notes are for those only")
-        elif note.get("suite") != where[case_id]:
-            problems.append(f"{name}: {case_id} is in {where[case_id]}, not {note.get('suite')}")
-    return problems
+    open_cases, blind_cases = _case_index(_suites_at(head, repo))
+    return [p for p in (_note_problem(name, note, open_cases, blind_cases) for note in notes) if p]
 
 
 def guard(base, head="HEAD", repo=HERE.parent):
@@ -279,11 +300,7 @@ def guard(base, head="HEAD", repo=HERE.parent):
 
 def _blind_fixes(head, repo):
     """Fix commits of the blind suites in suites.json at head."""
-    try:
-        suites = json.loads(_git("show", f"{head}:benchmarks/suites.json", cwd=repo)).get("suites", [])
-    except (subprocess.CalledProcessError, ValueError):
-        return set()
-    return {c.get("fix") for s in suites if s.get("blind") for c in s.get("cases", []) if isinstance(c, dict)}
+    return {c.get("fix") for s in _suites_at(head, repo) if s.get(BLIND) for c in suite_cases(s)}
 
 
 def pending(root=HERE, prefix="cve-candidates-"):
@@ -332,7 +349,7 @@ def pending_command(argv, root):
 
 def split_command(argv, _root):
     for advisory in argv[1:]:
-        print(advisory, "blind" if is_blind(advisory) else "open")
+        print(advisory, BLIND if is_blind(advisory) else "open")
     return 0
 
 
