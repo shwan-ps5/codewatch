@@ -4277,6 +4277,30 @@ def test_django_error_responses_render_their_body_as_html(tmp_path):
     assert found == {("app/views.py", 6, "xss"), ("app/views.py", 10, "xss")}
 
 
+def test_a_starlette_html_response_renders_its_content(tmp_path):
+    """nextcloud-mcp-server (topic 17, PLAN.md step 119): HTMLResponse(content=f'...{preset_id}...') with
+    preset_id from request.path_params. Starlette's HTMLResponse (FastAPI's is the same class) sends its content as
+    text/html, given by position or as content=. Not when the value is escaped first, or the content is fixed."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app/routes.py": (
+        "import html\n"
+        "from fastapi.responses import HTMLResponse as FastHTML\n"
+        "from starlette.requests import Request\n"
+        "from starlette.responses import HTMLResponse\n\n\n"
+        "async def enable(request: Request):\n"
+        "    preset_id = request.path_params[\"preset_id\"]\n"
+        "    return HTMLResponse(content=f'<div>Unknown preset: {preset_id}</div>', status_code=404)\n\n\n"
+        "async def search(request: Request):\n"
+        "    return FastHTML(f\"<p>{request.query_params['q']}</p>\")\n\n\n"
+        "async def escaped(request: Request):\n"
+        "    preset_id = request.path_params[\"preset_id\"]\n"
+        "    return HTMLResponse(content=f'<div>{html.escape(preset_id)}</div>')\n\n\n"
+        "async def fixed(request: Request):\n"
+        "    return HTMLResponse(\"<p>Hello</p>\")\n")})
+    assert found == {("app/routes.py", 9, "xss"), ("app/routes.py", 13, "xss")}
+
+
 def test_a_drf_viewsets_lookup_argument_is_request_input(tmp_path):
     """CVAT (CVE-2024-47064): a router sends /requests/<pk>/ to retrieve(self, request, pk: str) with pk matched by
     lookup_value_regex, '[^/.]+' by default, which passes markup. So do @action(detail=True) methods, under the

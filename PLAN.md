@@ -58,6 +58,11 @@ full verification runs nightly at 01:30 (`benchmarks/nightly.sh`, report in
 batches through one pull request from `research`, reviewed by a Claude session (CLAUDE.md). Focus: Python web apps
 (Django, Flask, FastAPI) and the JavaScript they ship, then Node, then PHP and other languages.
 
+Where this is heading (the maintainer, 2026-11-22): close every gap in the open items below, then keep codewatch
+current against new CVEs and changing standards. Once the gaps are closed that is a weekly cycle, not a daily one:
+new advisories (topic 16), changes to the standards, and a verification run. Research topics run until they're
+exhausted.
+
 ## Open items (2026-11-21; keep current, name the step that closes each)
 
 Detection gaps, by cases reached (from the sort of the 81 Python misses, step 108):
@@ -68,8 +73,6 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
 - Python server side, 54 missed: existing checks too weak 15, sinks not modelled 13, sources not modelled 12,
   values through several functions 10, archives 2, stored 2. Known small ones: JSON-RPC dispatcher arguments as a
   source (Counterparty, step 110), Location set through `response.headers` (araa-search, step 110).
-  Starlette's `request.path_params` as a source and `HTMLResponse` content as an XSS sink: neither is modelled
-  (nextcloud-mcp-server, step 115, missed on the 2026-11-22 nightly).
 - Step 42 D (project checks trusted by name: `*safe*`, `*sanitize*`, `*valid*`) and E (dispatch the summaries
   can't follow: pygeoapi GHSA-f6pr, Lektor GHSA-wv28): not started.
 - JavaScript: path traversal, SSRF and redirects mostly missed; outside HTTP handlers 1 of 38.
