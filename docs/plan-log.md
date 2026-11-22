@@ -2602,3 +2602,11 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    Apps: one new finding, full-stack-fastapi-template login.py:122, read as real but low-risk: a path parameter
    (email) goes into a jinja2 Template with autoescape off and back as HTMLResponse; only a superuser can call it
    and the email must match an existing user's. Test: `test_a_starlette_html_response_renders_its_content`.
+120. **The nightly summary reports the research runs** (2026-11-22). The stalled runner of step 116 was found by chance;
+   `tools/research_report.py` now ends summary.txt with the last 24 hours of tools/research-batch.sh's logs: runs,
+   batches pushed, what the agents accepted, and each run that hit a problem (agent error or time limit, batch left
+   uncommitted, skipped, failed fetch or push), plus warnings when the timer isn't active, the last run failed, or
+   nothing was pushed. Its first look: the 03:00 run failed with "Model unavailable" on both 2026-11-21 and -22.
+   Also fixed in nightly.sh: the per-case comparison matched only GHSA ids, so FIX- and CVE- cases never showed
+   (step 117's 8 new cases didn't); blind result files are now skipped there explicitly. Test:
+   tests/test_research_report.py.

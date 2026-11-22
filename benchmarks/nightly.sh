@@ -6,7 +6,8 @@
 #   benchmarks/nightly.sh [BRANCH]        (default: the branch checked out in this repository)
 #
 # Writes ~/.cache/codewatch/nightly/YYYY-MM-DD/: summary.txt (what changed since the previous report), suites.txt,
-# apps.txt (one finding per line), triage.md (Ollama drafts of the new findings), results/ (the suites' result files) and log.txt. Blind suites are never run.
+# apps.txt (one finding per line), triage.md (Ollama drafts of the new findings), results/ (the suites' result files) and log.txt.
+# summary.txt ends with what the research runs did in the last 24 hours. Blind suites are never run.
 set -u
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 BRANCH=${1:-$(git -C "$REPO" rev-parse --abbrev-ref HEAD)}
@@ -75,7 +76,9 @@ fi
             || diff "$PREV/suites.txt" "$OUT/suites.txt"
         for f in "$OUT"/results/cve-pairs-*.md; do
             [ -f "$PREV/results/$(basename "$f")" ] || continue
-            changed=$(diff <(grep '^| GHSA' "$PREV/results/$(basename "$f")") <(grep '^| GHSA' "$f"))
+            case "$f" in *-blind-*) continue ;; esac   # never read blind results, even stale copies
+            changed=$(diff <(grep -E '^\| (GHSA|CVE|FIX)-' "$PREV/results/$(basename "$f")") \
+                           <(grep -E '^\| (GHSA|CVE|FIX)-' "$f"))
             [ -n "$changed" ] && { echo "-- $(basename "$f" .md) cases:"; echo "$changed"; }
         done
         if [ -f "$OUT/apps.txt" ] && [ -f "$PREV/apps.txt" ]; then
@@ -83,6 +86,8 @@ fi
             echo "-- gone:"; LC_ALL=C comm -23 "$PREV/apps.txt" "$OUT/apps.txt"
         fi
     fi
+    # The unattended research runs (tools/research-batch.sh): a stalled or failing runner shows here.
+    echo; echo "== research (last 24 h)"; python3 -I tools/research_report.py
     if [ -s "$OUT/timings.tsv" ]; then
         echo; echo "== time"
         previous=(); [ -n "$PREV" ] && [ -s "$PREV/timings.tsv" ] && previous=("$PREV/timings.tsv")
