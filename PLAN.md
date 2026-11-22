@@ -58,6 +58,11 @@ full verification runs nightly at 01:30 (`benchmarks/nightly.sh`, report in
 batches through one pull request from `research`, reviewed by a Claude session (CLAUDE.md). Focus: Python web apps
 (Django, Flask, FastAPI) and the JavaScript they ship, then Node, then PHP and other languages.
 
+Where this is heading (the maintainer, 2026-11-22): close every gap in the open items below, then keep codewatch
+current against new CVEs and changing standards. Once the gaps are closed that is a weekly cycle, not a daily one:
+new advisories (topic 16), changes to the standards, and a verification run. Research topics run until they're
+exhausted.
+
 ## Open items (2026-11-21; keep current, name the step that closes each)
 
 Detection gaps, by cases reached (from the sort of the 81 Python misses, step 108):
