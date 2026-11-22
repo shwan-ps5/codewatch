@@ -2584,3 +2584,8 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    left uncommitted to `~/.cache/codewatch/research/leftover-DATE/` and cleans the checkout, and the prompt gives
    the clock times: stop searching an hour in, commit 15 minutes before the stop. The stalled checkout was cleaned
    the same way by hand.
+117. **Nightly of 2026-11-22: topic 17's first cases scanned** (commit a6d1f1f). cve-pairs-python 56/97 to 60/105
+   found, 13 to 14 still flagged. Of the 8 new open cases, found: Pagure GHSA-g76q, MediKeep, ubuntu.com, araa-search
+   (still flagged after its fix); missed: Counterparty and bisheng (known gaps, step 110), nextcloud-mcp-server
+   (Starlette path_params and HTMLResponse aren't modelled), clawmetry (Semgrep gave up on both sides). The netbox
+   finding fixed in step 110's follow-up is gone; triage had nothing new. PLAN.md and README numbers refreshed.
