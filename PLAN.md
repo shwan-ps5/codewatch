@@ -28,7 +28,7 @@ that file, not here, and keep them short: what changed, the case behind it, what
 step gives counts, what was kept, rejections that set a new precedent and any problem found; the batch TSVs hold
 every other reason. This file holds only what is true now: update the sections below when a step changes them.
 
-## Where things stand (nightly 2026-11-21, commit 17e3582)
+## Where things stand (nightly 2026-11-22, commit a6d1f1f)
 
 Verdict mode counts findings that claim a vulnerability; review mode adds hotspots. CVE pairs: found = flagged
 before the fix, still flagged = flagged after it (the false-alarm measure).
@@ -41,7 +41,7 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | Juice Shop (tuned) | 15/35 | 17/35 |
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
-| cve-pairs-python (97) | 56 found, 13 still flagged | 63, 21 |
+| cve-pairs-python (105) | 60 found, 14 still flagged | 68, 22 |
 | cve-pairs-python-frontend (31) | 4, 0 | 14, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
@@ -68,6 +68,8 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
 - Python server side, 54 missed: existing checks too weak 15, sinks not modelled 13, sources not modelled 12,
   values through several functions 10, archives 2, stored 2. Known small ones: JSON-RPC dispatcher arguments as a
   source (Counterparty, step 110), Location set through `response.headers` (araa-search, step 110).
+  Starlette's `request.path_params` as a source and `HTMLResponse` content as an XSS sink: neither is modelled
+  (nextcloud-mcp-server, step 115, missed on the 2026-11-22 nightly).
 - Step 42 D (project checks trusted by name: `*safe*`, `*sanitize*`, `*valid*`) and E (dispatch the summaries
   can't follow: pygeoapi GHSA-f6pr, Lektor GHSA-wv28): not started.
 - JavaScript: path traversal, SSRF and redirects mostly missed; outside HTTP handlers 1 of 38.
@@ -87,6 +89,7 @@ Ground truth:
   summary line was seen (step 110).
 
 Speed and stability:
+- clawmetry (step 110): Semgrep gives up on both sides (about 30 minutes a side, 2026-11-22), so it scores as missed.
 - mlflow GHSA-wqmh: Semgrep gives up on both sides (over 90 minutes a side on the 2026-11-21 nightly; step 68).
 - Unbatched regex alternations in `body_models`, `project_checks`, `jinja_sandboxes` and `drf_serializers` could pass
   Semgrep's ~30,000-character limit on very large projects (step 104).
