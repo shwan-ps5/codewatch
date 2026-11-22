@@ -15781,7 +15781,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88 and 102) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "about": "Blind set of PHP CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88 and 102) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. 1 more added 2026-11-22 (PLAN.md step 118), unread at review.",
       "cases": [
         {
           "id": "GHSA-wx9g-4r9w-jjcf",
@@ -16160,6 +16160,21 @@
           "scope": [
             "src/Security"
           ]
+        },
+        {
+          "id": "CVE-2026-94599",
+          "cve": "CVE-2026-94599",
+          "repo": "https://github.com/nukeviet/nukeviet.git",
+          "fix": "de6b594b2bed0b6976293eec3815230e1f3ffe63",
+          "cwe": [
+            79,
+            174
+          ],
+          "license": "GPL-2.0",
+          "summary": "NukeViet CMS reflected cross-site scripting (CVE-2026-94599)",
+          "scope": [
+            "modules/news/funcs"
+          ]
         }
       ]
     },
@@ -16208,7 +16223,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88, 101 and 105) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Cases added 2026-11-21 from pull request #5 (topic 17, silent fixes, and topic 16; PLAN.md step 110), unread at review apart from their size. Four more added 2026-11-21 from topic 17 (PLAN.md step 113), unread at review.",
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88, 101 and 105) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Cases added 2026-11-21 from pull request #5 (topic 17, silent fixes, and topic 16; PLAN.md step 110), unread at review apart from their size. Four more added 2026-11-21 from topic 17 (PLAN.md step 113), unread at review. 3 more added 2026-11-22 (PLAN.md step 118), unread at review.",
       "cases": [
         {
           "id": "GHSA-gcwf-c25f-p9rv",
@@ -16390,6 +16405,45 @@
           "summary": "Percent-encode HTML characters in fraud report URL (#17399)",
           "scope": [
             "bedrock/legal"
+          ]
+        },
+        {
+          "id": "FIX-bunkerity-bunkerweb-ef9e44da8cdc",
+          "repo": "https://github.com/bunkerity/bunkerweb.git",
+          "fix": "ef9e44da8cdc2665f21636b087e70ade521c9785",
+          "cwe": [
+            79
+          ],
+          "license": "AGPL-3.0",
+          "summary": "fix possible reflected xss",
+          "scope": [
+            "src/ui"
+          ]
+        },
+        {
+          "id": "FIX-xlwings-xlwings-b45f6e669235",
+          "repo": "https://github.com/xlwings/xlwings.git",
+          "fix": "b45f6e669235f9686a2030036e12c8f52eee547d",
+          "cwe": [
+            79
+          ],
+          "license": "BSD-3-Clause",
+          "summary": "prevent HTML injection",
+          "scope": [
+            "xlwingsjs"
+          ]
+        },
+        {
+          "id": "FIX-cryptoadvance-specter-desktop-8f9c95fe1b45",
+          "repo": "https://github.com/cryptoadvance/specter-desktop.git",
+          "fix": "8f9c95fe1b45e638d2997e1392857a96b391f09b",
+          "cwe": [
+            601
+          ],
+          "license": "MIT",
+          "summary": "Fix login open redirect due to next parameter manipulation (specter-desktop #2350)",
+          "scope": [
+            "src/cryptoadvance/specter"
           ]
         }
       ]
