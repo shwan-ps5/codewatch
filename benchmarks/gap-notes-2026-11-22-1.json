@@ -1,0 +1,237 @@
+{
+  "batch": "gap-notes-2026-11-22-1",
+  "status": "research only: not read yet",
+  "method": "First 15 rows of ~/codewatch-research/gaps/misses.tsv (rows 2-16, all cve-pairs-python, taken in file order). For each case the fix commit was fetched with gh api repos/O/R/commits/SHA (per-file patches) and, where the patch did not show the vulnerable side, the file at the fix commit's parent with gh api contents?ref=SHA^ (terminals.py, views.py, query.py, restore.py, media_importer.py, api/__init__.py, stac.py, login.jinja2, www/views.py, www/utils.py, pandas_util.py). All API calls were one at a time with 2 s between. Nothing was skipped: every row yielded a note. Notes describe the vulnerable side (the fix's parent) and the line numbers in it.",
+  "notes": [
+    {
+      "id": "GHSA-gjxm-x497-4h6h",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        77,
+        78
+      ],
+      "category": "stored",
+      "source": "dtale/views.py:1627 updated_settings = get_json_arg(request, \"settings\", {}) in update_settings() (Flask POST /update-settings JSON body)",
+      "sink": "dtale/views.py:2091-2106 query = get_str_arg(request, \"query\"); run_query(handle_predefined(data_id), build_query(data_id, query), ...) (the string built by dtale/query.py:build_query is evaluated as a pandas query expression); same pattern at views.py:3392-3396",
+      "between": "the request body's enable_custom_filters key is merged into the session settings (views.py:1224 base_settings[\"enable_custom_filters\"], global_state.set_settings at 1234) by one request; a second request's /query endpoint reads it back with global_state.load_flag (2092, 3392) to decide whether the query argument is allowed, then build_query() concatenates it into the pandas query; no check on the query text anywhere",
+      "fix": "blocks enable_custom_filters from being set through update-settings (raises ValueError), so the query path stays disabled",
+      "probe": "import pandas as pd\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\ndata = pd.DataFrame({'a': [1, 2]})\nstate = {'custom': False}\n\n@app.post('/settings')\ndef settings():\n    state['custom'] = request.get_json().get('enable_custom_filters', state['custom'])\n    return jsonify(ok=True)\n\n@app.get('/query')\ndef query():\n    q = request.args.get('query')\n    if q and not state['custom']:\n        return jsonify(error='disabled')\n    rows = data.query(q).to_dict('records')\n    return jsonify(rows)",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-xv5p-fjw5-vrj6",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        78,
+        502
+      ],
+      "category": "sink",
+      "source": "fugue/rpc/flask.py:93 args, kwargs = _decode(str(request.form.get(\"value\"))) in FlaskRPCServer._invoke (Flask POST /invoke form field)",
+      "sink": "fugue/rpc/flask.py:130 data = cloudpickle.loads(base64.b64decode(data.encode(\"ascii\"))) (_decode; called from _invoke at line 93, before the handler is invoked at 94)",
+      "between": "the form value is base64-decoded and passed straight to cloudpickle.loads; no validation, no allow-list of callables; the route is registered by start_server() at line 81",
+      "fix": "adds a startup warning that the RPC server has no authentication; the deserialization flow itself is unchanged",
+      "probe": "import base64, cloudpickle\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.post('/invoke')\ndef invoke():\n    payload = str(request.form.get('value'))\n    args, kwargs = cloudpickle.loads(base64.b64decode(payload.encode('ascii')))\n    return str(args)\n\nif __name__ == '__main__':\n    app.run()",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-w228-rfpx-fhm4",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "source",
+      "source": "cg/server/invoices/views.py:172 return redirect(request.referrer) in the invoice() view (Flask; the Referer request header)",
+      "sink": "cg/server/invoices/views.py:172 flask.redirect(request.referrer)",
+      "between": "the header value is passed to redirect() unchanged when the invoice could not be undone; nothing on the way checks the target. Note the review decision (PLAN.md step 108, cg GHSA-w228) that a redirect to the Referer is not an open redirect; this case is still an open suite entry, and what explains the miss is that the value is a request header, not a query/body argument",
+      "fix": "redirects to the URL returned by undo_invoice() instead of to request.referrer",
+      "probe": "from flask import Flask, redirect, request, jsonify\n\napp = Flask(__name__)\n\n@app.get('/invoice/<int:invoice_id>')\ndef invoice(invoice_id):\n    ok = False\n    if not ok:\n        return redirect(request.referrer)\n    return jsonify(ok=True)",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-pfwg-rxf4-97c3",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "stored",
+      "source": "superset/views/redirects.py:51 url = request.form.get(\"data\") in R.shortner() (Flask-AppBuilder POST /r/shortner/ form field)",
+      "sink": "superset/views/redirects.py:42 return redirect(url.url[1:]) in R.index() (GET /r/<int:url_id>)",
+      "between": "the form value is stored verbatim as models.Url(url=url) (52-55) and committed; a later GET of the short URL loads it and redirects to url.url[1:]; no validation of scheme or host at storage or at redirect time",
+      "fix": "adds _validate_url(), which accepts only //superset/dashboard/ and //superset/explore/ prefixes, and checks it both before storing and before redirecting (invalid ones redirect to /)",
+      "probe": "from flask import Flask, redirect, request\n\napp = Flask(__name__)\nurls = {}\n\n@app.post('/shortner/')\ndef shortner():\n    uid = str(len(urls) + 1)\n    urls[uid] = request.form.get('data')\n    return uid\n\n@app.get('/r/<uid>')\ndef follow(uid):\n    return redirect(urls[uid][1:])",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-g3cm-qg2v-2hj5",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "check",
+      "source": "src/pyload/webui/app/helpers.py:47 for location in flask.request.values.get(\"next\"), flask.request.referrer: in get_redirect_url() (Flask: next query/form value and the Referer header)",
+      "sink": "src/pyload/webui/app/blueprints/app_blueprint.py:67 return flask.redirect(next) in login() (also at 78; the value comes from get_redirect_url at line 50)",
+      "between": "the value goes through is_safe_url() (helpers.py:35-38), which already compared urljoin(request.host_url, location)'s netloc with the host's, so the code looked validated; the check did not reject a relative value not starting with '/' and the referrer fallback was accepted as a redirect target, so it is a weak existing validator that codewatch may take for a sanitizer",
+      "fix": "replaces both the raw next value and the referrer with url_for() of a named endpoint (BuildError falls back), and drops the next/referrer handling from is_safe_url",
+      "probe": "from urllib.parse import urljoin, urlparse\nfrom flask import Flask, redirect, request\n\napp = Flask(__name__)\n\ndef is_safe_url(location):\n    ref = urlparse(request.host_url)\n    test = urlparse(urljoin(request.host_url, location))\n    return test.scheme in ('http', 'https') and ref.netloc == test.netloc\n\n@app.get('/login')\ndef login():\n    for location in request.values.get('next'), request.referrer:\n        if location and is_safe_url(location):\n            return redirect(location)\n    return 'login form'",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-frvj-c5qp-xj4w",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22,
+        918
+      ],
+      "category": "check",
+      "source": "backend/open_webui/routers/terminals.py:101 safe_path = _sanitize_proxy_path(path) where path is the FastAPI route's {path:path} parameter (router.get('/{server_id}/{path:path}')); the same helper shape guards the redirect in routers/models.py:_safe_static_redirect_path",
+      "sink": "backend/open_webui/routers/terminals.py:105 target_url = f'{base_url}/{safe_path}' and the aiohttp request to it (path forwarded to the upstream terminal server); routers/models.py:64 RedirectResponse/_safe_static_redirect_path's Location",
+      "between": "the path is unquoted in a loop capped at 8 rounds (terminals.py:40-45); when the cap is hit the loop leaves the value still percent-encoded, so the literal check on '..' (51) and the prefix checks pass and a once-more-decoded path becomes a traversal upstream; the existing decode-and-check looked like a sanitizer",
+      "fix": "fails closed when unquote(path) still changes the value after the cap, returning None in both helpers",
+      "probe": "import posixpath\nfrom urllib.parse import unquote\nfrom flask import Flask, request, redirect\n\napp = Flask(__name__)\n\ndef sanitize(path):\n    decoded = path\n    for _ in range(8):\n        once = unquote(decoded)\n        if once == decoded:\n            break\n        decoded = once\n    cleaned = posixpath.normpath(decoded).lstrip('/')\n    if cleaned.startswith('..') or cleaned == '.':\n        return None\n    return cleaned\n\n@app.get('/proxy/<path:path>')\ndef proxy(path):\n    safe = sanitize(path)\n    if safe is None:\n        return 'bad', 400\n    return redirect('/static/' + safe)",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f9fq-78ch-4wmj",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "check",
+      "source": "airflow/www/views.py:1740 origin = get_safe_url(request.form.get('origin')) (also 1802-1803, 1837, 2028, 2268, 2350, 2439, 2478 with request.values/args)",
+      "sink": "airflow/www/views.py:1752 redirect_or_json(origin, msg, 'error', 400) -> redirect(origin) (views.py:459-470); the same origin value is used by the JS caller",
+      "between": "get_safe_url() (views.py:156-176) already parsed the URL and compared scheme/netloc with the request host, so the value looked validated; urlparse's handling of the string let values through that the client then followed, so the old validator is what codewatch may take for a sanitizer",
+      "fix": "rewrites get_safe_url to urljoin the value onto request.host_url and reject it unless the joined scheme is http/https and its netloc equals the host's (plus the existing semicolon check)",
+      "probe": "from urllib.parse import urlparse\nfrom flask import Flask, request, redirect\n\napp = Flask(__name__)\n\ndef get_safe_url(url):\n    if not url:\n        return '/'\n    parsed = urlparse(url)\n    if parsed.scheme in ['http', 'https', ''] and parsed.netloc in [request.host, '']:\n        return url\n    return '/'\n\n@app.post('/run')\ndef run():\n    origin = get_safe_url(request.form.get('origin'))\n    return redirect(origin)",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8gh5-qqh8-hq3x",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        79,
+        87
+      ],
+      "category": "not-a-flow",
+      "source": "backend/open_webui/routers/files.py:451-459 get_html_file_content_by_id(id, user=Depends(get_verified_user)) (FastAPI GET of an uploaded file's HTML content)",
+      "sink": "the same endpoint returns the file as text/html (the uploader's own HTML is served inline to whoever can reach the file), so the flaw is who may read it, not an escaping call",
+      "between": "the fix adds Users.get_user_by_id(file.user_id) and refuses unless that uploader is an admin, before the existing owner-or-admin test; it changes an authorization decision, not a value reaching a dangerous call, so there is no source->sink to note",
+      "fix": "only serves uploaded HTML content as HTML when the file's uploader has the admin role",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-25g8-2mcf-fcx9",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "archive",
+      "source": "changedetectionio/blueprint/backups/restore.py:167-180 zip_file = request.files.get('zip_file'); zip_bytes = io.BytesIO(zip_file.read()) in backups_restore_start() (Flask POST /backups/restore/start multipart upload), then passed to import_from_zip as zip_stream",
+      "sink": "changedetectionio/blueprint/backups/restore.py:53 zf.extractall(tmpdir) in import_from_zip() (zip member names, not the request fields, decide where files land)",
+      "between": "import_from_zip opens the archive with zipfile.ZipFile and calls extractall(); the only earlier check is the .zip filename suffix (restore.py:172), nothing looks at member names; download_backup() in backups/__init__.py:146-157 is the sibling path fix for a filename from the route",
+      "fix": "walks zf.infolist() and refuses any member whose realpath escapes the temp directory, adds a decompressed-size cap and a UUID check on entry names, and resolves 'latest' before validating the download filename",
+      "probe": "import os, tempfile, zipfile\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.post('/restore/start')\ndef restore():\n    uploaded = request.files['zip_file']\n    with tempfile.TemporaryDirectory() as tmp:\n        with zipfile.ZipFile(uploaded.stream) as zf:\n            zf.extractall(tmp)\n    return 'restored'",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-2wvg-62qm-gj33",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        918
+      ],
+      "category": "functions",
+      "source": "the URL argument of the JSON API method parse_urls(url=...) (src/pyload/core/api/__init__.py:573); the webui blueprints pass the links the user submits (add_package at api/__init__.py:529 forwards them), which is the entry point not shown in the diff",
+      "sink": "src/pyload/core/api/__init__.py:590-591 page = get_url(url) (pyload's requests-based fetch) in parse_urls()",
+      "between": "the value crosses the webui layer into the API object and then into pyload/core/utils/web/check.py and network/request_factory.get_url(); nothing tested the host, so any URL the user supplied made the server fetch it",
+      "fix": "parses the URL, requires scheme http/https and hostname, and requires is_global_host(hostname) (a new check in core/utils/web/check.py) before get_url() is called",
+      "probe": "from urllib.parse import urlparse\nimport ipaddress, socket, requests\n\ndef is_global_host(host):\n    try:\n        return ipaddress.ip_address(socket.gethostbyname(host)).is_global\n    except (OSError, ValueError):\n        return False\n\ndef parse_urls(url=None):\n    if url:\n        parsed = urlparse(url)\n        if parsed.scheme in ('http', 'https') and parsed.hostname and is_global_host(parsed.hostname):\n            return requests.get(url).text\n    return ''",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-hp84-p2gq-6fvr",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "category": "template",
+      "source": "web/pgadmin/tools/maintenance/__init__.py:170 data = json.loads(request.data) in create_maintenance_job() (Flask POST /maintenance/job/<sid>/<did> JSON body; the four option fields are read from it)",
+      "sink": "web/pgadmin/tools/maintenance/templates/maintenance/sql/command.sql:13-16 ('INDEX_CLEANUP ' + data.vacuum_index_cleanup, 'PARALLEL ' + data.vacuum_parallel, 'BUFFER_USAGE_LIMIT \"' + data.buffer_usage_limit + '\"', 'TABLESPACE \"' + data.reindex_tablespace + '\"') rendered at __init__.py:205-208 and passed to psql as --command at 218",
+      "between": "the JSON fields are put into the Jinja template's option list and the rendered string becomes the psql command line (BatchProcess, __init__.py:222-227); the template is SQL, so HTML autoescaping does nothing and no value is validated before render",
+      "fix": "adds validate_maintenance_data() (allow-lists INDEX_CLEANUP, a bounded int for PARALLEL, a regex for BUFFER_USAGE_LIMIT) and quotes reindex_tablespace with qtIdent in the template",
+      "probe": "from flask import Flask, request, render_template_string\nimport json, subprocess\n\napp = Flask(__name__)\n\nTPL = '''VACUUM ({% if d.parallel %}PARALLEL {{ d.parallel }}{% endif %}{% if d.limit %}, BUFFER_USAGE_LIMIT \"{{ d.limit }}\"{% endif %}) {{ d.table }};'''\n\n@app.post('/maintenance')\ndef maintenance():\n    d = json.loads(request.data)\n    query = render_template_string(TPL, d=d)\n    subprocess.run(['psql', '--command', query], check=False)\n    return 'queued'",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-x7r7-wmj8-vv5g",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "src/octoprint/server/views.py:173 redirect_url = request.args.get(\"redirect\", request.script_root + url_for(\"index\")) in login() (Flask query parameter)",
+      "sink": "src/octoprint/server/views.py:192 return redirect(redirect_url); the same value is handed to the login template at 196 and written into a script string at src/octoprint/templates/login.jinja2:28 (var REDIRECT_URL = \"{{ redirect_url|e }}\";)",
+      "between": "the query value is used twice without any validation: as the login redirect target and as a JavaScript string in the template (second miss: the template/JS side, where HTML escaping is not escaping for a JS string); the fix shows both mattered",
+      "fix": "parses the value with urlparse and falls back to the index URL when the scheme or netloc is non-empty",
+      "probe": "from flask import Flask, redirect, render_template_string, request\nfrom urllib.parse import urlparse\n\napp = Flask(__name__)\nTPL = '<script>var REDIRECT_URL = \"{{ redirect_url|e }}\";</script>'\n\n@app.get('/login')\ndef login():\n    redirect_url = request.args.get('redirect', '/')\n    parsed = urlparse(redirect_url)\n    if parsed.scheme != '' or parsed.netloc != '':\n        redirect_url = '/'\n    return render_template_string(TPL, redirect_url=redirect_url)",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f6pr-83pg-ghh6",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "pygeoapi/api/stac.py:136-137 get_stac_path(api, request, path) takes path as the STAC route's path parameter (Flask @api.route('/stac/<path:path>')); line 183-187 passes path.replace(dataset, '', 1) as the provider's dirpath",
+      "sink": "pygeoapi/provider/filesystem.py:79-80 data_path = os.path.join(self.data, dirpath); data_path = self.data + dirpath, then listed/opened at 147-149 and in the file reads below",
+      "between": "the value crosses pygeoapi's API layer (stac.py) into a provider plugin (provider/filesystem.py:get_data_path) as the dirpath argument; the provider concatenates it onto self.data and walks/opens it, without a containment test",
+      "fix": "rejects a dirpath containing '..' with ProviderInvalidQueryError before building data_path",
+      "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nDATA = '/srv/data'\n\n@app.get('/stac/<path:path>')\ndef stac_path(path):\n    dirpath = path.replace('collection', '', 1)\n    data_path = DATA + dirpath\n    return str(os.listdir(data_path))",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hwv5-w8gm-fq9f",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "xhu.py:105-107 def put_file(path) with @app.route(\"/<path:path>\", methods=[\"PUT\"]) (Flask path parameter; also the GET/HEAD routes at 176 and 198)",
+      "sink": "xhu.py:141 with write_file(data_file) as fout (write_file opens at 75-76); GET/HEAD read the same joined path at 192-217",
+      "between": "the path goes through sanitized_join() (xhu.py:42-45), which does (root / path).absolute() and then checks str(result).startswith(str(root) + \"/\"); .absolute() does not resolve '..', so the containment check passes and the file lands outside DATA_ROOT; an existing check that looks like a sanitizer",
+      "fix": "drops sanitized_join for flask.safe_join(root, sub_path) and catches werkzeug.exceptions.NotFound instead of ValueError",
+      "probe": "import pathlib\nfrom flask import Flask, request\n\napp = Flask(__name__)\nROOT = pathlib.Path('/srv/uploads')\n\ndef sanitized_join(path, root):\n    result = (root / path).absolute()\n    if not str(result).startswith(str(root) + '/'):\n        raise ValueError('outside root')\n    return result\n\n@app.put('/<path:path>')\ndef put_file(path):\n    dest = sanitized_join(path, ROOT)\n    dest.parent.mkdir(parents=True, exist_ok=True)\n    dest.write_bytes(request.get_data())\n    return 'ok'",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-m5gr-86j6-99jp",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "archive",
+      "source": "gramps_webapi/api/media_importer.py:93-96 MediaImporter._check_disk_space_and_extract() opens self.file_name with zipfile.ZipFile; self.file_name is the media ZIP archive the user uploaded through the media importer endpoint (upload handled outside this file, not in the diff)",
+      "sink": "gramps_webapi/api/media_importer.py:105 zip_file.extractall(temp_dir) (member names from the uploaded archive decide the write paths)",
+      "between": "the archive is read and all members extracted into a fresh mkdtemp() with no inspection of member names; the extracted tree is then walked and uploaded as media (109-181)",
+      "fix": "walks zip_file.namelist() and raises when a member's realpath escapes the temp directory before extractall()",
+      "probe": "import os, tempfile, zipfile\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.post('/media/import')\ndef import_media():\n    upload = request.files['file']\n    with tempfile.TemporaryDirectory() as tmp:\n        with zipfile.ZipFile(upload.stream) as zf:\n            zf.extractall(tmp)\n        return str(os.listdir(tmp))",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_dfa5ff515ffewJFcYpLk7LatBS",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 2,
+    "turns": 23,
+    "tool_calls": 26,
+    "tool_errors": 0,
+    "chars_read": 199067,
+    "tokens": {
+      "input": 84447,
+      "cache_read": 1856256,
+      "output": 25198,
+      "reasoning": 0
+    },
+    "usd": 0.033
+  }
+}
