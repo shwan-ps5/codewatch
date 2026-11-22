@@ -21,6 +21,18 @@ def test_reviewed_finds_advisories_and_fix_commits(tmp_path, capsys):
     assert out[3].startswith("GHSA-acc\taccepted")
 
 
+def test_a_rejected_fix_commit_is_found_by_its_hash(tmp_path, capsys):
+    (tmp_path / "cve-candidates-x.tsv").write_text(
+        "repo\tid\tcwe\tdecision\tsuite\treason\n"
+        "a/b\tFIX-a-b-0123456789ab\t79\treject\t\tstricter check\n")
+    (tmp_path / "suites.json").write_text(json.dumps({"suites": []}))
+    assert reviewed.main(["0123456", "0123456789abcdef0123", "0123457"], root=tmp_path, db=None) == 1
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("0123456 (FIX-a-b-0123456789ab)\trejected")
+    assert out[1].startswith("0123456789abcdef0123 (FIX-a-b-0123456789ab)\trejected")
+    assert out[2] == "0123457\tnew"
+
+
 def test_an_advisorys_other_ids_are_known(tmp_path, capsys):
     # Termix GHSA-w3fm was read again as new though its CVE had been rejected an hour before (2026-11-19).
     (tmp_path / "cve-candidates-x.tsv").write_text("repo\tid\tcwe\tdecision\tsuite\treason\n"

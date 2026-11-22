@@ -2610,3 +2610,13 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    Also fixed in nightly.sh: the per-case comparison matched only GHSA ids, so FIX- and CVE- cases never showed
    (step 117's 8 new cases didn't); blind result files are now skipped there explicitly. Test:
    tests/test_research_report.py.
+121. **Pull request #9 reviewed: topic 17 batches 6-17** (2026-11-22). 131 read, 7 accepted by the agents, 5 kept: 4
+   open in cve-pairs-python (bridgy-fed, a webapp2 request path into a redirect; archivy, a JSON body path into
+   mkdir and rmtree; vulnerability-lookup, a route parameter into Markup() and flash(); wikmd, route parameters
+   joined to the wiki directory) and canarytokens, blind and unread, in cve-pairs-blind-python-frontend-5. Two
+   rejected at review: isso, which is GHSA-9fww-8cpr-q66r (CVE-2026-27469; recorded under both ids): the website
+   field was already escaped and the fix makes the escaping stricter, and the values go back as JSON for the
+   isso client to render; OctoPrint dabdd40806e3: the login redirect already refused a scheme or netloc and the
+   fix narrows it to an allowlist. `reviewed.py` now finds a rejected FIX- case by its commit hash too: a SHA
+   lookup only searched accepted cases' fix commits, so a rejected silent fix looked new and could be read again.
+   Test: `test_a_rejected_fix_commit_is_found_by_its_hash`.

@@ -276,7 +276,16 @@ def lookup(key, seen, fixes):
         for fix, advisory in fixes.items():
             if fix.startswith(key.lower()):
                 return f"{key} ({advisory})", *seen[advisory]
+        # A FIX- id ends in its commit's first 12 hex digits; rejected ones are only in the TSVs, under that id.
+        for case_id in seen:
+            if case_id.startswith("FIX-") and _commit_matches(case_id.rsplit("-", 1)[-1], key.lower()):
+                return f"{key} ({case_id})", *seen[case_id]
     return None
+
+
+def _commit_matches(short, key):
+    """Whether a FIX- id's 12-digit commit prefix and a looked-up commit (7 to 40 hex digits) are the same commit."""
+    return short.startswith(key) if len(key) <= len(short) else key.startswith(short)
 
 
 def guard_command(argv, _root):
