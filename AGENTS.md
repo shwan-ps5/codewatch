@@ -384,7 +384,10 @@ npm advisories (step 29). Those pools are nearly used up.
    the window's dates and how many candidates were left per language. Files:
    `benchmarks/cve-candidates-YYYY-MM-DD-new.{tsv,json}`.
 
-17. **Security fixes with no advisory or CVE (silent fixes), Python web apps first.** (queued 2026-11-20) Topic
+17. **Security fixes with no advisory or CVE (silent fixes), Python web apps first.** (done 2026-11-23,
+   cve-candidates-2026-11-23-silent-3.*: every phrase searched for every month 2021-01..2026-11 and no framework
+   candidate left unread; the 2,186 rows left are repositories that declare no topic-8 framework. New months are
+   for the weekly upkeep, not this queue.) (queued 2026-11-20) Topic
    16's daily lists are now mostly libraries, and every earlier source was an advisory or a CVE. Many apps fix a
    vulnerability in an ordinary commit and publish nothing. Source: GitHub's commit search
    (`gh api -X GET search/commits -f q='...'`; 30 searches a minute at most, keep them 2 s apart, as section 7),

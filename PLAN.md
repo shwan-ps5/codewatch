@@ -82,8 +82,8 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
 - Not filled, by choice: CSRF beyond the existing hotspots; authorization (CWE-862/863/639).
 
 Ground truth:
-- Topic 16 (new arrivals) is standing; topic 17 (security fixes with no advisory or CVE) is the active topic
-  (step 110), searching front-end XSS phrases first since step 112; 2024-06 back to 2021-01 still to search. Topics 4 and 8 are paused; the rest are done.
+- Topic 16 (new arrivals) is standing; topic 17 (security fixes with no advisory or CVE) was done on 2026-11-23
+  (step 123), every month back to 2021-01 searched. Topics 4 and 8 are paused; the rest are done.
 - Gap notes (step 122): a second runner explains the nightly's missed open cases (466 on 2026-11-22: 83 Python,
   118 JavaScript, 265 PHP), about 15 a run, as leads for the rule work above. Read them as they come.
 - 5 cases in `cve-pairs-blind-php-35` have a rejected other id (step 102); keep them unread and re-judge after that
