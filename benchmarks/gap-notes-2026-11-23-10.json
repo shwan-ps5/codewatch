@@ -1,0 +1,252 @@
+{
+  "batch": "gap-notes-2026-11-23-10",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
+  "method": "rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in file order: all 15 are javascript (no Python rows remain in the file; the first 15 rows are cve-pairs-javascript). For each case I read the fix commit's diff (gh api repos/O/R/commits/SHA) and, at the fix commit's parent, the files holding the source and the sink: models/fileValidation.js and models/avatars.js plus models/avatars.server.js and server/routes/avatarServer.js; app/client/ui/WelcomePage.ts and DocTour.ts; app/server/lib/OAuth2Clients.ts and sendAppPage.ts; app/routes/router.js; server/Auth.js and server/auth/OidcAuthStrategy.js; apps/dokploy/server/api/routers/settings.ts (the readConfigInPath helper lives in @dokploy/server); server/controllers/MiscController.js and client/pages/upload/index.vue plus client/plugins/toast.js; server.js; the custom-request send.ts action; lib/index.js and lib/utils.js; src/controllers/index.js (the outgoing template is theme-shipped, not in the repository); index.js; src/node/hooks/express/tests.js; packages/orchestrator/lib/events.ts and routes/v1/postImmediate.ts; frontend/express/app.js and api/utils/countlyFs.js. The CVE summaries and CWEs for the CVE ids come from CVEProject/cvelistV5, the two GHSA ones from ~/advisory-database. Nothing skipped; 15 of 15 noted.",
+  "notes": [
+    {
+      "id": "CVE-2026-52891",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        78,
+        88
+      ],
+      "category": "check",
+      "source": "models/avatars.js:37 and :46 (fix parent) filenameWithoutExtension = opts.name / opts.file.name - the client-supplied filename of a Meteor ostrio:files upload; the sanitize hook at :59-62 returns str unchanged, so the name survives into the files collection",
+      "sink": "models/fileValidation.js:17 const { stdout } = await asyncExec(`file --mime-type -b \"${escapedPath}\"`) - child_process.exec runs through a shell, so a filename with backticks or $() runs commands",
+      "between": "namingFunction (:32-57) builds fileId + '-original-' + filenameWithoutExtension; the collection's onAfterUpload in models/avatars.server.js:78 calls isFileValid(fileObj, ...) and isFileValid passes fileObj.path to detectMimeFromFile (:96); the only guard is the quote escape at :16 String(filePath).replace(/\"/g, '\\\\\"'), a check too weak to stop $() and backticks. Second explanation: source (an uploaded file name through Meteor's FilesCollection).",
+      "fix": "switches to execFile('file', ['--mime-type', '-b', path]) with no shell, and whitelists the filename characters in avatars.js",
+      "probe": "import { Meteor } from 'meteor/meteor';\nimport { exec } from 'node:child_process';\n\nMeteor.methods({\n  'avatar.saved'(fileName) {\n    const filePath = '/data/files/avatars/' + fileName;\n    const escapedPath = String(filePath).replace(/\"/g, '\\\\\"');\n    exec(`file --mime-type -b \"${escapedPath}\"`);\n  },\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "CVE-2026-55665",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "app/client/ui/WelcomePage.ts:196-197 (fix parent) const next = new URLSearchParams(location.search).get(\"next\") || \"\"; const url = new URL(next, location.href) - the browser query string of /welcome/select-account",
+      "sink": "app/client/ui/WelcomePage.ts:218 { href: addUserToLink(user.email) } on the account anchor built with grainjs' dom; a javascript: URL in next runs when the user clicks the account",
+      "between": "addUserToLink sets the user param and returns url.toString(); no scheme check. The second half of the same commit fixes DocTour.ts:50 and :79, where the GristDocTour table's Link_URL column goes to cssLinkBtn's href (stored value, same href sink).",
+      "fix": "sanitizeHttpUrl rejects non-http(s) schemes and the next URL must be same-origin; DocTour links go through sanitizeLinkUrl",
+      "probe": "import { dom } from 'grainjs';\n\nfunction accountLink(email: string) {\n  const next = new URLSearchParams(location.search).get('next') || '';\n  const url = new URL(next, location.href);\n  url.searchParams.set('user', email);\n  return dom('a', { href: url.toString() }, email);\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "CVE-2026-55659",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79,
+        116
+      ],
+      "category": "template",
+      "source": "app/server/lib/OAuth2Clients.ts:201 (fix parent) const openerOrigin = stringParam(req.query.openerOrigin, \"openerOrigin\") - query parameter of GET /oauth2/:integration/authorize",
+      "sink": "app/server/lib/OAuth2Clients.ts:226 res.send(renderEndFlowHtmlTemplate(payload, openerOrigin)); at :378-379 .replace(\"{{OPENER_ORIGIN}}\", JSON.stringify(openerOrigin)) lands inside the inline <script> of END_FLOW_HTML_TEMPLATE (:359-371)",
+      "between": "the value is also written into the session (:213) and read back at :256 for the callback page, and payload.error (an exception message) is interpolated the same way; JSON.stringify does not escape </script> or line separators, and String.replace interprets $ patterns. Second explanation: stored (session round trip).",
+      "fix": "reduces openerOrigin to its bare origin, escapes payload and origin with jsesc({isScriptContext: true, json: true}), and replaces with replaceLiterals so $ patterns stay literal",
+      "probe": "import express from 'express';\n\nconst app = express();\nconst PAGE = `<script>opener.postMessage({{PAYLOAD}}, {{ORIGIN}});</script>`;\n\napp.get('/oauth/:integration/authorize', (req, res) => {\n  const openerOrigin = String(req.query.openerOrigin ?? '');\n  const payload = { error: 'denied' };\n  res.send(PAGE\n    .replace('{{PAYLOAD}}', JSON.stringify(payload))\n    .replace('{{ORIGIN}}', JSON.stringify(openerOrigin)));\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND xss"
+    },
+    {
+      "id": "CVE-2024-40646",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "app/routes/router.js:299 (fix parent) const pathname = req._parsedOriginalUrl.pathname - Express's parsed-URL object read in the catch-all app.use('*') handler",
+      "sink": "app/routes/router.js:306 return res.download(path.join(__dirname, '../static', pathname)) - static file download",
+      "between": "the only gate is pathname.startsWith('/assets') at :304; path.join normalizes ../ segments, so /assets/../../<file> leaves ../static. The same block repeats for /workbox (:315) and /service-worker.js (:324). Second explanation: sink (res.download on a joined path).",
+      "fix": "joins the path, refuses anything not under ../static before res.download, and reports download errors instead of throwing",
+      "probe": "const express = require('express');\nconst path = require('path');\nconst app = express();\n\napp.use('*', (req, res) => {\n  const pathname = req._parsedOriginalUrl.pathname;\n  if (pathname.startsWith('/assets')) {\n    return res.download(path.join(__dirname, '../static', pathname));\n  }\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "CVE-2025-57800",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        523,
+        598,
+        601
+      ],
+      "category": "stored",
+      "source": "server/Auth.js:219 (fix parent) const callback = req.query.redirect_uri || req.query.callback - query parameter of GET /auth/openid",
+      "sink": "server/Auth.js:262 res.redirect(302, `${req.cookies.auth_cb}?setToken=${userResponse.user.token}&accessToken=${userResponse.user.accessToken}${stateQuery}`) - redirect to the stored URL with the tokens appended",
+      "between": "paramsToCookies writes callback into the auth_cb cookie at :232; on the later /auth/openid/callback request, handleLoginSuccessBasedOnCookie (:248-266) reads the cookie before redirecting; the TODO at :257 notes the value is unlimited",
+      "fix": "adds isValidWebCallbackUrl (server/auth/OidcAuthStrategy.js:489) requiring the same origin and the router base path, called from paramsToCookies before the cookie is set",
+      "probe": "const express = require('express');\nconst app = express();\napp.use(require('cookie-parser')());\n\napp.get('/auth/openid', (req, res) => {\n  res.cookie('auth_cb', req.query.callback, { httpOnly: true });\n  res.redirect('/idp');\n});\n\napp.get('/auth/callback', (req, res) => {\n  res.redirect(302, `${req.cookies.auth_cb}?setToken=${req.user.token}`);\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND cookie-without-secure,open-redirect"
+    },
+    {
+      "id": "CVE-2025-53375",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "apps/dokploy/server/api/routers/settings.ts:449-451 (fix parent) readTraefikFile: protectedProcedure.input(apiReadTraefikConfig).query(...) - input.path is a tRPC procedure argument; apiReadTraefikConfig was only path: z.string().min(1) (packages/server/src/db/schema/user.ts)",
+      "sink": "apps/dokploy/server/api/routers/settings.ts:462 return readConfigInPath(input.path, input.serverId) - reads the filesystem path (the @dokploy/server helper) and returns the file",
+      "between": "the router only checks the member's organization access to Traefik files (:452-461); the path itself crosses into the @dokploy/server package and reaches fs there. Second explanation: functions (input.path -> readConfigInPath in another package).",
+      "fix": "adds a zod refine rejecting ../ and ..\\, null bytes, and absolute paths outside MAIN_TRAEFIK_PATH, plus an organization check on input.serverId",
+      "probe": "import { z } from 'zod';\nimport { createTRPCRouter, protectedProcedure } from './trpc';\nimport { readConfigInPath } from '@app/server';\n\nconst schema = z.object({ path: z.string().min(1), serverId: z.string().optional() });\n\nexport const router = createTRPCRouter({\n  readTraefikFile: protectedProcedure.input(schema).query(async ({ input }) => {\n    return readConfigInPath(input.path, input.serverId);\n  }),\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "CVE-2025-46338",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "server/controllers/MiscController.js:46 (fix parent) const { title, author, series, folder: folderId, library: libraryId } = req.body - multipart form fields of POST /api/upload",
+      "sink": "server/controllers/MiscController.js:50 res.status(404).send(`Library not found with id ${libraryId}`) and :54 `Folder not found with id ${folderId} in library ${library.name}` - the response text is handed to this.$toast.error(error.response.data) at client/pages/upload/index.vue:320-321, and the toast plugin writes it into the page",
+      "between": "no escaping on either side: the server interpolates the request value into the 404 text, the client takes the server's error body (typed as an object/array by axios when not JSON) straight to the toast",
+      "fix": "requires libraryId, folderId and title to be strings and sends fixed messages that contain no ids or names",
+      "probe": "// server\napp.post('/api/upload', (req, res) => {\n  if (!findLibrary(req.body.library)) {\n    return res.status(404).send(`Library not found with id ${req.body.library}`)\n  }\n})\n\n// client (Vue)\nexport default {\n  methods: {\n    upload(form) {\n      this.$axios.$post('/api/upload', form).catch((error) => {\n        this.$toast.error(error.response.data)\n      })\n    }\n  }\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "CVE-2025-24971",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        78
+      ],
+      "category": "stored",
+      "source": "server.js:224 (fix parent) const { filename, fileSize } = req.body - JSON body of POST /upload/init",
+      "sink": "server.js:405 await execAsync(`apprise \"${APPRISE_URL}\" -b \"${message}\"`) - child_process.exec through a shell; message already contains the filename at :399-402",
+      "between": "the request's filename is normalized only for leading ../ (:226) and kept as safeFilename in the uploads Map (:245); the chunk handler calls sendNotification(upload.safeFilename, ...) at :291, so the value travels from /upload/init through the Map to the notification in a later request. Second explanation: sink (a shell string built with exec).",
+      "fix": "passes apprise its arguments as an array with shell: false and JSON-escapes the filename before it enters the message",
+      "probe": "const express = require('express');\nconst { exec } = require('child_process');\nconst util = require('util');\nconst execAsync = util.promisify(exec);\nconst uploads = new Map();\nconst app = express();\napp.use(express.json());\n\napp.post('/upload/init', (req, res) => {\n  const id = String(Date.now());\n  uploads.set(id, { filename: req.body.filename });\n  res.json({ id });\n});\n\napp.post('/upload/done/:id', async (req, res) => {\n  const { filename } = uploads.get(req.params.id);\n  await execAsync(`apprise \"${process.env.APPRISE_URL}\" -b \"New file ${filename}\"`);\n  res.end();\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND command-injection"
+    },
+    {
+      "id": "GHSA-wrr5-j383-f7h2",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "functions",
+      "source": "packages/plugins/@nocobase/plugin-action-custom-request/src/server/actions/send.ts:113-124 (fix parent) const { filterByTk, values = {} } = ctx.action.params; const { ..., options: runtimeOptions } = values - the body of the customRequests:send action, sent by a low-privileged authenticated user",
+      "sink": "send.ts:247 const res = await serverRequest(axiosRequestConfig) (axios) - axiosRequestConfig at :219-232 is { baseURL: getRequestBaseURL(ctx), ...options, url: getParsedValue(url, variables), ... }, so a request-supplied url/baseURL/proxy replaces the stored target",
+      "between": "mergedOptions at :166-169 spreads the stored requestConfig.options and then omitNullAndUndefined(runtimeOptions), and the rest of runtimeOptions is spread into the axios config as ...options; the request value never appears at the call site, only in the merged object",
+      "fix": "rejects runtime option keys url, baseURL, proxy, socketPath, transport, httpAgent and httpsAgent before the merge",
+      "probe": "const Koa = require('koa');\nconst Router = require('@koa/router');\nconst axios = require('axios');\n\nconst app = new Koa();\nconst router = new Router();\n\nrouter.post('/custom-requests/send', async (ctx) => {\n  const { options: runtimeOptions = {} } = ctx.request.body;\n  const merged = { ...{ url: 'https://api.example.com/items' }, ...runtimeOptions };\n  const response = await axios(merged);\n  ctx.body = response.data;\n});\n\napp.use(router.routes());",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND ssrf"
+    },
+    {
+      "id": "GHSA-vc6r-4x6g-mmqc",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "framework",
+      "source": "lib/index.js:10 (fix parent) var targetPath = path.join(rootPath, req.url) - req.url inside the plain http.createServer callback of a mini static server",
+      "sink": "lib/index.js:14 res.end(fs.readFileSync(targetPath)) and, for directories, fs.readdirSync(path.join(targetPath, val)) at :24",
+      "between": "there is no router or middleware: the only transformation is path.join, which keeps ../ segments, so a request for /../../etc/passwd resolves outside rootPath before fs existsSync/readFileSync",
+      "fix": "adds utils.allowPath(requestPath, rootPath), an indexOf(enablePath) === 0 prefix test, and serves rootPath when the joined path fails it",
+      "probe": "const http = require('http');\nconst fs = require('fs');\nconst path = require('path');\nconst rootPath = process.cwd();\n\nhttp.createServer((req, res) => {\n  const targetPath = path.join(rootPath, req.url);\n  if (fs.existsSync(targetPath)) {\n    res.end(fs.readFileSync(targetPath));\n  }\n}).listen(7000);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND path-traversal"
+    },
+    {
+      "id": "GHSA-72fv-qgj6-2w2p",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "src/controllers/index.js:182 (fix parent) var url = req.query.url - query parameter of the /outgoing route",
+      "sink": "src/controllers/index.js:190 res.render('outgoing', data) with url in data (:184) - the outgoing template, which ships with the theme package rather than this repository, writes the value into the link",
+      "between": "the controller only checks that url is truthy (:189) and does not escape it; the repository's src/views holds no outgoing.tpl, so the rendering step lives in the theme. Second explanation: source (req.query.url).",
+      "fix": "escapes the value with validator.escape(url) before it goes into the template data",
+      "probe": "// controller (NodeBB)\nControllers.outgoing = function (req, res) {\n  var url = req.query.url;\n  res.render('outgoing', { url: url, title: 'Outgoing link' });\n};\n\n// theme template outgoing.tpl\n// <a href=\"{url}\">Continue</a>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-2x4q-6jfv-8h9h",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "framework",
+      "source": "index.js:64-67 (fix parent) request.fullPath = path.join(self.dir, decodeURIComponent(parse(req.url).pathname)) - req.url inside the plain http.createServer callback (:37-39)",
+      "sink": "index.js:91 filed(request.fullPath).pipe(res) for a file, fs.stat(request.fullPath) at :81, and htmlls(listPath) at :128 for a directory",
+      "between": "nothing is checked before the fix; path.join keeps ../ segments and decodeURIComponent turns %2e%2e into .., so the stat/read escapes self.dir. Second explanation: sink (filed()/fs on a joined path).",
+      "fix": "returns a 403 before any fs call when request.fullPath does not start with self.dir",
+      "probe": "const http = require('http');\nconst path = require('path');\nconst fs = require('fs');\n\nconst dir = path.normalize('/srv/files');\n\nhttp.createServer((req, res) => {\n  const fullPath = path.join(dir, decodeURIComponent(new URL(req.url, 'http://x').pathname));\n  fs.stat(fullPath, (err, stat) => {\n    if (!err && stat.isFile()) fs.createReadStream(fullPath).pipe(res);\n  });\n}).listen(8000);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND path-traversal"
+    },
+    {
+      "id": "CVE-2015-4085",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "src/node/hooks/express/tests.js:39 and :52 (fix parent) var specFilePath / filePath = url2FilePath(req.url) - req.url of the /tests/frontend/specs/* and /tests/frontend/* routes",
+      "sink": "tests.js:42 fs.readFile(specFilePath, ...) and :53 res.sendfile(filePath) - the built path is read from disk",
+      "between": "url2FilePath (:26-36) strips only the first occurrence of '..' with subPath.replace(\"..\", \"\") and concatenates the rest to path.normalize(npm.root + '/../tests/frontend/'), so '..../' or a second '..' survives the denylist",
+      "fix": "joins the subPath to a normalized rootTestFolder and serves index.html when the result is outside that folder",
+      "probe": "const express = require('express');\nconst path = require('path');\nconst fs = require('fs');\nconst app = express();\nconst root = path.join(__dirname, 'tests/frontend');\n\napp.get('/tests/frontend/*', (req, res) => {\n  const subPath = req.url.substr('/tests/frontend'.length).split('?')[0];\n  let filePath = path.normalize(root + '/');\n  filePath += subPath.replace('..', '');\n  fs.readFile(filePath, (err, content) => res.send(content));\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND path-traversal"
+    },
+    {
+      "id": "GHSA-3w4f-3q27-257j",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "packages/orchestrator/lib/routes/v1/postImmediate.ts:88 (fix parent) groupKey: res.locals.parsedBody.group.key - the group.key field of POST /v1/immediate, zod-validated only as z.string().min(1) (:26-29)",
+      "sink": "packages/orchestrator/lib/events.ts:162 await this.client.query(`NOTIFY ${this.channel}, '${payload}'`) - the payload is interpolated into the SQL statement",
+      "between": "the route calls scheduler.immediate() with the key (:85-96); PgEventEmitter.emit (:123-138) calls this.notify(event) (:148), which takes the group key as its payload string; the value passes from the HTTP route through the scheduler and the event emitter to the raw pg client, and the channel is the constant nango_task_events (:227)",
+      "fix": "binds both values with SELECT pg_notify($1, $2) instead of building the NOTIFY string",
+      "probe": "import express from 'express';\nimport { Client } from 'pg';\n\nconst client = new Client();\nconst app = express();\napp.use(express.json());\n\nclass Events {\n  channel = 'tasks';\n  async notify(payload: string) {\n    await client.query(`NOTIFY ${this.channel}, '${payload}'`);\n  }\n}\n\napp.post('/v1/immediate', async (req, res) => {\n  await new Events().notify(req.body.group.key);\n  res.json({ ok: true });\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND sql-injection"
+    },
+    {
+      "id": "CVE-2026-41582",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "frontend/express/app.js:505, :539 and :567 (fix parent) __dirname + '/public/appimages/' + req.params[0], __dirname + '/public/' + req.path, __dirname + '/public/' + req.path - the wildcard route parameter of the public /appimages/*, /memberimages/* and */screenshots/* routes",
+      "sink": "api/utils/countlyFs.js:955-968 ob.getStream, whose fs backend calls fs.createReadStream(dest), and :1037-1050 ob.getStats, whose fs backend calls fs.stat(dest); the routes call countlyFs.getStream / countlyFs.getStats, dispatched by countlyFs[config.fileStorage] at :1233-1288",
+      "between": "the routes concatenate the wildcard path with no containment check and hand the string to a storage abstraction; only the local-fs backend turns it into fs calls, so the file access is two dispatch layers away from the route",
+      "fix": "adds safeStaticPath(baseDir, requestPath), which resolves the request path and refuses anything outside baseDir, in all three affected route files",
+      "probe": "const express = require('express');\nconst fs = require('fs');\nconst app = express();\n\nconst countlyFs = {\n  getStream(dest, cb) { cb(null, fs.createReadStream(dest)); },\n};\n\napp.get('/appimages/*', (req, res) => {\n  countlyFs.getStream(__dirname + '/public/appimages/' + req.params[0], (err, stream) => {\n    stream.pipe(res);\n  });\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND path-traversal"
+    }
+  ],
+  "usage": {
+    "session": "ses_df7d46f0cffegbzSp5Arihdnem",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 6,
+    "turns": 37,
+    "tool_calls": 38,
+    "tool_errors": 0,
+    "chars_read": 368725,
+    "tokens": {
+      "input": 130658,
+      "cache_read": 3564928,
+      "output": 32993,
+      "reasoning": 0
+    },
+    "usd": 0.05
+  }
+}

@@ -1,0 +1,249 @@
+{
+  "batch": "gap-notes-2026-11-23-17",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
+  "method": "Rows 16-30 of ~/codewatch-research/gaps/misses.tsv (the batch after gap-notes-2026-11-23-16), in file order. All 227 rows of the file are cve-pairs-php, so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: pimcore models/Dependency/Dao.php; moodle public/repository/repository_ajax.php, public/repository/coursefiles/lib.php, public/auth/oauth2/login.php and classes/auth.php; Craft src/gql/resolvers/mutations/Asset.php; Winter modules/cms/widgets/AssetList.php; FacturaScripts Core/View/Macro/Utils.html.twig and Core/Controller/AdminPlugins.php; Bagisto packages/Webkul/Shop/src/Http/Controllers/API/ReviewController.php and ProductReviewAttachmentRepository.php; YOURLS includes/auth.php and includes/functions-api.php; pterodactyl app/Http/Controllers/Admin/DatabaseController.php, app/Models/DatabaseHost.php and resources/views/layouts/admin.blade.php; redaxo mediapool pages/media.list.php and lib/service_media.php; melis-cms src/Controller/PageEditionController.php; bacula-web application/Controller/JobController.php and application/Table/JobFileTable.php; RaspAP ajax/networking/get_wgkey.php; sulu SvgFileInspector.php; YesWiki handlers/page/deletepage.php. Four cases are marked unsure because one end of the flow is outside what the commit shows: pimcore (the filter is read by the separate admin UI package), melis-cms (the query builder is in the MelisEngine service), facturascripts (which message carries the request value) and redaxo (the dispatcher that fills $argUrl). Test files in the sulu and YOURLS diffs were read but not used. Rows 31-227 are left for the next run.",
+  "notes": [
+    {
+      "id": "GHSA-vxg3-v4p6-f3fp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "the dependency filter of the element editor: $value (the path filter) is handed to models/Dependency.php:101 getFilterRequiresByPath($offset, $limit, $value), whose request side is read by the admin UI (pimcore/admin-ui-classic-bundle, a separate package: this repository holds no caller of the filter)",
+      "sink": "models/Dependency/Dao.php:90 `WHERE d.sourcetype = '\" . $sourceType. \"' AND d.sourceid = \" . $sourceId . \" AND LOWER(CONCAT(o.path, o.key)) RLIKE '\".$value.\"'` (repeated for documents and assets, :79-100)",
+      "between": "the filter string crosses the model into the DAO, where it is concatenated into a RLIKE clause of a three-way UNION; $orderBy and $orderDirection are checked against whitelists (:75-81) but $value was not",
+      "fix": "binds sourceType, sourceId and value as parameters (preg_quote() on the value) and passes them to fetchAllAssociative()",
+      "probe": "<?php\n$value = $_GET['filter'];\n\nclass DependencyDao\n{\n    public function getFilterRequiresByPath($value)\n    {\n        $query = \"SELECT id, type FROM (\n            SELECT d.targetid as id FROM dependencies d\n            INNER JOIN objects o ON o.id = d.targetid\n            WHERE LOWER(CONCAT(o.path, o.key)) RLIKE '\" . $value . \"'\n        ) dep ORDER BY id ASC\";\n        return $this->db->fetchAllAssociative($query);\n    }\n}\n",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-ggxq-2mg9-8966",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "public/repository/repository_ajax.php:42 `$source = optional_param('source', '', PARAM_RAW);` (with the sourcekey check at :180), turned into `$reference = $repo->get_file_reference($source);` at :187 and passed on as `$link = $repo->get_link($reference);` at :189",
+      "sink": "public/repository/coursefiles/lib.php:154 `$params = unserialize(base64_decode($encoded));` - the encoded path the file picker sends back is base64-decoded and unserialized",
+      "between": "request -> repository_ajax 'download' action -> get_file_reference() -> coursefiles repository get_link($encoded) (:148) -> unserialize() of the decoded string, which instantiates whatever classes the string names; the fields are cleaned afterwards but too late",
+      "fix": "uses unserialize_array() for the link parameters and unserialize_object() for the stored file source, so no arbitrary classes are created",
+      "probe": "<?php\n$encoded = $_REQUEST['source'];\n\nclass coursefiles_repository\n{\n    public function get_link($encoded)\n    {\n        $params = unserialize(base64_decode($encoded));\n\n        $contextid = clean_param($params['contextid'], PARAM_INT);\n        $filename  = clean_param($params['filename'], PARAM_FILE);\n\n        return $this->get_file_url($contextid, $filename);\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-8jr8-7hr4-vhfx",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        918
+      ],
+      "category": "check",
+      "source": "src/gql/resolvers/mutations/Asset.php:243 `$url = $fileInformation['url'];` - the `url` argument of the uploadAsset GraphQL mutation",
+      "sink": "src/gql/resolvers/mutations/Asset.php:262 `$this->createGuzzleClient()->request('GET', $url, ['sink' => $tempPath]);` - outbound fetch of that URL, following redirects by default",
+      "between": "the mutation argument passes validateHostname() (:245) and is then fetched by Guzzle; the host check only sees the first URL, so a permitted host that answers with a redirect to an internal address defeats it",
+      "fix": "sets RequestOptions::ALLOW_REDIRECTS to false on the download request, so the checked URL is the one fetched",
+      "probe": "<?php\n$url = $args['url'];\n\nif (!$this->validateHostname($url)) {\n    throw new Exception(\"$url contains an invalid hostname.\");\n}\n\n$tempPath = tempnam(sys_get_temp_dir(), 'asset');\n\n$this->createGuzzleClient()->request('GET', $url, ['sink' => $tempPath]);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-m7gw-rffq-rxjm",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "modules/cms/widgets/AssetList.php:645 `$uploadedFile = Input::file('file_data');` and :651 `$fileName = $uploadedFile->getClientOriginalName();` - the file part of the widget's upload request",
+      "sink": "modules/cms/widgets/AssetList.php:684 `$uploadedFile = $uploadedFile->move($this->getCurrentPath(), $uploadedFile->getClientOriginalName());` - the uploaded bytes (SVG included) are written into the theme's asset directory and served from there",
+      "between": "upload request -> onUpload() -> size and extension checks only (:656-676) -> move() into the theme assets path; an SVG carrying <script> or an event handler is stored unchanged",
+      "fix": "sanitizes the SVG with Svg::extract() before moving it and stores under the sanitized name",
+      "probe": "<?php\n$uploadedFile = $_FILES['file_data'];\n\n$fileName = $uploadedFile['name'];\n$destination = '/var/www/themes/demo/assets';\n\nmove_uploaded_file($uploadedFile['tmp_name'], $destination . '/' . $fileName);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-qv78-6gpp-hm68",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        601
+      ],
+      "category": "check",
+      "source": "public/auth/oauth2/login.php:28 `$wantsurl = optional_param('wantsurl', '', PARAM_URL);` - the wantsurl query parameter of the OAuth2 login page",
+      "sink": "public/auth/oauth2/classes/auth.php:656 `redirect(new moodle_url($redirecturl));` where $redirecturl is the $wantsurl handed to complete_login($client, $wantsurl) at login.php:55",
+      "between": "the parameter is filtered by PARAM_URL, which accepts any absolute URL, is carried through the OAuth2 round trip in the return URL (:44-45) and ends in a redirect, so an external site can be the destination",
+      "fix": "filters the parameter with PARAM_LOCALURL, which accepts only URLs inside the site",
+      "probe": "<?php\n$wantsurl = optional_param('wantsurl', '', PARAM_URL);\n\n$returnparams = ['wantsurl' => $wantsurl, 'sesskey' => sesskey()];\n$client = api::get_user_oauth_client($issuer, new moodle_url('/auth/oauth2/login.php', $returnparams));\n\n$auth->complete_login($client, $wantsurl);\n\n// auth::complete_login()\nredirect(new moodle_url($redirecturl));\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-g6w2-q45f-xrp4",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "the log/notice bag the pages render: messages are built by the controllers from request values (for example the error message of an uploaded file at Core/Controller/AdminPlugins.php:261, which carries the name the browser sent) and stored in the log",
+      "sink": "Core/View/Macro/Utils.html.twig:28 `{% for item in messages %}<div>{{ item.message | raw }}</div>` (the same at :40 in messageCompat) - the message text is written into the page as raw HTML",
+      "between": "controller -> Tools::log()->error(...) with a request-derived string -> the log is read back by the macro (`log.read('master', levels)`, :25) -> |raw prints it unescaped, so HTML in the message runs",
+      "fix": "drops the |raw filter in both macros, so Twig escapes the message",
+      "probe": "{# templates/messages.html.twig #}\n{% macro message(log, levels) %}\n    {% set messages = log.read('master', levels) %}\n    {% for item in messages %}\n        <div>{{ item.message | raw }}</div>\n    {% endfor %}\n{% endmacro %}\n",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-2mwc-h2mg-v6p8",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "packages/Webkul/Shop/src/Http/Controllers/API/ReviewController.php:89 `$this->productReviewAttachmentRepository->upload($data['attachments'], $review);` - the files attached to a product review posted to the shop API",
+      "sink": "packages/Webkul/Product/src/Repositories/ProductReviewAttachmentRepository.php:28 `'path' => $attachment->store('review/'.$review->id),` - the uploaded bytes, SVG included, are written to the public disk and served later",
+      "between": "review request -> upload(array $attachments) -> only the MIME type is split (:25-26) -> store() keeps the file as uploaded -> the attachment is rendered from its URL, so a script inside an SVG runs in the shop's origin",
+      "fix": "sanitizes any SVG attachment with the Sanitizer trait after storing it ($this->sanitizeSVG($path, $mimeType)) and tolerates a missing MIME subtype",
+      "probe": "<?php\n$attachments = $request->file('attachments');\n$reviewId = 7;\n\nforeach ($attachments as $attachment) {\n    $fileType = explode('/', $attachment->getMimeType());\n\n    $path = $attachment->store('review/' . $reviewId);\n\n    ReviewAttachment::create([\n        'path'      => $path,\n        'review_id' => $reviewId,\n        'type'      => $fileType[0],\n        'mime_type' => $fileType[1],\n    ]);\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-6mp4-q625-mxjp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "includes/auth.php:12 `$callback = ( isset($_REQUEST['callback']) ? $_REQUEST['callback'] : '' );` - the callback parameter of an API request, put into the output array at :17",
+      "sink": "includes/functions-api.php:128 `$result = $callback . '(' . json_encode( $output ) . ')';` - the callback is concatenated in front of the JSON and sent with Content-Type application/javascript (:125)",
+      "between": "request -> yourls_api_output('jsonp', ...) -> $output['callback'] is pasted as code before the JSON body; any JavaScript the caller puts there (e.g. `alert(1);//`) is executed by the browser that loaded the URL",
+      "fix": "validates the callback with yourls_validate_jsonp_callback(): only [a-zA-Z0-9_$.] is accepted, backslash-u escapes are refused, and an invalid one gets a 400 and a JSON error body",
+      "probe": "<?php\n$callback = isset($_REQUEST['callback']) ? $_REQUEST['callback'] : '';\n$output = ['status' => 'success', 'url' => 'https://example.com'];\n\nheader('Content-Type: application/javascript');\necho $callback . '(' . json_encode($output) . ')';\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND xss"
+    },
+    {
+      "id": "GHSA-mgr9-6c2j-jxrq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "app/Http/Controllers/Admin/DatabaseController.php:67 `$host = $this->creationService->handle($request->normalize());` - the host field of the create/update request, and the failure message built at :71 with the daemon's exception text (`sprintf('There was an error while trying to connect to the host ... \"%s\"', $exception->getMessage())`), flashed through the alert bag",
+      "sink": "resources/views/layouts/admin.blade.php:148 `{!! $message !!}` - every alert message is written into the page as raw HTML",
+      "between": "request -> validation (the host was any string until this commit, app/Models/DatabaseHost.php:65) -> connection attempt -> alert message text -> Alert::getMessages() -> blade prints it unescaped, so HTML in the value runs when the redirect lands",
+      "fix": "escapes the alert message with `{{ $message }}` and constrains the host field with /^[\\w\\-\\.]+$/",
+      "probe": "<?php // controller\n$host = $request->input('host');\ntry {\n    $this->creationService->handle($request->all());\n} catch (Exception $e) {\n    $this->alert->danger(sprintf('Could not connect to \"%s\": %s', $host, $e->getMessage()))->flash();\n}\n\n// resources/views/layouts/admin.blade.php\nforeach (Alert::getMessages() as $type => $messages) {\n    foreach ($messages as $message) {\n        echo '<div class=\"alert alert-' . $type . '\">' . $message . '</div>';   // {!! $message !!}\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-x6vr-q3vf-vqgq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "redaxo/src/addons/mediapool/pages/media.list.php:125 `$argUrl['args']['types']` - the media pool page's URL args (the types filter the caller puts in the page URL)",
+      "sink": "redaxo/src/addons/mediapool/pages/media.list.php:125 `echo rex_view::info(rex_i18n::msg('pool_file_filter') . ' <code>' . $argUrl['args']['types'] . '</code>');` - the value is concatenated into an HTML message that rex_view::info() prints as markup",
+      "between": "page args -> the page builds an HTML string -> rex_view::info() outputs it without escaping; the same pattern is in the mediapool service, where an uploaded file's extension and MIME type are concatenated into the warning that is thrown as the API error message (lib/service_media.php:42, :47, :50, :205)",
+      "fix": "wraps every concatenated value in rex_escape() (the types arg, the extension, the allowed and blocked extension lists, the MIME type)",
+      "probe": "<?php\n$types = rex_request('types', 'string', '');\n\nif (!empty($types)) {\n    echo rex_view::info('Filter: <code>' . $types . '</code>');\n}\n",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-mrmx-jfw8-qhgv",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "src/Controller/PageEditionController.php:363 `$idPage = $this->params()->fromRoute('idPage', $this->params()->fromQuery('idPage', ''));` - the idPage route/query parameter of the getTinyTemplates action",
+      "sink": "src/Controller/PageEditionController.php:375 `$datasPage = $melisPage->getDatasPage($idPage, 'saved');` - the id is handed to the MelisEnginePage service, which builds the page query with it (the engine that holds the SQL is outside this repository)",
+      "between": "route/query parameter -> getTinyTemplatesAction() -> MelisEnginePage::getDatasPage($idPage, 'saved') -> the page row lookup; the id was used as it came, so a non-numeric value reached the query",
+      "fix": "returns an empty JSON list unless $idPage is numeric (`is_null`, `empty`, `!is_numeric` guard) before the service is called",
+      "probe": "<?php\n$idPage = $this->params()->fromRoute('idPage', $this->params()->fromQuery('idPage', ''));\n\nif (!empty($idPage)) {\n    $datasPage = $this->getServiceManager()->get('MelisEnginePage')->getDatasPage($idPage, 'saved');\n    $tinyTemplates = $this->getService('MelisCmsMiniTemplateGetterService')\n        ->getMiniTemplates($datasPage->getMelisTemplate()->tpl_site_id, '');\n}\n\nreturn new JsonModel($tinyTemplates ?? []);\n",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-hq25-vp56-qr86",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "application/Controller/JobController.php:561 `$filename = $args['filename'];` - the report filter taken from the request arguments (the POST branch at :557 is sanitized, this one is not), used at :583 `$this->jobFileTable->getJobFiles($jobId, $rows_per_page, $currentPage, $filename);`",
+      "sink": "application/Table/JobFileTable.php:64 `$where[] = \"(Filename.Name LIKE '%$filename%' OR Path.Path LIKE '%$filename%' OR concat(Path.Path, '', Filename.Name) = '$filename')\";` (and :88 for Bacula 11+ catalogs)",
+      "between": "request argument -> JobController::indexAction() -> JobFileTable::getJobFiles($jobId, $limit, $offset, $filename) -> the filter is concatenated into the WHERE clause of the file list query, in three places",
+      "fix": "binds the value as the `filename` parameter (addParameter('filename', '%'.$filename.'%')) in both catalog branches",
+      "probe": "<?php\n$args = $_GET;\n$filename = $args['filename'];\n$jobId = (int)$args['jobid'];\n\n$where = array(\"File.JobId = $jobId\");\nif (!empty($filename)) {\n    $where[] = \"(Filename.Name LIKE '%$filename%' OR Path.Path LIKE '%$filename%'\"\n        . \" OR concat(Path.Path, '', Filename.Name) = '$filename')\";\n}\n\n$sql = 'SELECT Job.Name, Path.Path, Filename.Name FROM File'\n    . ' JOIN Path ON Path.PathId = File.PathId'\n    . ' JOIN Filename ON Filename.FilenameId = File.FilenameId'\n    . ' WHERE ' . implode(' AND ', $where);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-277f-37gw-9gmq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22,
+        23
+      ],
+      "category": "check",
+      "source": "ajax/networking/get_wgkey.php:8 `$entity = escapeshellcmd($_POST['entity']);` - the entity parameter of the WireGuard key request",
+      "sink": "ajax/networking/get_wgkey.php:18 `exec(\"sudo wg genkey | tee $privkey_tmp | wg pubkey > $pubkey_tmp\", $return);` and :20-21 `exec(\"sudo mv $privkey_tmp $privkey\", $return);` - the value is pasted into shell commands and file paths",
+      "between": "the parameter goes through escapeshellcmd(), which escapes shell metacharacters but does not quote the value, so word splitting and options still get through; it is then used in the temp/key paths (:13-16) before the exec() calls",
+      "fix": "uses escapeshellarg() instead, which quotes the whole value",
+      "probe": "<?php\n$entity = escapeshellcmd($_POST['entity']);\n\n$privkey_tmp = '/tmp/' . $entity . '-private.key';\n$pubkey_tmp = '/tmp/' . $entity . '-public.key';\n\nexec(\"sudo wg genkey | tee $privkey_tmp | wg pubkey > $pubkey_tmp\", $return);\nexec(\"sudo mv $privkey_tmp \" . RASPI_WIREGUARD_PATH . $entity . '-private.key', $return);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-f6rx-hf55-4255",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        611
+      ],
+      "category": "sink",
+      "source": "src/Sulu/Bundle/MediaBundle/FileInspector/SvgFileInspector.php:47 `public function inspect(UploadedFile $file): UploadedFile` - the SVG uploaded through the media bundle is read and handed to containsUnsafeContent()",
+      "sink": "src/Sulu/Bundle/MediaBundle/FileInspector/SvgFileInspector.php:60 `$dom->loadXML($svg, \\LIBXML_NOENT | \\LIBXML_DTDLOAD);` - the parser substitutes entities and loads the external DTD, so a DOCTYPE with an entity pointing at a local file or a URL is resolved",
+      "between": "upload request -> media bundle -> SvgFileInspector::inspect() -> file_get_contents() of the upload -> containsUnsafeContent($svg) -> DOMDocument::loadXML with LIBXML_NOENT|LIBXML_DTDLOAD; the fixed version adds LIBXML_NONET, clears substituteEntities/resolveExternals",
+      "fix": "parses with LIBXML_NONET and substituteEntities/resolveExternals off, and restores libxml's error state",
+      "probe": "<?php\n$file = $_FILES['file'];\n\n$svg = file_get_contents($file['tmp_name']);\n\nlibxml_use_internal_errors(true);\n$dom = new DOMDocument();\n$dom->loadXML($svg, LIBXML_NOENT | LIBXML_DTDLOAD);\nlibxml_clear_errors();\n\nforeach (['script', 'foreignObject'] as $element) {\n    if ($dom->getElementsByTagName($element)->length > 0) {\n        return false;\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-cg4f-cq8h-3ch8",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "handlers/page/deletepage.php:14 `$incomingurl = urldecode($_GET['incomingurl']);` - the incomingurl query parameter of the delete page",
+      "sink": "handlers/page/deletepage.php:43 `$msg .= '<form action=\"' . $cancelUrl . '\" method=\"post\" style=\"display: inline\">' . \"\\n\";` (the cancelUrl is the parameter, :28) and :35 where it is appended to the confirm form's action - the value lands inside an HTML attribute of a string the template prints",
+      "between": "the parameter is url-decoded, then used as $cancelUrl, concatenated into the form action attributes (and into the incomingurl= parameter at :27) before the page renders $msg; a quote in it ends the attribute, so the fix replaces the decode with FILTER_VALIDATE_URL",
+      "fix": "validates the parameter with filter_var(..., FILTER_VALIDATE_URL) instead of decoding it, so a non-URL value never reaches the markup",
+      "probe": "<?php\n$incomingurl = urldecode($_GET['incomingurl']);\n\n$cancelUrl = $this->Href();\nif (!empty($incomingurl)) {\n    $cancelUrl = $incomingurl;\n}\n\n$msg = '<form action=\"' . $this->Href('deletepage', '', 'confirme=oui') . '\" method=\"post\">';\n$msg .= '</form>';\n$msg .= '<form action=\"' . $cancelUrl . '\" method=\"post\" style=\"display: inline\">';\n$msg .= '<input type=\"submit\" value=\"Cancel\"></form>';\n\necho $msg;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND xss"
+    }
+  ],
+  "usage": {
+    "session": "ses_df68ac7a8ffeKXEPaSTqSiFolS",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 7,
+    "turns": 88,
+    "tool_calls": 117,
+    "tool_errors": 0,
+    "chars_read": 315063,
+    "tokens": {
+      "input": 103740,
+      "cache_read": 10367616,
+      "output": 63531,
+      "reasoning": 0
+    },
+    "usd": 0.17
+  }
+}

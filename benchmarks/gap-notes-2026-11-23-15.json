@@ -1,0 +1,248 @@
+{
+  "batch": "gap-notes-2026-11-23-15",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
+  "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order. The file holds 242 rows and every one is cve-pairs-php (the Python and JavaScript rows were noted in earlier runs), so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: df-core Package.php and Packager.php; MISP EventReport.php and EventReportsController.php; cyan-backup page-backups.php; importwp ImporterManager.php; Elementor class-import-images.php and template-library/manager.php; i-educar educar_matricula_lst.php; Part-DB AttachmentSubmitHandler.php (the added SVGSanitizer comes with the diff); cf7msm cf7msm.php; SemanticMediaWiki ProfileForm.php; groundhogg functions.php and file-box.php; Shaarli MetadataController.php and UrlUtils.php; easyappointments Booking_settings.php and booking_message.php; MantisBT admin/install.php; YesWiki CSVManager.php and BazarImportAction.php. No row was skipped. Two notes are unsure because the request side is outside the changed repository or file: df-core's password arrives through the API layer and Elementor's tmp_name caller is not visible in the import path. Six cases are stored-value flows (settings, cookies, importer config, an uploaded SVG) and one is a weak existing check (the Shaarli scheme substring test), so a rule needs those paths as well as direct request-to-sink flows.",
+  "notes": [
+    {
+      "id": "GHSA-vjrq-m6qm-rjgr",
+      "cwe": [
+        78
+      ],
+      "category": "functions",
+      "source": "outside this repository (the DreamFactory API's package endpoint, which builds the manifest from the request body); src/Components/Package/Package.php:234 (fix parent): getPassword() returns array_get($this->manifest, 'password', $this->password), the password the caller set with setPassword() (:114) from the package creation POST",
+      "sink": "src/Components/Package/Package.php:666: @exec(\"cd $extractDir $commandSeparator zip -r -P $password $this->zipFile .\", $output) - the password and the temp extract dir are interpolated into a shell string",
+      "between": "request body -> Package::setPassword()/constructor -> protected $password or manifest['password'] -> getPassword() -> saveZipFile(), which extracts the zip to a temp dir and calls exec(); there is no escapeshellarg() anywhere and the fix adds it (escaped dir/password/zip, native ZipArchive encryption first)",
+      "fix": "adds encryptZipWithNativeMethod() and an encryptZipWithShellCommand() that passes every argument through escapeshellarg()",
+      "probe": "<?php\n$password = $request->input('password');\n\nclass Package\n{\n    protected $password;\n\n    public function setPassword($password)\n    {\n        $this->password = $password;\n    }\n\n    public function saveZipFile()\n    {\n        $password = $this->password;\n        $dir = sys_get_temp_dir() . '/pkg';\n        exec(\"cd $dir ; zip -r -P $password out.zip .\", $output);\n    }\n}\n\n$p = new Package();\n$p->setPassword($password);\n$p->saveZipFile();",
+      "confidence": "unsure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-w7p3-5r7j-j9pc",
+      "cwe": [
+        23
+      ],
+      "category": "source",
+      "source": "app/Controller/EventReportsController.php:645 (fix parent): public function viewPicture($filename) - the filename is a CakePHP route parameter of /eventReports/viewPicture/<filename>",
+      "sink": "app/Model/EventReport.php:1615-1617: $filepath = self::PICTURE_FOLDER_PATH . '/' . $filename; $file = new File($filepath); then the controller returns it with $this->RestResponse->sendFile($image['file'], $extension)",
+      "between": "the controller passes the route argument straight to getPicture(), which first substitutes an alias from getImageFromAlias() and then concatenates the value with the picture directory; there is no basename() and no containment check, so ../ walks out of the picture folder and the file is sent back; the fix adds basename($filename) before the concatenation",
+      "fix": "adds $filename = basename($filename) in getPicture()",
+      "probe": "<?php\nclass ReportsController extends AppController\n{\n    public function viewPicture($filename)\n    {\n        $path = PICTURE_DIR . '/' . $filename;\n        $file = new File($path);\n\n        return $this->response->file($file->path);\n    }\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-x2hm-rp6m-pffv",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "includes/page-backups.php:20-22 (fix parent): $postdata = $this->get_real_post_data(); then $file = $postdata['remove'][$index] (or $postdata['remove[' . $index . ']'] for a differently parsed body) - the raw POST body read through the plugin's request helper",
+      "sink": "includes/page-backups.php:24-31: if (($file = realpath($file)) !== FALSE) { @unlink($file); @unlink($logfile); } - any existing path on the server chosen by the form value",
+      "between": "the only processing is realpath(); nothing checks that the resolved path is one of the backup files listed on the page, so the admin form can delete any file the web server can unlink; the fix builds the backup list first and only unlinks a file whose realpath equals one entry",
+      "fix": "computes backup_files_info(get_backup_files()) and only unlinks the file (and its .log) when it is in that list",
+      "probe": "<?php\nif (isset($_POST['remove'])) {\n    foreach ((array)$_POST['remove'] as $file) {\n        if (($file = realpath($file)) !== false) {\n            unlink($file);\n            @unlink(str_ireplace('.zip', '.log', $file));\n        }\n    }\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-rqj4-c9gx-xx38",
+      "cwe": [
+        73
+      ],
+      "category": "stored",
+      "source": "class/Common/Importer/ImporterManager.php:663-666 (fix parent): $raw_source = $importer_data->getDatasourceSetting('local_url'); $source = apply_filters('iwp/importer/datasource/local', $source, $raw_source, $importer_data); $attachment_id = $this->local_file($importer_data, $source, ...) - the local_url saved in the importer's datasource settings",
+      "sink": "class/Common/Importer/ImporterManager.php:429-437: local_file() calls $this->filesystem->copy_file($source, $allowed_file_types, null, $prefix, $filetype), which opens and copies the path the setting names",
+      "between": "the datasource settings are saved by the importer's admin form and read back at import run time; the value goes through the two apply_filters hooks and then to copy_file() with no directory check, so a path outside wp-content is readable; the fix calls realpath($source) and requires it to start with realpath(WP_CONTENT_DIR) (or another allowed base from a filter)",
+      "fix": "adds an allowed-base check (realpath + strpos prefix) before copy_file()",
+      "probe": "<?php\n$source = get_option('importer_local_url'); // saved by the importer settings form\n$source = apply_filters('importer/datasource/local', $source);\n$dest = wp_upload_dir()['path'] . '/' . basename($source);\ncopy($source, $dest);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-4f9c-3v6f-46qp",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "includes/template-library/classes/class-import-images.php:111 (fix parent): if (isset($attachment['tmp_name'])) { $filename = $attachment['name']; $file_content = Utils::file_get_contents($attachment['tmp_name']); } - the tmp_name key of the attachment array handed to import(); the direct upload entry point is includes/template-library/manager.php:641, which passes $_FILES['file']['tmp_name']",
+      "sink": "class-import-images.php:115: Utils::file_get_contents($attachment['tmp_name']) reads whatever path the array names, and the bytes are written into the uploads directory by wp_upload_bits($filename, null, $file_content)",
+      "between": "the attachment array (name, tmp_name, url, id) is passed to Import_Images::import(); for a file that was not uploaded through PHP the tmp_name is an arbitrary path, so a crafted import reads a local file into the media library; the fix only reads it when is_uploaded_file($attachment['tmp_name']) is true",
+      "fix": "gates the read behind is_uploaded_file($attachment['tmp_name']) and leaves $file_content false otherwise",
+      "probe": "<?php\n$attachment = json_decode($request->get_param('attachment'), true);\n\nif (isset($attachment['tmp_name'])) {\n    $content = file_get_contents($attachment['tmp_name']);\n    wp_upload_bits($attachment['name'], null, $content);\n}",
+      "confidence": "unsure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-jcmg-5j8j-35mp",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "ieducar/intranet/educar_matricula_lst.php:62-64 (fix parent): foreach ($_GET as $var => $val) { $this->$var = ($val === '') ? null : $val; } - every query parameter becomes an object property under its own name",
+      "sink": "same file, :70 and :204: $this->campoOculto(nome: 'ref_cod_aluno', valor: $this->ref_cod_aluno) and $this->acao = \"go(\\\"educar_matricula_cad.php?ref_cod_aluno={$this->ref_cod_aluno}\\\")\" - the property is put into the hidden field and the generated link",
+      "between": "the loop sets properties the class declares (ref_cod_aluno, ref_cod_escola) from the query string through a dynamic property name; the page then renders them through the legacy campo/acao helpers; the fix replaces the loop with request()->integer('ref_cod_aluno') and request()->integer('ref_cod_escola'), so the value is cast and can no longer be a string",
+      "fix": "drops the $_GET-to-property loop and reads the two fields with request()->integer()",
+      "probe": "<?php\nclass MatriculaList\n{\n    public function Gerar()\n    {\n        foreach ($_GET as $var => $val) {\n            $this->$var = ($val === '') ? null : $val;\n        }\n\n        echo '<input type=\"hidden\" name=\"ref_cod_aluno\" value=\"' . $this->ref_cod_aluno . '\">';\n        echo \"<a href=\\\"detalhe.php?cod={$this->ref_cod_aluno}\\\">ver</a>\";\n    }\n}",
+      "confidence": "unsure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-83qw-mxg2-hgpx",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "src/Services/Attachments/AttachmentSubmitHandler.php:214 (fix parent): handleUpload(Attachment $attachment, ?AttachmentUpload $upload) receives the uploaded file; the file content is the attacker's SVG (the request is the attachment upload form)",
+      "sink": "the stored SVG is served from the attachments route and rendered by the browser; the fix's sink is SVGSanitizer::sanitizeFile() (new src/Services/Attachments/SVGSanitizer.php), which reads the saved file with file_get_contents() and writes the sanitized bytes back with file_put_contents()",
+      "between": "upload -> moveFile() into the secure attachment directory -> attachment saved with its internal path; when the extension is .svg the bytes are never inspected, so a <script> in the SVG runs when the file is opened from the app; the fix calls sanitizeSVGFiles() right after moveFile(), which hands internal SVGs to the DOMSanitizer",
+      "fix": "adds SVGSanitizer (rhukster/dom-sanitizer) and sanitizes internal .svg attachments in handleUpload()",
+      "probe": "<?php\n$file = $_FILES['attachment']['tmp_name'];\n$path = __DIR__ . '/uploads/' . basename($_FILES['attachment']['name']);\nmove_uploaded_file($file, $path);\n\n// GET /uploads/report.svg returns the file with Content-Type: image/svg+xml\n// <svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(document.cookie)</script></svg>",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-mrh3-5w6m-2g2x",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "cf7msm.php:176-177 (fix parent): $cf7msm_posted_data = cf7msm_remove_honeypot_fields_from_posted_data( cf7msm_get( 'cf7msm_posted_data', [] ) ) - the form values saved on the previous step, kept in the cookie or session by cf7msm_set(), which serializes the submitted form data",
+      "sink": "cf7msm.php:181: wp_localize_script( 'cf7msm', 'cf7msm_posted_data', $cf7msm_posted_data ) - WordPress prints the array into the page as inline JavaScript, and an array key named l10n_print_after is emitted as executable code",
+      "between": "POST fields -> cf7msm_sanitize_posted_data() (utf8 check only) -> cookie/session -> cf7msm_get() on the next step -> wp_localize_script(); the reserved l10n_print_after key survives the storage and the sanitizer, so a form field named l10n_print_after (or a nested one) is run in the browser; the fix encodes the data with wp_json_encode(JSON_HEX_TAG|...) into an inline script and unsets the key in cf7msm_sanitize_posted_data()",
+      "fix": "replaces wp_localize_script() with an escaped wp_add_inline_script() and removes the l10n_print_after key before saving",
+      "probe": "<?php\n$data = json_decode(wp_unslash($_COOKIE['posted_data']), true);\n\nif (!is_array($data)) {\n    $data = [];\n}\n\nforeach ($_POST as $key => $value) {\n    $data[$key] = $value; // saved between steps\n}\n\nwp_localize_script('form', 'posted_data', $data);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xq8g-94p2-h527",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "src/MediaWiki/Search/ProfileForm/ProfileForm.php:344 (fix parent): profile_sheet($query, $queryLink, $termPrefixes) builds the extended search profile from $query, which buildForm() takes from $this->specialSearch->getSearchEngine()->getQueryString() - the user's Special:Search term",
+      "sink": "ProfileForm.php:347: $text .= Html::rawElement( 'pre', [], $query ) . '&nbsp;' - the raw search text is put into the <pre> block of the profile sheet",
+      "between": "the search query travels from the request into the search engine and back as a string into profile_sheet(); every other element in the sheet is built with Html::element()/section(), only this one uses rawElement(), so a query containing <script> is reflected; the fix switches it to Html::element",
+      "fix": "uses Html::element( 'pre', [], $query ) so the query is escaped",
+      "probe": "<?php\n$query = $request->getVal('q');\n\n$text = '';\nif ($query !== '') {\n    $text .= Html::element('h2', [], 'Query');\n    $text .= Html::rawElement('pre', [], $query);\n}\n\necho $text;",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-m4jj-h65f-p4xj",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "the REST endpoint POST /thirdparties/{id}/bankaccounts (outside this repository's changed file) sets $this->type from the request body, as the fix commit message names it; in the model the value is the public $type property",
+      "sink": "htdocs/societe/class/companybankaccount.class.php:398: $sql .= \" VALUES (\".((int) $this->socid).\", '\".$this->type.\"', '\".$this->db->idate($this->datec).\"',\" followed by $resql = $this->db->query($sql) at :404",
+      "between": "the API controller builds a CompanyBankAccount from the JSON/form body and calls create(), which interpolates $this->type between SQL quotes - only socid is cast; the value crosses the controller and the object property, so a taint rule that stops at the method call misses it; the fix wraps the property in $this->db->escape()",
+      "fix": "escapes $this->type with $this->db->escape() in the INSERT",
+      "probe": "<?php\nclass BankAccount\n{\n    public $type;\n\n    public function create($db)\n    {\n        $sql = \"INSERT INTO bank (fk_soc, type) VALUES (\" . ((int) $this->socid) . \", '\" . $this->type . \"')\";\n\n        return $db->query($sql);\n    }\n}\n\n$account = new BankAccount();\n$account->type = $request->input('type');\n$account->create($db);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xq4h-vhg9-4x8m",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "includes/functions.php:2876-2884 (fix parent): in generate_contact_with_map(), case 'copy_file': if (is_string($value) && is_copyable_file($value)) { $copy[] = $value; } - $value is a mapped field of a CSV import row, a REST contact body or a webhook payload",
+      "sink": "includes/classes/traits/file-box.php:79-101: copy_file($url_or_path) passes file_exists($url_or_path) ? $url_or_path : download_url(...) as tmp_name to safe_file_sideload(), and on the error branch calls wp_delete_file($file['tmp_name']) - so an existing server path is either moved away or deleted",
+      "between": "the request row -> generate_contact_with_map() mapping -> copy_file(); the only gate is is_copyable_file(), which checks the hostname, so a local path like /var/www/html/wp-config.php passes; a path inside uploads is moved and a path outside is deleted by the cleanup; the fix accepts URLs only (is_copyable_url) and copies a local file to a temp file inside uploads before sideloading",
+      "fix": "adds is_copyable_url() (exact http/https scheme + same host) for the mapped value and copies allowed local files to a temp file instead of touching the original",
+      "probe": "<?php\nforeach ($map as $column => $target) {\n    $value = $row[$column]; // one CSV row, REST body or webhook field\n\n    if ($target === 'copy_file' && is_string($value) && file_exists($value)) {\n        $file = ['name' => basename($value), 'tmp_name' => $value];\n        $result = wp_handle_sideload($file, []);\n\n        if (is_wp_error($result)) {\n            wp_delete_file($file['tmp_name']);\n        }\n    }\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-2rmx-qf8h-6p5c",
+      "cwe": [
+        918
+      ],
+      "category": "check",
+      "source": "application/front/controller/admin/MetadataController.php:22 (fix parent): $url = $request->getParam('url') - the url query parameter of GET /admin/metadata",
+      "sink": "MetadataController.php:25-27: return $response->withJson($this->container->metadataRetriever->retrieve($url)) - the server fetches the URL and returns the page title/meta tags",
+      "between": "the only check was strpos(get_url_scheme($url) ?: '', 'http') !== false, a substring test that passes httpoxy and any destination, so loopback and private addresses are reachable; the fix replaces it with an exact in_array('http'/'https') and is_safe_url() (new in application/http/UrlUtils.php: resolves the host and rejects private/loopback/reserved IPv4), plus a CSRF token check",
+      "fix": "exact scheme match, a new is_safe_url()/is_private_ip() destination check and checkToken() on the admin endpoint",
+      "probe": "<?php\n$url = $request->getParam('url');\n\nif (!empty($url) && strpos(get_url_scheme($url) ?: '', 'http') !== false) {\n    return $response->withJson($metadataRetriever->retrieve($url));\n}\n\nreturn $response->withJson([]);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-996f-334j-67g7",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "application/controllers/Booking_settings.php:104 (fix parent): $settings = request('booking_settings', []) - the admin settings form, whose entries have a name (disable_booking_message) and a value of rich-text HTML",
+      "sink": "application/views/pages/booking_message.php:12: <p><?= vars('message_text') ?></p> - the stored message is printed unescaped on the public disabled-booking page",
+      "between": "save() stores each setting value in the settings table after strip_tags() for a few named fields only; disable_booking_message is not in that list, so the HTML survives to the public page, where message_text is echoed raw; the fix runs pure_html() on the value when saving a rich-text setting and pure_html(vars('message_text')) in the view",
+      "fix": "sanitizes disable_booking_message through pure_html() on save and wraps message_text with pure_html() in the view",
+      "probe": "<?php\n// admin save\n$settings = request('booking_settings', []);\nforeach ($settings as $setting) {\n    $db->update('settings', ['value' => $setting['value']], ['name' => $setting['name']]);\n}\n\n// public page\n$message_text = $db->get('settings', 'disable_booking_message');\necho '<p>' . $message_text . '</p>';",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-vcrw-4xvv-jh49",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "admin/install.php:268 (fix parent): ${'f_' . $t_key} = gpc_get( $t_key, $t_value ) - every install-form field is read through Mantis's gpc_get() request wrapper and stored in a variable named f_<field>, here db_table_prefix/db_table_suffix",
+      "sink": "admin/install.php:767-770: printf( '<input id=\"%1$s\" name=\"%1$s\" type=\"text\" ... value=\"%3$s\">', $t_key, ..., ${'f_' . $t_key} ) - the value is reflected into the value attribute without escaping",
+      "between": "gpc_get() reads $_POST/$_GET; the dynamic variable name ${'f_' . $t_key} hides the value from a normal taint rule, and the printf's %3$s drops it into the attribute; the fix wraps the argument in string_html_specialchars()",
+      "fix": "escapes the reflected value with string_html_specialchars() in the printf argument",
+      "probe": "<?php\nforeach ($_POST as $t_key => $t_value) {\n    ${'f_' . $t_key} = gpc_get($t_key, $t_value);\n}\n\n$t_key = 'db_table_prefix';\nprintf('<input name=\"%1$s\" value=\"%2$s\">', $t_key, ${'f_' . $t_key});",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-9369-69wj-7m2f",
+      "cwe": [
+        502
+      ],
+      "category": "archive",
+      "source": "tools/bazar/actions/BazarImportAction.php:105 (fix parent): the importentries action takes the posted import selection (the entries built from the uploaded CSV) and hands it to CSVManager::importEntry($importedEntries, $formId); each entry is a base64-encoded serialized string taken from the file's rows",
+      "sink": "tools/bazar/services/CSVManager.php:379: $entry = unserialize(base64_decode($entry)); then array_map('strval', $entry) - an object of any class in the autoloader is instantiated from the payload",
+      "between": "uploaded CSV -> the import form's entries -> POST to the importentries action -> CSVManager::importEntry() -> base64_decode() -> unserialize() with no allowed_classes limit, so a crafted cell runs the gadget chain; the fix passes ['allowed_classes' => false] and adds a CSRF token to the import form/action",
+      "fix": "unserialize(..., ['allowed_classes' => false]) plus a CSRF token on importentries",
+      "probe": "<?php\nforeach ($_POST['entries'] as $entry) {\n    $entry = unserialize(base64_decode($entry));\n    $entry = array_map('strval', $entry);\n    save_entry($entry);\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php",
+      "probe_scanned": "2026-11-23: FOUND unsafe-deserialization"
+    }
+  ],
+  "usage": {
+    "session": "ses_df6c1bd36ffe3Jt4GCuZN3xMFC",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 3,
+    "turns": 48,
+    "tool_calls": 61,
+    "tool_errors": 1,
+    "chars_read": 201490,
+    "tokens": {
+      "input": 235899,
+      "cache_read": 3551648,
+      "output": 31288,
+      "reasoning": 0
+    },
+    "usd": 0.13
+  }
+}
