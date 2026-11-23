@@ -2666,7 +2666,8 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    other 3), Python non-HTTP 11, JavaScript 14. 16 found, so for those cases the miss lies elsewhere than the note
    says (often files or functions the probe leaves out); 2 not-a-flow notes have no probe. The notes' quotes are
    leads: check them against the diff before a rule is written from one.
-127. **45 more gap notes read** (2026-11-23, pull request #12). Probes scanned as in step 126: 33 missed (Python
-   front end 12: templates 7, front-end JS 5; JavaScript 21: sink 5, check 4, functions 4, template 2, stored 2,
-   source 2, front-end 1, archive 1), 12 found (all JavaScript; path traversal 5, NoSQL 2, regex 2, SSRF 1, SQL 1, command 1),
-   so for those the miss lies elsewhere than the note says.
+127. **60 more gap notes read** (2026-11-23, pull request #12). Probes scanned as in step 126: 42 missed (Python
+   front end 12: templates 7, front-end JS 5; JavaScript 30: sink 9, functions 7, check 4, source 4, template 2,
+   stored 2, archive 2, front-end 1), 18 found (all JavaScript; path traversal 8, command 3, NoSQL 2, regex 2,
+   SSRF 2, SQL 1), so for those the miss lies elsewhere than the note says. The Python misses are all covered now;
+   the runner has moved on to JavaScript.
