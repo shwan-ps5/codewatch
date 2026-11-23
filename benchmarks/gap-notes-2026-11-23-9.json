@@ -1,0 +1,234 @@
+{
+  "batch": "gap-notes-2026-11-23-9",
+  "status": "research only: not read yet",
+  "method": "rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in file order: the first 15 cve-pairs-javascript rows (the file has no Python rows and no cve-pairs-javascript-nonhttp rows before them). For each one I read the fix commit's diff (gh api repos/O/R/commits/SHA) and, for the source and the sink, the vulnerable files at the fix commit's parent: openURLMiddleware.ts; cdn.service.ts + extensions.service.ts; index.ts + tools/index.ts; OEmbedService.js + the oembed API endpoint; extract_query_params.ts + routes/index.ts + storage/filesystem.ts; util-os.ts + api.vfs.ts + upload.ts (and the repository tarball at the parent to find the callers); src/utils.js + api/index.js + src/fetchStats.js; routes/errors.ts; nodeserver.js; backupRoutes.ts + backupService.ts; mcpTools/getTools.ts; server/routerTrpc/public.ts; import/utils/file.utils.ts; app/app.ts; cluster.ts + cluster/upload.ts + process/execAsync.ts. The repository advisory lookup returned 404 for react-native-community/cli and swetrix (unreviewed advisories), so their summaries and CWEs come from ~/advisory-database instead. Nothing skipped; 15 of 15 noted.",
+  "notes": [
+    {
+      "id": "GHSA-399j-vxmf-hjvr",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        78
+      ],
+      "category": "sink",
+      "source": "packages/cli-server-api/src/openURLMiddleware.ts:32 (fix parent) const {url} = req.body as {url: string} - the JSON body of the dev server's POST endpoint, mounted with body-parser's json() and connect()",
+      "sink": "packages/cli-server-api/src/openURLMiddleware.ts:34 await open(url) - the `open` npm package hands the string to the OS handler (cmd /c start on Windows), so a URL carrying shell metacharacters runs commands; the advisory's title is 'arbitrary OS command injection'",
+      "between": "nothing: the body value goes straight into open() and no check exists before the fix. Second explanation: source (a POST JSON body field read by a connect() middleware).",
+      "fix": "parses the URL and refuses anything but http:/https: before open()",
+      "probe": "const express = require('express');\nconst open = require('open');\n\nconst app = express();\napp.use(express.json());\n\napp.post('/open-url', async (req, res) => {\n  await open(req.body.url);\n  res.end();\n});\n\napp.listen(8081);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-6q94-xgm6-vjmf",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "backend/apps/cloud/src/marketplace/cdn/cdn.service.ts:23 (fix parent) `${tmpdir()}/${file.originalName}` - originalName is the multipart part's client-supplied filename (the file's own comment: Multer returns originalname, nestjs-form-data originalName); the parts come from extension.mainImage / additionalImages / extensionScript in extensions.service.ts:189,195,202",
+      "sink": "backend/apps/cloud/src/marketplace/cdn/cdn.service.ts:24 writeFile(filePath, file.buffer) - a name with ../ segments writes the temp file outside tmpdir before it is streamed to the CDN",
+      "between": "extensions.service.ts createExtension/updateExtension (:189, :195, :202) hand the uploaded parts to cdnService.uploadFile(image); nothing normalises the name on the way. Second explanation: functions (the part travels from the controller through the extensions service into the CDN service).",
+      "fix": "replaces the client name with uuidv4() + extname(originalName) for the temp path",
+      "probe": "const express = require('express');\nconst multer = require('multer');\nconst {writeFile} = require('fs/promises');\nconst {tmpdir} = require('os');\n\nconst app = express();\n\napp.post('/upload', multer().single('image'), async (req, res) => {\n  const file = req.file;\n  await writeFile(`${tmpdir()}/${file.originalname}`, file.buffer);\n  res.end();\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-g5cg-6c7v-mmpw",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "index.ts:48/63 (fix parent) req.headers[HACKMD_API_URL_HEADER.toLowerCase()] and index.ts:72-77 req.query.config (base64 JSON decoded by the app) -> config.hackmdApiUrl; the advisory names the Hackmd-Api-Url header and the base64 query parameter",
+      "sink": "index.ts:92 new API(config.hackmdApiToken, config.hackmdApiUrl) - the @hackmd/api client sends every tool call to that host, so the server can be pointed at internal services",
+      "between": "parseConfig() collects the header/query config, ConfigSchema.parse() in the POST /mcp handler (index.ts:122-128) fills hackmdApiUrl, createServer() builds the client (index.ts:92) and registerAllTools(server, client) (tools/index.ts:16-21) shares it with every tool. Second explanation: functions.",
+      "fix": "ALLOWED_HACKMD_API_URLS allowlist checked before the client is created",
+      "probe": "import express from 'express';\nimport {API} from '@hackmd/api';\n\nconst app = express();\napp.use(express.json());\n\napp.post('/mcp', async (req, res) => {\n  const apiUrl = String(req.headers['hackmd-api-url'] || 'https://api.hackmd.io/v1');\n  const client = new API(process.env.TOKEN as string, apiUrl);\n  res.json(await client.getHistory());\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f7qg-xj45-w956",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "functions",
+      "source": "ghost/core/core/server/api/endpoints/oembed.js:17-20 (fix parent) let {url, type} = data; return oembed.fetchOembedDataFromUrl(url, type) - the bookmark URL posted by the editor becomes the page Ghost fetches",
+      "sink": "ghost/core/core/server/services/oembed/OEmbedService.js:136 const response = await fetch(imageUrl) in fetchImageBuffer - native fetch of the page's icon/thumbnail image URL, with no address check",
+      "between": "fetchPageHtml fetches the posted url through externalRequest, metascraper extracts logo/image from the returned HTML (OEmbedService.js:288-320), then processImageFromUrl(metadata.icon/thumbnail) (:342,:349) calls fetchImageBuffer; the image URL is chosen by the remote page, so the taint is second-hand. Second explanation: source (the URL comes back from a fetched page, not from the request).",
+      "fix": "fetchImageBuffer uses this.externalRequest (the SSRF-hardened got instance that resolves and blocks private addresses)",
+      "probe": "const express = require('express');\nconst metascraper = require('metascraper')([require('metascraper-image')()]);\n\nconst app = express();\napp.use(express.json());\n\napp.post('/bookmark', async (req, res) => {\n  const html = await (await fetch(req.body.url)).text();\n  const meta = await metascraper({html, url: req.body.url});\n  const img = await fetch(meta.image);\n  res.send(Buffer.from(await img.arrayBuffer()));\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-vvmv-wrvp-9gjr",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "src/middlewares/extract_query_params.ts:14 (fix parent) const params = new URL(c.req.url).searchParams - the Hono request's query string",
+      "sink": "src/lib/storage/filesystem.ts:33-35 imagePath() returns path.join(this.storagePath, imageId) + '.png', then fs.readFile / fs.writeFile in fetchImage and storeImage (called from src/routes/index.ts:18,28)",
+      "between": "extract_query_params.ts:75 builds imageId from the date, slugify(validData.url) and the raw configToString(params); it is put on the context with c.set('imageId') (:78), read in routes/index.ts:16 and handed to FileSystemStorageProvider, whose path.join escapes the cache directory when a parameter holds ../ (the advisory's report says exactly this). Second explanation: sink.",
+      "fix": "slugifies configToString(params) before it is added to imageId",
+      "probe": "import {Hono} from 'hono';\nimport * as fs from 'fs/promises';\nimport * as path from 'path';\n\nconst app = new Hono();\n\napp.use(async (c, next) => {\n  const params = new URL(c.req.url).searchParams;\n  c.set('imageId', `shot.${params.toString()}`);\n  await next();\n});\n\napp.get('/', async (c) => {\n  const file = path.join('/var/cache/shots', c.get('imageId')) + '.png';\n  return c.body(await fs.readFile(file));\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-5f4x-hwv2-w9w2",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        78
+      ],
+      "category": "functions",
+      "source": "src/api.vfs.ts:184 get_ls({path, files=true, fileMask}, ctx) - the path parameter of the admin/file-list API; and src/upload.ts:46-53, where the upload target is join(base.source!, path) with path from the request URL and dir = dirname(fullPath)",
+      "sink": "src/util-os.ts:21 (fix parent) execSync(`df -k \"${path}\"`) - a shell string, so a path holding a double quote and $(...) runs commands (the advisory: OS command execution by remote authenticated users, with upload permissions)",
+      "between": "upload.ts:41-55 builds fullPath/dir from the VFS base and the request path and calls getDiskSpaceSync(dir) (cached 3 s); api.vfs.ts:196 passes the API's path straight to getDiskSpaceSync(path) for the listing headers. Second explanation: source (the API path parameter).",
+      "fix": "spawnSync('df', ['-k', path]) instead of an interpolated shell string",
+      "probe": "const Koa = require('koa');\nconst {execSync} = require('child_process');\nconst {dirname, join} = require('path');\n\nconst app = new Koa();\n\napp.use(async (ctx) => {\n  const dir = dirname(join('/srv/files', ctx.path));\n  ctx.body = execSync(`df -k \"${dir}\"`).toString();\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-jqwf-p5f8-cfhc",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "functions",
+      "source": "api/index.js:13-28 (fix parent) const {username, ...} = req.query, then :34 fetchStats(username, ...) - the username query parameter of the stats endpoint",
+      "sink": "src/utils.js:32 `<tspan x=\"25\" dy=\"18\">${message}</tspan>` inside the SVG that renderError returns; api/index.js:36-41 sends it with Content-Type image/svg+xml",
+      "between": "fetchStats (src/fetchStats.js:62-66) sends {login: username} to GitHub and throws Error(res.data.errors[0].message || 'Could not fetch user'); GitHub's error repeats the unknown login, so the query value returns inside err.message and api/index.js:37-38 passes it to renderError. Second explanation: sink (the SVG is built as a template literal, not by a template engine).",
+      "fix": "encodeHTML(message) before it goes into the tspan",
+      "probe": "const express = require('express');\n\nfunction renderError(message) {\n  return `<svg xmlns=\"http://www.w3.org/2000/svg\"><text>${message}</text></svg>`;\n}\n\nconst app = express();\napp.get('/stats', (req, res) => {\n  res.set('Content-Type', 'image/svg+xml');\n  try {\n    throw Error(`Could not resolve to a User with the login of '${req.query.username}'`);\n  } catch (err) {\n    res.send(renderError(err.message));\n  }\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-2gp3-6c9p-jp7w",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "src/node/routes/errors.ts:32 (fix parent) err.message - the message the throwing route or fs call built from the request path (fs errors quote the requested path), so the request value arrives inside the error object",
+      "sink": "src/node/routes/errors.ts:28-32 replaceTemplates(req, content).replace(/{{ERROR_BODY}}/g, err.message) with res.type('text/html') - the placeholder in src/browser/pages/error.html is filled with the raw message as HTML",
+      "between": "the page is read at :27, then {{ERROR_TITLE}}, {{ERROR_HEADER}} and {{ERROR_BODY}} are filled by plain string replaces; no escaping on the way. Second explanation: template (a placeholder in an HTML page replaced by hand).",
+      "fix": "escapeHtml(err.message) before the replacement",
+      "probe": "const express = require('express');\nconst {promises: fs} = require('fs');\nconst path = require('path');\n\nconst app = express();\napp.get('/files/*', async (req, res, next) => {\n  next(await fs.readFile(path.join('/srv', req.path)).catch(e => e));\n});\napp.use(async (err, req, res) => {\n  const page = await fs.readFile('pages/error.html', 'utf8');\n  res.type('text/html').send(page.replace(/{{ERROR_BODY}}/g, err.message));\n});",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-3fwq-qv5v-2wxf",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "nodeserver.js:31 (fix parent) host.frondend + (request.url.replace('/', '') || host.baseTemp) - request.url of the plain http.createServer handler (Node's raw URL, not a framework route)",
+      "sink": "nodeserver.js:85 fs.readFile(nowTemp, ...) (also fs.exists at :81) - nowTemp is the template file path, so ../ segments read any file on disk",
+      "between": "host comes from the config module by matching request.headers.host; `.replace('/', '')` strips one leading slash and looks like sanitisation but leaves .. sequences; httpHead = header(nowTemp) (:32) then the fs.exists/fs.readFile pair. Second explanation: functions.",
+      "fix": "adds .replace(/\\.\\./g, '') to the joined path",
+      "probe": "const http = require('http');\nconst fs = require('fs');\n\nconst base = '/srv/templates/';\n\nhttp.createServer((req, res) => {\n  const file = base + req.url.replace('/', '');\n  fs.readFile(file, (err, data) => {\n    if (err) {\n      res.writeHead(500);\n      return res.end('error');\n    }\n    res.writeHead(200);\n    res.end(data);\n  });\n}).listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-92263",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        78
+      ],
+      "category": "source",
+      "source": "SparkyFitnessServer/routes/backupRoutes.ts:173 (fix parent) const originalFileName = req.file.originalname - multer's uploaded backup filename, chosen by the client",
+      "sink": "SparkyFitnessServer/services/backupService.ts:205 (fix parent) executeCommand(`tar -xzf ${backupFilePath} -C ${tempRestoreDir}`), whose body is exec(command, ...) at :35 - a shell string, so a name with $(...) or backticks runs commands (the commit message: argv-based execFile for security)",
+      "between": "backupRoutes.ts:176 const finalBackupPath = path.join(BACKUP_DIR, originalFileName), copyFile, then performRestore(backupFilePath) hands the path to backupService, which composes the tar command with it; nothing quotes the name. Second explanation: functions.",
+      "fix": "server-generated name for the upload plus execFile(file, args) instead of exec(string)",
+      "probe": "const express = require('express');\nconst multer = require('multer');\nconst {exec} = require('child_process');\nconst path = require('path');\n\nconst app = express();\napp.post('/restore', multer({dest: '/tmp/uploads'}).single('backup'), (req, res) => {\n  const file = path.join('/srv/backups', req.file.originalname);\n  exec(`tar -xzf ${file} -C /srv/restore`, (err) => res.end(err ? 'err' : 'ok'));\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-34163",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "sink",
+      "source": "projects/app/src/pages/api/core/app/mcpTools/getTools.ts:34 (fix parent) const {url, headerSecret} = GetMcpToolsBodySchema.parse(req.body) - a JSON body field of the Next.js API route (runTool.ts:54 is the same), the MCP server URL the app author enters",
+      "sink": "getTools.ts:40-44 new MCPClient({url, headers: getSecretValue(...)}) - the MCP client dials that URL (SSE/HTTP) from the server, so it reaches internal services",
+      "between": "the zod-parsed body goes straight into the client; the fix inserts `if (await isInternalAddress(url)) return Promise.reject(PRIVATE_URL_TEXT)` before the client is built (getTools.ts:37, runTool.ts:56). The httpTools/runTool.ts change in the same commit only adds authCert (missing auth, not this flow). Second explanation: source (a body field parsed by zod).",
+      "fix": "rejects private/internal addresses before the MCP client is built",
+      "probe": "import type {NextApiRequest, NextApiResponse} from 'next';\nimport {Client} from '@modelcontextprotocol/sdk/client/index.js';\nimport {SSEClientTransport} from '@modelcontextprotocol/sdk/client/sse.js';\n\nexport default async function handler(req: NextApiRequest, res: NextApiResponse) {\n  const {url} = req.body;\n  const client = new Client({name: 'app', version: '1.0.0'});\n  await client.connect(new SSEClientTransport(new URL(url)));\n  res.json(await client.listTools());\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-23485",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "server/routerTrpc/public.ts:232 (fix parent) input.filePath of the public musicMetadata tRPC procedure - the procedure input, an object the caller sends",
+      "sink": "server/routerTrpc/public.ts:236-240 input.filePath.replace('/api/file', UPLOAD_FILE_PATH) then fs.promises.readFile(realFilePath) - reads any file on disk",
+      "between": "the tRPC input reaches the resolver as `input`; only the string replace runs before readFile, and ../../ segments keep the path outside UPLOAD_FILE_PATH (the fix adds FileService.validateAndResolvePath and a containment test). Second explanation: framework (tRPC procedure input, not an HTTP handler codewatch knows).",
+      "fix": "relativises the path, resolves it and refuses one outside the upload directory",
+      "probe": "import {initTRPC} from '@trpc/server';\nimport * as fs from 'fs';\n\nconst t = initTRPC.create();\nconst UPLOAD = '/srv/uploads';\n\nexport const router = t.router({\n  musicMetadata: t.procedure\n    .input((v) => v as {filePath: string})\n    .query(async ({input}) => {\n      const real = input.filePath.replace('/api/file', UPLOAD);\n      return fs.promises.readFile(real);\n    }),\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-22249",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "archive",
+      "source": "apps/server/src/integrations/import/utils/file.utils.ts:107 (fix parent) const name = entry.fileName.toString('utf8') - the member name inside the zip uploaded for import",
+      "sink": "file.utils.ts:126 const fullPath = path.join(target, safe) and the stream that writes the entry there - a member named ../../x lands outside target",
+      "between": "only `safe = name.replace(/^\\/+/, '')` (strip leading slashes) runs before path.join; nothing resolves the result against target (the fix adds yauzl.validateFileName plus a resolved-path containment test). Second explanation: check.",
+      "fix": "validates each zip entry name and refuses any resolved path outside the target directory",
+      "probe": "const fs = require('fs');\nconst path = require('path');\nconst yauzl = require('yauzl');\n\nfunction extract(zipPath, target) {\n  yauzl.open(zipPath, {lazyEntries: true}, (err, zipfile) => {\n    zipfile.on('entry', (entry) => {\n      const safe = entry.fileName.replace(/^\\/+/, '');\n      const dest = path.join(target, safe);\n      zipfile.openReadStream(entry, (err, stream) => {\n        stream.pipe(fs.createWriteStream(dest));\n        zipfile.readEntry();\n      });\n    });\n    zipfile.readEntry();\n  });\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-73084",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79,
+        94
+      ],
+      "category": "sink",
+      "source": "packages/server/api/src/app/app.ts:178 (fix parent) const params = {code: request.query.code} - the query string of the OAuth redirect endpoint on the Fastify app",
+      "sink": "app.ts:187-189 reply.type('text/html').send(`<script>... { 'code': ${JSON.stringify(params.code)} },'*')</script>...`) - a template literal written as HTML; a code containing </script> breaks out of the script block and runs in the redirect page (CWE-79, and 94 for the injected script)",
+      "between": "nothing but JSON.stringify, which does not escape < or </script>; the fix replaces the string with a constant Mustache template plus a CSP and nosniff header. Second explanation: functions.",
+      "fix": "renders a constant HTML template with Mustache (HTML-escaped) and adds a Content-Security-Policy",
+      "probe": "const Fastify = require('fastify');\n\nconst app = Fastify();\n\napp.get('/redirect', async (request, reply) => {\n  const {code} = request.query;\n  return reply\n    .type('text/html')\n    .send(`<script>if (window.opener) window.opener.postMessage({code: ${JSON.stringify(code)}}, '*')</script>`);\n});\n\napp.listen({port: 3000});",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-72736",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        77
+      ],
+      "category": "functions",
+      "source": "apps/dokploy/server/api/routers/cluster.ts:52 (fix parent) input.nodeId - a z.string() with no regex on the cluster tRPC router (removeWorker); registryTag is built from username and imagePrefix in packages/server/src/utils/cluster/upload.ts:127",
+      "sink": "cluster.ts:53-54 `docker node update --availability drain ${input.nodeId}` / `docker node rm ${input.nodeId} --force` passed to execAsyncRemote(serverId, command); upload.ts:133-140 `docker tag ${imageName} ${registryTag}` and `docker push ${registryTag}` - both run by the wrappers in packages/server/src/utils/process/execAsync.ts (promisified child_process.exec at :10, ssh conn.exec at :159)",
+      "between": "the command string is assembled in the router/upload module and executed by the wrapper in another package; nothing quotes the interpolated values before the fix. Second explanation: framework (tRPC input).",
+      "fix": "shell-quotes every interpolated value with shell-quote's quote()",
+      "probe": "const {exec} = require('child_process');\nconst {initTRPC} = require('@trpc/server');\nconst {z} = require('zod');\n\nconst t = initTRPC.create();\n\nexport const clusterRouter = t.router({\n  removeWorker: t.procedure\n    .input(z.object({nodeId: z.string()}))\n    .mutation(({input}) => {\n      const command = `docker node rm ${input.nodeId} --force`;\n      exec(command, (err, stdout) => console.log(stdout, err));\n    }),\n});",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df80b4df7ffeV3uCTGYeUI5O4Y",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 43,
+    "tool_calls": 49,
+    "tool_errors": 0,
+    "chars_read": 273097,
+    "tokens": {
+      "input": 111656,
+      "cache_read": 4343168,
+      "output": 35092,
+      "reasoning": 0
+    },
+    "usd": 0.051
+  }
+}
