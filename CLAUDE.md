@@ -41,6 +41,13 @@ real name, and never add one to commit messages, files or pull requests.
   a probe. They come to the `research-gaps` branch and the pull request "Gap notes waiting to be read";
   `reviewed.py pending --gaps` lists them. Treat a note as a lead and check its quotes against the diff before
   writing a rule from it; mark the file read (status "read DATE (PLAN.md step N)") and merge as above.
+- Branches. `detection-gaps` is where all work lands and what the nightly measures. `research` and `research-gaps`
+  carry only the runners' files and reach `detection-gaps` only through their pull requests. Merge each pull request
+  as soon as its review is committed and CI passes, in the same session: a review left unmerged keeps the branch
+  ahead, and the runner keeps adding to it. A review that a new batch overtook before the merge (the head moved
+  while CI ran) reads that batch too, then merges with `--match-head-commit`. `main` has no commits of its own: at
+  least weekly, after a nightly whose numbers didn't regress, fast-forward it (`git push origin
+  origin/detection-gaps:main`, which refuses anything but a fast-forward) and say so in the morning summary.
 - Blind sets (`~/.cache/codewatch/blind*`, the `cve-pairs-blind-*` suites) are scanned once, at the end of a round,
   and never used to adjust rules. Held-out suites (SecurityEval Copilot/InCoder, Vulnerable-Code-Snippets JS) are
   measured, never tuned on.
