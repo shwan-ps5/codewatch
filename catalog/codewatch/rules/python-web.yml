@@ -83,6 +83,57 @@ rules:
           - metavariable-regex: {metavariable: $ROUTE, regex: '^(route|get|post|put|patch|delete|api_route)$'}
           - metavariable-regex: {metavariable: $PATH, regex: '^[rbuf]*[''"]/'}
           - focus-metavariable: $PARAM
+      # Frappe (ERPNext, HRMS): the request's form as frappe.form_dict, and the arguments of a @frappe.whitelist()
+      # method, which the client calls by name at /api/method/... with any arguments it likes. Not numeric or
+      # boolean ones, which Frappe converts by their annotation. Frappe CVE-2026-55823 and CVE-2026-55796 (gap notes,
+      # PLAN.md step 128).
+      - pattern: frappe.form_dict
+      - pattern: frappe.local.form_dict
+      # A script report's filters, which the report page sends (frappe.desk.query_report.run calls the module's
+      # execute(filters)): HRMS CVE-2026-55796. Only in a module that imports frappe.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import frappe
+                  ...
+                  def execute($FILTERS=None):
+                    ...
+              - pattern-inside: |
+                  import frappe
+                  ...
+                  def execute($FILTERS):
+                    ...
+          - metavariable-regex: {metavariable: $FILTERS, regex: '^filters$'}
+          - focus-metavariable: $FILTERS
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  @frappe.whitelist(...)
+                  def $METHOD(..., $PARAM, ...):
+                    ...
+              - pattern-inside: |
+                  @frappe.whitelist
+                  def $METHOD(..., $PARAM, ...):
+                    ...
+          - pattern-not-inside: |
+              def $METHOD(..., $PARAM: int, ...):
+                ...
+          - pattern-not-inside: |
+              def $METHOD(..., $PARAM: int = $DEFAULT, ...):
+                ...
+          - pattern-not-inside: |
+              def $METHOD(..., $PARAM: float, ...):
+                ...
+          - pattern-not-inside: |
+              def $METHOD(..., $PARAM: float = $DEFAULT, ...):
+                ...
+          - pattern-not-inside: |
+              def $METHOD(..., $PARAM: bool, ...):
+                ...
+          - pattern-not-inside: |
+              def $METHOD(..., $PARAM: bool = $DEFAULT, ...):
+                ...
+          - focus-metavariable: $PARAM
       # An MCP server's tool arguments (FastMCP, mcp.server.fastmcp: @mcp.tool / @mcp.tool()): the model chooses
       # them, and whatever text it reads can steer it, so they're as untrusted as a request's. Text-typed only, as
       # for routes. Vibe-Trading GHSA-mjrq-xg2m-qg94 (a run id joined into a path).
@@ -697,6 +748,15 @@ rules:
                         ...
                         $X = $SAFE
                       ...
+                  # ...or Django's old same-origin test said no and replaced it: `if redirect_to and not
+                  # same_origin(request.build_absolute_uri(redirect_to), request.build_absolute_uri()): redirect_to =
+                  # None` (Horizon GHSA-j72v-mpwp-rg79's fix, PLAN.md step 128). An `and` that skips it only skips
+                  # an empty value.
+                  - pattern-inside: |
+                      if <... not django.utils.http.same_origin(<... $X ...>, ...) ...>:
+                        ...
+                        $X = $SAFE
+                      ...
                   # ...or a named check that said no replaces it: `if nxt is None or not _is_safe_redirect_url(nxt):
                   # nxt = url_for("index")` (pgAdmin GHSA-7r93-vp6c-cw5m's fix). Not when an `and` can skip the check.
                   - patterns:
@@ -748,6 +808,15 @@ rules:
                       if <... $X in $ALLOWED ...>:
                         ...
               - pattern: $X
+              # Not in the branch where a membership check said no, which `$X in $ALLOWED` above also matches:
+              # `if preset_id not in PRESETS: return HTMLResponse(f"Unknown preset: {preset_id}")`
+              # (nextcloud-mcp-server's gap note, PLAN.md step 128).
+              - pattern-not-inside: |
+                  if <... $X not in $ALLOWED ...>:
+                    ...
+              - pattern-not-inside: |
+                  if <... not $X in $ALLOWED ...>:
+                    ...
               # Never the request's own mappings: `if not ("hitId" in request.args): raise` checks that a key is
               # there and says nothing about the values (psiturk GHSA-9mq4-9556-6qxq lost every finding below it).
               - metavariable-regex:
@@ -778,6 +847,10 @@ rules:
                         flask.abort(...)
                       ...
               - pattern: $X
+              # Not in the branch where it didn't match: `if name != "index.html": return f"No page {name}"`.
+              - pattern-not-inside: |
+                  if $X != $EXPECTED:
+                    ...
               # Known to the server: not a bare variable or anything from the request (vulpy:
               # `if password != password_again: return` compares two request values).
               - metavariable-regex:
@@ -902,7 +975,9 @@ rules:
                   # _get_tracking_store().get_run(run_id)), but not on the request.
                   # An ORM query run to its row (Model.objects.filter(...).first(), Users.query.filter_by(...).first(),
                   # manager.only(...).filter(id=x).first()) is the stored row too.
-                  regex: '(?s)^((self\.|(?!((flask\.)?request|self\.request|req)\b)[\w.]+(\(\))?\.)?_?(cached_)?(get|fetch|load|find|lookup)_(?!(json|data|params?|args?|query|queries|headers?|cookies?|body|form|forms|fields?|values?|inputs?|text|str|string|url|uri|path|file|filename|name|key|id|var|env|config|setting|content|request|req|payload|serializer|success|redirect|next|return|kwargs)(_|$))\w+|(?!((flask\.)?request|self\.request|req)\.)\w+(\.\w+)*\.(objects\.|query\.|(only|filter|filter_by|exclude|where|select_related|prefetch_related|order_by)\(.*\)\.(first|last|get|one|one_or_none|scalar_one_or_none|first_or_404|get_or_404|get_or_create|update_or_create)$).*)$'
+                  # Nor helpers that build a query from the value: get_conditions(filters), get_where_clause(...)
+                  # (HRMS CVE-2026-55796, an ERPNext report idiom; PLAN.md step 128).
+                  regex: '(?s)^((self\.|(?!((flask\.)?request|self\.request|req)\b)[\w.]+(\(\))?\.)?_?(cached_)?(get|fetch|load|find|lookup)_(?!(json|data|params?|args?|query|queries|headers?|cookies?|body|form|forms|fields?|values?|inputs?|text|str|string|url|uri|path|file|filename|name|key|id|var|env|config|setting|content|request|req|payload|serializer|success|redirect|next|return|kwargs|conditions?|filters?|where|clauses?|sql)(_|$))\w+|(?!((flask\.)?request|self\.request|req)\.)\w+(\.\w+)*\.(objects\.|query\.|(only|filter|filter_by|exclude|where|select_related|prefetch_related|order_by)\(.*\)\.(first|last|get|one|one_or_none|scalar_one_or_none|first_or_404|get_or_404|get_or_create|update_or_create)$).*)$'
           # Rows a Django query returns, wherever they're used (recipes: `for rule in
           # Automation.objects.filter(space=request.space)...`). The query's own arguments can't be a
           # project function's sink; raw() and extra() take SQL and stay out.
@@ -1060,6 +1135,9 @@ rules:
               - pattern: $QS.extra(where=$SQL, ...)
               - pattern: sqlalchemy.text($SQL)
               - pattern: $CONN.exec_driver_sql($SQL, ...)
+              # Frappe runs the string as given; values= binds values (CVE-2026-55823, CVE-2026-55796).
+              - pattern: frappe.db.sql($SQL, ...)
+              - pattern: frappe.db.sql(query=$SQL, ...)
               # pandas runs the string as given; params= binds values.
               - pattern: pandas.read_sql($SQL, ...)
               - pattern: pandas.read_sql_query($SQL, ...)
@@ -1801,6 +1879,9 @@ rules:
           - pattern-either:
               - pattern: flask.redirect($URL, ...)
               - pattern: redirect($URL, ...)
+              # Called through its module: `from django import shortcuts` then shortcuts.redirect(next)
+              # (Horizon GHSA-j72v-mpwp-rg79, PLAN.md step 128).
+              - pattern: django.shortcuts.redirect($URL, ...)
               - pattern: django.http.HttpResponseRedirect($URL, ...)
               - pattern: django.http.HttpResponsePermanentRedirect($URL, ...)
               - pattern: starlette.responses.RedirectResponse($URL, ...)
@@ -1915,6 +1996,9 @@ rules:
               - pattern: shelve.open($DATA, ...)
               - pattern: jsonpickle.decode($DATA, ...)
               - pattern: dill.loads($DATA, ...)
+              # cloudpickle's loads is pickle's (fugue's RPC server, GHSA-xv5p-fjw5-vrj6).
+              - pattern: cloudpickle.loads($DATA, ...)
+              - pattern: cloudpickle.load($DATA, ...)
               - patterns:
                   - pattern: yaml.load($DATA, ...)
                   - pattern-not: yaml.load($DATA, Loader=yaml.SafeLoader, ...)
