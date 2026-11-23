@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-23-5",
+  "status": "research only: not read yet",
+  "method": "Rows 367-381 of ~/codewatch-research/gaps/misses.tsv: the python-web group (cve-pairs-python-frontend), taken first as section 9 orders (27 such rows in the file, then 100 javascript and 265 php). Read each fix commit's diff (source files only) and, where the diff did not show the source or the sink, the files at the fix's parent through GitHub's contents API: dashboard.js and StreamingChart.jsx/tooltip.ts/search.js/action_command_notification.js/ShowArtifactLoggedModelView.tsx/misc.js/author.html/horizon.js/logs_page.html/object_list.html/about.html/listing.js/trigger.html/views.py/ti_log.js. 15 cases noted; all 15 were unseen in the earlier gap-notes files. The 12 remaining python-web rows, the 100 javascript rows and the 265 php rows are left.",
+  "notes": [
+    {
+      "id": "GHSA-2rrx-pphc-qfv9",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "the text of a Query Tool / View-Edit Data grid cell or column label, handed to web/pgadmin/static/js/utils.js:599 measureText(text, font) before the grid is laid out; the caller is outside the diff and a code search of the repository did not surface it",
+      "sink": "web/pgadmin/static/js/utils.js:605 measureText.ele.innerHTML = text - the measured text is parsed as HTML in a hidden div",
+      "between": "measureText only measures with getBoundingClientRect(); the same string is drawn into the grid afterwards. Nothing escapes or strips it on the way. The fix changes the assignment to textContent so the measurement div never parses the text. Second explanation: sink (a measuring helper is not an obvious sink).",
+      "fix": "uses textContent instead of innerHTML when measuring text",
+      "probe": "export function measureText(text, font) {\n  if (!measureText.ele) {\n    measureText.ele = document.createElement('div');\n    measureText.ele.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${font}`;\n    document.body.appendChild(measureText.ele);\n  }\n  measureText.ele.innerHTML = text;\n  return measureText.ele.getBoundingClientRect().width;\n}\n\nfunction gridColumnWidth(cellText) {\n  return measureText(cellText, '12px sans-serif');\n}\n\n// cellText comes from the result set of the user's query",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-3c5x-4hvx-qrrr",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "webapp/content/js/dashboard.js:2887-2898 applyState() copies a loaded dashboard's saved timeConfig into TimeRange (relativeStartQuantity, relativeStartUnits, relativeUntilQuantity, relativeUntilUnits) - values another user saved through the dashboard save endpoint",
+      "sink": "dashboard.js:1184-1195 getTimeText() concatenates those values into a label, and dashboard.js:1198 updateTimeText() pushes it into the toolbar TextItem (tbtext at :556-560), which Ext renders as HTML",
+      "between": "dashboard load -> applyState(state) -> timeRangeUpdated()/updateTimeText() -> toolbar setText; there is no encoding anywhere. The fix runs the four fields through htmlStriped() (htmlEncode plus spaces to underscores) before storing them in TimeRange, tightens the quantity regex to /^\\d+$/, and has the views reject dashboard names with restricted symbols. Second explanation: front-end.",
+      "fix": "HTML-encodes the time-range fields before they are saved or rendered, and restricts the dashboard-name route parameter",
+      "probe": "var TimeRange = {type: 'relative', relativeStartQuantity: '1', relativeStartUnits: 'days',\n                 relativeUntilQuantity: '', relativeUntilUnits: ''};\n\nfunction getTimeText() {\n  return 'Now showing the past ' + TimeRange.relativeStartQuantity + ' ' + TimeRange.relativeStartUnits;\n}\n\nfunction updateTimeText() {\n  graphArea.getTopToolbar().get('time-range-text').setText(getTimeText());\n}\n\nfunction applyState(state) {\n  TimeRange.relativeStartQuantity = state.timeConfig.relativeStartQuantity;\n  TimeRange.relativeStartUnits = state.timeConfig.relativeStartUnits;\n  updateTimeText();\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-52gm-qmg3-r4qp",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "airflow/www/static/js/ti_log.js:100-122 the log lines fetched for a task instance (the log endpoint returns the task's log text); every line goes through the URL linkifier",
+      "sink": "ti_log.js:120 .replace(urlRegex, (url) => `<a href=\"${url}\" target=\"_blank\">${url}</a>`) followed by :122 logBlock.innerHTML += linkifiedMessage - a quote inside a URL in the log line leaves the href and adds attributes",
+      "between": "Logs/utils.ts:115-120 is the same path in the current log view (ansiUp.ansi_to_html then the urlRegex replace). Nothing escapes the URL before the template literal. The fix does not escape: it sets ansiUp.url_allowlist = {} in both renderers so AnsiUp stops producing links. Second explanation: sink (innerHTML built from a regex replacement).",
+      "fix": "turns off AnsiUp linkification (url_allowlist = {}) in both log renderers",
+      "probe": "const ansiUp = new AnsiUp();\nconst urlRegex = /http(s)?:\\/\\/[^\\s]+/g;\n\nfunction renderLog(lines, logBlock) {\n  for (const message of lines) {\n    const linkified = ansiUp.ansi_to_html(message)\n      .replace(urlRegex, (url) => `<a href=\"${url}\" target=\"_blank\">${url}</a>`);\n    logBlock.innerHTML += `${linkified}\\n`;\n  }\n}\n\nfetch(`/log?task_id=${taskId}&try_number=${tryNumber}`)\n  .then((r) => r.text())\n  .then((t) => renderLog(t.split('\\n'), document.getElementById('log')));",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-65xw-pcqw-hjrh",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "airflow/www/views.py:1685 origin = get_safe_url(request.values.get('origin')) - a request GET/POST value, kept when it is same-origin or starts with /",
+      "sink": "airflow/www/templates/airflow/trigger.html:66 onclick=\"location.href = '{{ origin }}'; return false\" - the value sits in a JavaScript string inside an HTML attribute",
+      "between": "the trigger view passes origin into the template for every render; Django autoescaping turns ' into &#x27;, but the HTML parser decodes entities in the attribute before the JavaScript is parsed, so a quote in an allowed same-origin path closes the string and the rest of the value runs as script. The fix makes the cancel button a plain <a href=\"{{ origin }}\">, where HTML escaping is the correct context. Second explanation: source.",
+      "fix": "replaces the onclick JavaScript with a plain anchor href on the cancel button",
+      "probe": "from flask import request, render_template\nfrom safe_url import get_safe_url\n\n@app.route('/trigger')\ndef trigger():\n    origin = get_safe_url(request.values.get('origin'))\n    return render_template('trigger.html', origin=origin)\n\n# trigger.html\n<button type=\"button\" class=\"btn\"\n        onclick=\"location.href = '{{ origin }}'; return false\">Cancel</button>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-6hcj-qrw3-m66q",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "frontend/src/charts/tooltip.ts:42/81 the tooltip getter built by chart code from ledger data: frontend/src/charts/ScatterPlot.svelte:54 returns `${d.description}<em>${day(d.date)}</em>`, bar.ts and line.ts return account names and amounts; the ledger is loaded over fava's API and the strings are stored in the ledger file",
+      "sink": "frontend/src/charts/tooltip.ts:81 t.innerHTML = content in positionedTooltip (and :42 t.innerHTML = getter() in followingTooltip)",
+      "between": "the chart formatters hand an HTML string to the shared tooltip, which writes it raw; no escaping of the account name, description or label. The fix changes the formatters to return DOM nodes (domHelpers.t/em/br, built with textContent) and the tooltips to t.replaceChildren(...), and also switches sidebar/index.ts and keyboard-shortcuts.ts to textContent. Second explanation: stored.",
+      "fix": "builds tooltip contents as DOM nodes with textContent instead of HTML strings",
+      "probe": "function tooltip() {\n  return document.getElementById('tooltip');\n}\n\nexport function followingTooltip(node, text) {\n  node.addEventListener('mouseenter', () => {\n    tooltip().innerHTML = text();\n  });\n}\n\nconst datum = {description: '<img src=x onerror=alert(1)>', date: '2024-01-01'};\nfollowingTooltip(el, () => `${datum.description}<em>${datum.date}</em>`);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-6wxc-8mgq-w26m",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "weblate/static/editor/tools/search.js:113-119 the JSON from GET /api/units/?q=... - result.source (a translation unit's source string) and result.context, typed and stored by translators, plus result.web_url",
+      "sink": "search.js:120-129 the resultHtml template literal interpolates `${key}`, `${source.toString()}` and href `${url}`, and $searchPreview.append(resultHtml) parses it as HTML",
+      "between": "no escaping on the way; the url is only made relative with a regex; the preview is rebuilt for every user who types in the search box. The fix creates the elements with document.createElement and textContent, builds the query with URLSearchParams, and accepts a result URL only through WLT.URLs.getLocalPath. Second explanation: stored.",
+      "fix": "constructs the search preview from DOM nodes with textContent and validates result URLs",
+      "probe": "function showResults(results, preview) {\n  for (const result of results) {\n    const key = result.context;\n    const source = result.source;\n    const url = result.web_url.replace(/^[a-zA-Z]+:\\/\\/[^/]+\\//, '/');\n    const resultHtml = `\n      <a href=\"${url}\" target=\"_blank\">\n        <small>${key}</small>\n        <div>${source.toString()}</div>\n      </a>`;\n    preview.append(resultHtml);\n  }\n}\n\n// results come from GET /api/units/?q=<typed query>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-crvm-xjhm-9h29",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "src/octoprint/plugins/action_command_notification/static/js/action_command_notification.js:70-91 data.message from a plugin message pushed by the printer (the text of an action command; the same text is stored in the plugin's notification list and served by its API)",
+      "sink": "action_command_notification.js:89-91 new PNotify({title: ..., text: data.message, ...}) - PNotify renders text as HTML",
+      "between": "the socket handler checks only the plugin name and that popups are enabled; nothing escapes the message. The fix wraps data.message in _.escape, and escapes the prompt text and buttons in the sibling action_command_prompt plugin. Second explanation: source (a printer/plugin message, not a browser request).",
+      "fix": "HTML-escapes the notification text and prompt buttons before PNotify renders them",
+      "probe": "function onPluginMessage(plugin, data) {\n  if (plugin !== 'action_command_notification') return;\n  if (data.message && popupsEnabled()) {\n    new PNotify({\n      title: gettext('Printer Notification'),\n      text: data.message,\n      hide: false,\n    });\n  }\n}\n\n// the printer sends: {\"plugin\":\"action_command_notification\",\"data\":{\"message\":\"<img src=x onerror=alert(1)>\"}}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-fh64-r2vc-xvhr",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "mlflow/server/js/src/experiment-tracking/components/artifact-view-components/ShowArtifactLoggedModelView.tsx:435-450 the text of a run's MLmodel artifact, fetched with getArtifact (default getArtifactContent from ArtifactUtils) from the artifact API - a file another user uploaded to the run",
+      "sink": "ShowArtifactLoggedModelView.tsx:450 yaml.load(response) parses the artifact text with the unsafe js-yaml loader; the same call is in experiment-logged-models/hooks/useValidateLoggedModelSignature.ts:17",
+      "between": "fetchArtifactUnified -> getArtifact -> raw text -> yaml.load; the parsed object is used to render the model view. No validation of YAML tags anywhere. The fix swaps load for safeLoad in both files. Second explanation: stored.",
+      "fix": "uses yaml.safeLoad instead of yaml.load on the MLmodel artifact text",
+      "probe": "import yaml from 'js-yaml';\n\nconst getArtifact = (path) =>\n  fetch(`/api/2.0/mlflow-artifacts/artifacts/${path}`).then((r) => r.text());\n\nfunction fetchLoggedModelMetadata(path) {\n  getArtifact(`${path}/MLmodel`).then((response) => {\n    const parsedJson = yaml.load(response);\n    if (parsedJson.signature) {\n      render(parsedJson.signature);\n    }\n  });\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-fmqq-25x9-c6hm",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "the data-confirm message built in the templates from stored titles: indico/modules/categories/templates/management/base.html:5-9 uses category.title, indico/modules/attachments/templates/_attachments.html:54-57 uses attachment.title, indico/modules/events/layout/templates/_menu.html:37-40 the menu entry title - content a user with submission privileges creates",
+      "sink": "indico/web/client/js/jquery/utils/misc.js:15 message = $('<div>', {width: 400, html: message}) in confirmPrompt - jQuery parses the confirmation message as HTML",
+      "between": "the JS confirmation handler reads the data-confirm attribute and passes it to confirmPrompt (the templates before the fix forceescape it and put <br> in the message, so it was meant as HTML). The fix uses text: message, so tags are displayed instead of parsed, and removes the <br>s from the prompts. Second explanation: stored.",
+      "fix": "renders confirmation messages as text (html: -> text:) and removes the <br> markup from the prompts",
+      "probe": "global.confirmPrompt = function (message, title) {\n  var dfd = $.Deferred();\n  message = $('<div>', {width: 400, html: message});\n  new ConfirmPopup(title || 'Please confirm', message, function (confirmed) {\n    if (confirmed) dfd.resolve();\n  });\n};\n\nvar title = '<img src=x onerror=alert(1)>';\n$(document).on('click', '.js-delete', function () {\n  confirmPrompt('Are you sure you want to remove \"' + title + '\"?');\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-h56g-v4vp-q9q6",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "cps/templates/author.html:8/12/101 author.name and author.about, and entry.title at :39 - metadata stored in the library database, edited through the book/author edit forms or imported from a metadata file",
+      "sink": "cps/templates/author.html:12 <p>{{author.about|safe}}</p>, :8 title=\"{{author.name|safe}}\" alt=\"{{author.name|safe}}\" and :101 {{ author.name.replace('|',',')|safe }} - |safe turns autoescaping off",
+      "between": "the author page is rendered for any visitor of the library and other_books entries use entry.title|safe; nothing sanitizes the metadata. The fix removes |safe from all four places (one template plus a test file in the diff). Second explanation: stored.",
+      "fix": "removes |safe from the author and book title fields so Jinja escapes them",
+      "probe": "{% if author is not none %}\n<section class=\"author-bio\">\n  {% if author.image_url is not none %}\n  <img title=\"{{ author.name|safe }}\" src=\"{{ author.image_url }}\"\n       alt=\"{{ author.name|safe }}\" class=\"author-photo pull-left\">\n  {% endif %}\n  {% if author.about is not none %}\n  <p>{{ author.about|safe }}</p>\n  {% endif %}\n</section>\n{% endif %}\n\n{% if other_books %}\n<h3>More by {{ author.name|safe }}</h3>\n{% endif %}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-j772-hpmw-32rm",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "horizon/static/horizon/js/horizon.js:275-287 the console log text returned by the AJAX GET to the instance console form's action (the /console endpoint answering with length=35) - the log lines are rendered server-side from the instance's console output",
+      "sink": "horizon.js:287 $('pre.logs').html(response_body) - jQuery parses the response body as HTML",
+      "between": "the success handler writes the whole answer into the log pane with no escaping; the button handler that refreshes the log runs on the instance detail page. The fix changes .html(response_body) to .text(response_body). Second explanation: stored.",
+      "fix": "inserts the console log with .text() instead of .html()",
+      "probe": "function refreshConsole(form_element) {\n  $.ajax({\n    url: $(form_element).attr('action'),\n    data: 'length=35',\n    method: 'get',\n    success: function (response_body) {\n      $('pre.logs').html(response_body);\n    }\n  });\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-jm3m-wr3p-hjrq",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "modoboa/core/templates/core/logs_page.html:8 l.message - log entries recorded through modoboa's logger (the log writer that puts event and request data, such as a submitted username, into the message is outside the diff)",
+      "sink": "logs_page.html:8 {{ l.message|tohtml|safe }} - the tohtml filter plus |safe write the stored message as raw HTML",
+      "between": "the logs page lists the entries for an administrator; nothing sanitizes the message. The fix drops both filters and renders {{ l.message }}; the same commit also escapes the account-deletion confirmation title in modoboa/admin/static/admin/js/admin.js and the autocompleter values. Second explanation: stored.",
+      "fix": "removes tohtml|safe from the log message, escaping it",
+      "probe": "{% for l in logs %}\n<tr>\n  <td>{{ l.date_created }}</td>\n  <td>{{ l.level }}</td>\n  <td>{{ l.logger }}</td>\n  <td>{{ l.message|tohtml|safe }}</td>\n</tr>\n{% endfor %}\n\n# the log line is written elsewhere from event data, e.g.\n# LogEntry.objects.create(message=f'Login failed for {username}')",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-jxgr-gcj5-cqqg",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "nautobot/core/templates/generic/object_list.html:68-90 filter_params, built from the object-list view's GET query parameters (the advisory's changelog names user-provided query parameters), so field.name and value.name echo the request",
+      "sink": "object_list.html:77 data-field-value={{ field.name }}, :88 data-field-parent={{ field.name }} and :89 data-field-value={{ value.name }} - unquoted attribute values",
+      "between": "Django autoescaping is on, but an unquoted attribute ends at the first space, so a parameter such as ?name=x%20onmouseover=alert(1) escapes the value and adds an attribute. The fix quotes the three attributes; forms.js also rebuilds the query string from URLSearchParams. Second explanation: source.",
+      "fix": "quotes the data-field-* attributes so an escaped value cannot add attributes",
+      "probe": "{% for field in filter_params %}\n<span class=\"filter-selection\">\n  <b>{{ field.display }}:</b>\n  <span class=\"remove-filter-param\"\n        data-field-type=\"parent\"\n        data-field-value={{ field.name }}>x</span>\n  <ul>\n    {% for value in field.values %}\n    <li>\n      <span class=\"remove-filter-param\"\n            data-field-type=\"child\"\n            data-field-parent={{ field.name }}\n            data-field-value={{ value.name }}>x</span>{{ value.display }}\n    </li>\n    {% endfor %}\n  </ul>\n</span>\n{% endfor %}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-mfv8-q39f-mgfg",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "invenio_communities/templates/invenio_communities/about.html:30 community.page, and portalbox_main.html:35 community.description / :48 curation_policy - HTML fields stored on the community record and saved by a community manager through the community form",
+      "sink": "about.html:30 {{community.page|safe}} and portalbox_main.html:35 {{ community.description|safe }} / :48 {{ community.curation_policy|safe }} - |safe renders the stored HTML",
+      "between": "the about page and the portal box are shown to any visitor of the community; nothing sanitized the fields before. The fix adds a sanitize_html Jinja filter (bleach.clean with COMMUNITIES_ALLOWED_TAGS/ATTRS from config.py) and applies it before |safe in all three places. Second explanation: stored.",
+      "fix": "adds a bleach-based sanitize_html template filter and applies it before |safe",
+      "probe": "{% if community.description %}\n{{ community.description | safe }}\n{% endif %}\n<dl>\n  <dt>Curation policy:</dt>\n  <dd>{{ community.curation_policy | safe | default('Not specified', true) }}</dd>\n</dl>\n\n<div class=\"col-md-8\">\n  {{ community.page | safe }}\n</div>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-mgmm-cmhj-2h5f",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "modoboa/static/js/listing.js:222-225 the applied filter read from the URL query string with this.navobj.getparam(name + 'filter') (e.g. ?accountfilter=<img src=x onerror=alert(1)>) when a listing initializes, and :239 the clicked link's name attribute",
+      "sink": "listing.js:255-258 make_tag builds $('<a />', {'name': type, 'class': ..., 'html': ' ' + text}) - jQuery parses the label as HTML; it is appended to #taglist at :225 and :241",
+      "between": "the History helper (navobj) exposes the query parameter without validation, and the tag label goes into the element raw. The fix wraps text in htmlEncode(text). Second explanation: front-end.",
+      "fix": "HTML-encodes the tag label before inserting it",
+      "probe": "Listing.prototype.add_tag_handler = function (name, handler) {\n  if (this.navobj.getparam(name + 'filter') !== undefined) {\n    var text = this.navobj.getparam(name + 'filter');\n    $('#taglist').append(this.make_tag(text, name));\n  }\n};\n\nListing.prototype.make_tag = function (text, type) {\n  var $tag = $('<a />', {\n    name: type,\n    'class': 'btn btn-xs',\n    html: ' ' + text,\n  });\n  return $tag;\n};",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df8e716f5ffeLj2LxBx5xIfRVl",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 36,
+    "tool_calls": 40,
+    "tool_errors": 0,
+    "chars_read": 251090,
+    "tokens": {
+      "input": 292253,
+      "cache_read": 2932608,
+      "output": 30602,
+      "reasoning": 0
+    },
+    "usd": 0.071
+  }
+}
