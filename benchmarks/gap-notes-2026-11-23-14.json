@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-23-14",
+  "status": "research only: not read yet",
+  "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order. The file holds 257 rows and every one is cve-pairs-php (the Python and JavaScript rows were noted in earlier runs), so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: opnsense firewall_rules.php and firewall_rules_edit.php, LibreBooking ManageEmailTemplatesPresenter.php and ManageEmailTemplatesPage.php, CodeIgniter MY_Controller.php, Dolibarr api_setup.class.php, FrontAccounting rep601.php and rep710.php, grav AbstractApiController.php and PagesController.php, lms tarifflist.php and netdevxajax.inc.php, MISP UsersController.php and AppController.php, php-censor WebhookController.php / Builder.php / CommandExecutor.php, opensourcepos Items.php, OpenCATS lib/CATSUtility.php, and wp-downloadmanager wp-downloadmanager.php and download-options.php. No row was skipped. All notes are marked sure: source and sink are both visible in the diff or the fetched parent files. Five cases use a stored value (config, database, session or user setting) and three turn on a validator that was already present but too weak or the wrong one, so a rule needs the stored-value or validator path, not just a direct request-to-sink flow.",
+  "notes": [
+    {
+      "id": "GHSA-2wfc-8j3p-p6cp",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "src/www/firewall_rules_edit.php:209 and :1318 (fix parent): $pconfig = $_POST and the rule form's <input name=\"descr\">; the rule's description is saved into config.xml with the rule",
+      "sink": "src/www/firewall_rules.php:866: <?=$rule->getDescr();?> prints the saved rule description into the rules table's rule-description cell",
+      "between": "the description is stored with the rule and read back through the Firewall rule object; on the same row the label (:861) and the rule hash/lookup (:873) already go through html_safe(), this one does not, and the fix is exactly that wrapper (a second raw echo of the same kind remains at :991 for the expanded row)",
+      "fix": "wraps $rule->getDescr() in html_safe()",
+      "probe": "<?php\n$descr = $_POST['descr'];\nsave_rule(['descr' => $descr]);\n\nforeach (get_rules() as $rule): ?>\n  <td class=\"rule-description\"><?= $rule['descr'] ?></td>\n<?php endforeach;",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-7793-hmg3-gh57",
+      "cwe": [
+        23
+      ],
+      "category": "source",
+      "source": "Presenters/Admin/ManageEmailTemplatesPresenter.php:115 (fix parent): $templateName = $this->page->GetUpdatedTemplateName(), which reads the template_name form field in Pages/Admin/ManageEmailTemplatesPage.php:107 through Booked's GetForm() request wrapper; the body comes from GetTemplateContents() (:115-118)",
+      "sink": "ManageEmailTemplatesPresenter.php:121: $saveResult = $this->filesystem->Save($templatePath, str_replace('.tpl', '-custom.tpl', $templateName), $this->page->GetTemplateContents()) - the name is appended to the language template directory and written",
+      "between": "page GetForm() -> presenter property -> EmailTemplateFileSystem::Save(); the load paths in the same presenter (LoadTemplate/LoadOriginalTemplate, :103-108) reject '..', '\\' and '/', but the save path had no check at all, so a name like ../../Web/lb_shell.php escapes the template directory and lands as executable PHP",
+      "fix": "extracts IsValidTemplateName() from the load-side check (lowercase .tpl, no '..', '\\', '/', no control characters) and applies it in UpdateEmailTemplate() before writing",
+      "probe": "<?php\nclass TemplateEditor\n{\n    private $page;\n    private $filesystem;\n\n    public function update()\n    {\n        $name = $this->page->GetUpdatedTemplateName();\n        $body = $this->page->GetTemplateContents();\n        $dir = PATHS::EmailTemplates($this->page->GetUpdatedLanguage());\n        return $this->filesystem->Save($dir, str_replace('.tpl', '-custom.tpl', $name), $body);\n    }\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-r56h-8xf5-wf6h",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "application/core/MY_Controller.php:127 (fix parent): $arr['browser'] = $_SERVER['HTTP_USER_AGENT'] in checkForPostRequests() when $_POST['subscribeEmail'] is set",
+      "sink": "application/modules/admin/views/settings/emails.php:27: <td><?= $email->browser ?></td> in the admin newsletter subscriber list",
+      "between": "stored in subscribed.browser by the front-end subscribe POST and read back by the admin view; the same row prints $email->email (from $_POST['subscribeEmail']) and $email->ip raw at :26 and :28, all three fixed with htmlspecialchars()",
+      "fix": "strip_tags() + 500-char truncation of the User-Agent before storing, and htmlspecialchars(..., ENT_QUOTES, 'UTF-8') on email/browser/ip in the view",
+      "probe": "<?php\nif (isset($_POST['subscribeEmail'])) {\n    $db->insert('subscribers', [\n        'email' => $_POST['subscribeEmail'],\n        'browser' => $_SERVER['HTTP_USER_AGENT'],\n        'ip' => $_SERVER['REMOTE_ADDR'],\n    ]);\n}\n\nforeach ($db->get('subscribers') as $row) { ?>\n  <tr><td><?= $row['email'] ?></td><td><?= $row['browser'] ?></td></tr>\n<?php }",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-jf5m-wm8f-5pq9",
+      "cwe": [
+        601
+      ],
+      "category": "stored",
+      "source": "application/core/MY_Controller.php:154 (fix parent): $raw = $_SERVER['HTTP_REFERER'] in setReferrer(), stored in the session at :163",
+      "sink": "application/modules/admin/views/ecommerce/orders.php:118: <a target=\"_blank\" href=\"<?= $tr['referrer'] ?>\"> - the stored value becomes both the link target and its text",
+      "between": "any front-end visit saves the Referer header to the session and the admin orders list reads it back; no scheme check, so javascript:/data: reaches the href and a quote in the value breaks out of the attribute; the fix parses the URL, keeps only http/https up to 500 chars (else 'Direct') and escapes both places",
+      "fix": "validates the Referer scheme (http/https, max 500) before storing and htmlspecialchars()es the href and text",
+      "probe": "<?php\nsession_start();\nif (!isset($_SERVER['HTTP_REFERER'])) {\n    $_SESSION['referrer'] = 'Direct';\n} else {\n    $_SESSION['referrer'] = $_SERVER['HTTP_REFERER'];\n}\n\n$tr = ['referrer' => $_SESSION['referrer']]; ?>\n<a target=\"_blank\" href=\"<?= $tr['referrer'] ?>\"><?= $tr['referrer'] ?></a>",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-2852-jv28-2mv8",
+      "cwe": [
+        89
+      ],
+      "category": "check",
+      "source": "htdocs/api/class/api_setup.class.php:353 (fix parent): the $sqlfilters argument of getListOfRegions() (and getListOfIncoterms at :2514, getListOfVAT at :2579, api_multicurrencies.class.php:66), bound to the GET sqlfilters parameter of the dictionary list endpoints",
+      "sink": "api_setup.class.php:371: $sql .= \" AND (\".preg_replace_callback('/'.$regexstring.'/', 'DolibarrApi::_forge_criteria_callback', $sqlfilters).\")\" - executed by $this->db->query($sql) at :385",
+      "between": "the only gate is DolibarrApi::_checkFilters(), which checks parenthesis balance and passes non-matching text through verbatim; a rule that takes _checkFilters as a sanitizer stops here; the fix sends the same parameter through forgeSQLFromUniversalSearchCriteria(), whose dummy-criteria syntax check rejects the leftover text",
+      "fix": "replaces _checkFilters() + bare preg_replace_callback with forgeSQLFromUniversalSearchCriteria() in the four endpoints",
+      "probe": "<?php\n$sqlfilters = $_GET['sqlfilters'];\n$sql = 'SELECT rowid FROM ' . MAIN_DB_PREFIX . 'c_regions WHERE 1 = 1';\nif ($sqlfilters) {\n    if (!DolibarrApi::_checkFilters($sqlfilters, $err)) {\n        throw new RestException(400, $err);\n    }\n    $re = '/\\(([^:\\'\\(\\)]+:[^:\\'\\(\\)]+:[^\\(\\)]+)\\)/';\n    $sql .= ' AND (' . preg_replace_callback('/' . $re . '/', 'DolibarrApi::_forge_criteria_callback', $sqlfilters) . ')';\n}\n$db->query($sql);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-w5j4-x499-pfwp",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "reporting/rep601.php:59 (fix parent): $acc = $_POST['PARAM_0'] (the report parameter form); reporting/rep710.php:62-63 read $_POST['PARAM_2'] as $systype and $_POST['PARAM_3'] as $user",
+      "sink": "reporting/rep601.php:87-88: $sql .= \" WHERE id = $acc\"; $result = db_query($sql, ...) - rep710.php:45-47 does the same for a.type/a.user, gl/includes/db/gl_db_trans.inc:163 for gl.type IN ($filter_type)",
+      "between": "the report parameters are interpolated straight into the WHERE clause; only comparisons against ALL_TEXT/-1 stand in front; db_escape() is FrontAccounting's quoting helper and the fix adds it at each concatenation",
+      "fix": "wraps $acc, $type, $user and $filter_type in db_escape() before concatenation",
+      "probe": "<?php\nfunction print_bank_transactions()\n{\n    $acc = $_POST['PARAM_0'];\n    $sql = 'SELECT id, bank_account_name FROM ' . TB_PREF . 'bank_accounts';\n    if ($acc != ALL_TEXT) {\n        $sql .= \" WHERE id = $acc\";\n    }\n    $result = db_query($sql, 'could not retrieve bank accounts');\n    while ($account = db_fetch($result)) {\n        echo $account['bank_account_name'];\n    }\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-pfvx-ccc8-f3hr",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "classes/Api/Controllers/PagesController.php:297 (fix parent): $content = $body['content'] from the PATCH /pages JSON body; validatePageChanges() at :395 passes the delta to AbstractApiController::validateChangedFields() (:193)",
+      "sink": "PagesController.php:389-397: $page->rawMarkdown($content) then $page->save() stores the Markdown that is later rendered to visitors; the same partial-field path saves user and config fields",
+      "between": "validateChangedFields() runs Validation::validate() over the submitted fields but not Validation::checkSafety()/Security::detectXss(), so an onerror= payload in page Markdown is stored; a rule that treats validate() as a sanitizer stops here",
+      "fix": "runs Validation::checkSafety($value, $field) alongside validate() for every changed field",
+      "probe": "<?php\n$body = json_decode(file_get_contents('php://input'), true);\n$errors = [];\nforeach ($body as $name => $value) {\n    $errors = array_merge($errors, Validation::validate($value, $field));\n}\nif ($errors === []) {\n    $page->rawMarkdown($body['content']);\n    $page->save();\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-qrw9-xj5g-qxw8",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "modules/tarifflist.php:294 (fix parent): $tg = $_POST['tg'] (or the tltg session value restored at :292; $_GET['tag'] is appended at :300)",
+      "sink": "modules/tarifflist.php:117 and :216: implode(',', $tags) interpolated into '... tarifftagid IN (' ... ')' - the first SELECT goes to $DB->GetAllByKey() at :78, the second to $DB->GetAll() at :212",
+      "between": "the array is handed to GetTariffList() as its 7th argument and reaches the SQL builder; only a !empty() test stands in front and each element is concatenated as-is, so an element such as 0) UNION SELECT ... leaves the IN list",
+      "fix": "Utils::filterIntegers($tags) before GetTariffList() uses it",
+      "probe": "<?php\nfunction get_tariffs($tags)\n{\n    $sql = 'SELECT t.id, t.name FROM tariffs t WHERE 1 = 1';\n    if (!empty($tags)) {\n        $sql .= ' AND t.id IN (SELECT tariffid FROM assignments WHERE tagid IN (' . implode(',', $tags) . '))';\n    }\n    return $DB->GetAllByKey($sql, 'id');\n}\n\n$tags = $_POST['tg'];\nget_tariffs($tags);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-765c-7qf8-cw9w",
+      "cwe": [
+        78
+      ],
+      "category": "source",
+      "source": "modules/netdevxajax.inc.php:271 (fix parent): function getThroughput($ip) is an xajax action, so $ip is the argument the browser's JavaScript passes; modules/nodexajax.inc.php:219 registers the same function",
+      "sink": "netdevxajax.inc.php:276-280: $cmd = str_replace('%i', $ip, $cmd); exec($cmd, $output) - $cmd is the phpui.live_traffic_helper command template from the config",
+      "between": "the only guard is empty($cmd); the IP string is substituted into the configured shell command with no escaping and no check_ip(), so '; id' or a backtick runs on the server (the xajax response comes back to the same browser); the fix adds check_ip($ip) to the guard",
+      "fix": "adds check_ip($ip) to the empty($cmd) guard in both getThroughput() functions",
+      "probe": "<?php\nfunction getThroughput($ip)\n{\n    $cmd = ConfigHelper::getConfig('phpui.live_traffic_helper');\n    if (empty($cmd)) {\n        return '';\n    }\n    $cmd = str_replace('%i', $ip, $cmd);\n    exec($cmd, $output);\n    return $output[0] ?? '';\n}\n\n$xajax->registerFunction('getThroughput');",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-4hg7-5g9q-5922",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "app/Controller/UserSettingsController.php:385 (fix parent): $this->request->data['path'] in setHomePage()",
+      "sink": "app/View/News/index.ctp:6: <a class=\"btn btn-success\" href=\"<?= isset($homepage['path']) ? $homepage['path'] : $homepage ?>\"> - the stored homepage path is printed into an href unescaped",
+      "between": "the path is stored as the user setting 'homepage' and read back on the news page; in the Overmind theme branch (:385-391) it went through setSettingInternal() directly, skipping setSetting()'s validate_homepage() (path must start with '/') and the self-management checks, so javascript:alert(1) or a quote in the attribute is stored; the fix removes the branch",
+      "fix": "always persists through setSetting() and h()-escapes the href",
+      "probe": "<?php\nif ($this->request->is('post')) {\n    $setting = [\n        'user_id' => $user['id'],\n        'setting' => 'homepage',\n        'value' => ['path' => $this->request->data['path']],\n    ];\n    $this->UserSetting->save($setting);\n}\n\n$homepage = $this->UserSetting->getValueForUser($user['id'], 'homepage'); ?>\n<a href=\"<?= $homepage['path'] ?>\">Continue to homepage</a>",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-9gjj-gmcx-6fhj",
+      "cwe": [
+        601
+      ],
+      "category": "stored",
+      "source": "app/Controller/AppController.php:423 (fix parent): $this->Session->write('pre_login_requested_url', $this->request->here) - the URL an unauthenticated visitor asked for, saved before the login redirect",
+      "sink": "app/Controller/UsersController.php:1371: $this->redirect($url) in routeafterlogin(), with $url taken from the consumed session value at :1357",
+      "between": "the requested URL (for example //evil.example/x or /\\evil.example) is stored in the session and used as the post-login target; the only processing is the force-HTTPS rewrite of an http:// prefix; the fix parses the value and requires a single-slash absolute path with no host, scheme or user",
+      "fix": "rawurldecodes and then keeps only path?query#fragment when the value has no host/scheme/user and the path starts with one '/' (rejecting '//' and '/\\')",
+      "probe": "<?php\nsession_start();\nif (!is_logged_in()) {\n    $_SESSION['pre_login_requested_url'] = $_SERVER['REQUEST_URI'];\n    header('Location: /login');\n    exit;\n}\n\n$url = $_SESSION['pre_login_requested_url'];\nunset($_SESSION['pre_login_requested_url']);\nheader('Location: ' . $url);\nexit;",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-93rv-mf2v-vv2r",
+      "cwe": [
+        77
+      ],
+      "category": "functions",
+      "source": "src/Controller/WebhookController.php:347 (fix parent): 'commit' => (string) $this->getParam('commit', '') in the unauthenticated webhook (POST /webhook/git/<project_id>?branch=<branch>&commit=<commit>), passed down as $commitId",
+      "sink": "src/Model/Build/GitBuild.php:170: $builder->executeCommand($chdir . ' && git checkout %s --quiet', $cloneTo, $commitId), and :179/:184 for git log; Builder::executeCommand() (src/Builder.php:304) hands the arguments to CommandExecutor::executeCommand(), which sprintf()s them into one string and runs it with Process::fromShellCommandline() (src/Helper/CommandExecutor.php:95-116)",
+      "between": "commitId crosses webhook controller -> build model -> GitBuild -> Builder -> CommandExecutor; nothing quotes it, so a commit value such as x; id is appended to the checkout command line",
+      "fix": "escapeshellarg() on $commitId in the three GitBuild command templates",
+      "probe": "<?php\nclass GitBuild\n{\n    public function checkout($builder, $dir, $commitId)\n    {\n        $cmd = $dir . ' && git checkout %s --quiet';\n        return $builder->executeCommand($cmd, $dir, $commitId);\n    }\n}\n\nclass Builder\n{\n    public function executeCommand(...$params)\n    {\n        $command = call_user_func_array('sprintf', $params);\n        return Process::fromShellCommandline($command)->run();\n    }\n}\n\n(new GitBuild())->checkout(new Builder(), '/tmp/repo', $_GET['commit']);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-pmmv-883q-cfwq",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "app/Controllers/Items.php:153 (fix parent): the $pic_filename route parameter of getPicThumb(), rawurldecode()d at :157",
+      "sink": "Items.php:159 glob(\"./uploads/item_pics/$pic_filename\") and :173-174 mime_content_type($thumb_path) / file_get_contents($thumb_path), where $thumb_path is built from the same name at :160-164",
+      "between": "the route segment is decoded and pasted into the glob pattern and the thumb path; glob() expands '..' and a wildcard, so a name like ../../.env or ../../app/Config/*.php selects files outside uploads/, and file_get_contents() returns the first match to the response",
+      "fix": "basename(rawurldecode($pic_filename)), lowercased extension checked against image_allowed_types, 400 otherwise",
+      "probe": "<?php\nclass Items\n{\n    public function getPicThumb(string $pic_filename)\n    {\n        $pic_filename = rawurldecode($pic_filename);\n        $file_extension = pathinfo($pic_filename, PATHINFO_EXTENSION);\n        $images = glob('./uploads/item_pics/' . $pic_filename);\n        $base_path = './uploads/item_pics/' . pathinfo($pic_filename, PATHINFO_FILENAME);\n        if (sizeof($images) > 0) {\n            $thumb_path = $base_path . '_thumb.' . $file_extension;\n            $this->response->setBody(file_get_contents($thumb_path));\n        }\n        return $this->response;\n    }\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-h957-4jfh-qc3p",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "modules/install/ajax/ui.php:127-140 (fix parent): $_REQUEST['user'], ['pass'], ['host'] and ['name'] in the installer's database step, and ['docExecutable']/['pdfExecutable']/['htmlExecutable']/['rtfExecutable'] at :421-432",
+      "sink": "lib/CATSUtility.php:142-175: changeConfigSetting($name, $value) splices $value into sprintf(\"define('%s', %s);\", $name, $value) and writes it with file_put_contents('config.php', ...) - the value becomes PHP source",
+      "between": "the installer posts the values and the helper writes config.php; the caller's quoting, \"'\" . $_REQUEST['user'] . \"'\", does not stop a value such as x'); system($_GET['c']); // from breaking out of the string literal; the fix var_export()s every value, and ajax.php is also restricted to installer actions while INSTALL_BLOCK is absent",
+      "fix": "var_export($value, true) for every config value (and installer-only AJAX while uninstalled)",
+      "probe": "<?php\nfunction change_config_setting($name, $value)\n{\n    $new = [];\n    foreach (file('config.php') as $line) {\n        if (strpos($line, \"define('\" . $name . \"'\") === 0) {\n            $new[] = sprintf(\"define('%s', %s);\", $name, \"'\" . $value . \"'\");\n        } else {\n            $new[] = rtrim($line);\n        }\n    }\n    file_put_contents('config.php', implode(\"\\n\", $new) . \"\\n\");\n}\n\nchange_config_setting('DATABASE_USER', $_REQUEST['user']);",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    },
+    {
+      "id": "GHSA-q7wp-4j7p-g4vj",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "download-options.php:16 (fix parent): $download_path = sanitize_text_field($_POST['download_path']) from the plugin's options form (current_user_can('manage_downloads'))",
+      "sink": "wp-downloadmanager.php:185 and :209-215: $file_path = stripslashes(get_option('download_path')); ... filesize($file_path.$file_name) then @readfile($file_path.$file_name) in the download handler",
+      "between": "the option is stored, then the download handler joins it with the file name from the downloads table and reads the result; the old gate was substr($download_path, 0, strlen(WP_CONTENT_DIR)) !== WP_CONTENT_DIR at :42, a prefix compare that accepts /var/www/wp-content-x and any '..' inside the string; the fix resolves both paths with realpath() and requires the resolved base under WP_CONTENT_DIR",
+      "fix": "realpath()s the option and WP_CONTENT_DIR and rejects a base outside the content directory or containing '../'",
+      "probe": "<?php\n$download_path = $_POST['download_path'];\nif (substr($download_path, 0, strlen(WP_CONTENT_DIR)) !== WP_CONTENT_DIR) {\n    $download_path = WP_CONTENT_DIR;\n}\nupdate_option('download_path', $download_path);\n\n$file_path = get_option('download_path');\n$file_name = $_GET['file'];\nif (is_file($file_path . $file_name)) {\n    @readfile($file_path . $file_name);\n}",
+      "confidence": "sure",
+      "suite": "cve-pairs-php"
+    }
+  ],
+  "usage": {
+    "session": "ses_df6f8b174ffe4XAuifQszPKkWz",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 44,
+    "tool_calls": 57,
+    "tool_errors": 0,
+    "chars_read": 191977,
+    "tokens": {
+      "input": 121113,
+      "cache_read": 3215896,
+      "output": 36891,
+      "reasoning": 0
+    },
+    "usd": 0.1
+  }
+}
