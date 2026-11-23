@@ -69,3 +69,13 @@ def test_the_gap_notes_runner_is_asked_about_its_own_units(tmp_path):
     states = {"codewatch-research-gaps.timer": "inactive", "codewatch-research.timer": "active"}
     report = research_report.report(tmp_path, 24, now=NOW, states=states, unit="codewatch-research-gaps")
     assert "WARNING: the codewatch-research-gaps timer is inactive" in report
+
+
+def test_gap_notes_batches_count_as_pushed(tmp_path):
+    write_runs(tmp_path, {"2026-11-22-2338": [
+        "2026-11-22 23:38:24 starting a batch", "2026-11-22 23:40:46 opencode exited 0",
+        "2026-11-22 23:40:48 pushed to research-gaps: 95a3077 Gap notes: 15 cases (2 source, 1 sink);"]})
+    states = {"codewatch-research-gaps.timer": "active"}
+    first = research_report.report(tmp_path, 24, now=NOW, states=states, unit="codewatch-research-gaps").splitlines()[0]
+    assert first.startswith("runs: 1 in 24 h (1 pushed a batch, 0 found nothing to commit")
+    assert "read 15," in first

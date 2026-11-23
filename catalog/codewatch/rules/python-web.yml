@@ -1236,6 +1236,11 @@ rules:
       - pattern: flask.jsonify(...)
       - pattern: jsonify(...)
       - pattern: json.dumps(...)
+      # Percent-encoding with the default safe characters ('/' for quote, none for quote_plus) turns < > " ' and : into
+      # %XX: the value can't close an attribute, open a tag or start a javascript: URL (vulnerability-lookup's fix,
+      # Markup(f"<a href='/sightings?query={quote_plus(id)}'>")). A safe= argument may let them through: one argument only.
+      - pattern: urllib.parse.quote($X)
+      - pattern: urllib.parse.quote_plus($X)
       # A file response's body is the file; the name only goes into a quoted Content-Disposition header.
       - pattern: flask.send_file(...)
       - pattern: send_file(...)

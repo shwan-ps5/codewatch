@@ -328,6 +328,15 @@ def failed_tools(payload):
     return failed
 
 
+def tool_notes(payload):
+    """What each analyzer said about its run (Semgrep giving up on rules in a file, which may hide findings), said
+    aloud: a check that passes must not have quietly skipped part of a file."""
+    notes = {name: t["detail"] for name, t in payload["tools"].items() if t.get("status") != ERROR and t.get("detail")}
+    for name, detail in notes.items():
+        log(f"codewatch check: {name}: {detail[:300]}")
+    return notes
+
+
 def cmd_check(args):
     """Every analyzer on some files, nothing uploaded and nothing run: exit 1 if a changed line has a bug, a
     vulnerability or a blocker/critical issue, 2 if an analyzer failed (the files weren't fully checked)."""
@@ -345,6 +354,7 @@ def cmd_check(args):
     issues, reviewed = split_reviewed(payload["issues"], reviews)
     blocking = [i for i in issues if blocks(i, changed, args.strict)] + unused_reviews(args, reviews, reviewed)
     print_issues(issues, blocking, reviewed)
+    tool_notes(payload)
     failed = failed_tools(payload)
     where = "anywhere in these files" if changed is None else "on changed lines"
     log(f"{len(issues)} open issue(s) and {len(reviewed)} reviewed in {len(files)} file(s); "

@@ -59,7 +59,8 @@ PY
 
 exec 9>"$LOGS/lock"
 flock -n 9 || exit 0                        # a batch is still running
-exec >>"$LOGS/$(date +%F-%H%M).log" 2>&1
+LOG_FILE="$LOGS/$(date +%F-%H%M).log"
+exec >>"$LOG_FILE" 2>&1
 say() { echo "$(date '+%F %T') $*"; }
 
 cd "$REPO" || exit 1
@@ -133,8 +134,8 @@ refused: if one is, use python3 for it instead."
 TIME="Time: this run is stopped at $stopped_at (the clock, \`date +%H:%M\`), and anything not committed by then is lost."
 say "starting a batch with $MODEL at $base"
 if [ "$KIND" = gaps ]; then
-    timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "codewatch gap notes $(date +%F-%H%M)" \
-"Read AGENTS.md in full, then write one batch of gap notes as its section 9 says: no research topic, no
+    TITLE="codewatch gap notes $(date +%F-%H%M)"
+    PROMPT="Read AGENTS.md in full, then write one batch of gap notes as its section 9 says: no research topic, no
 candidates. The cases to note are in ~/codewatch-research/gaps/misses.tsv, in the order to take them. Keep your
 scripts and downloads in ~/codewatch-research/gaps/ (the only folder outside this repository you may write to).
 Commit only your benchmarks/gap-notes-*.json file, with the identity AGENTS.md gives. Don't push, pull or switch
@@ -142,8 +143,8 @@ branches: the script that started you does that. $ALLOWLIST
 $TIME Commit the notes file by $commit_by with whatever has been noted by then (a smaller batch is fine).
 End with the counts: cases noted, by category, and cases left in misses.tsv."
 else
-    timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "codewatch research $(date +%F-%H%M)" \
-"Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
+    TITLE="codewatch research $(date +%F-%H%M)"
+    PROMPT="Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following
 'Carrying on a topic'. Keep your scripts and downloads in ~/codewatch-research/ (the only folder outside this
 repository you may write to; ~/advisory-database/ is readable too). Commit only your candidate files
 (and AGENTS.md if you mark a topic done), with the identity AGENTS.md gives. Don't push, pull or switch branches:
@@ -154,7 +155,21 @@ Stop searching and start reading by $stop_reading; commit the batch files by $co
 read by then (a smaller batch is fine).
 End with the counts: read, accepted (open, blind), rejected, unsure, candidates left in the topic."
 fi
-say "opencode exited $?"
+# The first run after a quiet hour or two (03:00 after the nightly, 23:00 after skipped hours; 2026-11-21..23) got
+# "Model unavailable" within seconds, and the next run worked: wait and try once more.
+for attempt in 1 2; do
+    began=$(date +%s)
+    timeout "${LIMIT_MIN}m" opencode run -m "$MODEL" --title "$TITLE" "$PROMPT"
+    code=$?
+    if [ "$attempt" = 1 ] && [ "$code" != 0 ] && [ $(( $(date +%s) - began )) -lt 120 ] \
+            && tail -n 30 "$LOG_FILE" | grep -q "Model unavailable"; then
+        say "opencode exited $code: model unavailable at the start; trying again in 2 minutes"
+        sleep 120
+        continue
+    fi
+    break
+done
+say "opencode exited $code"
 
 # What the run read and spent (characters its tools returned, model tokens): one line in usage.log, and into the
 # batch's JSON (amending the batch commit) so the review sees it too.

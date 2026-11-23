@@ -20,6 +20,7 @@ from pathlib import Path
 LOG_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2}-\d{4})\.log$")
 LINE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} (.*)$")
 COUNTS = re.compile(r"\((\d+) read, (\d+) accepted: (\d+) open, (\d+) blind\)")
+NOTED = re.compile(r"Gap notes: (\d+) cases?\b")
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # research-batch.sh's own failure messages (not the usage line's "(0 failed)" tool-call count).
 FAILURE = re.compile(r"^(git fetch( of \S+)? failed|working tree not clean|local commits not on origin|gh pr list failed"
@@ -64,10 +65,17 @@ def agent_note(messages, text):
     return [f"agent exited {code}: {error}" if error else f"agent exited {code}"]
 
 
+def batch_counts(pushes):
+    """(read, accepted, open, blind) of each batch pushed. A gap-notes batch (AGENTS.md section 9) counts its cases as
+    read; it accepts nothing."""
+    counts = [tuple(map(int, c)) for m in pushes for c in COUNTS.findall(m)]
+    return counts + [(int(n), 0, 0, 0) for m in pushes for n in NOTED.findall(m)]
+
+
 def classify(text):
     """One run's outcome: (kind, detail, counts of each batch pushed). kind is batch, empty, skipped or problem."""
     messages = [m.group(1) for m in map(LINE.match, text.splitlines()) if m]
-    counts = [tuple(map(int, c)) for m in starting(messages, "pushed to ") for c in COUNTS.findall(m)]
+    counts = batch_counts(starting(messages, "pushed to "))
     notes = agent_note(messages, text)
     notes += ["batch left uncommitted"] * len(starting(messages, "uncommitted changes left behind"))
     notes += list(filter(FAILURE.match, messages))

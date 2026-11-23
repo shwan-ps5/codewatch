@@ -628,3 +628,14 @@ def test_a_failed_tools_json_report_gives_its_errors_not_its_tail():
     assert failure_detail(json.dumps(report)) == "Out of memory"
     assert failure_detail("plain text error") == "plain text error"
     assert failure_detail('{"errors": []}') == '{"errors": []}'
+
+
+def test_check_says_what_the_analyzers_noted(capsys):
+    """A Semgrep timeout drops that rule's findings in that file without an error; codewatch check must say so
+    rather than pass quietly (a review in tests/test_detection.py went stale in CI that way, PLAN.md step 125)."""
+    from core import client
+    payload = {"tools": {"semgrep": {"status": "ok", "detail": "Semgrep gave up on some rules in 1 file(s), so they "
+                                                              "may hide findings: tests/test_detection.py."},
+                         "bandit": {"status": "ok"}, "eslint": {"status": "error", "detail": "crashed"}}}
+    assert client.tool_notes(payload) == {"semgrep": payload["tools"]["semgrep"]["detail"]}
+    assert "codewatch check: semgrep: Semgrep gave up on some rules in 1 file(s)" in capsys.readouterr().err
