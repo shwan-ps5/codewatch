@@ -171,6 +171,9 @@ ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|b
 IDENTITY = "Shwan <344055753+shwan-ps5@users.noreply.github.com>"
 WITHHELD = "accepted; reason withheld so the case stays blind"
 UNREVIEWED = "research only"
+# A review session's mark on a file it read: "reviewed DATE (PLAN.md step N)..." or "read DATE (PLAN.md step N)...",
+# or the early batches' "reviewed 2026-11-03 (...)", from before steps were numbered in statuses.
+REVIEWED_RE = re.compile(r"\(PLAN\.md step \d+\)|\breviewed 20\d\d-\d\d-\d\d\b")
 
 
 def _git(*args, cwd):
@@ -280,6 +283,16 @@ def gap_note_problems(name, text, head, repo):
     return [p for p in (_note_problem(name, note, open_cases, blind_cases) for note in notes) if p]
 
 
+def status_problem(name, text):
+    """A research run's batch or gap notes must say they haven't been read: an agent that marked its own file read
+    hid it from `pending` (gap-notes-2026-11-23-10, "read 2026-11-23: ...")."""
+    try:
+        status = str(json.loads(text).get("status", ""))
+    except (ValueError, AttributeError):
+        return []
+    return [] if status.startswith(UNREVIEWED) else [f'{name}: status must start with "{UNREVIEWED}", not {status[:60]!r}']
+
+
 def guard(base, head="HEAD", repo=HERE.parent):
     """Problems with the commits since base, which an unattended research run made: only candidate files, gap notes
     (and AGENTS.md) touched, the maintainer's noreply identity, blind cases described by nothing but their entry, and
@@ -288,14 +301,18 @@ def guard(base, head="HEAD", repo=HERE.parent):
     changed = [f for f in _git("diff", "--name-only", "--diff-filter=AM", f"{base}..{head}", cwd=repo).splitlines() if f]
     problems += [f"{name}: not a file research may change" for name in changed if not ALLOWED.match(name)]
     for name in changed:
-        if not ALLOWED.match(name) or name == "AGENTS.md":
-            continue
-        text = _git("show", f"{head}:{name}", cwd=repo)
-        if name.startswith("benchmarks/gap-notes-"):
-            problems += gap_note_problems(name, text, head, repo)
-        else:
-            problems += tsv_problems(name, text) if name.endswith(".tsv") else batch_problems(name, text, head, repo)
+        if ALLOWED.match(name) and name != "AGENTS.md":
+            problems += file_problems(name, head, repo)
     return problems
+
+
+def file_problems(name, head, repo):
+    """What's wrong with one candidate batch, its TSV, or a gap-notes file, as committed at head."""
+    text = _git("show", f"{head}:{name}", cwd=repo)
+    if name.endswith(".tsv"):
+        return tsv_problems(name, text)
+    checks = gap_note_problems if name.startswith("benchmarks/gap-notes-") else batch_problems
+    return status_problem(name, text) + checks(name, text, head, repo)
 
 
 def _blind_fixes(head, repo):
@@ -311,7 +328,8 @@ def pending(root=HERE, prefix="cve-candidates-"):
             status = str(json.loads(path.read_text()).get("status", ""))
         except ValueError:
             continue
-        if status.startswith(UNREVIEWED):
+        # Anything a review session hasn't marked, whatever the file says about itself.
+        if status.startswith(UNREVIEWED) or not REVIEWED_RE.search(status):
             waiting.append(path.name)
     return waiting
 
