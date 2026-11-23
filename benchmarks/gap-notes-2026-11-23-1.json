@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-23-1",
+  "status": "research only: not read yet",
+  "method": "First 15 rows of ~/codewatch-research/gaps/misses.tsv (rows 2-16, all cve-pairs-python, taken in file order). For each case the fix commit was fetched with gh api repos/O/R/commits/SHA (per-file patches) and, where the patch did not show the vulnerable side, the files at the fix commit's parent with gh api contents?ref=SHA^ (validate.py, api/v1/validate.py, file_store.py, server/handlers.py, editor.py, utils.py, lektor/admin/modules/api.py, lektor/db.py, views/article.py, templatetags/wiki_tags.py, includes/searchresult.html, endpoints.py, resolverapi/__init__.py, helpers.py, app_blueprint.py, templates/login.html, routers/terminals.py, postgres/utils.py, postgres/base.py, postgres/queryparser.py, workflows/views.py, common/_workflow.html, views/auth_forms.py, stacks/forms.py, common/_form_field.html, upload/handlers/common/vector.py, servers/main.py, servers/dependencies.py, utils/urls.py). All API calls were one at a time with 2 s between. Nothing was skipped: every row yielded a note. Notes describe the vulnerable side (the fix's parent) and the line numbers in it. GHSA-h3h4-3r2q-9m76 is unsure because the repo has no template or other code that turns the Flask-RESTful abort message into HTML, so the reflected-XSS rendering the advisory names is not visible in the repository.",
+  "notes": [
+    {
+      "id": "GHSA-v798-mcc6-2m3m",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        94
+      ],
+      "category": "source",
+      "source": "src/backend/base/langflow/api/v1/validate.py:14 async def post_validate_code(code: Code): validate_code(code.code) — FastAPI POST /api/v1/validate/code, a Pydantic body field code.code defined in langflow/api/v1/base.py",
+      "sink": "src/lfx/src/lfx/custom/validate.py:63-67 code_obj = compile(...); exec(code_obj, exec_globals) — exec of every submitted function definition",
+      "between": "the route imports validate_code from the lfx package (another file, outside the API tree); validate_code parses the string with ast.parse, then per FunctionDef compiles and exec's it inside a context built by _create_langflow_execution_context(); no check between the body field and exec",
+      "fix": "compiles each function definition without exec'ing it and drops the execution-context builder",
+      "probe": "from fastapi import FastAPI\nfrom pydantic import BaseModel\nimport ast\n\napp = FastAPI()\n\nclass Code(BaseModel):\n    code: str\n\ndef validate_code(code):\n    tree = ast.parse(code)\n    for node in tree.body:\n        if isinstance(node, ast.FunctionDef):\n            exec(compile(ast.Module(body=[node], type_ignores=[]), \"<string>\", \"exec\"), {})\n\n@app.post(\"/validate\")\nasync def post_validate(code: Code):\n    validate_code(code.code)\n    return {\"ok\": True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wqmh-qccw-pqwf",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "mlflow/server/handlers.py:4480-4489 _start_trace_v3() reads a StartTraceV3 protobuf, TraceInfo.from_proto(request_message.trace.trace_info) — POST /mlflow/traces, trace_id supplied by the client",
+      "sink": "mlflow/store/tracking/file_store.py:1773-1774 mkdir(traces_dir, trace_info.trace_id); trace_dir = os.path.join(traces_dir, trace_info.trace_id), then _save_trace_info writes files there (1783); deletion path joins and shutil.rmtree's it at 2178-2183",
+      "between": "handler -> _get_tracking_store().start_trace(trace_info) -> FileStore.start_trace (file_store.py:1755) only calls _validate_experiment_id, never the trace id -> os.path.join with the client's trace_id; no containment check",
+      "fix": "adds _validate_trace_id rejecting empty, . / .., separators and ids that normalization would alter, and calls it in start_trace and _delete_traces",
+      "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nROOT = \"/tmp/mlruns\"\n\n@app.post(\"/traces\")\ndef start_trace():\n    trace_id = request.json[\"trace\"][\"trace_id\"]\n    d = os.path.join(ROOT, \"traces\", trace_id)\n    os.makedirs(d, exist_ok=True)\n    with open(os.path.join(d, \"trace.yaml\"), \"w\") as f:\n        f.write(\"x\")\n    return {\"ok\": True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wv28-7fpw-fj49",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "lektor/admin/modules/api.py:107-109 the admin API wrapper reads request.get_json() (or request.values) into a dataclass; validated.path is used at api.py:367 path = posixpath.join(validated.path, validated.id) and passed to ctx.tree.edit(path)",
+      "sink": "lektor/utils.py:152 untrusted_to_os_path(path) only does path.strip(\"/\").replace(\"/\", os.path.sep), so \"..\" survives; lektor/db.py:1294 os.path.join(self.env.root_path, \"content\", untrusted_to_os_path(path)); written through lektor/editor.py:354 atomic_open(self.fs_path, \"wb\")",
+      "between": "api endpoint -> db.edit (db.py:2136) -> make_editor_session (editor.py:36) -> EditorSession.get_fs_path (editor.py:211-224) -> pad.db.to_fs_path -> untrusted_to_os_path. The helper's name and the strip/replace look like sanitizing, but nothing resolves or contains the result",
+      "fix": "make_editor_session validates the path with parse_path and untrusted_to_os_path rebuilds it from cleanup_path and refuses anything outside the content root",
+      "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nCONTENT = \"/srv/content\"\n\ndef untrusted_to_os_path(path):\n    return path.strip(\"/\").replace(\"/\", os.sep)\n\nclass EditorSession:\n    def __init__(self, path):\n        self.path = path\n    @property\n    def fs_path(self):\n        return os.path.join(CONTENT, untrusted_to_os_path(self.path))\n\n@app.post(\"/api/edit\")\ndef edit():\n    data = request.get_json()\n    ts = EditorSession(data[\"path\"])\n    with open(ts.fs_path, \"w\") as f:\n        f.write(data.get(\"data\", \"\"))\n    return {\"ok\": True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wj85-w4f4-xh8h",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        1333
+      ],
+      "category": "sink",
+      "source": "src/wiki/views/article.py:702-706 SearchView.dispatch parses forms.SearchForm(request.GET) and keeps cleaned_data[\"q\"] in self.query (rendered through the search result template); article bodies saved by the edit view are the other source",
+      "sink": "src/wiki/templatetags/wiki_tags.py:132 kw_p = re.compile(r\"(\\S*%s\\S*)\" % keyword, re.IGNORECASE) — the search term goes into a regex unescaped; src/wiki/core/markdown/mdx/codehilite.py FENCED_BLOCK_RE and src/wiki/plugins/macros/mdx/macro.py MACRO_RE run over stored markdown",
+      "between": "request GET q -> SearchView.query -> context search_query -> src/wiki/templates/wiki/includes/searchresult.html:17 {{ article.render|get_content_snippet:search_query }} -> get_content_snippet -> clean_text -> re.compile(keyword) -> kw_p.sub; article markdown -> markdown preprocessors -> the two backtracking regexes. No escaping of the keyword and no bound on the compiled pattern",
+      "fix": "re.escape(keyword) before compiling, and replaces both markdown regexes with patterns that do not backtrack catastrophically",
+      "probe": "import re\nfrom django import template\nfrom django.shortcuts import render\n\nregister = template.Library()\n\n@register.filter\ndef snippet(content, keyword):\n    return re.compile(r\"(\\S*%s\\S*)\" % keyword, re.IGNORECASE).sub(r\"<b>\\1</b>\", content)\n\ndef search(request):\n    q = request.GET[\"q\"]\n    return render(request, \"search.html\", {\"q\": q, \"articles\": []})\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wp72-7hj9-5265",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        36
+      ],
+      "category": "check",
+      "source": "mlflow/server/handlers.py:1215-1228 _create_registered_model() reads CreateRegisteredModel name=request_message.name — POST /mlflow/registered-models/create",
+      "sink": "mlflow/store/model_registry/file_store.py:150-151 meta_dir = self._get_registered_model_path(name); mkdir(meta_dir); the path is join(self.root_directory, FileStore.MODELS_FOLDER_NAME, name) at file_store.py:173",
+      "between": "handler -> store.create_registered_model (file_store.py:133) -> _validate_model_name(name) at line 146 and again inside _get_registered_model_path at line 172 -> os.path.join with the raw name. The validator checks length/emptiness and looks like a sanitizer but allows \"/\" and \"..\"",
+      "fix": "wraps _validate_model_name with a check that contains_path_separator(name) rejects separators",
+      "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nMODELS = \"/tmp/models\"\n\ndef validate_model_name(name):\n    if not name:\n        raise ValueError(\"invalid name\")\n\n@app.post(\"/registered-models/create\")\ndef create():\n    name = request.json[\"name\"]\n    validate_model_name(name)\n    path = os.path.join(MODELS, name)\n    os.makedirs(path)\n    return {\"ok\": True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-h3h4-3r2q-9m76",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "resolverapi/endpoints.py:50-54 LookupRecordType.get(self, rdtype, domain) / valid_args — Flask-RESTful route /<rdtype>/<domain> registered in resolverapi/__init__.py:32; also resolverapi/endpoints.py:96-99 ReverseLookup.valid_args(ip) for /reverse/<ip>",
+      "sink": "resolverapi/endpoints.py:53-54 abort(400, message=\"%s type is not supported\" % rdtype) and abort(400, message=\"%s is not a valid domain name\" % domain); resolverapi/endpoints.py:96 abort(400, message=\"%s is not a valid ip address\" % ip) — the request value is interpolated into the error message",
+      "between": "Falcon/Flask-RESTful route parameter -> get() -> valid_args -> abort(400, message=<user input>). The repository has no template or error handler: the message is serialized by Flask-RESTful, which the advisory treats as reflected XSS; the HTML rendering is not visible in the repo",
+      "fix": "removes the user input from all three messages and returns fixed text",
+      "probe": "from flask import Flask\nfrom flask_restful import Api, Resource, abort\n\napp = Flask(__name__)\napi = Api(app)\n\nclass Lookup(Resource):\n    def get(self, rdtype, domain):\n        if rdtype not in (\"A\", \"AAAA\", \"MX\"):\n            abort(400, message=\"%s type is not supported\" % rdtype)\n        return {\"domain\": domain}\n\napi.add_resource(Lookup, \"/<rdtype>/<domain>\")\n",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-3mmf-29wp-jc9p",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "check",
+      "source": "src/pyload/webui/app/helpers.py:44 for location in flask.request.values.get(\"next\"), flask.request.referrer: — the login page's ?next= query/form value, called from src/pyload/webui/app/blueprints/app_blueprint.py:50",
+      "sink": "src/pyload/webui/app/blueprints/app_blueprint.py:67 return flask.redirect(next) (and again in the autologin branch, and the value is also put into the login template at line 60)",
+      "between": "login view -> get_redirect_url (helpers.py:41) -> is_safe_url (helpers.py:35) which urljoin's the raw location against host_url and compares the netloc, then returns the untouched location; the check exists but does not normalize backslashes or encoded separators, and the same value is rendered into the login page",
+      "fix": "redirects only to a known endpoint name through url_for, and is_safe_url now rejects relative values that do not start with \"/\"",
+      "probe": "from flask import Flask, redirect, request\nfrom urllib.parse import urljoin, urlparse\n\napp = Flask(__name__)\n\ndef is_safe_url(location):\n    ref = urlparse(request.host_url)\n    test = urlparse(urljoin(request.host_url, location))\n    return test.scheme in (\"http\", \"https\") and ref.netloc == test.netloc\n\n@app.route(\"/login\")\ndef login():\n    nxt = request.values.get(\"next\")\n    if nxt and is_safe_url(nxt):\n        return redirect(nxt)\n    return redirect(\"/dashboard\")\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-j657-m4c4-24jq",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "backend/open_webui/routers/terminals.py:285-294 ws_terminal(session_id, policy_id) — the WebSocket route path parameter session_id (and policy_id) from the client",
+      "sink": "backend/open_webui/routers/terminals.py:291-294 upstream_url = f'{ws_base}/api/terminals/{session_id}' (or /p/{policy_id}/api/terminals/{session_id}), then ?upstream_params appended and the URL is used for the upstream WebSocket connect",
+      "between": "WebSocket route -> ws_terminal -> f-string URL; an encoded ?/&/? in session_id survives one decode and is decoded again by the upstream, so it injects a user_id before the appended one. The HTTP sibling proxy_terminal sanitizes its path, this path did not",
+      "fix": "urllib.parse.quote(session_id, safe='') before it is put in the upstream URL",
+      "probe": "import urllib.parse\nimport websockets\nfrom fastapi import FastAPI, WebSocket\n\napp = FastAPI()\n\n@app.websocket(\"/terminals/{session_id}\")\nasync def ws_terminal(websocket: WebSocket, session_id: str, policy_id: str | None = None):\n    await websocket.accept()\n    base = \"ws://terminal:8000\"\n    if policy_id:\n        url = f\"{base}/p/{policy_id}/api/terminals/{session_id}\"\n    else:\n        url = f\"{base}/api/terminals/{session_id}\"\n    url += \"?\" + urllib.parse.urlencode({\"user_id\": \"me\"})\n    async with websockets.connect(url) as upstream:\n        await upstream.send(await websocket.receive_text())\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8prr-286p-4w7j",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "alerta/database/backends/postgres/utils.py:149 query=params['q'] — the API's ?q= query parameter (MultiDict) read in from_params",
+      "sink": "alerta/database/backends/postgres/base.py:1610 cursor.execute(query, vars) with the WHERE text built from query.where (e.g. get_alerts SELECT at base.py:433-438)",
+      "between": "utils.from_params -> QueryParser().parse(params['q']) (postgres/queryparser.py:283-288) -> repr() of the parsed tree, with the raw search terms concatenated into the WHERE string -> Query(where=..., vars={}) -> base.py SELECT ... WHERE {query.where} -> _fetchall -> cursor.execute. The value crosses utils.py, queryparser.py and base.py and is never passed as a parameter",
+      "fix": "the parser returns (sql, params) with %(name)s placeholders and utils merges those params into the query vars before cursor.execute",
+      "probe": "import psycopg2\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\ndef parse(query):\n    return \"lower(resource) ~ '%s'\" % query\n\n@app.get(\"/alerts\")\ndef alerts():\n    q = request.args.get(\"q\")\n    where = \"1=1\"\n    if q:\n        where += \" AND \" + parse(q)\n    cur = psycopg2.connect(\"dbname=alerts\").cursor()\n    cur.execute(\"SELECT * FROM alerts WHERE \" + where)\n    return {\"rows\": cur.fetchall()}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7h8w-hj9j-8rjw",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        78
+      ],
+      "category": "check",
+      "source": "openhands/server/routes/files.py:267-277 GET /api/conversations/{conversation_id}/git/diff takes the path query parameter and hands it to the runtime handler",
+      "sink": "openhands/runtime/utils/git_diff.py:92-95 run(f'git show \"{current_rev}:{path.relative_to(closest_git_repo)}\"', str(closest_git_repo)) — the file path is interpolated into a shell command string",
+      "between": "API route -> GitHandler.get_git_diff (git_handler.py:137-140) -> self.git_diff_cmd.format(file_path=file_path) -> git_diff.py -> run(); the double quotes around the path look like shell quoting but a path containing a double quote closes them and the rest is interpreted by the shell",
+      "fix": "shlex.quote the ref:path argument and the file_path, and execute the command as an argument list",
+      "probe": "import subprocess\nfrom fastapi import FastAPI\n\napp = FastAPI()\nREPO = \"/workspace/repo\"\n\ndef run(cmd, cwd):\n    return subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True).stdout\n\n@app.get(\"/git/diff\")\ndef git_diff(path: str):\n    return {\"diff\": run(f'git show \"HEAD:{path}\"', REPO)}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f8fh-xp28-q59m",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "functions",
+      "source": "horizon/workflows/views.py:93 next = self.request.GET.get(workflow.redirect_param_name) — the ?next= query parameter of the workflow view",
+      "sink": "horizon/workflows/views.py:216-217 next_url = self.request.POST.get(workflow.redirect_param_name); return shortcuts.redirect(next_url or workflow.get_success_url())",
+      "between": "get_context_data puts the value in context['REDIRECT_URL'] (views.py:94) -> horizon/templates/horizon/common/_workflow.html:7 hidden input value=\"{{ REDIRECT_URL }}\" -> browser POSTs it back -> post() (views.py:168) reads it from request.POST -> redirect. The value round-trips through the template hidden field, so a GET-only source rule misses the sink",
+      "fix": "checks redirect_to with django.utils.http.is_safe_url against request.get_host() and drops it otherwise",
+      "probe": "from django import shortcuts\nfrom django.views import generic\n\nclass WorkflowView(generic.TemplateView):\n    template_name = \"workflow.html\"\n    redirect_param_name = \"next\"\n\n    def get_context_data(self, **kwargs):\n        ctx = super().get_context_data(**kwargs)\n        ctx[\"REDIRECT_URL\"] = self.request.GET.get(self.redirect_param_name)\n        return ctx\n\n    def post(self, request, *args, **kwargs):\n        next_url = request.POST.get(self.redirect_param_name)\n        return shortcuts.redirect(next_url or \"/\")\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-rhjj-f6gq-6gx2",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "openstack_dashboard/dashboards/project/stacks/forms.py:304-315 _build_parameter_fields(template_validate) reads param.get('Description') from the heat template the user submits to the launch-stack form",
+      "sink": "openstack_dashboard/dashboards/project/stacks/forms.py:314 'help_text': param.get('Description', '') on the generated form field; horizon/templates/horizon/common/_form_field.html:16 renders it as title=\"{{ field.help_text|safe }}\"",
+      "between": "heat template (request body) -> parameter fields built from its parameters -> help_text on a Django form field -> Horizon's form field template marks help_text safe inside the tooltip title; the value is escaped only by the fix, not by the template",
+      "fix": "html.escape(param.get('Description', '')) before it becomes help_text",
+      "probe": "import json\nfrom django import forms\nfrom django.shortcuts import render\n\ndef build_fields(template_validate):\n    fields = {}\n    for key, param in template_validate[\"parameters\"].items():\n        fields[key] = forms.CharField(\n            label=param.get(\"Label\", key),\n            help_text=param.get(\"Description\", \"\"),\n        )\n    return fields\n\ndef launch(request):\n    fields = build_fields(json.loads(request.POST[\"template\"]))\n    Form = type(\"F\", (forms.Form,), fields)\n    return render(request, \"launch.html\", {\"form\": Form()})\n# template: <span title=\"{{ field.help_text|safe }}\"></span>\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-j72v-mpwp-rg79",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "source",
+      "source": "horizon/views/auth_forms.py:97 redirect_to = request.REQUEST.get(REDIRECT_FIELD_NAME, \"\") — Django's request.REQUEST (merged GET+POST) for the login next parameter",
+      "sink": "horizon/views/auth_forms.py:113-114 redirect = redirect_to or base.Horizon.get_user_home(user); return shortcuts.redirect(redirect), and again at auth_forms.py:178-179",
+      "between": "login form handle() -> request.REQUEST -> redirect() with no origin check; the value is an absolute URL from the request and is used verbatim",
+      "fix": "drops next unless django.utils.http.same_origin(build_absolute_uri(next), build_absolute_uri()) holds",
+      "probe": "from django import shortcuts\nfrom django.views import View\n\nclass LoginView(View):\n    def post(self, request):\n        redirect_to = request.REQUEST.get(\"next\", \"\")\n        # authenticate the user\n        return shortcuts.redirect(redirect_to or \"/\")\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-9fpx-fr6j-2vh6",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        78
+      ],
+      "category": "check",
+      "source": "geonode/upload/handlers/common/vector.py:280-283 create_ogr2ogr_command: input_file = files.get(\"temp_vrt_file\") or files.get(\"base_file\"), and original_name/alternate come from the upload request (uploaded file name and layer name)",
+      "sink": "geonode/upload/handlers/common/vector.py:1594-1595 commands = [ogr_exe] + options.split(\" \"); process = Popen(\" \".join(commands), stdout=PIPE, stderr=PIPE, shell=True)",
+      "between": "upload handler -> create_ogr2ogr_command builds an options string with the values wrapped in double quotes (lines 281 and 283) -> import_with_ogr2ogr splits it on spaces and joins it back into one shell string. The double quotes look like escaping but a name containing one breaks out",
+      "fix": "shlex.quote each value, shlex.split the option string and run Popen with an argument list and shell=False (psql branch piped in Python)",
+      "probe": "import subprocess\nfrom django.http import JsonResponse\n\ndef create_ogr2ogr_command(files, original_name, alternate):\n    input_file = files[\"temp_vrt_file\"]\n    options = f'\"{input_file}\" -lco FID=ogc_fid '\n    options += f'-nln {alternate} \"{original_name}\"'\n    return options\n\ndef import_layer(request):\n    options = create_ogr2ogr_command(request.FILES, request.POST[\"name\"], request.POST[\"alternate\"])\n    subprocess.Popen(\"ogr2ogr \" + options, shell=True)\n    return JsonResponse({\"ok\": True})\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7r34-79r5-rcc9",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "src/mcp_atlassian/servers/main.py:472-489 _process_authentication_headers(scope) reads the X-Atlassian-Jira-Url and X-Atlassian-Confluence-Url headers into jira_url_str/confluence_url_str — an HTTP header, not a query or body field",
+      "sink": "the header URL becomes the fetcher's base_url (src/mcp_atlassian/servers/dependencies.py:311-330 get_jira_fetcher/get_confluence_fetcher build JiraFetcher/ConfluenceFetcher from header_config) and the fetcher's requests session then calls that host",
+      "between": "ASGI middleware -> _process_authentication_headers -> header_config -> get_jira_fetcher/get_confluence_fetcher -> requests session; the fix's redirect hook is attached to header_jira_fetcher.jira._session, showing the same session does outbound fetches. No check existed before the fix",
+      "fix": "adds validate_url_for_ssrf (scheme, IP-literal, DNS resolution and allowlist checks) in the middleware and a response hook blocking redirects to internal targets",
+      "probe": "import requests\n\nasync def app(scope, receive, send):\n    if scope[\"type\"] == \"http\":\n        headers = {k.decode().lower(): v.decode() for k, v in scope[\"headers\"]}\n        base_url = headers.get(\"x-atlassian-jira-url\")\n        if base_url:\n            requests.get(base_url + \"/rest/api/2/myself\",\n                         headers={\"Authorization\": headers.get(\"authorization\", \"\")})\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_dfa30aa1dffeYlNJfLj6qYarjL",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 35,
+    "tool_calls": 38,
+    "tool_errors": 0,
+    "chars_read": 229304,
+    "tokens": {
+      "input": 86535,
+      "cache_read": 2606848,
+      "output": 37828,
+      "reasoning": 0
+    },
+    "usd": 0.043
+  }
+}
