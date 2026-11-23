@@ -1,0 +1,250 @@
+{
+  "batch": "gap-notes-2026-11-23-4",
+  "status": "read 2026-11-23 (PLAN.md step 126): leads for rule work; quotes not yet checked one by one",
+  "method": "Rows 2-16 of ~/codewatch-research/gaps/misses.tsv (the first 15 candidates left after the notes already committed today), i.e. row 1 (snarfed/bridgy-fed, cve-pairs-python) and rows 2-15 (cve-pairs-javascript): MagicMirror, oils-js, apostrophe, fastify-static, three Ghost cases, NodeBB, two RSSHub cases, Directus, SignalK, n8n and lobe-chat. Every fix commit's diff was fetched with gh (parents checked, all one parent); for the flows the diff did not show, the fix's parent files were fetched too (redirect.py, the Ghost static-theme/slug-filter serializers, MagicMirror calendar node_helper/calendarfetcher, NodeBB middleware/render.js and languages.js, Directus files.ts, n8n npm-utils.ts, lobe-chat callback route and correctOIDCUrl.ts, oils custom-response.js, RSSHub parameter.js and m4/index.ts). The MagicMirror fix only gates the Socket.IO handshake with the IP whitelist and does not change the SSRF fetch, which the note says. Nothing was skipped; no case in the rows read is blind.",
+  "notes": [
+    {
+      "id": "FIX-snarfed-bridgy-fed-1f977a7d5c0d",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "framework",
+      "source": "redirect.py:36 to = self.request.path_qs[3:] - the path after /r/ on a webapp2 RequestHandler (GET /r/https://evil.example/)",
+      "sink": "redirect.py:48 self.redirect(to, permanent=True) - webapp2 builds a 301 with Location: <to>",
+      "between": "the handler only checks that to starts with http:// or https:// (redirect.py:40-41) and then redirects; the value is the raw request path (path_qs) exposed by webapp2's handler, not a framework API codewatch may model as a source, and nothing checks the target host. Second explanation: source (self.request.path_qs).",
+      "fix": "before redirecting, looks up a MagicKey for the target's domain (urlparse hostname or util.domain_from_link) and returns 404 when the domain was never seen",
+      "probe": "import webapp2\n\nclass Redirect(webapp2.RequestHandler):\n    def get(self):\n        to = self.request.path_qs[3:]\n        if not to.startswith((\"http://\", \"https://\")):\n            self.error(\"Expected fully qualified URL\")\n            return\n        self.redirect(to, permanent=True)\n\napp = webapp2.WSGIApplication([(r\"/r/.*\", Redirect)])",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-w6x9-28jw-hq7j",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        441,
+        918
+      ],
+      "category": "source",
+      "source": "defaultmodules/calendar/node_helper.js:14-16 socketNotificationReceived(notification, payload) with notification === \"ADD_CALENDAR\" - payload.url from a Socket.IO notification on the /calendar namespace",
+      "sink": "defaultmodules/calendar/calendarfetcher.js:37 this.httpFetcher = new HTTPFetcher(url, { auth, selfSignedCert }) and :87 startPeriodicFetch() - the shared HTTP fetcher performs a GET of the attacker's URL",
+      "between": "node_helper.createFetcher() validates only `new URL(url)` (:41-47), then constructs CalendarFetcher with the payload's url, auth object and selfSignedCert flag; the fetcher starts a periodic request and broadcasts the parsed iCal back over the socket. The linked fix does not touch this flow: it adds config.ipWhitelist enforcement to the Socket.IO handshake (js/ip_access_control.js socketIpAccessControl, js/server.js allowRequest), so only whitelisted clients can emit ADD_CALENDAR. Second explanation: framework (a Socket.IO notification argument).",
+      "fix": "enforces the IP whitelist on Socket.IO handshakes with an allowRequest handler, gating who can reach the calendar namespace",
+      "probe": "const http = require(\"node:http\");\nconst fetch = require(\"node-fetch\");\nconst { Server } = require(\"socket.io\");\n\nconst server = http.createServer();\nconst io = new Server(server, { cors: { origin: /.*$/ } });\n\nio.of(\"/calendar\").on(\"connection\", (socket) => {\n  socket.on(\"ADD_CALENDAR\", async (payload) => {\n    const response = await fetch(payload.url, { headers: payload.auth });\n    socket.emit(\"CALENDAR_EVENTS\", { url: payload.url, body: await response.text() });\n  });\n});\n\nserver.listen(8080);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-v279-v2xm-whq9",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        601
+      ],
+      "category": "sink",
+      "source": "core/middleware/custom-response.js:18 the raw Express request target req.url when it ends in '/' - an absolute-form request such as GET http://evil.example/ gives req.url = http://evil.example/",
+      "sink": "core/middleware/custom-response.js:19 res.redirect(301, req.url.slice(0, -1)) - trimming the last slash leaves Location: http://evil.example, which the browser follows off-site",
+      "between": "the response middleware runs before the routes, trims one trailing slash and passes the result straight to Express's res.redirect; there is no host or same-origin test, so an absolute URL in the request target becomes an absolute Location. The fix replaces app.response.redirect in core/Web.js with a wrapper that, for any URL containing '://', requires a prefix match against config.allowedRedirectHosts. Second explanation: source (req.url as a redirect target).",
+      "fix": "wraps res.redirect so absolute redirects must start with an allowed host from config.allowedRedirectHosts, otherwise it throws",
+      "probe": "const express = require(\"express\");\nconst app = express();\n\napp.use((req, res, next) => {\n  if (req.url.length > 1 && req.url.endsWith(\"/\")) {\n    return res.redirect(301, req.url.slice(0, -1));\n  }\n  next();\n});\n\napp.get(\"/\", (req, res) => res.send(\"ok\"));\napp.listen(3000);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-vmg4-6gfg-83qx",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        1321
+      ],
+      "category": "check",
+      "source": "the PATCH /api/v1/article/:id request body's dot-notation keys (e.g. {\"toString.call\": \"x\"}) reach apos.util.set() as its dotPath argument (packages/apostrophe/modules/@apostrophecms/util/index.js:838-860)",
+      "sink": "packages/apostrophe/modules/@apostrophecms/util/index.js:834-844 set() checks only unsafePathSegments, then o = o[p] (:841) and o[p] = v (:844) - an inherited property such as toString is the shared Object.prototype.toString function, whose call method is then overwritten process-wide",
+      "between": "set() split the path and refused only the three literal segments in unsafePathSegments (__proto__, constructor, prototype); every other property inherited from Object.prototype or Array.prototype was followed and written, and get() read through the same chain. The fix adds ownProperty(o, p) (Object.hasOwn) at each traversal step and rejects anything the object does not carry itself. Second explanation: functions (the path crosses the REST serializer, apos.util.set and the document being patched).",
+      "fix": "traverses and writes only own properties in apos.util.get/set, rejecting inherited segments",
+      "probe": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nconst unsafe = new Set([\"__proto__\", \"constructor\", \"prototype\"]);\n\nfunction set(obj, dotPath, value) {\n  const parts = dotPath.split(\".\");\n  let o = obj;\n  for (let i = 0; i < parts.length - 1; i++) {\n    if (unsafe.has(parts[i])) return;\n    o = o[parts[i]];\n  }\n  o[parts[parts.length - 1]] = value;\n}\n\napp.patch(\"/api/v1/article/:id\", (req, res) => {\n  const doc = { title: \"x\" };\n  for (const [key, value] of Object.entries(req.body)) set(doc, key, value);\n  res.json(doc);\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-83w8-p2f5-377r",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "index.js:145-146 const pathname = getPathnameForSend(req.raw.url, matchRoutePrefix) - the raw request URL with a non-leading .. or %2E%2E segment (/foo/../deep/secret.txt)",
+      "sink": "index.js:291 await send(request.raw, encodeURI(pathnameForSend), options) - @fastify/send normalizes the path and opens the file outside the configured root before its own traversal guard runs",
+      "between": "find-my-way matches the dot-dot URL to the plugin's catch-all instead of the guarded /deep/* route; getPathnameForSend strips the mount prefix from the raw URL and decodeURI's the rest, and @fastify/send's path.normalize collapses the non-leading '..' away; the previous fix only guarded the %2F variant. The fix rejects a decoded path with any non-leading dot-dot segment and any raw-URL path with one before sendFile. Second explanation: functions (getPathnameForSend -> send).",
+      "fix": "rejects non-leading '..' segments in the decoded pathname and in the full raw URL path before @fastify/send is called",
+      "probe": "const path = require(\"node:path\");\nconst send = require(\"@fastify/send\");\n\nasync function serve(req, reply) {\n  const prefix = \"/static\";\n  let pathname = decodeURI(req.raw.url.split(\"?\")[0]);\n  if (pathname.startsWith(prefix)) pathname = pathname.slice(prefix.length);\n  return send(req.raw, pathname, { root: \"/srv/public\", dotfiles: \"allow\" });\n}\n\nmodule.exports = async function (fastify) {\n  fastify.get(\"/static/*\", serve);\n};",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-wf7x-fh6w-34r6",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "ghost/core/core/frontend/web/middleware/static-theme.js:44-45 denyStatic() passes req.path.toLowerCase() to isAllowedFile() - still percent-encoded (/assets/built%2F..%2F..%2Fsecret.json)",
+      "sink": "ghost/core/core/frontend/web/middleware/static-theme.js:37 express.static(themeEngine.getActive().path, ...) in forwardToExpressStatic() resolves and serves the decoded path outside the theme's assets directory",
+      "between": "isAllowedFile() checked file.startsWith('/assets/') and the extension on the encoded string, so built%2F..%2F..%2F read as an allowed assets path; express.static decoded it afterwards and walked out of the active theme. The fix decodeURIComponent's and path.normalize's the path before the allow check. Second explanation: framework (Express static after the middleware).",
+      "fix": "decodes and normalizes the requested path before checking it, so an encoded traversal no longer passes the /assets/ and .hbs checks",
+      "probe": "const express = require(\"express\");\nconst path = require(\"node:path\");\nconst app = express();\n\nfunction isAllowedFile(file) {\n  return file.startsWith(\"/assets/\") && path.extname(file) !== \".hbs\";\n}\n\napp.use((req, res, next) => {\n  if (!isAllowedFile(req.path.toLowerCase())) return next();\n  express.static(\"/srv/themes/active\")(req, res, next);\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-w52v-v783-gw97",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "the Content API filter query parameter (?filter=slug:[a,b]) - frame.options.filter in ghost/core/core/server/api/endpoints/utils/serializers/input/posts.js:95-96",
+      "sink": "slug-filter-order.js:5-12 builds WHEN `posts`.`slug` = '<slug>' THEN <n> by interpolation, returned as autoOrder; crud.js:104 sets options.orderRaw to that string and bookshelf runs it as raw SQL",
+      "between": "the filter text is matched by /slug:\\s?\\[(.*)\\]/ and split on commas; each slug goes between single quotes with no escaping, then the CASE string crosses the input serializer, slug-filter-order.js and the crud plugin to orderByRaw. The fix returns {sql, bindings} with ? placeholders and threads orderRawBindings through crud.js. Second explanation: sink (orderByRaw).",
+      "fix": "parameterizes the slug list with ? bindings and passes them through orderRawBindings",
+      "probe": "const express = require(\"express\");\nconst app = express();\n\nfunction slugOrder(filter) {\n  const match = filter.match(/slug:\\s?\\[(.*)\\]/);\n  let sql = \"CASE \";\n  match[1].split(\",\").forEach((slug, index) => {\n    sql += `WHEN posts.slug = '${slug}' THEN ${index} `;\n  });\n  return sql + \"END ASC\";\n}\n\napp.get(\"/api/content/posts\", (req, res) => {\n  const order = slugOrder(req.query.filter);\n  db.query(`SELECT * FROM posts ORDER BY ${order}`);\n  res.json([]);\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-9fgx-q25h-jxrg",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "core/server/web/admin/views/preview.html:33 addEventListener(\"message\", onReceive, true) - a postMessage from any origin, accepted without an event.origin check",
+      "sink": "core/server/web/admin/views/preview.html:5-6 document.write(message.data); document.close() (and the IE branch at :12-13 assigning head/body innerHTML) - HTML from the message runs in the Ghost Admin origin",
+      "between": "the admin app mounted the file at /preview (core/server/web/admin/app.js adminApp.use('/preview', preview); preview.js servePreview only checked req.path === '/'), and the page also posts 'loaded' to '*' so the opener knows when to send; a malicious page the logged-in admin visits can post a script into the admin session. The fix removes the route, preview.js and preview.html. Second explanation: source (postMessage).",
+      "fix": "deletes the /preview admin route and the preview.html page that wrote postMessage data into the document",
+      "probe": "<script>\n  function onReceive(message) {\n    document.write(message.data);\n    document.close();\n  }\n  window.addEventListener(\"message\", onReceive, true);\n  top.postMessage(\"loaded\", \"*\");\n</script>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-pfj7-2qfw-vwgm",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "src/middleware/render.js:127 getLang() takes req.query.lang, escapes it with validator.escape(String(...)) and passes it as the translator's language",
+      "sink": "src/languages.js:15-16 fs.promises.readFile(path.join(languagesPath, language, `${namespace}.json`), 'utf8') - path.join collapses ../ in the language segment and the file outside public/language is read",
+      "between": "render.js translate() -> translator.translate(str, language) -> Translator.create(language) -> getTranslation(namespace) -> Languages.get(language, namespace); validator.escape leaves '/' and '.' intact, so '../../config' survives and the JSON is loaded and rendered. The fix builds pathToLanguageFile once and refuses it unless it startsWith(languagesPath). Second explanation: source (the ?lang= query parameter of rendered pages).",
+      "fix": "checks the joined language file path still starts with the languages directory before reading it",
+      "probe": "const express = require(\"express\");\nconst fs = require(\"node:fs/promises\");\nconst path = require(\"node:path\");\nconst validator = require(\"validator\");\nconst app = express();\n\nconst BASE = \"/srv/app/public/language\";\n\nasync function load(language, namespace) {\n  return JSON.parse(await fs.readFile(path.join(BASE, language, `${namespace}.json`), \"utf8\"));\n}\n\napp.get(\"/\", async (req, res) => {\n  const lang = req.query.lang ? validator.escape(String(req.query.lang)) : \"en-GB\";\n  res.json(await load(lang, \"topic\"));\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-32gr-4cq6-5w5q",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "lib/middleware/parameter.js:313 ctx.query.brief - the RSSHub brief query parameter after the value check fails",
+      "sink": "lib/middleware/parameter.js:316 throw Error(`Invalid parameter <code>brief=${ctx.query.brief}</code>. ...`) - the error text is rendered as the HTML error page, so <script> in brief executes",
+      "between": "the parameter middleware accepts only the documented brief values and otherwise throws a message built with the raw query value; the error middleware returns that string as HTML with no escaping. The fix removes the interpolation and throws a static message. Second explanation: source (ctx.query).",
+      "fix": "stops putting ctx.query.brief into the error message, throwing a fixed string instead",
+      "probe": "const Koa = require(\"koa\");\nconst app = new Koa();\n\napp.use(async (ctx) => {\n  const allowed = [\"0\", \"1\"];\n  if (!allowed.includes(ctx.query.brief)) {\n    ctx.throw(400, `Invalid parameter <code>brief=${ctx.query.brief}</code>`);\n  }\n  ctx.body = \"ok\";\n});\n\napp.listen(1200);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-3p3p-cgj7-vgw3",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "sink",
+      "source": "lib/routes/m4/index.ts:15 const { id = 'news', category = 'china' } = ctx.req.param() - the /m4/:id?/:category* route parameters",
+      "sink": "lib/routes/m4/index.ts:20 const rootUrl = `http://${id}.m4.cn` and the got() request of it - id becomes the hostname, so id=127.0.0.1:8080 or an attacker domain makes the server fetch that host",
+      "between": "the route handler interpolates id into the URL and hands it to the cached got request; lib/utils/valid-host exports isValidHost but this route did not call it, so any hostname passed. The fix validates id first and throws 'Invalid id'; the same commit also moves the mastodon acct domain allowlist check into utils.ts so a blank MASTODON_API_HOST cannot widen it. Second explanation: source (route parameter).",
+      "fix": "rejects ids that are not valid hostnames before building the m4 URL, and applies the mastodon domain allowlist after parsing the acct",
+      "probe": "const Koa = require(\"koa\");\nconst Router = require(\"@koa/router\");\nconst got = require(\"got\");\nconst app = new Koa();\nconst router = new Router();\n\nrouter.get(\"/m4/:id?/:category*\", async (ctx) => {\n  const { id = \"news\", category = \"china\" } = ctx.params;\n  const rootUrl = `http://${id}.m4.cn`;\n  const response = await got(`${rootUrl}/api/${category}`);\n  ctx.body = response.body;\n});\n\napp.use(router.routes());\napp.listen(1200);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (ssrf), so the miss lies elsewhere than the note says"
+    },
+    {
+      "id": "GHSA-mv33-9f6j-pfmc",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        73
+      ],
+      "category": "sink",
+      "source": "the /files upload or replace request body, whose filename_disk field is merged into payload in api/src/services/files.ts:58 (payload = { ...(existingFile ?? {}), ...clone(data) })",
+      "sink": "api/src/services/files.ts:128 await disk.write(payload.filename_disk, stream, payload.type) (and :158 disk.move(tempFilenameDisk, payload.filename_disk)) - the storage adapter writes at the attacker-named path",
+      "between": "uploadOne() only defaults filename_disk when it is empty (:83), so a client-supplied value wins; the temp name is 'temp_' + payload.filename_disk (:91) and the final move uses the same field. Nothing checks the name against the uploads directory before the adapter write. The fix derives both names from primaryKey plus the extension and cleans up the temp file on a database error. Second explanation: source (a body field naming an on-disk file).",
+      "fix": "ignores payload.filename_disk and derives the temp and final file names from the record's primary key",
+      "probe": "const express = require(\"express\");\nconst multer = require(\"multer\");\nconst path = require(\"node:path\");\nconst fs = require(\"node:fs/promises\");\nconst app = express();\nconst upload = multer();\n\nconst disk = {\n  async write(filename, buffer) {\n    return fs.writeFile(path.join(\"/srv/uploads\", filename), buffer);\n  },\n};\n\napp.post(\"/files\", upload.single(\"file\"), async (req, res) => {\n  await disk.write(req.body.filename_disk, req.file.buffer);\n  res.json({ id: req.body.filename_disk });\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (path-traversal), so the miss lies elsewhere than the note says"
+    },
+    {
+      "id": "GHSA-vrhw-v2hw-jffx",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "src/interfaces/applicationData.js:221-225 validateAppId(appid) receives the appid route parameter of /applicationData/:appid/:version, and :231-234 validateVersion the version parameter",
+      "sink": "src/interfaces/applicationData.js:242-246 pathForApplicationData() returns path.join(dirForApplicationData(req, appid, isUser), `${version}.json`), which save/readApplicationData open - a backslash-bearing appid or a dotted version climbs out of the config directory",
+      "between": "validateAppId() only required length < 30 and no '/', so on Windows '..\\\\..\\\\secret' passed, and version was never checked for separators; path.join then normalized the traversal away. The fix adds a '\\\\' check to validateAppId and resolves the joined path, refusing anything not under config.configPath. Second explanation: source (route parameters).",
+      "fix": "rejects backslashes in appid and requires the resolved applicationData file to stay inside the configuration directory",
+      "probe": "const express = require(\"express\");\nconst path = require(\"node:path\");\nconst fs = require(\"node:fs\");\nconst app = express();\n\nfunction validateAppId(appid) {\n  return appid.length < 30 && appid.indexOf(\"/\") === -1 ? appid : null;\n}\n\napp.get(\"/applicationData/:appid/:version\", (req, res) => {\n  const appid = validateAppId(req.params.appid);\n  if (!appid) return res.sendStatus(400);\n  const file = path.join(\"/srv/.signalk\", appid, `${req.params.version}.json`);\n  res.type(\"json\").send(fs.readFileSync(file));\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (path-traversal), so the miss lies elsewhere than the note says"
+    },
+    {
+      "id": "GHSA-7c4h-vh2m-743m",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        20,
+        78
+      ],
+      "category": "sink",
+      "source": "packages/cli/src/modules/community-packages/community-packages.controller.ts installPackage() reads name and version from req.body (the added check is at :55; updatePackage() has the same body read and check at :261) - the package-install request body of an admin",
+      "sink": "packages/cli/src/modules/community-packages/npm-utils.ts:49-51 asyncExecFile('npm', ['install', '--prefix', dir, `${packageName}@${version}`]) - npm parses the version text as part of the package spec, so '1.0.0#;ls' or an extra option reaches the installer",
+      "between": "the controller passes version to communityPackagesService.parseNpmPackageName(), which splits on '@' (:146) and rebuilds rawString with no version syntax check; the npm exec then receives `${packageName}@${version}` as one argument, but npm's own argument parsing turns injected text into further packages or options. The fix requires semver.valid(version) in both controller methods and the service parser. Second explanation: source (request body field).",
+      "fix": "rejects any non-semver version before the package spec is built for npm install/update",
+      "probe": "const express = require(\"express\");\nconst { execFile } = require(\"node:child_process\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/community-packages\", (req, res) => {\n  const { name, version } = req.body;\n  execFile(\"npm\", [\"install\", \"--prefix\", \"/srv/n8n\", `${name}@${version}`], (err, stdout) => {\n    if (err) return res.status(500).send(err.message);\n    res.send(stdout);\n  });\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xph5-278p-26qx",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        601
+      ],
+      "category": "source",
+      "source": "src/app/(backend)/oidc/callback/desktop/route.ts:16-19 buildRedirectUrl() takes req.headers.get('x-forwarded-host') (falling back to Host) and x-forwarded-proto; packages/utils/src/server/correctOIDCUrl.ts:20-25 does the same",
+      "sink": "src/app/(backend)/oidc/callback/desktop/route.ts:95 NextResponse.redirect(correctedUrl) (also the error branch at :63/:107 and the consent route at src/app/(backend)/oidc/consent/route.ts:124) - Location is built from the forwarded host",
+      "between": "buildRedirectUrl() sets actualHost = forwardedHost || requestHost, builds `${proto}://${actualHost}${path}`, and correctOIDCUrl() only rewrites localhost or host-mismatched URLs, so a client-supplied X-Forwarded-Host passes straight into the redirect. The fix adds validateRedirectHost(actualHost), comparing it with APP_URL (exact, subdomain, or localhost in a local APP_URL) and keeping the original URL on failure. Second explanation: sink (NextResponse.redirect).",
+      "fix": "validates the X-Forwarded-Host/Host value against APP_URL before using it in the OIDC redirect URL",
+      "probe": "import { NextRequest, NextResponse } from \"next/server\";\n\nexport async function GET(req: NextRequest) {\n  const host = req.headers.get(\"x-forwarded-host\") || req.headers.get(\"host\");\n  const proto = req.headers.get(\"x-forwarded-proto\") || \"https\";\n  const url = new URL(`${proto}://${host}/oauth/callback/success`);\n  return NextResponse.redirect(url);\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    }
+  ],
+  "usage": {
+    "session": "ses_df91e058affemPyKBy5a7owJD6",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 7,
+    "turns": 60,
+    "tool_calls": 72,
+    "tool_errors": 1,
+    "chars_read": 242895,
+    "tokens": {
+      "input": 276123,
+      "cache_read": 5254552,
+      "output": 42563,
+      "reasoning": 0
+    },
+    "usd": 0.083
+  }
+}
