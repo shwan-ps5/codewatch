@@ -101,6 +101,9 @@ Ground truth:
 
 Speed and stability:
 - clawmetry (step 110): Semgrep gives up on both sides (about 30 minutes a side, 2026-11-22), so it scores as missed.
+- tests/test_detection.py (4,300 lines): CI's Semgrep gives up on some rules there even at 60 s a rule (step 125;
+  `check` now says so). A finding reviewed in that file can drop out and fail the self-check as a stale review;
+  find the slow rule or split the file.
 - mlflow GHSA-wqmh: Semgrep gives up on both sides (over 90 minutes a side on the 2026-11-21 nightly; step 68).
 - Unbatched regex alternations in `body_models`, `project_checks`, `jinja_sandboxes` and `drf_serializers` could pass
   Semgrep's ~30,000-character limit on very large projects (step 104).
