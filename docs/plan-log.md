@@ -2688,6 +2688,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    (the probe is the fixed code), resolverapi (Flask-RESTful's abort message is JSON). For the nightly: Frappe
    whitelist arguments and report filters on any Frappe app, and the narrower lookup-result. Tests in
    `tests/test_python_gap_notes.py`.
+129. **Topic 16's batches of 2026-11-23 reviewed** (pull request #14). 14 advisories read, 1 accepted: MISP
+   CVE-2026-135258 into `cve-pairs-php` (open; 3 source files, 29 lines: object-save attribute and event ids used as
+   path components in AttachmentTool, now checked as plain integers). The 13 rejections stand as written (library
+   code, vendored bundles, settings changes, remote or stored data, a commit that doesn't match its advisory).
 130. **90 more gap notes read** (2026-11-23, pull request #13). Probes scanned as in step 126: 71 missed (JavaScript
    non-HTTP 37: source 16, sink 9, front-end 5, other 7; PHP 28: source 8, stored 7, sink 5, functions 4, other 4;
    JavaScript 6), 19 found (path traversal 6, XSS 5, SQL 3, open redirect 2, others 3). gap-notes-2026-11-23-10 came
