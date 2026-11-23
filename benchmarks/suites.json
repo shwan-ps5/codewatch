@@ -6891,7 +6891,7 @@
       "name": "cve-pairs-php",
       "language": "php",
       "kind": "cve-pairs",
-      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Template support (PLAN.md step 73) was driven by MISP GHSA-p9m5 and -p8fp (CakePHP views, elements and set()), OpenCart GHSA-qx44 (Twig without autoescape, a filled $data array), oc-server3 GHSA-w8rr (Smarty) and FrontAccounting GHSA-9fmm (PHP in .inc files); scopes of GHSA-p9m5, -x452, -cr6c, -mj6h, -w8rr and -qx44 widened to their controllers. Topic 12's last batch and topic 10's PHP batches of 2026-11-15 reviewed 2026-11-15 (PLAN.md step 75); decisions in benchmarks/cve-candidates-2026-11-15-*.tsv. Topic 10's PHP batches php-6..9 of 2026-11-15 reviewed 2026-11-16 (PLAN.md step 76); decisions in benchmarks/cve-candidates-2026-11-15-php-[6-9].tsv. Topic 10's last PHP batches, of 2026-11-16, reviewed the same day (PLAN.md step 78); decisions in benchmarks/cve-candidates-2026-11-16-php*.tsv. Batches of 2026-11-17 and 2026-11-18 (topic 14, web app CVEs from before 2021; topic 15, PHP from before 2021; topic 16, new arrivals) reviewed 2026-11-18 (PLAN.md step 86); decisions in benchmarks/cve-candidates-2026-11-1[78]-{new,oldweb,php-old}*.tsv. Added 22, among them LimeSurvey, ILIAS, Roundcube (IMAP command injection, CWE-93), FreeScout, Chamilo, EGroupware, TestLink, Fork CMS, Shaarli, FusionPBX (5), OpenEMR CVE-2018-17180 (one fix for CVE-2018-17180 and -17181; CWE 22 and 89), Dolibarr and Admidio.",
+      "about": "PHP CVE fix pairs: reviewed GitHub advisories with one fix commit of at most 3 source files and 120 lines in PHP application or CMS code (Laravel, Symfony, CodeIgniter, CakePHP, Yii, WordPress/Drupal/Joomla/Craft/Contao plugins and plain PHP apps), request input reaching a sink in the product's own code. Not held out. Deferred (skipped by the nightly run) until codewatch had PHP rules; run nightly since 2026-11-14 (PLAN.md step 70), when catalog/codewatch/rules/php-web.yml was written from these cases. Cases from topic 4 (2026-11-05) and topic 10 (2026-11-09 and -10), reviewed 2026-11-10 (PLAN.md step 62); decisions in benchmarks/cve-candidates-2026-11-0[59]-php*.tsv and -2026-11-10-php*.tsv. LimeSurvey GHSA-wj23, deferred at PLAN.md step 53, added the same day. Topic 10's batches 5-8 of 2026-11-10 reviewed the same day (PLAN.md step 63); decisions in benchmarks/cve-candidates-2026-11-10-php-[5-8].tsv. Topic 10's batches of 2026-11-11 reviewed 2026-11-13 (PLAN.md step 66); decisions in benchmarks/cve-candidates-2026-11-11-php*.tsv. Batches of 2026-11-14 (topic 12, JS/TS app CVEs with no GitHub advisory; topic 10, PHP) reviewed 2026-11-14 (PLAN.md step 72); decisions in benchmarks/cve-candidates-2026-11-14-*.tsv. Template support (PLAN.md step 73) was driven by MISP GHSA-p9m5 and -p8fp (CakePHP views, elements and set()), OpenCart GHSA-qx44 (Twig without autoescape, a filled $data array), oc-server3 GHSA-w8rr (Smarty) and FrontAccounting GHSA-9fmm (PHP in .inc files); scopes of GHSA-p9m5, -x452, -cr6c, -mj6h, -w8rr and -qx44 widened to their controllers. Topic 12's last batch and topic 10's PHP batches of 2026-11-15 reviewed 2026-11-15 (PLAN.md step 75); decisions in benchmarks/cve-candidates-2026-11-15-*.tsv. Topic 10's PHP batches php-6..9 of 2026-11-15 reviewed 2026-11-16 (PLAN.md step 76); decisions in benchmarks/cve-candidates-2026-11-15-php-[6-9].tsv. Topic 10's last PHP batches, of 2026-11-16, reviewed the same day (PLAN.md step 78); decisions in benchmarks/cve-candidates-2026-11-16-php*.tsv. Batches of 2026-11-17 and 2026-11-18 (topic 14, web app CVEs from before 2021; topic 15, PHP from before 2021; topic 16, new arrivals) reviewed 2026-11-18 (PLAN.md step 86); decisions in benchmarks/cve-candidates-2026-11-1[78]-{new,oldweb,php-old}*.tsv. Added 22, among them LimeSurvey, ILIAS, Roundcube (IMAP command injection, CWE-93), FreeScout, Chamilo, EGroupware, TestLink, Fork CMS, Shaarli, FusionPBX (5), OpenEMR CVE-2018-17180 (one fix for CVE-2018-17180 and -17181; CWE 22 and 89), Dolibarr and Admidio. Topic 16's batches of 2026-11-23 (PLAN.md step 129): MISP CVE-2026-135258 (event and attribute ids from an object save used as attachment path components). None used for rules yet.",
       "cases": [
         {
           "id": "GHSA-p9m5-xwgx-8j69",
@@ -11755,6 +11755,22 @@
           "scope": [
             "application/controllers",
             "application/models"
+          ]
+        },
+        {
+          "id": "CVE-2026-135258",
+          "cve": "CVE-2026-135258",
+          "repo": "https://github.com/MISP/MISP.git",
+          "fix": "b9a43ec15341f8f47f975d4163510f83af493823",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "MISP contains multiple related authorization and input-validation flaws in its object editing and attachment handling workflows.",
+          "scope": [
+            "app/Controller",
+            "app/Lib/Tools",
+            "app/Model/Behavior"
           ]
         }
       ]
