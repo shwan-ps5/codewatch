@@ -165,3 +165,27 @@ def test_guard_takes_gap_notes_about_open_cases_only(tmp_path):
     assert any("GHSA-blind is not an open CVE-pair case" in p for p in problems)
     assert any("GHSA-unknown is not an open CVE-pair case" in p for p in problems)
     assert any("GHSA-open is in cve-pairs-python, not cve-pairs-php" in p for p in problems)
+
+
+def test_a_research_run_cannot_mark_its_own_file_read(tmp_path):
+    """gap-notes-2026-11-23-10 came with the status "read 2026-11-23: ...", which hid it from `pending`. The guard
+    refuses a run's file that doesn't start "research only", and `pending` lists any file without a review's mark."""
+    git = _repo(tmp_path)
+    (tmp_path / "benchmarks" / "suites.json").write_text(json.dumps({"suites": [
+        {"name": "cve-pairs-python", "kind": "cve-pairs", "cases": [{"id": "GHSA-open"}]}]}))
+    git("add", "-A")
+    git("commit", "-qm", "suites")
+    notes = tmp_path / "benchmarks" / "gap-notes-2026-11-23-10.json"
+    notes.write_text(json.dumps({"status": "read 2026-11-23: all located",
+                                 "notes": [{"id": "GHSA-open", "suite": "cve-pairs-python"}]}))
+    (tmp_path / "benchmarks" / "cve-candidates-2026-11-23-new-9.json").write_text(json.dumps(
+        {"status": "reviewed 2026-11-23 (PLAN.md step 1): done", "accepted": []}))
+    git("add", "-A")
+    git("commit", "-qm", "notes")
+    problems = reviewed.guard("HEAD~1", repo=tmp_path)
+    assert any("gap-notes-2026-11-23-10.json: status must start with" in p for p in problems)
+    assert any("cve-candidates-2026-11-23-new-9.json: status must start with" in p for p in problems)
+    assert reviewed.pending(tmp_path / "benchmarks", "gap-notes-") == ["gap-notes-2026-11-23-10.json"]
+    (tmp_path / "benchmarks" / "gap-notes-2026-11-23-11.json").write_text(json.dumps(
+        {"status": "read 2026-11-23 (PLAN.md step 130): leads", "notes": []}))
+    assert reviewed.pending(tmp_path / "benchmarks", "gap-notes-") == ["gap-notes-2026-11-23-10.json"]

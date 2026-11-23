@@ -171,6 +171,9 @@ ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|b
 IDENTITY = "Shwan <344055753+shwan-ps5@users.noreply.github.com>"
 WITHHELD = "accepted; reason withheld so the case stays blind"
 UNREVIEWED = "research only"
+# A review session's mark on a file it read: "reviewed DATE (PLAN.md step N)..." or "read DATE (PLAN.md step N)...",
+# or the early batches' "reviewed 2026-11-03 (...)", from before steps were numbered in statuses.
+REVIEWED_RE = re.compile(r"\(PLAN\.md step \d+\)|\breviewed 20\d\d-\d\d-\d\d\b")
 
 
 def _git(*args, cwd):
@@ -280,6 +283,16 @@ def gap_note_problems(name, text, head, repo):
     return [p for p in (_note_problem(name, note, open_cases, blind_cases) for note in notes) if p]
 
 
+def status_problem(name, text):
+    """A research run's batch or gap notes must say they haven't been read: an agent that marked its own file read
+    hid it from `pending` (gap-notes-2026-11-23-10, "read 2026-11-23: ...")."""
+    try:
+        status = str(json.loads(text).get("status", ""))
+    except (ValueError, AttributeError):
+        return []
+    return [] if status.startswith(UNREVIEWED) else [f'{name}: status must start with "{UNREVIEWED}", not {status[:60]!r}']
+
+
 def guard(base, head="HEAD", repo=HERE.parent):
     """Problems with the commits since base, which an unattended research run made: only candidate files, gap notes
     (and AGENTS.md) touched, the maintainer's noreply identity, blind cases described by nothing but their entry, and
@@ -291,6 +304,8 @@ def guard(base, head="HEAD", repo=HERE.parent):
         if not ALLOWED.match(name) or name == "AGENTS.md":
             continue
         text = _git("show", f"{head}:{name}", cwd=repo)
+        if name.endswith(".json"):
+            problems += status_problem(name, text)
         if name.startswith("benchmarks/gap-notes-"):
             problems += gap_note_problems(name, text, head, repo)
         else:
@@ -311,7 +326,8 @@ def pending(root=HERE, prefix="cve-candidates-"):
             status = str(json.loads(path.read_text()).get("status", ""))
         except ValueError:
             continue
-        if status.startswith(UNREVIEWED):
+        # Anything a review session hasn't marked, whatever the file says about itself.
+        if status.startswith(UNREVIEWED) or not REVIEWED_RE.search(status):
             waiting.append(path.name)
     return waiting
 
