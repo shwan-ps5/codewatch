@@ -1,0 +1,235 @@
+{
+  "batch": "gap-notes-2026-11-23-2",
+  "status": "research only: not read yet",
+  "method": "Rows 2-16 of ~/codewatch-research/gaps/misses.tsv (the first 15 candidates left in file order, all cve-pairs-python, so Python came first as section 9 asks). For each case the fix commit was fetched with gh api repos/O/R/commits/SHA (per-file patches) and, where the patch did not show the vulnerable side, the files at the fix commit's parent with gh api repos/O/R/contents/PATH?ref=SHA^ (raw), plus the git tree for one repository to locate a caller. Nothing was skipped: all 15 rows are noted. No blind suite entry and no benchmarks/results/*blind* file was read. One case (CVE-2026-55823) has confidence unsure: the request filters reach DatabaseQuery.execute().get_sql() in frappe code outside the diff, so the exact tainted field is not visible in the files read. ~/codewatch-research/gaps/misses.tsv listed 436 candidates at the start of this run and these were its first 15 rows; the next run carries on from the rebuilt file (next rows: cve-pairs-python-nonhttp).",
+  "notes": [
+    {
+      "id": "GHSA-3jqf-v4mv-747g",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        90
+      ],
+      "category": "functions",
+      "source": "moonraker/components/authorization.py:507 username = web_request.get_str('username') in _login_jwt_user (a login POST / JSON-RPC body), passed at :525 to self.ldap.authenticate_ldap_user(username, password)",
+      "sink": "moonraker/components/ldap.py:78-84 ldfilt = f\"(&(objectClass=Person)({attr_name}={username}))\" then conn.search(self.base_dn, ldfilt, attributes=['memberOf']) (LDAP search filter)",
+      "between": "the login username leaves authorization.py for the ldap component; authenticate_ldap_user runs _perform_ldap_auth in a thread (:63-65) which builds the filter; nothing escapes the value, and a configured user_filter also substitutes it through str.replace. Second reason in between: the source is Moonraker's WebRequest.get_str, a JSON-RPC body helper rather than request.args/form",
+      "fix": "ldap3's escape_filter_chars(username) before the filter string and before the USERNAME substitution",
+      "probe": "from flask import Flask, request\nimport ldap3\n\napp = Flask(__name__)\n\n@app.post(\"/login\")\ndef login():\n    username = request.form[\"username\"]\n    password = request.form[\"password\"]\n    server = ldap3.Server(\"ldap.internal\", 389)\n    with ldap3.Connection(server, user=\"cn=svc,dc=x\", password=\"pw\", auto_bind=True) as conn:\n        ldfilt = f\"(&(objectClass=Person)(uid={username}))\"\n        conn.search(\"dc=example,dc=com\", ldfilt, attributes=[\"memberOf\"])\n    return {\"ok\": True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3fmp-59v6-4qw2",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        20,
+        943
+      ],
+      "category": "source",
+      "source": "web/home/views.py fetch_cvedata (POST /fetch_cve_data, ~:361) builds ServerSideDataTable(request=request, ...) from the request; web/helpers/server_side_datatables.py:20 self.request_values = request.values and :61-70 read the DataTables columns[i][data] and order[i][column] form fields",
+      "sink": "lib/DatabasePlugins/mongodb.py:364-388 datatables_data_order appends (columns[order[i]['column']]['data'], ASCENDING/DESCENDING) to sort, and query_docs (:99-106) passes query_filter=self.fields and sort to the collection query as MongoDB field names",
+      "between": "DataTables' bracketed form fields -> ServerSideDataTable.request_values -> datatables_data_columns_ordering -> datatables_data_order/fields -> backend query_docs; no allowlist between the client-chosen field names and the Mongo sort and projection. Second reason in between: the retrieve form value selects the collection (count at :76-84). The source is the jQuery DataTables nested parameter names, which a scanner may not model",
+      "fix": "validates retrieve == 'cves', allowlists column data names before sort/projection, and bounds start/length",
+      "probe": "from flask import Flask, request\nimport pymongo\n\napp = Flask(__name__)\ndb = pymongo.MongoClient().cvedb\n\n@app.post(\"/fetch_cve_data\")\ndef fetch():\n    values = request.values\n    columns = {}\n    for key, value in values.items():\n        if key.startswith(\"columns[\") and key.endswith(\"[data]\"):\n            columns[key.split(\"[\")[1].split(\"]\")[0]] = value\n    sort = []\n    for key, value in values.items():\n        if key.startswith(\"order[\") and key.endswith(\"[column]\"):\n            sort.append((columns[value], pymongo.ASCENDING))\n    projection = {name: 1 for name in columns.values()}\n    return {\"data\": list(db[values[\"retrieve\"]].find({}, projection, sort=sort))}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-33078",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "app/routes/config/routes.py:40 server_ip = request.json.get('serv') (show_config) and :54 server_ip = request.form.get('serv') (show_config_files); route params <server_ip> on the /versions and /section/haproxy handlers",
+      "sink": "app/modules/config/common.py:46 return f\"{config_dir}/{server_ip}-{get_date.return_date('config')}.{file_format}\" for the local config path, then app/modules/config/config.py:80-81 mod_ssh.ssh_connect(server_ip) and ssh.get_sftp(config_path, cfg); save_version joins the route's configver onto the config dir",
+      "between": "routes/config/routes.py -> config_common.generate_config_path (path built by f-string with the request value) -> config_mod.get_config/upload -> mod_ssh and local open(); nothing validates the value on the vulnerable side, and @check_services is a service-name decorator, not a value check. Second reason in between: the value is a request.json/form field read in one file and consumed in another",
+      "fix": "common.is_ip_or_dns(server_ip) in generate_config_path and in each route handler (Union[IPvAnyAddress, DomainName] on path params), and a '..' guard before rewriting section content",
+      "probe": "from flask import Flask, request\nimport paramiko\n\napp = Flask(__name__)\nSAVE = \"/var/lib/configs\"\n\ndef config_path(service, server_ip):\n    return f\"{SAVE}/{server_ip}-{service}.cfg\"\n\n@app.post(\"/<service>/show\")\ndef show(service):\n    server_ip = request.json.get(\"serv\")\n    cfg = config_path(service, server_ip)\n    client = paramiko.SSHClient()\n    client.connect(server_ip)\n    sftp = client.open_sftp()\n    with sftp.open(cfg, \"rb\") as fh:\n        return fh.read()\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-34977",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        78
+      ],
+      "category": "stored",
+      "source": "aperisolve/app.py:159 password = request.form.get('password') on the image upload POST, saved at :227 as Submission(password=password)",
+      "sink": "aperisolve/analyzers/jpseek.py:22-28 expect_cmd = f\"expect -c 'spawn {jpseek_cmd}; ... send \\\"{password}\\\\r\\\"; ...'\" returned as ['bash', '-c', expect_cmd] and run by base_analyzer.run_command (asyncio.create_subprocess_exec at :52)",
+      "between": "the password is stored on the Submission row by the upload request and read back later by the analyzer worker: aperisolve/workers.py:87 (analyze_jpseek, img_path, result_path, submission.password) -> JpseekAnalyzer.build_cmd(password) -> bash -c. No request value reaches the sink in the same request; the shell metacharacters are interpolated into the expect script",
+      "fix": "passes the password through the JPSEEK_PASS environment variable and braces the file paths in the expect script",
+      "probe": "from flask import Flask, request\nimport subprocess\n\napp = Flask(__name__)\n\ndef build_cmd(img, out, password):\n    script = f\"expect -c 'spawn jpseek {img} {out}; expect \\\"Passphrase:\\\"; send \\\"{password}\\\\r\\\"; expect eof'\"\n    return [\"bash\", \"-c\", script]\n\n@app.post(\"/upload\")\ndef upload():\n    password = request.form.get(\"password\", \"\")\n    return subprocess.run(build_cmd(\"img.png\", \"out.txt\", password), capture_output=True).stdout\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-22265",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        78
+      ],
+      "category": "check",
+      "source": "app/routes/logs/routes.py:58 grep = request.args.get('grep') in the logs() route (Flask query parameter)",
+      "sink": "app/modules/roxywi/logs.py:59 grep_act = '|egrep \"%s\"' % checkAjaxInput(grep) and :139 server_mod.subprocess_execute(cmd) with cmd built at :138 (also :111)",
+      "between": "the query value passes through checkAjaxInput (app/modules/common/common.py:121-124), a validator whose name reads like a sanitizer: it only rejected [&;|$`] and returned the string unchanged, so a newline, '<', '>' or a quote still reached the shell command. codewatch may take that call as a sanitizer and stop there",
+      "fix": "extends the checkAjaxInput denylist with \\n \\r < > and quotes the value with grep instead of egrep",
+      "probe": "from flask import Flask, request\nimport re, subprocess\n\napp = Flask(__name__)\n\ndef check_input(value):\n    if re.search(r\"[&;|$`]\", value):\n        raise ValueError(\"bad characters\")\n    return value\n\n@app.get(\"/logs\")\ndef logs():\n    grep = request.args.get(\"grep\", \"\")\n    action = '|egrep \"%s\"' % check_input(grep)\n    cmd = f\"tail -100 /var/log/app.log {action}\"\n    return subprocess.run(cmd, shell=True, capture_output=True).stdout\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-63502",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "stored",
+      "source": "core/web/apiv2/tasks.py:79-88 POST /tasks/export/new takes the FastAPI body NewExportRequest.export (an ExportTask whose name comes from the request) and saves it with request.export.save()",
+      "sink": "core/clients/file_storage/classes/local_storage.py:17-18 return self.path.joinpath(file_name), used by put_file (:26-27 write_bytes) and get_file/delete_file",
+      "between": "the export name is stored in the database, then a background task (core/taskmanager.py/taskscheduler.py) runs ExportTask.run, whose file_name property (core/schemas/task.py:295-300) was self.name.replace(' ', '_').lower(); no basename or regex on the way from the saved task to the storage join. The request that names the file and the run that writes it are different",
+      "fix": "contains _file_path with base.resolve()/parents, and reduces file_name with a regex plus pathlib Path(...).name",
+      "probe": "from fastapi import FastAPI\nfrom pydantic import BaseModel\nimport pathlib\n\napp = FastAPI()\nSTORAGE = pathlib.Path(\"/srv/exports\")\n\nclass ExportTask(BaseModel):\n    name: str\n\n@app.post(\"/tasks/export/new\")\ndef new_export(export: ExportTask) -> dict:\n    return {\"name\": export.name}\n\ndef run_export(name: str) -> None:\n    file_name = name.replace(\" \", \"_\").lower()\n    (STORAGE / file_name).write_bytes(b\"data\")\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2019-19775",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "category": "check",
+      "source": "zerver/views/thumbnail.py:22-24 backend_serve_thumbnail(request, user_profile, url: str=REQ(), size_requested: str=REQ('size')) (Django request variable)",
+      "sink": "zerver/views/thumbnail.py:36-37 thumbnail_url = generate_thumbnail_url(url, size); return redirect(thumbnail_url) (django.shortcuts.redirect)",
+      "between": "the value passes the prefix tests in zerver/lib/thumbnail.py:23 user_uploads_or_external (url.startswith('http') or url.lstrip('/').startswith('user_uploads/')) and :36-38 generate_thumbnail_url (path.startswith('https://') or path.startswith('http://') else '/'+path), then urljoin-like concatenation; a '//host/x' value is not 'http' but redirects as protocol-relative. Those prefix checks read like sanitizers and codewatch may accept them",
+      "fix": "parses the value with urlsplit and compares scheme and netloc, and uses urljoin('/', path)",
+      "probe": "from django.http import HttpResponseRedirect\nfrom urllib.parse import urljoin\n\ndef generate_thumbnail_url(path, size):\n    if not (path.startswith(\"https://\") or path.startswith(\"http://\")):\n        path = \"/\" + path\n    return path\n\ndef thumbnail(request):\n    url = request.GET.get(\"url\")\n    if url.lstrip(\"/\").startswith(\"user_uploads/\") or url.startswith(\"http\"):\n        return HttpResponseRedirect(urljoin(\"/\", generate_thumbnail_url(url, \"0x300\")))\n    return HttpResponseRedirect(\"/static/placeholder.png\")\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-55796",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "hrms/payroll/report/salary_payments_via_ecs/salary_payments_via_ecs.py:88 def get_data(filters) - the Frappe report filters dict built from the report's query parameters (frappe.form_dict) reaches this file",
+      "sink": "same file:110-112 entry = frappe.db.sql(\"\"\"select employee, employee_name, gross_pay, net_pay from `tabSalary Slip` where docstatus = 1 %s\"\"\" % (conditions), as_dict=1)",
+      "between": "get_data calls get_conditions(filters) at :67-85, which interpolates each filter value with % into SQL fragments ('department = \\'%s\\' ') and returns one joined string; the string is then %-formatted into the frappe.db.sql text. The value crosses two functions and a string return, so the sink sees a preformatted SQL string, not the request value",
+      "fix": "builds query-builder clauses (DocType / Extract) instead of the %-formatted string",
+      "probe": "import frappe\n\ndef get_conditions(filters):\n    conditions = [\"\"]\n    if filters.get(\"department\"):\n        conditions.append(\"department = '%s' \" % filters[\"department\"])\n    return \" and \".join(conditions)\n\n@frappe.whitelist()\ndef run_report():\n    filters = frappe.form_dict\n    query = \"select employee, net_pay from `tabSalary Slip` where docstatus = 1 %s\" % get_conditions(filters)\n    return frappe.db.sql(query, as_dict=1)\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-55823",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "frappe/desk/reportview.py:56-57 @frappe.whitelist() def get_count(): args = get_form_params() - get_form_params at :101-102 parses frappe.local.form_dict (the list view's GET parameters)",
+      "sink": "frappe/desk/reportview.py:71 (and :85) frappe.db.sql(f\"select count(*) from ( {partial_query} ) p\") / frappe.db.sql(f\"{timeout_clause} select count(*) from ( {partial_query} ) p\")",
+      "between": "partial_query comes from execute(**args, run=0).get_sql() at :68/79 - another project function (DatabaseQuery) produces the SQL text from the request args and returns it as a string, which is then spliced into a second raw query. Nothing in get_count shows a request value reaching db.sql; the SQL string is handed over by a helper",
+      "fix": "wraps the partial query with frappe.qb (Count) and runs it with walked params instead of an f-string around get_sql()",
+      "probe": "import frappe\n\ndef execute(doctype, filters=None, run=1):\n    sql = f\"select name from `tab{doctype}` where {filters}\"\n    return sql if not run else frappe.db.sql(sql)\n\n@frappe.whitelist()\ndef get_count():\n    args = frappe.form_dict\n    partial_query = execute(doctype=args.doctype, filters=args.filters, run=0)\n    return frappe.db.sql(f\"select count(*) from ( {partial_query} ) p\")[0][0]\n",
+      "confidence": "unsure"
+    },
+    {
+      "id": "CVE-2026-52835",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22,
+        434
+      ],
+      "category": "framework",
+      "source": "plexpy/webserve.py:3939-3941 (import_database, database_file branch) database_file.filename from the multipart upload, and :4032-4034 (import_config) config_file.filename",
+      "sink": "plexpy/webserve.py:3942 os.path.join(plexpy.CONFIG.CACHE_DIR, database_file.filename + '.import.db') then :3944-3946 open(database_path, 'wb') writes the upload; the same shape at :4033-4037 for config_file",
+      "between": "the handlers are CherryPy exposed methods (@cherrypy.expose, @requireAuth), so the upload object arrives through CherryPy's dispatcher rather than a Flask/Django request; the raw multipart filename is concatenated onto the cache directory with os.path.join (which does not reduce '..' in the second argument) and written. Second reason in between: the source is the uploaded file name inside the multipart body",
+      "fix": "os.path.basename(database_file.filename / config_file.filename) before the join",
+      "probe": "import os\nimport cherrypy\n\nclass Imports:\n    CACHE_DIR = \"/var/cache/app\"\n\n    @cherrypy.expose\n    def import_database(self, database_file=None):\n        path = os.path.join(self.CACHE_DIR, database_file.filename + \".import.db\")\n        with open(path, \"wb\") as fh:\n            fh.write(database_file.file.read())\n        return \"ok\"\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-130156",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "bazarr/api/subtitles/subtitles_contents.py:56 reqparse argument subtitlePath and :84 path = args.get('subtitlePath') (Flask-RESTX request); bazarr/api/subtitles/subtitles.py:83-92 patch parser subtitlesPath/reference and :136 subtitles_path = args.get('subtitles_path')",
+      "sink": "bazarr/api/subtitles/subtitles_contents.py:89-92 detect_encoding(path) (subtitles/indexer/utils.py opens the file) then pysubs2/srt read it; on the PATCH side translate_subtitles_file / subtitles_sync_references open and rewrite subtitles_path and reference",
+      "between": "the request value is only checked at subtitles_contents.py:86 for a subtitle extension (path.casefold().endswith(SUBTITLE_EXTENSIONS)) and at subtitles.py:139 for os.path.exists; the extension test reads like a validator and passes any .srt anywhere on disk, so codewatch may treat it as a sanitizer and stop before the open",
+      "fix": "is_indexed_subtitle_path() in app/database.py, a DB lookup that requires the path to be an indexed subtitles row, before reading or modifying",
+      "probe": "from flask_restx import Namespace, Resource, reqparse\n\napi = Namespace(\"subtitles\")\n\n@api.route(\"subtitles/contents\")\nclass Contents(Resource):\n    parser = reqparse.RequestParser()\n    parser.add_argument(\"subtitlePath\", type=str, required=True)\n\n    def get(self):\n        path = self.parser.parse_args().get(\"subtitlePath\")\n        if not path.endswith((\".srt\", \".ass\", \".vtt\")):\n            return \"Not a subtitle file\", 400\n        with open(path, encoding=\"utf-8\") as fh:\n            return fh.read()\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-dataelement-bisheng-f4905b6dcb7b",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "src/backend/bisheng/api/v1/report.py:30-33 @router.post('/callback') async def callback(data: dict) reads status = data.get('status') and file_url = data.get('url') from an unauthenticated JSON body; the same shape in src/backend/bisheng/api/v1/workflow.py:219-222 upload_report_file(request, data: dict = Body(...))",
+      "sink": "src/backend/bisheng/api/v1/report.py:39 file = Requests().get(url=file_url) (the office document server callback download); workflow.py:222 the same Requests().get(url=file_url)",
+      "between": "the callback body is an untyped dict (data: dict) rather than a model with a URL field, and the endpoint has no session by design; the value goes straight from data.get('url') to the outbound fetch and the bytes are stored in MinIO. Second reason in between: nothing validates the URL before the fetch on the vulnerable side",
+      "fix": "adds api/services/office_callback.py, a same-origin check against the configured office_url plus allow_redirects=False, used by both callbacks",
+      "probe": "from fastapi import FastAPI, Body\nimport requests\n\napp = FastAPI()\n\n@app.post(\"/report/callback\")\nasync def callback(data: dict = Body(...)):\n    file_url = data.get(\"url\")\n    if data.get(\"status\") in {2, 6}:\n        response = requests.get(file_url)\n        return {\"stored\": len(response.content)}\n    return {\"error\": 0}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-CounterpartyXCP-counterparty-core-fde3545ddaa0",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "category": "source",
+      "source": "counterparty-core/counterpartycore/lib/api/apiv1.py:540-543 the generated get_method(**kwargs) forwards the APIv1 method arguments to get_rows(table=table, **kwargs), so filters (a JSON-RPC params list such as [{\"field\": ..., \"op\": ..., \"value\": ...}]) is attacker-controlled at :175-234",
+      "sink": "apiv1.py:281 conditions.append(f\"\"\"{filter_[\"field\"]} {filter_[\"op\"]} {marker}\"\"\") and :165/:170 cursor.execute(statement, bindings) - the field name is interpolated into the statement, the value is bound",
+      "between": "the filters list is normalized at :224-234 (dict/list entries copied into new_filters) and then looped at :275-283; only order_by has a name check (:213 ^[a-z0-9_]+$), filter_['field'] has none. The source is a JSON-RPC method argument inside a body, which a scanner may not treat as request data",
+      "fix": "applies the same ^[a-z0-9_]+$ regex to filter_['field'] before the SQL is built",
+      "probe": "import sqlite3\n\ndef get_rows(conn, table, filters):\n    conditions = []\n    for item in filters:\n        conditions.append(f\"{item['field']} {item['op']} ?\")\n    sql = f\"SELECT * FROM {table} WHERE \" + \" AND \".join(conditions)\n    return conn.execute(sql, [item[\"value\"] for item in filters]).fetchall()\n\ndef dispatch(method, params):\n    if method == \"get_transactions\":\n        return get_rows(sqlite3.connect(\"db.sqlite\"), \"transactions\", params[\"filters\"])\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-vivekchand-clawmetry-da1d1d8fd021",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "routes/reasoning.py:384-387 @bp_reasoning.route('/api/reasoning') def api_reasoning(): session_id = request.args.get('session', '').strip() (Flask query parameter)",
+      "sink": "routes/reasoning.py:147 with open(jsonl_path, 'r', errors='replace') as fh: - jsonl_path built at :139 os.path.join(session_dir, f'{session_id}.jsonl'), guarded only by os.path.isfile at :143",
+      "between": "api_reasoning passes session_id to _parse_session_reasoning(session_id) (:132), another function in the same file, which joins it onto SESSIONS_DIR and opens it; helpers/logs.py:73-78 joins a ?date= value onto the log dirs and helpers log paths, and routes/skills.py:189-195 joins a URL skill name onto each skills dir. Sibling transcript routes route through a file_security.is_path_within check (the earlier GHSA-6r57 containment) that these three never called",
+      "fix": "adds is_safe_path_component/is_path_within checks at the three entry points and at the open/join sites",
+      "probe": "import os\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\nSESSIONS = \"/var/lib/dashboard/sessions\"\n\ndef parse_session(session_id):\n    path = os.path.join(SESSIONS, f\"{session_id}.jsonl\")\n    if not os.path.isfile(path):\n        return []\n    with open(path) as fh:\n        return fh.readlines()\n\n@app.get(\"/api/reasoning\")\ndef reasoning():\n    session_id = request.args.get(\"session\", \"\").strip()\n    return jsonify(parse_session(session_id))\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-cbcoutinho-nextcloud-mcp-server-4a3857aabb74",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "nextcloud_mcp_server/auth/webhook_routes.py:431 preset_id = request.path_params['preset_id'] in enable_webhook_preset (and disable_webhook_preset), a Starlette path parameter; the handler is a Starlette HTMLResponse view (@requires('authenticated'))",
+      "sink": "webhook_routes.py:449-450 HTMLResponse(content=f'<div class=\"warning\">Unknown preset: {preset_id}</div>', status_code=404) and :502-503 the same with {str(e)}; :412-416 renders {str(e)} in the management pane",
+      "between": "the value is echoed into an HTML string in Python, not into a template, and returned as HTMLResponse content; there is no escaping layer between the path parameter and the response body, so a rule that looks for template engines misses it",
+      "fix": "html.escape() around preset_id and str(e) before the f-string",
+      "probe": "from starlette.applications import Starlette\nfrom starlette.requests import Request\nfrom starlette.responses import HTMLResponse\nfrom starlette.routing import Route\n\nasync def enable_preset(request: Request) -> HTMLResponse:\n    preset_id = request.path_params[\"preset_id\"]\n    if preset_id not in (\"alpha\", \"beta\"):\n        return HTMLResponse(f\"<div class='warning'>Unknown preset: {preset_id}</div>\", status_code=404)\n    return HTMLResponse(\"<div>enabled</div>\")\n\napp = Starlette(routes=[Route(\"/webhooks/enable/{preset_id}\", enable_preset)])\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df98be276ffet8fgnfmU8i3ETs",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 49,
+    "tool_calls": 50,
+    "tool_errors": 0,
+    "chars_read": 292494,
+    "tokens": {
+      "input": 188812,
+      "cache_read": 4953984,
+      "output": 34128,
+      "reasoning": 0
+    },
+    "usd": 0.064
+  }
+}
