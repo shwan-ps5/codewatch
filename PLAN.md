@@ -66,8 +66,9 @@ exhausted.
 ## Open items (2026-11-21; keep current, name the step that closes each)
 
 Detection gaps, by cases reached (from the sort of the 81 Python misses, step 108):
-- Front-end XSS, 27 of 31 missed. Shipped JS writing data as HTML: 12 (step 42 I: a review-mode hotspot for a
-  fetched or AJAX response reaching an HTML sink, then following a same-site fetch path to its view). `|safe` /
+- Front-end XSS, 27 of 31 missed. Shipped JS writing data as HTML: 12 (step 42 I: step 131 added a review-mode
+  hotspot for fields of a fetched answer reaching an HTML sink, 2 found; whole HTML answers, callbacks passed by
+  name (pyLoad's `success: this.createLinks`) and project wrappers are left). `|safe` /
   `{@html}` on stored fields in templates: 7 (step 42 H, the templates part; Django models are done, step 45,
   SQLAlchemy ones aren't). Template values in script strings, inline handlers and unquoted attributes: 4 (J).
 - Python server side, 54 missed: existing checks too weak 15, sinks not modelled 13, sources not modelled 12,
@@ -128,7 +129,7 @@ by about one case a day. JavaScript and PHP rule work waits until then; their ga
 
 1. The 45 Python misses, each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E).
-2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 129 started it).
+2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 4. Each morning: read the nightly, review topic 16's batches and read the gap notes, merge both pull requests the
    same session, and fast-forward `main` weekly after a clean nightly (CLAUDE.md, "Branches").

@@ -769,7 +769,8 @@ rules:
               $RES.type("=~/(?i)(json|text|plain|event-stream)/");
               ...
           - focus-metavariable: $HTML
-      - patterns:
+      - &dom-html-sinks
+        patterns:
           - pattern-either:
               - pattern: $EL.innerHTML = $HTML
               - pattern: $EL.outerHTML = $HTML
@@ -784,7 +785,82 @@ rules:
                       - pattern: $JQ.html($HTML)
                       - pattern: $JQ.append($HTML)
                   - metavariable-regex: {metavariable: $JQ, regex: '^\$\w+$'}
+              # jQuery builds elements from a string that starts with a tag, and sets `html:` as innerHTML:
+              # $("<p>" + text + "</p>") (OctoPrint GHSA-x7mf), $('<div>', {html: message}) (Indico GHSA-fmqq).
+              - patterns:
+                  - pattern: $($HTML)
+                  - metavariable-regex: {metavariable: $HTML, regex: '^[''"`]\s*<[\s\S]*[+$]'}
+              - pattern: '$($TAG, {..., html: $HTML, ...})'
           - focus-metavariable: $HTML
+
+  # Review: what a page's own script fetched, field by field, written into HTML. The server's JSON answer carries
+  # what users stored (a translation unit's text, a download's name, a webcam's reply), and the page has to escape
+  # it: weblate GHSA-6wxc (search results into a template string appended), OctoPrint GHSA-x7mf (a response field
+  # into $("<p>" + ...)), pyLoad GHSA-wcm6. Only fields of the parsed answer, not the whole answer: a fragment of HTML
+  # the server rendered (`.then(r => r.text()).then(html => el.innerHTML = html)`, `$(el).html(response)`) is meant
+  # to be markup. Not fields named for markup (data.html, rendered, template), counts or status. PLAN.md step 131.
+  - id: codewatch.js.fetched-data-into-html
+    mode: taint
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      A field of data the page fetched (a JSON answer from the server) is written into HTML. If it holds text users
+      stored, it can carry script: escape it or set it with textContent.
+    metadata:
+      category: security
+      subcategory: [audit]
+      type: security_hotspot
+      title: Fetched data written into HTML
+      cwe: ["CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"]
+      owasp: ["A05:2025 - Injection"]
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: $P.done(function ($R, ...) { ... })
+              - pattern-inside: $P.done(($R, ...) => { ... })
+              - pattern-inside: $P.then(function ($R, ...) { ... }, ...)
+              - pattern-inside: $P.then(($R, ...) => { ... }, ...)
+              - pattern-inside: $P.then(($R, ...) => $BODY, ...)
+              - pattern-inside: '$.ajax({..., success: function ($R, ...) { ... }, ...})'
+              - pattern-inside: '$.ajax({..., success: ($R, ...) => { ... }, ...})'
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: $.$GET(..., function ($R, ...) { ... })
+                      - pattern-inside: $.$GET(..., ($R, ...) => { ... })
+                  - metavariable-regex: {metavariable: $GET, regex: '^(get|post|getJSON)$'}
+              - patterns:
+                  - pattern-inside: |
+                      $R = await $CLIENT.$METHOD(...);
+                      ...
+                  - metavariable-regex: {metavariable: $CLIENT, regex: '^(axios|\$http|http|api|client)$'}
+          - pattern: $R.$FIELD
+          - metavariable-regex:
+              metavariable: $FIELD
+              regex: '^(?!(?i:.*(html|markup|rendered|template|partial)|ok|status|statusText|length|count|total|headers|json|text|blob|arrayBuffer|then|done|fail)$)\w+$'
+    # jQuery's loop hands each element to its callback: $.each(data.links, function (key, link) {...}) (pyLoad).
+    pattern-propagators:
+      - {pattern: '$.each($FROM, function ($K, $TO) { ... })', from: $FROM, to: $TO}
+      - {pattern: '$.each($FROM, ($K, $TO) => { ... })', from: $FROM, to: $TO}
+    pattern-sanitizers:
+      - *san-numeric
+      - *san-named
+      - pattern-either:
+          - pattern: escapeHtml(...)
+          - pattern: escape(...)
+          - pattern: _.escape(...)
+          - pattern: he.encode(...)
+          - pattern: he.escape(...)
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: sanitizeHtml(...)
+          - pattern: encodeURIComponent(...)
+          - pattern: $X.textContent
+      - patterns:
+          - pattern: $ENCODE(...)
+          - metavariable-regex: {metavariable: $ENCODE, regex: '(?i)(.*\.)?(html_?encode|encode_?html|html_?entities)\w*$'}
+    pattern-sinks:
+      - *dom-html-sinks
 
   - id: codewatch.js.open-redirect
     mode: taint

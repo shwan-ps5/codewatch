@@ -2697,3 +2697,12 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    JavaScript 6), 24 found (19 in batches 10-15: path traversal 6, XSS 5, SQL 3, open redirect 2, others 3; 5 PHP in 16-17). gap-notes-2026-11-23-10 came
    with the status "read 2026-11-23: ...", written by the agent, which hid it from `pending`; `reviewed.py` now
    refuses such a status and lists any file without a review's mark (commit f388ebd).
+131. **Front-end JS: fetched data written into HTML** (2026-11-23; step 42 I, from the gap notes). New review-mode rule
+   `codewatch.js.fetched-data-into-html`: fields of a `.done()`, `.then()`, `$.ajax` `success:` or `$.get/$.post/
+   $.getJSON` callback's answer (and `await axios/api/client.x()`), through `$.each`, reaching an HTML sink. Not
+   the whole answer (a server-rendered fragment is meant to be markup), nor fields named for markup, counts or
+   status. The XSS rule's DOM sinks gained jQuery's `$("<p>" + x)` and `$(tag, {html: x})`. Front-end suite in
+   review mode 14 -> 16 of 31 (weblate GHSA-6wxc, OctoPrint GHSA-x7mf, both quiet at their fixes), still-flagged
+   unchanged at 8; verdict unchanged (4). Template notes: `|safe` and autoescape-off on stored values are already
+   review hotspots (`codewatch.templates.unescaped-output`); verdict needs 42 H. For the nightly: the new hotspot on
+   the learning-set apps' front ends. Tests in `tests/test_javascript_fetched_data.py`.
