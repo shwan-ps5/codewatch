@@ -1,218 +1,233 @@
 {
- "batch": "gap-notes-2026-11-23-16",
- "status": "research only: not read yet",
- "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order. The file holds 227 rows and every one is cve-pairs-php (the Python and JavaScript rows were noted in earlier runs of the day), so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: YesWiki ApiController.php, ReactionManager.php, handlers/page/deletepage.php, tools/tags/handlers/page/__deletepage.php, actions/recentchanges.php and PageManager.php; Craft AssetsController.php and helpers/Assets.php, AppController.php, BaseElementSelectConditionRule.php, ElementIndexesController.php, web/User.php and web/Controller.php; Formie Hidden.php and helpers/Variables.php; casserver Cas10Controller.php, TicketValidatorTrait.php and FileSystemTicketStore.php; mantisbt file_download.php; grav-plugin-form classes/Form.php; froxlor Api/Commands/MysqlServer.php and PhpHelper.php; craft commerce widgets/TotalRevenue.php and stats/TotalRevenue.php; Admidio modules/sso/fetch_metadata.php; TypiCMS FileUploader.php and FilesApiController.php. Nothing was skipped, apart from test files in the casserver diff, which were read but not used. Rows 16-227 of the file are left for the next run.",
- "notes": [
-  {
-   "id": "GHSA-4pf7-cc4r-g63h",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    89
-   ],
-   "category": "sink",
-   "source": "includes/controllers/ApiController.php:728 deleteReaction($idreaction, $id, $page, $username), routed by the annotation at :726 as DELETE /api/reactions/{idreaction}/{id}/{page}/{username} (three path parameters)",
-   "sink": "includes/services/ReactionManager.php:353 `return $this->tripleStore->delete($pageTag, self::TYPE_URI, null, '', '', 'value LIKE \\'%user\":\"' . $user . '\",\"idReaction\":\"' . $reactionId . '\",\"id\":\"' . $id . '\"%\\'');` - a raw SQL LIKE fragment handed to TripleStore::delete",
-   "between": "the three path parameters go from ApiController::deleteReaction() into ReactionManager::deleteUserReaction() (:326), which concatenates them into the condition string that TripleStore::delete() pastes into its DELETE statement; the branch above it already escaped the values with $this->dbService->escape(), this one did not",
-   "fix": "escapes $user, $reactionId and $id with DbService::escape() before the condition string is built",
-   "probe": "<?php\n$idreaction = $_GET['reaction'];\n$id = $_GET['id'];\n$user = $_GET['user'];\n\nfunction delete_reaction($user, $idreaction, $id)\n{\n    return $this->tripleStore->delete('page', 'uri', null, '', '',\n        'value LIKE \\'%user\":\"' . $user . '\",\"idReaction\":\"' . $idreaction . '\",\"id\":\"' . $id . '\"%\\'');\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-8f2v-2qhj-gfwg",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    89
-   ],
-   "category": "source",
-   "source": "handlers/page/deletepage.php:94 `\"WHERE to_tag = '\" . $this->GetPageTag() . \"'\"` and tools/tags/handlers/page/__deletepage.php:13 `$tag = $this->GetPageTag();` - the page tag of the requested URL, read through the wiki object rather than from $_GET",
-   "sink": "tools/tags/handlers/page/__deletepage.php:14 `$this->Query(\"DELETE FROM {$this->config['table_prefix']}links WHERE to_tag = '$tag'\");` (also handlers/page/deletepage.php:93 LoadAll() and includes/controllers/ApiController.php:626 DELETE with '$tag')",
-   "between": "the tag comes from the URL path of the page being deleted; GetPageTag() returns it unchanged and it is concatenated into three DELETE/SELECT statements; nothing escaped it before the fix",
-   "fix": "escapes the tag with DbService::escape() in all three places and builds the table name with DbService::prefixTable()",
-   "probe": "<?php\n$tag = $this->GetPageTag();\n\n$this->Query(\"DELETE FROM {$this->config['table_prefix']}links WHERE to_tag = '$tag'\");\n$rows = $this->LoadAll(\"SELECT DISTINCT from_tag FROM \" . $this->config['table_prefix'] . \"links WHERE to_tag = '\" . $this->GetPageTag() . \"'\");\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-89v6-j5x6-cmj3",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    89
-   ],
-   "category": "functions",
-   "source": "actions/recentchanges.php:17 `if (isset($_GET['period']) && in_array($_GET['period'], ['day', 'week', 'month']))` and, in the else branch, :33 `$dateMin = $this->GetParameter('period');` (a URL parameter read by the wiki object)",
-   "sink": "includes/services/PageManager.php:196 `$this->dbService->loadAll('select ... from' . $this->dbService->prefixTable('pages') . \"where latest = 'Y' and comment_on = '' and time >= '$minDate' order by time desc\")`",
-   "between": "$dateMin is set in the action, passed to $this->LoadRecentlyChanged($max, $dateMin) (includes/YesWiki.php:1702) and then to PageManager::getRecentlyChanged($limit, $minDate) (:193), which concatenates it into the query; a period that is not day/week/month leaves the raw value in place",
-   "fix": "escapes $minDate with $this->dbService->escape() inside getRecentlyChanged() and only uses $_GET['period'] when it is one of the three literals",
-   "probe": "<?php\n$period = $_GET['period'];          // any string, not just day/week/month\n$dateMin = $_GET['period'];\n\n$pages = $pageManager->getRecentlyChanged(500, $dateMin);\n\nclass PageManager\n{\n    public function getRecentlyChanged($limit, $minDate)\n    {\n        $sql = 'select id, tag, time from ' . $this->dbService->prefixTable('pages')\n            . \" where latest = 'Y' and time >= '$minDate' order by time desc\";\n        return $this->dbService->loadAll($sql);\n    }\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-c43v-4cr8-6mvp",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    22
-   ],
-   "category": "functions",
-   "source": "src/controllers/AssetsController.php:1109-1112 `public function actionIcon(string $extension): Response { $path = Assets::iconPath($extension);` - the action parameter of the control-panel action actions/assets/icon",
-   "sink": "src/helpers/Assets.php:904 `$path = sprintf('%s%s%s.svg', Craft::$app->getPath()->getAssetsIconsPath(), DIRECTORY_SEPARATOR, strtolower($extension));` then :912 `FileHelper::writeToFile($path, $svg);` (file read/write outside the icons directory)",
-   "between": "the extension arrives as an action parameter, is lowercased into a filesystem path under the assets icons directory, and file_exists()/writeToFile() follow any ../ in it; no format check existed before the fix",
-   "fix": "rejects any $extension that does not match /^\\w+$/ in Assets::iconUrl() and Assets::iconPath(); the commit message names GHSA-472v-j2g4-g9h2",
-   "probe": "<?php\nclass AssetsController\n{\n    public function actionIcon(string $extension): Response\n    {\n        $path = Assets::iconPath($extension);\n        return $this->response->sendFile($path, \"$extension.svg\", ['inline' => true]);\n    }\n}\n\nclass Assets\n{\n    public static function iconPath(string $extension): string\n    {\n        $path = sprintf('%s%s%s.svg', '/var/www/icons', DIRECTORY_SEPARATOR, strtolower($extension));\n        if (file_exists($path)) {\n            return $path;\n        }\n        FileHelper::writeToFile($path, '<svg></svg>');\n        return $path;\n    }\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-x7m9-mwc2-g6w2",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    94,
-    1336
-   ],
-   "category": "sink",
-   "source": "src/fields/formfields/Hidden.php:107-117 `public function serializeValue(mixed $value, ...)`: `$value` is what the front-end form posted for the hidden field (the code only substitutes $this->defaultValue when it is empty)",
-   "sink": "src/helpers/Variables.php:320 `return Formie::$plugin->getTemplates()->renderObjectTemplate($value, $submission, $event->variables);` - the submitted string is handed to the Twig renderer as the template",
-   "between": "front-end POST -> Craft calls the field's serializeValue() while saving the submission -> Hidden::serializeValue() passes the value to Variables::getParsedValue() (:165) -> parseEnv, then renderObjectTemplate; nothing escapes the value because it is treated as a template, so `{{ ... }}` in the field value is evaluated",
-   "fix": "only renders the Twig of $this->defaultValue; a value that came from the front-end is no longer parsed as a template",
-   "probe": "<?php\n$value = $_POST['hiddenField'];          // whatever the form posted\n\nclass HiddenField\n{\n    public function serializeValue($value)\n    {\n        $value = Variables::getParsedValue($value, $submission);\n        return $value;\n    }\n}\n\nclass Variables\n{\n    public static function getParsedValue($value, $submission)\n    {\n        return Craft::$app->getView()->renderObjectTemplate($value, $submission);\n    }\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-jrrg-99xh-5j2q",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    22
-   ],
-   "category": "functions",
-   "source": "src/Controller/Cas10Controller.php:86 `#[MapQueryParameter] ?string $ticket = null` (the CAS `ticket` query parameter) and src/Controller/Traits/TicketValidatorTrait.php:30-35 `public function validate(... ?string $ticket = null)` (the CAS 2.0 serviceValidate ticket parameter)",
-   "sink": "src/Cas/Ticket/FileSystemTicketStore.php:69 `$filename = $this->pathToTicketDirectory . '/' . $ticketId;` then :72 `file_get_contents($filename)` / :74 `unserialize($content)` and :96-99 `unlink($filename)`",
-   "between": "the ticket query parameter is passed from the controller into the ticket store, where it is concatenated onto the ticket directory: `../` in the ticket walks out of it, the file's bytes are unserialized, and deleteTicket() unlinks the path; the fix hashes the id and refuses /, \\ and ..",
-   "fix": "validateTicketPath() rejects empty ids and ids holding /, \\ or .., hashes the id into the filename, and unserializes with allowed_classes=false",
-   "probe": "<?php\n$ticket = $_GET['ticket'];\n\nclass FileSystemTicketStore\n{\n    private string $pathToTicketDirectory = '/var/lib/tickets';\n\n    public function getTicket(string $ticketId): ?array\n    {\n        $filename = $this->pathToTicketDirectory . '/' . $ticketId;\n        if (file_exists($filename)) {\n            return unserialize(file_get_contents($filename));\n        }\n        return null;\n    }\n\n    public function deleteTicket(string $ticketId): void\n    {\n        $filename = $this->pathToTicketDirectory . '/' . $ticketId;\n        if (file_exists($filename)) {\n            unlink($filename);\n        }\n    }\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-p6fr-rxq7-xcg8",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    79
-   ],
-   "category": "stored",
-   "source": "file_download.php:77 `$f_file_id = gpc_get_int('file_id');` - the attachment id from the request; the bytes were uploaded by an earlier request and :171 `$t_file_info_type = file_get_mime_type_for_content($v_content);` takes their MIME type from the stored content",
-   "sink": "file_download.php:215 `header('Content-Type: ' . $t_content_type);` followed by :227 `readfile($t_local_disk_file);` / :230 `echo $v_content;` - the attachment's own bytes go back to the browser under the type fileinfo reports (text/html, application/javascript)",
-   "between": "upload request stores the attachment -> download request with file_id loads it -> $t_content_type = the fileinfo type of the stored bytes (:179) -> only three types are forced to attachment (:197-201) -> header + body; nothing escapes HTML in the file, so a crafted attachment runs script in the tracker's origin",
-   "fix": "text/* is served as text/plain, everything that is not audio/video as application/octet-stream, and application/javascript is added to the forced-attachment list",
-   "probe": "<?php\n$fileId = (int)$_GET['file_id'];\n$row = db_fetch_row(db_query('SELECT * FROM attachments WHERE id = ?', [$fileId]));\n$content = $row['content'];\n\n$type = file_get_mime_type_for_content($content);\n\nheader('Content-Disposition: inline; filename=\"' . $row['filename'] . '\"');\nheader('Content-Type: ' . $type);\nheader('X-Content-Type-Options: nosniff');\necho $content;\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-w4rc-p66m-x6qq",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    73
-   ],
-   "category": "functions",
-   "source": "classes/Form.php:583 `$filename = $post['filename'] ?? $upload['file']['name'];` - `$post` is the form POST body and `$upload['file']['name']` the name of the uploaded part",
-   "sink": "classes/Form.php:698 `$path = $destination . '/' . $filename;` carried in $upload['file']['path'], written at :1126 `rename($file['tmp_name'], $destination)` (also $upload->moveTo() at :1065)",
-   "between": "POST filename -> Form::uploadFiles() -> destination resolved from the form settings (self@ = the page's own folder) -> $path built by string concatenation -> the flash object stores the upload and renames it onto that path; `../` in the filename escaped the page folder",
-   "fix": "Utils::basename() on the POST-supplied filename and a hard block of md/yaml/yml/json/twig/ini extensions",
-   "probe": "<?php\n$post = $_POST;\n$upload = normalize($_FILES['data']);\n\n$filename = $post['filename'] ?? $upload['name'];\n$extension = pathinfo($filename, PATHINFO_EXTENSION);\n$destination = '/var/www/pages/03.blog';\n\n$path = $destination . '/' . $filename;\n$upload['path'] = $path;\n\nrename($upload['tmp_name'], $path);\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-gc9w-cc93-rjv8",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    94
-   ],
-   "category": "sink",
-   "source": "lib/Froxlor/Api/Commands/MysqlServer.php:86-89 `$mysql_ca = $this->getParam('mysql_ca', true, ''); $privileged_user = $this->getParam('privileged_user'); $privileged_password = $this->getParam('privileged_password');` (Froxlor API command parameters, i.e. the request payload of MysqlServer.add/update)",
-   "sink": "lib/Froxlor/PhpHelper.php:486 `$str .= self::tabPrefix($depth, \"'{$key}' => '{$value}',\\n\");` - the value is concatenated into PHP source that MysqlServer.php:548 writes to lib/userdata.inc.php (`file_put_contents(...)`), which is require()d at MysqlServer.php:132",
-   "between": "API parameters -> $sql_root[] entry (:149-158) -> generateNewUserData() (:161, defined :539) -> PhpHelper::parseArrayToPhpFile()/parseArrayToString() -> single-quoted PHP literal in userdata.inc.php -> included on the next request; a ' in privileged_user, description or caFile ends the literal and the rest runs as code (only 'password' used a nowdoc)",
-   "fix": "escapes backslashes and single quotes for every generated scalar and validates privileged_user against /^[a-z][a-z0-9\\-_]+$/i, plus FileDir::makeCorrectFile() on mysql_ca",
-   "probe": "<?php\n$privileged_user = $_POST['privileged_user'];\n\n$sql_root = [[\n    'host' => 'localhost',\n    'user' => $privileged_user,\n]];\n\n$code = \"<?php\\n\";\nforeach ($sql_root as $entry) {\n    foreach ($entry as $key => $value) {\n        $code .= \"'{$key}' => '{$value}',\\n\";\n    }\n}\nfile_put_contents('/var/www/froxlor/lib/userdata.inc.php', $code);\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-95wr-3f2v-v2wh",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    918
-   ],
-   "category": "check",
-   "source": "src/controllers/AppController.php:109 `public function actionResourceJs(string $url): Response` - the `url` action parameter of actions/app/resource-js",
-   "sink": "src/controllers/AppController.php:120 `$response = Craft::createGuzzleClient()->get($url);` - an outbound HTTP request to a URL taken from the request, whose body is returned to the caller",
-   "between": "the action parameter reaches Guzzle after one check only: :113 `if (!str_starts_with($url, Craft::$app->getAssetManager()->baseUrl))`, a prefix test on a string the attacker chooses (a base URL such as `http://localhost/index.php?p=actions` also passes), so any host can be fetched",
-   "fix": "resolves the URI to a published file with App::resourcePathByUri() (Path::ensurePathIsContained plus a resource-paths lookup) and serves it with sendFile() instead of fetching it; the same check is added to the CP resource request in src/web/Application.php:523",
-   "probe": "<?php\n$url = $_GET['url'];\n\nif (!str_starts_with($url, 'http://localhost/cpresources')) {\n    throw new BadRequestHttpException(\"$url does not appear to be a resource URL\");\n}\n\n$client = new GuzzleHttp\\Client();\n$response = $client->get($url);\necho $response->getBody();\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-875v-7m49-8x88",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    89
-   ],
-   "category": "stored",
-   "source": "src/widgets/TotalRevenue.php:43 `public string $type = TotalRevenueStat::TYPE_TOTAL;` - the dashboard widget's `type` setting, sent with the control-panel request that saves the dashboard and read back when the widget renders (:81 `$this->_stat->type = $this->type;`)",
-   "sink": "src/stats/TotalRevenue.php:49 `new Expression(sprintf('SUM([[%s]]) as revenue', $this->type)),` - the value is interpolated into a raw SQL expression of the revenue chart query",
-   "between": "widget settings request -> saved widget config -> TotalRevenue widget instance -> $this->type -> TotalRevenueStat::$type -> sprintf into an Expression -> _createChartQuery() executes it; nothing checked that the value is one of the two column names",
-   "fix": "whitelists TYPE_TOTAL and TYPE_TOTAL_PAID in the widget's defineRules() and falls back to TYPE_TOTAL in the stat's getData()",
-   "probe": "<?php\n$type = $_POST['widgets'][0]['type'];      // e.g. \"total) FROM orders; --\"\n\nclass TotalRevenueStat\n{\n    public string $type;\n\n    public function getData(): ?array\n    {\n        return $this->_createChartQuery([\n            new Expression(sprintf('SUM([[%s]]) as revenue', $this->type)),\n            new Expression('COUNT([[orders.id]]) as count'),\n        ]);\n    }\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-6j68-gcc3-mq73",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    918
-   ],
-   "category": "check",
-   "source": "modules/sso/fetch_metadata.php:9 `if (!isset($_GET['url']))` and :15 `$url = filter_var($_GET['url'], FILTER_VALIDATE_URL);` - the `url` query parameter",
-   "sink": "modules/sso/fetch_metadata.php:23 `$metadata = file_get_contents($url);` - outbound fetch of any URL the parameter names",
-   "between": "the query parameter goes through FILTER_VALIDATE_URL, which only checks URL syntax (it is a validator a scanner may read as sanitizing), and then straight into file_get_contents(); no scheme or host restriction, so http://127.0.0.1/, http://169.254.169.254/ or file:// targets are fetched",
-   "fix": "requires an https:// prefix, refuses hosts that resolve to private or reserved IPs, and fetches with cURL restricted to HTTPS and without redirects",
-   "probe": "<?php\n$url = filter_var($_GET['url'], FILTER_VALIDATE_URL);\nif (!$url) {\n    http_response_code(400);\n    exit;\n}\n\n$metadata = file_get_contents($url);\n\nheader('Content-Type: application/xml');\necho $metadata;\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-fp5j-j7j4-mcxc",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    94
-   ],
-   "category": "sink",
-   "source": "src/controllers/ElementIndexesController.php:410 `$conditionConfig = $this->request->getBodyParam('conditionConfig');` (also :514) - the condition rule config posted by the control panel, applied by Conditions::createCondition() to the rule's properties, including `elementId` of a relation rule (src/base/conditions/BaseElementSelectConditionRule.php:88 setElementId())",
-   "sink": "src/base/conditions/BaseElementSelectConditionRule.php:79 `return Craft::$app->getView()->renderObjectTemplate($elementId, $referenceElement);` - the stored string is rendered as a Twig template",
-   "between": "request body -> Component::cleanseConfig() (:416) then Conditions::createCondition() (:418) -> rule property $_elementId -> getElementId(true) (:70) parses env vars and calls renderObjectTemplate(); the rules call it on every query (RelatedToConditionRule.php:58, UploaderConditionRule.php:62, AuthorConditionRule.php:62), so `{{ ... }}` in elementId is evaluated",
-   "fix": "renders the template in the sandboxed Twig environment (View::renderSandboxedObjectTemplate) when enableTwigSandbox is on",
-   "probe": "<?php\n$config = $_POST['conditionConfig'];\n$rule = new RelatedToConditionRule();\n$rule->setElementId($config['elementId']);      // e.g. \"{{ 7*7 }}\"\n\nclass BaseElementSelectConditionRule\n{\n    private $elementId;\n\n    public function setElementId($elementId): void\n    {\n        $this->elementId = $elementId;\n    }\n\n    public function getElementId(bool $parse = true)\n    {\n        if ($parse && is_string($this->elementId)) {\n            return Craft::$app->getView()->renderObjectTemplate($this->elementId, new stdClass());\n        }\n        return $this->elementId;\n    }\n}\n",
-   "confidence": "sure"
-  },
-  {
-   "id": "GHSA-fvwq-45qv-xvhv",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    79
-   ],
-   "category": "check",
-   "source": "src/web/User.php:473 `public function setReturnUrl($url): void` - $url is the return URL the login flow keeps in the session (yii\\web\\User::setReturnUrl, called with the requested URL / the return URL carried through the login request)",
-   "sink": "src/web/User.php:475 `parent::setReturnUrl(strip_tags($url));` - the value is read back at src/controllers/UsersController.php:2263 `$returnUrl = $userSession->getReturnUrl();` and used at :2595 `return $this->redirect($returnUrl);`, at src/web/Controller.php:635 redirect($url), and in the login JSON response (:2271)",
-   "between": "return URL -> session -> strip_tags() (which removes tags but keeps any scheme) -> redirect after login / handed to the control panel's JavaScript; a javascript: or data: URL survives the filter",
-   "fix": "rewrites the URL to '/' when its scheme is present and is not http or https",
-   "probe": "<?php\n$returnUrl = $session->getReturnUrl();\n\nclass User\n{\n    public function setReturnUrl($url): void\n    {\n        $this->session->set('returnUrl', strip_tags($url));\n    }\n}\n\n// after a successful login\n$returnUrl = $session->get('returnUrl');\nreturn $this->redirect($returnUrl);        // javascript:alert(1) passes\n",
-   "confidence": "unsure"
-  },
-  {
-   "id": "GHSA-xfvg-8v67-j7wp",
-   "suite": "cve-pairs-php",
-   "cwe": [
-    79
-   ],
-   "category": "stored",
-   "source": "src/Http/Controllers/FilesApiController.php:68 `$file = (new FileUploader())->handle($request->file('name'));` - the uploaded file of the media API request",
-   "sink": "src/Services/FileUploader.php:32 `$path = $file->storeAs($path, $filename, $disk);` - the uploaded bytes, SVG included, are written unchanged and served from the media disk later",
-   "between": "upload request -> FileUploader::handle(UploadedFile $file) (:15) -> only the extension and the image dimensions are inspected (:22, :30) -> storeAs() writes the raw content; a script inside the SVG runs when the file is opened from the application's origin",
-   "fix": "sanitizes SVG uploads with enshrined/svgSanitize and writes the sanitized markup back before storing",
-   "probe": "<?php\n$file = $request->file('name');\n\nclass FileUploader\n{\n    public function handle(UploadedFile $file, string $path = 'files')\n    {\n        $extension = strtolower($file->getClientOriginalExtension());\n        $filename = Str::slug($file->getClientOriginalName()) . '.' . $extension;\n\n        $stored = $file->storeAs($path, $filename, 'public');\n\n        return ['path' => $stored];\n    }\n}\n",
-   "confidence": "sure"
-  }
- ]
+  "batch": "gap-notes-2026-11-23-16",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
+  "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order. The file holds 227 rows and every one is cve-pairs-php (the Python and JavaScript rows were noted in earlier runs of the day), so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: YesWiki ApiController.php, ReactionManager.php, handlers/page/deletepage.php, tools/tags/handlers/page/__deletepage.php, actions/recentchanges.php and PageManager.php; Craft AssetsController.php and helpers/Assets.php, AppController.php, BaseElementSelectConditionRule.php, ElementIndexesController.php, web/User.php and web/Controller.php; Formie Hidden.php and helpers/Variables.php; casserver Cas10Controller.php, TicketValidatorTrait.php and FileSystemTicketStore.php; mantisbt file_download.php; grav-plugin-form classes/Form.php; froxlor Api/Commands/MysqlServer.php and PhpHelper.php; craft commerce widgets/TotalRevenue.php and stats/TotalRevenue.php; Admidio modules/sso/fetch_metadata.php; TypiCMS FileUploader.php and FilesApiController.php. Nothing was skipped, apart from test files in the casserver diff, which were read but not used. Rows 16-227 of the file are left for the next run.",
+  "notes": [
+    {
+      "id": "GHSA-4pf7-cc4r-g63h",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "includes/controllers/ApiController.php:728 deleteReaction($idreaction, $id, $page, $username), routed by the annotation at :726 as DELETE /api/reactions/{idreaction}/{id}/{page}/{username} (three path parameters)",
+      "sink": "includes/services/ReactionManager.php:353 `return $this->tripleStore->delete($pageTag, self::TYPE_URI, null, '', '', 'value LIKE \\'%user\":\"' . $user . '\",\"idReaction\":\"' . $reactionId . '\",\"id\":\"' . $id . '\"%\\'');` - a raw SQL LIKE fragment handed to TripleStore::delete",
+      "between": "the three path parameters go from ApiController::deleteReaction() into ReactionManager::deleteUserReaction() (:326), which concatenates them into the condition string that TripleStore::delete() pastes into its DELETE statement; the branch above it already escaped the values with $this->dbService->escape(), this one did not",
+      "fix": "escapes $user, $reactionId and $id with DbService::escape() before the condition string is built",
+      "probe": "<?php\n$idreaction = $_GET['reaction'];\n$id = $_GET['id'];\n$user = $_GET['user'];\n\nfunction delete_reaction($user, $idreaction, $id)\n{\n    return $this->tripleStore->delete('page', 'uri', null, '', '',\n        'value LIKE \\'%user\":\"' . $user . '\",\"idReaction\":\"' . $idreaction . '\",\"id\":\"' . $id . '\"%\\'');\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-8f2v-2qhj-gfwg",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "source",
+      "source": "handlers/page/deletepage.php:94 `\"WHERE to_tag = '\" . $this->GetPageTag() . \"'\"` and tools/tags/handlers/page/__deletepage.php:13 `$tag = $this->GetPageTag();` - the page tag of the requested URL, read through the wiki object rather than from $_GET",
+      "sink": "tools/tags/handlers/page/__deletepage.php:14 `$this->Query(\"DELETE FROM {$this->config['table_prefix']}links WHERE to_tag = '$tag'\");` (also handlers/page/deletepage.php:93 LoadAll() and includes/controllers/ApiController.php:626 DELETE with '$tag')",
+      "between": "the tag comes from the URL path of the page being deleted; GetPageTag() returns it unchanged and it is concatenated into three DELETE/SELECT statements; nothing escaped it before the fix",
+      "fix": "escapes the tag with DbService::escape() in all three places and builds the table name with DbService::prefixTable()",
+      "probe": "<?php\n$tag = $this->GetPageTag();\n\n$this->Query(\"DELETE FROM {$this->config['table_prefix']}links WHERE to_tag = '$tag'\");\n$rows = $this->LoadAll(\"SELECT DISTINCT from_tag FROM \" . $this->config['table_prefix'] . \"links WHERE to_tag = '\" . $this->GetPageTag() . \"'\");\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-89v6-j5x6-cmj3",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "actions/recentchanges.php:17 `if (isset($_GET['period']) && in_array($_GET['period'], ['day', 'week', 'month']))` and, in the else branch, :33 `$dateMin = $this->GetParameter('period');` (a URL parameter read by the wiki object)",
+      "sink": "includes/services/PageManager.php:196 `$this->dbService->loadAll('select ... from' . $this->dbService->prefixTable('pages') . \"where latest = 'Y' and comment_on = '' and time >= '$minDate' order by time desc\")`",
+      "between": "$dateMin is set in the action, passed to $this->LoadRecentlyChanged($max, $dateMin) (includes/YesWiki.php:1702) and then to PageManager::getRecentlyChanged($limit, $minDate) (:193), which concatenates it into the query; a period that is not day/week/month leaves the raw value in place",
+      "fix": "escapes $minDate with $this->dbService->escape() inside getRecentlyChanged() and only uses $_GET['period'] when it is one of the three literals",
+      "probe": "<?php\n$period = $_GET['period'];          // any string, not just day/week/month\n$dateMin = $_GET['period'];\n\n$pages = $pageManager->getRecentlyChanged(500, $dateMin);\n\nclass PageManager\n{\n    public function getRecentlyChanged($limit, $minDate)\n    {\n        $sql = 'select id, tag, time from ' . $this->dbService->prefixTable('pages')\n            . \" where latest = 'Y' and time >= '$minDate' order by time desc\";\n        return $this->dbService->loadAll($sql);\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-c43v-4cr8-6mvp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "src/controllers/AssetsController.php:1109-1112 `public function actionIcon(string $extension): Response { $path = Assets::iconPath($extension);` - the action parameter of the control-panel action actions/assets/icon",
+      "sink": "src/helpers/Assets.php:904 `$path = sprintf('%s%s%s.svg', Craft::$app->getPath()->getAssetsIconsPath(), DIRECTORY_SEPARATOR, strtolower($extension));` then :912 `FileHelper::writeToFile($path, $svg);` (file read/write outside the icons directory)",
+      "between": "the extension arrives as an action parameter, is lowercased into a filesystem path under the assets icons directory, and file_exists()/writeToFile() follow any ../ in it; no format check existed before the fix",
+      "fix": "rejects any $extension that does not match /^\\w+$/ in Assets::iconUrl() and Assets::iconPath(); the commit message names GHSA-472v-j2g4-g9h2",
+      "probe": "<?php\nclass AssetsController\n{\n    public function actionIcon(string $extension): Response\n    {\n        $path = Assets::iconPath($extension);\n        return $this->response->sendFile($path, \"$extension.svg\", ['inline' => true]);\n    }\n}\n\nclass Assets\n{\n    public static function iconPath(string $extension): string\n    {\n        $path = sprintf('%s%s%s.svg', '/var/www/icons', DIRECTORY_SEPARATOR, strtolower($extension));\n        if (file_exists($path)) {\n            return $path;\n        }\n        FileHelper::writeToFile($path, '<svg></svg>');\n        return $path;\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-x7m9-mwc2-g6w2",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94,
+        1336
+      ],
+      "category": "sink",
+      "source": "src/fields/formfields/Hidden.php:107-117 `public function serializeValue(mixed $value, ...)`: `$value` is what the front-end form posted for the hidden field (the code only substitutes $this->defaultValue when it is empty)",
+      "sink": "src/helpers/Variables.php:320 `return Formie::$plugin->getTemplates()->renderObjectTemplate($value, $submission, $event->variables);` - the submitted string is handed to the Twig renderer as the template",
+      "between": "front-end POST -> Craft calls the field's serializeValue() while saving the submission -> Hidden::serializeValue() passes the value to Variables::getParsedValue() (:165) -> parseEnv, then renderObjectTemplate; nothing escapes the value because it is treated as a template, so `{{ ... }}` in the field value is evaluated",
+      "fix": "only renders the Twig of $this->defaultValue; a value that came from the front-end is no longer parsed as a template",
+      "probe": "<?php\n$value = $_POST['hiddenField'];          // whatever the form posted\n\nclass HiddenField\n{\n    public function serializeValue($value)\n    {\n        $value = Variables::getParsedValue($value, $submission);\n        return $value;\n    }\n}\n\nclass Variables\n{\n    public static function getParsedValue($value, $submission)\n    {\n        return Craft::$app->getView()->renderObjectTemplate($value, $submission);\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-jrrg-99xh-5j2q",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "src/Controller/Cas10Controller.php:86 `#[MapQueryParameter] ?string $ticket = null` (the CAS `ticket` query parameter) and src/Controller/Traits/TicketValidatorTrait.php:30-35 `public function validate(... ?string $ticket = null)` (the CAS 2.0 serviceValidate ticket parameter)",
+      "sink": "src/Cas/Ticket/FileSystemTicketStore.php:69 `$filename = $this->pathToTicketDirectory . '/' . $ticketId;` then :72 `file_get_contents($filename)` / :74 `unserialize($content)` and :96-99 `unlink($filename)`",
+      "between": "the ticket query parameter is passed from the controller into the ticket store, where it is concatenated onto the ticket directory: `../` in the ticket walks out of it, the file's bytes are unserialized, and deleteTicket() unlinks the path; the fix hashes the id and refuses /, \\ and ..",
+      "fix": "validateTicketPath() rejects empty ids and ids holding /, \\ or .., hashes the id into the filename, and unserializes with allowed_classes=false",
+      "probe": "<?php\n$ticket = $_GET['ticket'];\n\nclass FileSystemTicketStore\n{\n    private string $pathToTicketDirectory = '/var/lib/tickets';\n\n    public function getTicket(string $ticketId): ?array\n    {\n        $filename = $this->pathToTicketDirectory . '/' . $ticketId;\n        if (file_exists($filename)) {\n            return unserialize(file_get_contents($filename));\n        }\n        return null;\n    }\n\n    public function deleteTicket(string $ticketId): void\n    {\n        $filename = $this->pathToTicketDirectory . '/' . $ticketId;\n        if (file_exists($filename)) {\n            unlink($filename);\n        }\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-p6fr-rxq7-xcg8",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "file_download.php:77 `$f_file_id = gpc_get_int('file_id');` - the attachment id from the request; the bytes were uploaded by an earlier request and :171 `$t_file_info_type = file_get_mime_type_for_content($v_content);` takes their MIME type from the stored content",
+      "sink": "file_download.php:215 `header('Content-Type: ' . $t_content_type);` followed by :227 `readfile($t_local_disk_file);` / :230 `echo $v_content;` - the attachment's own bytes go back to the browser under the type fileinfo reports (text/html, application/javascript)",
+      "between": "upload request stores the attachment -> download request with file_id loads it -> $t_content_type = the fileinfo type of the stored bytes (:179) -> only three types are forced to attachment (:197-201) -> header + body; nothing escapes HTML in the file, so a crafted attachment runs script in the tracker's origin",
+      "fix": "text/* is served as text/plain, everything that is not audio/video as application/octet-stream, and application/javascript is added to the forced-attachment list",
+      "probe": "<?php\n$fileId = (int)$_GET['file_id'];\n$row = db_fetch_row(db_query('SELECT * FROM attachments WHERE id = ?', [$fileId]));\n$content = $row['content'];\n\n$type = file_get_mime_type_for_content($content);\n\nheader('Content-Disposition: inline; filename=\"' . $row['filename'] . '\"');\nheader('Content-Type: ' . $type);\nheader('X-Content-Type-Options: nosniff');\necho $content;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-w4rc-p66m-x6qq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        73
+      ],
+      "category": "functions",
+      "source": "classes/Form.php:583 `$filename = $post['filename'] ?? $upload['file']['name'];` - `$post` is the form POST body and `$upload['file']['name']` the name of the uploaded part",
+      "sink": "classes/Form.php:698 `$path = $destination . '/' . $filename;` carried in $upload['file']['path'], written at :1126 `rename($file['tmp_name'], $destination)` (also $upload->moveTo() at :1065)",
+      "between": "POST filename -> Form::uploadFiles() -> destination resolved from the form settings (self@ = the page's own folder) -> $path built by string concatenation -> the flash object stores the upload and renames it onto that path; `../` in the filename escaped the page folder",
+      "fix": "Utils::basename() on the POST-supplied filename and a hard block of md/yaml/yml/json/twig/ini extensions",
+      "probe": "<?php\n$post = $_POST;\n$upload = normalize($_FILES['data']);\n\n$filename = $post['filename'] ?? $upload['name'];\n$extension = pathinfo($filename, PATHINFO_EXTENSION);\n$destination = '/var/www/pages/03.blog';\n\n$path = $destination . '/' . $filename;\n$upload['path'] = $path;\n\nrename($upload['tmp_name'], $path);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND path-traversal"
+    },
+    {
+      "id": "GHSA-gc9w-cc93-rjv8",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "lib/Froxlor/Api/Commands/MysqlServer.php:86-89 `$mysql_ca = $this->getParam('mysql_ca', true, ''); $privileged_user = $this->getParam('privileged_user'); $privileged_password = $this->getParam('privileged_password');` (Froxlor API command parameters, i.e. the request payload of MysqlServer.add/update)",
+      "sink": "lib/Froxlor/PhpHelper.php:486 `$str .= self::tabPrefix($depth, \"'{$key}' => '{$value}',\\n\");` - the value is concatenated into PHP source that MysqlServer.php:548 writes to lib/userdata.inc.php (`file_put_contents(...)`), which is require()d at MysqlServer.php:132",
+      "between": "API parameters -> $sql_root[] entry (:149-158) -> generateNewUserData() (:161, defined :539) -> PhpHelper::parseArrayToPhpFile()/parseArrayToString() -> single-quoted PHP literal in userdata.inc.php -> included on the next request; a ' in privileged_user, description or caFile ends the literal and the rest runs as code (only 'password' used a nowdoc)",
+      "fix": "escapes backslashes and single quotes for every generated scalar and validates privileged_user against /^[a-z][a-z0-9\\-_]+$/i, plus FileDir::makeCorrectFile() on mysql_ca",
+      "probe": "<?php\n$privileged_user = $_POST['privileged_user'];\n\n$sql_root = [[\n    'host' => 'localhost',\n    'user' => $privileged_user,\n]];\n\n$code = \"<?php\\n\";\nforeach ($sql_root as $entry) {\n    foreach ($entry as $key => $value) {\n        $code .= \"'{$key}' => '{$value}',\\n\";\n    }\n}\nfile_put_contents('/var/www/froxlor/lib/userdata.inc.php', $code);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-95wr-3f2v-v2wh",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        918
+      ],
+      "category": "check",
+      "source": "src/controllers/AppController.php:109 `public function actionResourceJs(string $url): Response` - the `url` action parameter of actions/app/resource-js",
+      "sink": "src/controllers/AppController.php:120 `$response = Craft::createGuzzleClient()->get($url);` - an outbound HTTP request to a URL taken from the request, whose body is returned to the caller",
+      "between": "the action parameter reaches Guzzle after one check only: :113 `if (!str_starts_with($url, Craft::$app->getAssetManager()->baseUrl))`, a prefix test on a string the attacker chooses (a base URL such as `http://localhost/index.php?p=actions` also passes), so any host can be fetched",
+      "fix": "resolves the URI to a published file with App::resourcePathByUri() (Path::ensurePathIsContained plus a resource-paths lookup) and serves it with sendFile() instead of fetching it; the same check is added to the CP resource request in src/web/Application.php:523",
+      "probe": "<?php\n$url = $_GET['url'];\n\nif (!str_starts_with($url, 'http://localhost/cpresources')) {\n    throw new BadRequestHttpException(\"$url does not appear to be a resource URL\");\n}\n\n$client = new GuzzleHttp\\Client();\n$response = $client->get($url);\necho $response->getBody();\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND ssrf,xss"
+    },
+    {
+      "id": "GHSA-875v-7m49-8x88",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "stored",
+      "source": "src/widgets/TotalRevenue.php:43 `public string $type = TotalRevenueStat::TYPE_TOTAL;` - the dashboard widget's `type` setting, sent with the control-panel request that saves the dashboard and read back when the widget renders (:81 `$this->_stat->type = $this->type;`)",
+      "sink": "src/stats/TotalRevenue.php:49 `new Expression(sprintf('SUM([[%s]]) as revenue', $this->type)),` - the value is interpolated into a raw SQL expression of the revenue chart query",
+      "between": "widget settings request -> saved widget config -> TotalRevenue widget instance -> $this->type -> TotalRevenueStat::$type -> sprintf into an Expression -> _createChartQuery() executes it; nothing checked that the value is one of the two column names",
+      "fix": "whitelists TYPE_TOTAL and TYPE_TOTAL_PAID in the widget's defineRules() and falls back to TYPE_TOTAL in the stat's getData()",
+      "probe": "<?php\n$type = $_POST['widgets'][0]['type'];      // e.g. \"total) FROM orders; --\"\n\nclass TotalRevenueStat\n{\n    public string $type;\n\n    public function getData(): ?array\n    {\n        return $this->_createChartQuery([\n            new Expression(sprintf('SUM([[%s]]) as revenue', $this->type)),\n            new Expression('COUNT([[orders.id]]) as count'),\n        ]);\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-6j68-gcc3-mq73",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        918
+      ],
+      "category": "check",
+      "source": "modules/sso/fetch_metadata.php:9 `if (!isset($_GET['url']))` and :15 `$url = filter_var($_GET['url'], FILTER_VALIDATE_URL);` - the `url` query parameter",
+      "sink": "modules/sso/fetch_metadata.php:23 `$metadata = file_get_contents($url);` - outbound fetch of any URL the parameter names",
+      "between": "the query parameter goes through FILTER_VALIDATE_URL, which only checks URL syntax (it is a validator a scanner may read as sanitizing), and then straight into file_get_contents(); no scheme or host restriction, so http://127.0.0.1/, http://169.254.169.254/ or file:// targets are fetched",
+      "fix": "requires an https:// prefix, refuses hosts that resolve to private or reserved IPs, and fetches with cURL restricted to HTTPS and without redirects",
+      "probe": "<?php\n$url = filter_var($_GET['url'], FILTER_VALIDATE_URL);\nif (!$url) {\n    http_response_code(400);\n    exit;\n}\n\n$metadata = file_get_contents($url);\n\nheader('Content-Type: application/xml');\necho $metadata;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND path-traversal,xss"
+    },
+    {
+      "id": "GHSA-fp5j-j7j4-mcxc",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "src/controllers/ElementIndexesController.php:410 `$conditionConfig = $this->request->getBodyParam('conditionConfig');` (also :514) - the condition rule config posted by the control panel, applied by Conditions::createCondition() to the rule's properties, including `elementId` of a relation rule (src/base/conditions/BaseElementSelectConditionRule.php:88 setElementId())",
+      "sink": "src/base/conditions/BaseElementSelectConditionRule.php:79 `return Craft::$app->getView()->renderObjectTemplate($elementId, $referenceElement);` - the stored string is rendered as a Twig template",
+      "between": "request body -> Component::cleanseConfig() (:416) then Conditions::createCondition() (:418) -> rule property $_elementId -> getElementId(true) (:70) parses env vars and calls renderObjectTemplate(); the rules call it on every query (RelatedToConditionRule.php:58, UploaderConditionRule.php:62, AuthorConditionRule.php:62), so `{{ ... }}` in elementId is evaluated",
+      "fix": "renders the template in the sandboxed Twig environment (View::renderSandboxedObjectTemplate) when enableTwigSandbox is on",
+      "probe": "<?php\n$config = $_POST['conditionConfig'];\n$rule = new RelatedToConditionRule();\n$rule->setElementId($config['elementId']);      // e.g. \"{{ 7*7 }}\"\n\nclass BaseElementSelectConditionRule\n{\n    private $elementId;\n\n    public function setElementId($elementId): void\n    {\n        $this->elementId = $elementId;\n    }\n\n    public function getElementId(bool $parse = true)\n    {\n        if ($parse && is_string($this->elementId)) {\n            return Craft::$app->getView()->renderObjectTemplate($this->elementId, new stdClass());\n        }\n        return $this->elementId;\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-fvwq-45qv-xvhv",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "src/web/User.php:473 `public function setReturnUrl($url): void` - $url is the return URL the login flow keeps in the session (yii\\web\\User::setReturnUrl, called with the requested URL / the return URL carried through the login request)",
+      "sink": "src/web/User.php:475 `parent::setReturnUrl(strip_tags($url));` - the value is read back at src/controllers/UsersController.php:2263 `$returnUrl = $userSession->getReturnUrl();` and used at :2595 `return $this->redirect($returnUrl);`, at src/web/Controller.php:635 redirect($url), and in the login JSON response (:2271)",
+      "between": "return URL -> session -> strip_tags() (which removes tags but keeps any scheme) -> redirect after login / handed to the control panel's JavaScript; a javascript: or data: URL survives the filter",
+      "fix": "rewrites the URL to '/' when its scheme is present and is not http or https",
+      "probe": "<?php\n$returnUrl = $session->getReturnUrl();\n\nclass User\n{\n    public function setReturnUrl($url): void\n    {\n        $this->session->set('returnUrl', strip_tags($url));\n    }\n}\n\n// after a successful login\n$returnUrl = $session->get('returnUrl');\nreturn $this->redirect($returnUrl);        // javascript:alert(1) passes\n",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xfvg-8v67-j7wp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "src/Http/Controllers/FilesApiController.php:68 `$file = (new FileUploader())->handle($request->file('name'));` - the uploaded file of the media API request",
+      "sink": "src/Services/FileUploader.php:32 `$path = $file->storeAs($path, $filename, $disk);` - the uploaded bytes, SVG included, are written unchanged and served from the media disk later",
+      "between": "upload request -> FileUploader::handle(UploadedFile $file) (:15) -> only the extension and the image dimensions are inspected (:22, :30) -> storeAs() writes the raw content; a script inside the SVG runs when the file is opened from the application's origin",
+      "fix": "sanitizes SVG uploads with enshrined/svgSanitize and writes the sanitized markup back before storing",
+      "probe": "<?php\n$file = $request->file('name');\n\nclass FileUploader\n{\n    public function handle(UploadedFile $file, string $path = 'files')\n    {\n        $extension = strtolower($file->getClientOriginalExtension());\n        $filename = Str::slug($file->getClientOriginalName()) . '.' . $extension;\n\n        $stored = $file->storeAs($path, $filename, 'public');\n\n        return ['path' => $stored];\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    }
+  ]
 }
