@@ -867,10 +867,11 @@ def test_final_scan_of_the_focus_is_never_cut_short(tmp_path, monkeypatch):
         return {"results": []}
 
     monkeypatch.setattr(multi_tools.Semgrep, "scan", scan)
-    for focus, limits in ((["app.py"], ["--timeout", str(multi_tools.FOCUS_TIMEOUT), "--timeout-threshold", "0"]),
-                          (None, [])):
+    long = ["--timeout", str(multi_tools.FOCUS_TIMEOUT), "--timeout-threshold", "0"]
+    for focus, local, limits in ((["app.py"], False, long), (None, False, []), (None, True, long)):
         calls.clear()
-        Semgrep().run(Context(tmp_path, ["app.py", "other.py"], semgrep_config="", custom_rules=rules, focus=focus))
+        Semgrep().run(Context(tmp_path, ["app.py", "other.py"], semgrep_config="", custom_rules=rules, focus=focus,
+                              local=local))
         assert calls[-1] == (["app.py"] if focus else ["app.py", "other.py"], limits)
         assert all(not lim for _targets, lim in calls[:-1])
 
@@ -4299,6 +4300,34 @@ def test_a_starlette_html_response_renders_its_content(tmp_path):
         "async def fixed(request: Request):\n"
         "    return HTMLResponse(\"<p>Hello</p>\")\n")})
     assert found == {("app/routes.py", 9, "xss"), ("app/routes.py", 13, "xss")}
+
+
+def test_a_percent_encoded_value_is_safe_in_html(tmp_path):
+    """vulnerability-lookup's fix (topic 17, PLAN.md step 124): Markup(f"<a href='/sightings?query={q}'>...") with
+    q = quote_plus(vulnerability_id). quote and quote_plus, with their default safe characters, encode < > " ' and :
+    so the value can't leave the attribute or start a javascript: URL. Still flagged: the raw value, and quote() given
+    its own safe characters."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app/views.py": (
+        "from urllib.parse import quote, quote_plus\n\n"
+        "from flask import Flask, request\n"
+        "from markupsafe import Markup\n\n"
+        "app = Flask(__name__)\n\n\n"
+        "@app.route('/a/<vid>')\n"
+        "def a(vid):\n"
+        "    q = quote_plus(vid)\n"
+        "    return Markup(f\"<a href='/s?query={q}'>s</a>\")\n\n\n"
+        "@app.route('/b')\n"
+        "def b():\n"
+        "    return f\"<a href='/s?q={quote(request.args['q'])}'>s</a>\"\n\n\n"
+        "@app.route('/c/<vid>')\n"
+        "def c(vid):\n"
+        "    return Markup(f\"<a href='/s?query={vid}'>s</a>\")\n\n\n"
+        "@app.route('/d/<vid>')\n"
+        "def d(vid):\n"
+        "    return Markup(f\"<a href='/s?query={quote(vid, safe=chr(39))}'>s</a>\")\n")})
+    assert found == {("app/views.py", 22, "xss"), ("app/views.py", 27, "xss")}
 
 
 def test_a_drf_viewsets_lookup_argument_is_request_input(tmp_path):

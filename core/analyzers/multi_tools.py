@@ -181,8 +181,11 @@ class Semgrep(Analyzer):
         main_targets = targets if focus is None else [t for t in targets if ctx.rel(originals.get(t, t)) in focus]
         # Semgrep given no targets scans the working directory. The focus is the only place findings count,
         # and a few files: there each rule gets FOCUS_TIMEOUT and no file is skipped for its timeouts (mlflow
-        # GHSA-wqmh's file_store.py and handlers.py were skipped at the default 5 s; PLAN.md step 68).
-        limits = [] if focus is None else ["--timeout", str(FOCUS_TIMEOUT), "--timeout-threshold", "0"]
+        # GHSA-wqmh's file_store.py and handlers.py were skipped at the default 5 s; PLAN.md step 68). So does a
+        # developer's own check (codewatch check, in CI too), where every finding counts: on a busy CI runner the
+        # default dropped this repository's 4,300-line tests/test_detection.py now and then (PLAN.md step 125).
+        long = focus is not None or ctx.local
+        limits = ["--timeout", str(FOCUS_TIMEOUT), "--timeout-threshold", "0"] if long else []
         return self.scan(ctx, configs, main_targets, limits) if main_targets else {"results": []}
 
     def timeout_notes(self, ctx, originals):

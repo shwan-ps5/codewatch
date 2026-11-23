@@ -28,7 +28,7 @@ that file, not here, and keep them short: what changed, the case behind it, what
 step gives counts, what was kept, rejections that set a new precedent and any problem found; the batch TSVs hold
 every other reason. This file holds only what is true now: update the sections below when a step changes them.
 
-## Where things stand (nightly 2026-11-22, commit a6d1f1f)
+## Where things stand (nightly 2026-11-23, commit 1b8ab4c)
 
 Verdict mode counts findings that claim a vulnerability; review mode adds hotspots. CVE pairs: found = flagged
 before the fix, still flagged = flagged after it (the false-alarm measure).
@@ -41,7 +41,7 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | Juice Shop (tuned) | 15/35 | 17/35 |
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
-| cve-pairs-python (105) | 60 found, 14 still flagged | 68, 22 |
+| cve-pairs-python (109) | 64 found, 16 still flagged | 71, 25 |
 | cve-pairs-python-frontend (31) | 4, 0 | 14, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
@@ -74,7 +74,11 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
   values through several functions 10, archives 2, stored 2. Known small ones: JSON-RPC dispatcher arguments as a
   source (Counterparty, step 110), Location set through `response.headers` (araa-search, step 110).
 - Step 42 D (project checks trusted by name: `*safe*`, `*sanitize*`, `*valid*`) and E (dispatch the summaries
-  can't follow: pygeoapi GHSA-f6pr, Lektor GHSA-wv28): not started.
+  can't follow: pygeoapi GHSA-f6pr, Lektor GHSA-wv28): not started. archivy (step 124) is a D case at its fix: a
+  project helper `is_relative_to()` (resolve().relative_to() in a try, returning a bool) guards mkdir and rmtree,
+  and both stay flagged.
+- Frameworks with no sources yet: webapp2 (bridgy-fed's `self.request.path_qs`, step 124), Checkmk's own
+  `request.get_unicode_input*` (step 123).
 - JavaScript: path traversal, SSRF and redirects mostly missed; outside HTTP handlers 1 of 38.
 - PHP (steps 70, 73): no summaries across functions and files (most misses); helpers given 'escape' => false,
   lookup results, CakePHP action parameters, by-reference arguments, Twig reading the request, short open tags,
@@ -85,7 +89,9 @@ Ground truth:
 - Topic 16 (new arrivals) is standing; topic 17 (security fixes with no advisory or CVE) was done on 2026-11-23
   (step 123), every month back to 2021-01 searched. Topics 4 and 8 are paused; the rest are done.
 - Gap notes (step 122): a second runner explains the nightly's missed open cases (466 on 2026-11-22: 83 Python,
-  118 JavaScript, 265 PHP), about 15 a run, as leads for the rule work above. Read them as they come.
+  118 JavaScript, 265 PHP), about 15 a run, as leads for the rule work above. The first 90 (step 126): 72 probes
+  are missed by the rules, so each is a test-sized gap; 16 are found, so the miss lies elsewhere. Read them as
+  they come; each note's `probe_scanned` says which.
 - 5 cases in `cve-pairs-blind-php-35` have a rejected other id (step 102); keep them unread and re-judge after that
   suite's end-of-round scan (step 103).
 - End of the round, not yet run: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites, each

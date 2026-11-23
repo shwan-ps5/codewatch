@@ -2639,3 +2639,30 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    now cover every phrase for every month 2021-01..2026-11 and no framework candidate is left unread; the 2,186 rows
    left are repositories that declare no topic-8 framework. Marked done in AGENTS.md: the hourly runner now does
    topic 16 once a day and otherwise stops, and new months go to the weekly upkeep.
+124. **Nightly 2026-11-23; percent-encoded values are safe in HTML** (2026-11-23). cve-pairs-python 60/105 -> 64/109
+   found, 14 -> 16 still flagged (review 68 -> 71, 22 -> 25). The Starlette sink (step 119) finds nextcloud-mcp-server,
+   quiet at its fix. Of step 121's four: wikmd found and quiet; bridgy-fed missed (webapp2 has no sources);
+   archivy and vulnerability-lookup found but still flagged at their fixes. archivy guards mkdir/rmtree with its
+   own is_relative_to() helper (step 42 D, left open). vulnerability-lookup's fix builds
+   Markup(f"<a href='/sightings?query={q}'>") with q = quote_plus(id): urllib.parse.quote and quote_plus, called with
+   the value alone, are now XSS sanitizers (they encode < > " ' and :); with a safe= argument they aren't.
+   Test: `test_a_percent_encoded_value_is_safe_in_html`. Tautulli CVE-2026-52835 turned still-flagged in review mode
+   only: Semgrep gave up on its fixed side on both nights, so that is noise. New app finding: full-stack-fastapi-template
+   login.py:122 (step 119); triage called it a false alarm (not agreed): the email must match a stored user's,
+   and stored emails are validated, which codewatch can't see. Left open.
+125. **codewatch check says when Semgrep gave up, and gives every rule time** (2026-11-23). CI's self-check failed
+   now and then on a stale review: a finding in tests/test_detection.py (4,300 lines) went missing because Semgrep
+   timed out on that file on a busy runner, which skips the rule there without an error, and `check` never printed
+   the analyzers' notes. Now `check` prints each analyzer's notes (`tool_notes`), and a local check (codewatch
+   check, CI included) gets the benchmarks' focus limits: 60 s per rule and file, and no file skipped after three
+   timeouts. A full `check --all --strict` here took 3 min. Also: the research runner retries the agent once, 2
+   minutes later, when it exits within 2 minutes with "Model unavailable" (the first run after a quiet spell,
+   2026-11-21..23: 03:00 each day and 23:00 on 2026-11-22); the nightly report counts gap-notes batches (it showed
+   0 pushed for 6). Tests: `test_check_says_what_the_analyzers_noted`, the focus-limits test (local too),
+   `test_gap_notes_batches_count_as_pushed`.
+126. **The first 90 gap notes read** (2026-11-23, pull request #10). Each note's probe was scanned with codewatch's
+   rules and the result recorded in the note (`probe_scanned`). 72 missed: Python server side 32 (source 8, check
+   8, functions 5, sink 4, framework 2, archive 2, stored 2, template 1), Python front end 15 (front-end JS 7, templates 5,
+   other 3), Python non-HTTP 11, JavaScript 14. 16 found, so for those cases the miss lies elsewhere than the note
+   says (often files or functions the probe leaves out); 2 not-a-flow notes have no probe. The notes' quotes are
+   leads: check them against the diff before a rule is written from one.
