@@ -95,7 +95,8 @@ Ground truth:
 - Gap notes (step 122): a second runner explains the nightly's missed open cases (466 on 2026-11-22: 83 Python,
   118 JavaScript, 265 PHP), about 15 a run, as leads for the rule work above. The first 90 (step 126): 72 probes
   are missed by the rules, so each is a test-sized gap; 16 are found, so the miss lies elsewhere. The next 60
-  (step 127): 42 missed, 18 found. Read them as they come; each note's `probe_scanned` says which.
+  (step 127): 42 missed, 18 found. Then 90 more (step 130; JavaScript, its non-HTTP cases and PHP): 71 missed,
+  19 found. Read them as they come; each note's `probe_scanned` says which.
 - 5 cases in `cve-pairs-blind-php-35` have a rejected other id (step 102); keep them unread and re-judge after that
   suite's end-of-round scan (step 103).
 - End of the round, not yet run: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites, each

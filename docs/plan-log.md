@@ -2688,3 +2688,8 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    (the probe is the fixed code), resolverapi (Flask-RESTful's abort message is JSON). For the nightly: Frappe
    whitelist arguments and report filters on any Frappe app, and the narrower lookup-result. Tests in
    `tests/test_python_gap_notes.py`.
+130. **90 more gap notes read** (2026-11-23, pull request #13). Probes scanned as in step 126: 71 missed (JavaScript
+   non-HTTP 37: source 16, sink 9, front-end 5, other 7; PHP 28: source 8, stored 7, sink 5, functions 4, other 4;
+   JavaScript 6), 19 found (path traversal 6, XSS 5, SQL 3, open redirect 2, others 3). gap-notes-2026-11-23-10 came
+   with the status "read 2026-11-23: ...", written by the agent, which hid it from `pending`; `reviewed.py` now
+   refuses such a status and lists any file without a review's mark (commit f388ebd).

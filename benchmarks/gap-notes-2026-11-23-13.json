@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-13",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
   "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order: the file has no Python rows, so these are the 7 cve-pairs-javascript-nonhttp rows that come first and then the first 8 cve-pairs-php rows (the file held 272 rows: 7 javascript, 265 php). For each case I read the fix commit's diff (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: electerm's transfer.jsx and file-info-modal.jsx plus fs.js, tabby's sftpContextMenu.ts, appium-mcp's src/ui/mcp-ui-utils.ts, anything-llm's filesystem/search-files.js, Zero's mail-iframe.tsx, designer-mcp's src/index.ts, MISP's UsersController.php / EventsController.php / eventFilteringQueryBuilder.ctp and Event.php, ILIAS's class.ilFileXMLParser.php, Dolibarr's import.class.php and modules_import.class.php, rconfig's FileDownloadController.php and opnsense's Certificates.js. No row was skipped. Two notes are marked unsure (the Dolibarr import POST read and the Dolibarr alpha-filtered GETPOST are not both shown in the diff).",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "list() reduce into folders/smallFiles/largeFiles (:777-797) -> transferFiles/transferFolders -> path.resolve(toPath, name); resolve normalizes '../' instead of refusing it, so a name like '../../x' in the listing writes outside toPath",
       "fix": "wraps file.name and folder.name in sanitizeFilename() before resolve() (src/common/sanitize-filename)",
       "probe": "const fs = require('fs')\nconst path = require('path')\n\n// entries come from a remote directory listing (sftp readdir)\nfunction download(base, entries, read) {\n  for (const e of entries) {\n    const dest = path.resolve(base, e.name)\n    fs.writeFileSync(dest, read(e.name))\n  }\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-73224",
@@ -29,7 +30,8 @@
       "between": "resolve(path, name) normalizes the path but keeps quotes and $(); the string goes to the fs wrappers, which exec it as a shell command; a name containing ' closes the quoting",
       "fix": "adds escapePosixShellArg (') and escapePowerShellArg ('') in fs.js and file-info-modal.jsx and switches the commands to single-quoted arguments",
       "probe": "const { exec } = require('child_process')\nconst path = require('path')\n\nfunction folderSize(base, name) {\n  const p = path.resolve(base, name)\n  exec(`du -sh '${p}'`, (e, out) => console.log(out))\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-72903",
@@ -43,7 +45,8 @@
       "between": "the name crosses from the context menu into ElectronPlatformService, which joins it to a base path; path.join normalizes '..' rather than refusing it, so the file lands outside basePath",
       "fix": "new resolveInsideBase() resolves the target and throws when relative(base, target) leaves base; used for createDirectory, createFile and the edit temp path",
       "probe": "import * as fs from 'fs'\nimport * as path from 'path'\n\nclass Downloader {\n  constructor(private base: string) {}\n  create(rel: string, data: Buffer) {\n    const full = path.join(this.base, rel)\n    fs.mkdirSync(path.dirname(full), { recursive: true })\n    fs.writeFileSync(full, data)\n  }\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-58500",
@@ -57,7 +60,8 @@
       "between": "the hierarchy values go straight into the template; no escaping on the way, and the inline onclick adds a JS-string quoting layer on top",
       "fix": "adds escapeHtml() for every interpolated value and moves the locator arguments into data-* attributes read by a click listener",
       "probe": "type El = { tagName: string; text: string; contentDesc: string }\n\nexport function render(elements: El[]): string {\n  return `<html><body>${elements\n    .map((e) => `<div><h3>${e.tagName}</h3><p>${e.text}</p><p>${e.contentDesc}</p></div>`)\n    .join('')}</body></html>`\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-48116",
@@ -72,7 +76,8 @@
       "between": "the handler passes pattern -> effectivePatterns / pattern straight into the argv builder; with no '--' before the positional arguments, a pattern that starts with '-' is parsed by ripgrep as an option (--pre=/bin/sh runs a command)",
       "fix": "appends '--' before the pattern and path and refuses a pattern that starts with '-'",
       "probe": "const { spawnSync } = require('child_process')\n\nfunction search(dir, pattern) {\n  const args = ['--json', '--line-number', pattern, dir]\n  return spawnSync('rg', args, { encoding: 'utf-8' })\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2025-52557",
@@ -86,7 +91,8 @@
       "between": "the body is stored mail; the serialized document is the only filtering and it happens client-side, so an onerror/onload attribute or a javascript: URL in the sanitized-in-name-only HTML reaches the iframe",
       "fix": "wraps the serialized document in DOMPurify.sanitize()",
       "probe": "function prepare(html: string): string {\n  const doc = new DOMParser().parseFromString(html, 'text/html')\n  doc.querySelectorAll('script, object, embed, form').forEach((el) => el.remove())\n  return doc.documentElement.outerHTML // handler attributes survive\n}\n\nexport function Mail({ html }: { html: string }) {\n  return <iframe srcDoc={prepare(html)} />\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-p45h-7j97-qg29",
@@ -100,7 +106,8 @@
       "between": "the only gate is existsSync() at :1015 / :995, which also returns true for a path that has walked out of the root; the 'not found' throw that follows is a presence check, not containment",
       "fix": "adds resolveWithinRoot() (src/envelope.ts), which refuses separators, '..', absolute paths and NUL bytes and re-checks the realpath against the root",
       "probe": "import { existsSync, readFileSync } from 'fs'\nimport { join } from 'path'\n\nexport function getReference(root: string, name: string): string {\n  const p = join(root, 'references', `${name}.md`)\n  if (!existsSync(p)) throw new Error(`not found: ${name}`)\n  return readFileSync(p, 'utf8')\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-3m75-rwwr-268p",
@@ -114,7 +121,8 @@
       "between": "_jsonDecode() hands back whatever the parameter held; the view inserts it into a JS array inside a single-quoted HTML attribute, where a quote or </script> in an entry leaves the string and reflects script",
       "fix": "json_encode($selectedTypes, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)",
       "probe": "<?php\n$types = json_decode($_GET['types'] ?? '[]', true);\n?>\n<button onclick='toggle(\"x\", [<?php foreach ($types as $t) echo '\"' . $t . '\", '; ?>])'>x</button>",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: FOUND xss"
     },
     {
       "id": "GHSA-2jvm-986q-589g",
@@ -128,7 +136,8 @@
       "between": "the upload body is passed to Xml::build() with no check that it is a document; the read/fetch and the import happen in the same call",
       "fix": "requires a '<' in the body before parsing and passes ['readFile' => false]",
       "probe": "<?php\n// $body is the uploaded file's content\n$body = file_get_contents($_FILES['file']['tmp_name']);\n\nApp::uses('Xml', 'Utility');\n$data = Xml::toArray(Xml::build($body));",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-mj6h-p8f5-39rh",
@@ -142,7 +151,8 @@
       "between": "every other rule in the same file is h()-escaped or intval()-cast (searchFor at :24, the numeric filters at :30-56, array_map('h', ...) at :341/:359); these two values were copied verbatim into the rules and then serialised for the script block",
       "fix": "array_map('h', ...) / h() around both fields before they enter the rules",
       "probe": "<?php\n$value = $_GET['q'] ?? '';\n$rules = ['q' => $value];\n?>\n<script>\nvar rules = <?= json_encode($rules, JSON_UNESCAPED_SLASHES); ?>;\n</script>",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-pmmj-hr44-h52v",
@@ -156,7 +166,8 @@
       "between": "the manifest element reaches handlerEndTag() via the XML parser; getImportDirectory() is null when no sandbox was set, so the concatenation becomes an absolute attacker-chosen path, and normalizeRelativePath() does not keep '..' inside the import dir",
       "fix": "throws when the import directory is null/empty and requires realpath(importDir . '/' . rel) to start with realpath(importDir)",
       "probe": "<?php\n// $cdata is a <Filename> element of an uploaded import manifest\nfunction tmpFile(?string $importDir, string $cdata): string {\n    return $importDir . '/' . $cdata; // a null import dir makes this absolute\n}\n$tmp = tmpFile(null, '/etc/passwd');\ncopy($tmp, '/tmp/copied');",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-j8xc-7c27-7wj4",
@@ -170,7 +181,8 @@
       "between": "$key is stripped of its table prefix at :1593 and used as a column name; the allowed keys are loaded onto the Import object in htdocs/imports/class/import.class.php:282 (array_import_updatekeys) and carried into this class, which never checked that $key is one of them or that it is an identifier. the POST read that fills $updatekeys lives on the import page and is not in the diff; that the key is attacker-chosen is inferred from the new 'not an allowed field' error and the identifier strip",
       "fix": "db->sanitize() on the table and column, array_key_exists() against the allowed update keys, and a [^a-zA-Z0-9._] strip of the field name",
       "probe": "<?php\n// $field is chosen by the user in the import form\n$field = $_POST['field'];\n$value = $_POST['value'];\n\n$sql = \"SELECT rowid FROM llx_societe WHERE \" . $field . \" = \" . $value;\n$resql = $db->query($sql);",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: FOUND sql-injection"
     },
     {
       "id": "GHSA-6c4p-988c-4wgf",
@@ -184,7 +196,8 @@
       "between": "the 'alpha' filter keeps letters only, so the quote needed to leave the JS string is not obviously reachable through this parameter; the fix adds JS escaping to the same echo. with GETPOST(..., 'alpha') the reachable quote character is unclear from the diff, so the flow is read from the changed echo only",
       "fix": "dol_escape_js() around the GETPOST value (plus a brace-style reformat of the surrounding PHP)",
       "probe": "<?php\n$type = $_GET['type'] ?? 'text';\n?>\n<script>\ninit_typeoffields('<?php echo $type; ?>');\n</script>",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: FOUND xss"
     },
     {
       "id": "GHSA-qrrp-6pvj-xfvf",
@@ -198,7 +211,8 @@
       "between": "plain concatenation onto the export directory; no basename() and no containment test, so ../ walks to .env or any readable file",
       "fix": "basename() the name and require realpath($path) to be a file under realpath(export_path())",
       "probe": "<?php\n// Laravel controller action\npublic function download(): BinaryFileResponse\n{\n    $path = storage_path('exports/') . $_GET['filename'];\n    abort_unless(file_exists($path), 404);\n    return response()->download($path);\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-7979-v6f7-5r6j",
@@ -212,7 +226,8 @@
       "between": "stored certificate description -> API -> widget row -> template literal; nothing escapes it before the string is inserted, and the value is also used as an HTML attribute",
       "fix": "removes the unused data-tooltip attribute instead of escaping it",
       "probe": "type Cert = { descr: string }\n\nfunction row(item: Cert): string {\n  return `<div><i class=\"certificate-tooltip\" data-tooltip=\"cert-${item.descr}\"></i></div>`\n}\ndocument.querySelector('#table')!.innerHTML = row({ descr: '\"><img src=x onerror=alert(1)>' })",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     }
   ],
   "usage": {

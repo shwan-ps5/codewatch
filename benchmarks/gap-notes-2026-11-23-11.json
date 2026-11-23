@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-11",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
   "method": "rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in file order: the first 15 are all cve-pairs-javascript-nonhttp (the file has no Python rows, and no other suite appears before them). For each case I read the fix commit's diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source and the sink, the vulnerable files at the fix commit's parent: src/datastore/postgres/PgDataStore.ts + src/bridge/PublicitySyncer.ts (matrix-appservice-irc), lib/modules/manager/helmv3/artifacts.ts and lib/modules/manager/gleam/artifacts.ts (renovate), src/app/lib/fs.js + src/app/lib/ipc-sync.js (electerm), server/src/built-in-command/commands/download-command/download-command.ts (leon), src/render/components/AI/Chat/Main/index.vue + src/render/util/NodeFn.ts (FlyEnv), src/tools/approvals.ts + src/dashboard/approval-storage.ts (spec-workflow-mcp), src/components/ArticleView/ContentRender.tsx (lettura), public/js/client.js (mirotalk), app/src/protyle/util/paste.ts (siyuan), source/view.js (netron), src/index.ts (la-forge-mcp), client/AjaxLife.InstantMessage.js (ajaxlife), fittr-flickr/features/easy-exif.js (fittr-flickr), js/roomElement.js (ss15-this-is-sparta). The two repository tarballs at the parent were used to find callers of getRoomsVisibility and of electerm's rmrf/mv/cp. Nothing skipped; 15 of 15 noted, 287 rows left in the file.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "src/bridge/PublicitySyncer.ts:126-127 solveVisibility gets the room objects from getMatrixRoomsForChannel and takes m.getId() from them, so the ids reaching getRoomsVisibility at :139 are database rows read back, never the current operation's own argument; the ids are quoted into one SQL text",
       "fix": "passes the id array as the bound parameter $1 instead of quoting each id into the query text",
       "probe": "import { Pool } from 'pg';\nconst pool = new Pool();\n\nasync function getRoomsVisibility(roomIds: string[]) {\n  const list = `('${roomIds.join(\"','\")}')`;\n  const res = await pool.query(\n    `SELECT room_id, visibility FROM room_visibility WHERE room_id IN ${list}`\n  );\n  return res.rows;\n}\n\nasync function sync() {\n  const rooms = await pool.query('SELECT room_id FROM rooms');\n  await getRoomsVisibility(rooms.rows.map((r) => r.room_id));\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-rqgv-292v-5qgr",
@@ -29,7 +30,8 @@
       "between": "value.name and value.repository go into the command string unquoted, while the username and password next to them already pass through shlex's quote(); exec is Renovate's own wrapper in lib/util/exec around child_process, so the shell call is a project helper, not child_process.exec",
       "fix": "quotes value.name and value.repository with shlex's quote()",
       "probe": "import { exec } from './util/exec';\n\nfunction helmCommands(config: any) {\n  const cmd: string[] = [];\n  for (const name of Object.keys(config.registryAliases || {})) {\n    const url = config.registryAliases[name];\n    cmd.push(`helm repo add ${name} ${url} --force-update`);\n  }\n  return exec(cmd, {});\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-xjr7-3c3g-m763",
@@ -43,7 +45,8 @@
       "between": "the names are joined into one command line with no quoting and reach the same Renovate exec wrapper; note the advisory's linked commit is the one that introduces this concatenation (its own message is 'feat(manager/gleam): enable update-lockfile' and its parent still runs the fixed string 'gleam deps download'), so the vulnerable side here is the commit itself",
       "fix": "the linked commit replaces the fixed 'gleam deps download' with a command line built from the dependency names; the quoting fix with shlex is a later commit",
       "probe": "import { exec } from './util/exec';\n\nasync function updateLock(deps: { depName?: string }[]) {\n  const packagesToUpdate = deps.map((d) => d.depName).filter(Boolean);\n  const updateCommand = ['gleam deps update', ...packagesToUpdate].join(' ');\n  return exec(updateCommand, {});\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-v5ff-xmfp-p245",
@@ -57,7 +60,8 @@
       "between": "run() at fs.js:36-45 hands the string to node-bash's Bash.invokeCommand, and runWinCmd at :51-53 wraps it in a powershell command through execAsync(promisify(exec)); the POSIX path's shell call is an npm package's method, not child_process.exec or execa",
       "fix": "replaces the shell commands with fs.promises rm, cp and rename (with a recursive copy fallback on EXDEV)",
       "probe": "const { Bash } = require('node-bash');\n\nfunction run(cmd) {\n  return new Bash({}).invokeCommand(cmd).then((s) => s.stdout.toString());\n}\n\nconst rmrf = (p) => run(`rm -rf \"${p}\"`);\nconst mv = (from, to) => run(`mv '${from}' '${to}'`);\n\nipcMain.handle('fs.rmrf', (_e, pathFromRemoteListing) => rmrf(pathFromRemoteListing));\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-5jhh-46x7-49hp",
@@ -71,7 +75,8 @@
       "between": "getModelFileNameFromURL (:21-30) takes path.basename(parsedURL.pathname) and decodes it afterwards, so %2e%2e%2f survives the basename and becomes ../ only on the next line; path.basename() is exactly the name a scanner takes for a path sanitizer, and the write is a project helper (FileHelper.downloadFile) rather than fs.writeFile",
       "fix": "decodes only the last raw path segment, rejects '.', '..' and both separators, then refuses a destination that resolves outside LLM_DIR_PATH",
       "probe": "import path from 'node:path';\nimport { downloadFile } from './file-helper';\n\nfunction fileNameFromURL(rawURL: string) {\n  const u = new URL(rawURL);\n  return decodeURIComponent(path.basename(u.pathname));\n}\n\nexport async function run(url: string) {\n  const dest = path.join('/app/models', fileNameFromURL(url));\n  await downloadFile(url, dest);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-w92g-j683-fhvq",
@@ -85,7 +90,8 @@
       "between": "the value is inserted by Vue's v-html directive, not by an innerHTML assignment or an insertAdjacentHTML call, so the HTML sink is a template attribute the rules do not read",
       "fix": "wraps the chat content and the markdown IPC result in DOMPurify.sanitize",
       "probe": "<template>\n  <div class=\"text\" v-html=\"message.content\"></div>\n</template>\n\n<script setup lang=\"ts\">\ndefineProps<{ message: { content: string } }>()\n</script>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-xgwr-j735-3wg4",
@@ -99,7 +105,8 @@
       "between": "the value is used as one path segment, so ../.. climbs out of .spec-workflow/approvals; the same join appears for snapshots (:596) and for lookups over existing directories (:327, :491)",
       "fix": "rejects '..' and both separators in the tool handler and swaps join() for PathUtils.safeJoin(), which resolves the path and checks containment",
       "probe": "import { join } from 'node:path';\nimport { mkdir, writeFile } from 'node:fs/promises';\n\ninterface Args { categoryName: string; filePath: string }\n\nexport async function createApproval(args: Args, dir: string) {\n  const categoryDir = join(dir, args.categoryName);\n  await mkdir(categoryDir, { recursive: true });\n  await writeFile(join(categoryDir, 'approval.json'), JSON.stringify(args));\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-6fpp-9pqw-wr8m",
@@ -113,7 +120,8 @@
       "between": "html-react-parser parses the string into React elements instead of assigning innerHTML; the article HTML is rendered as markup for the reader",
       "fix": "DOMPurify.sanitize(content) before HTMLReactParser",
       "probe": "import HTMLReactParser from 'html-react-parser';\n\nexport function Article({ html }: { html: string }) {\n  return <div>{HTMLReactParser(html)}</div>;\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-rcjf-5cjm-p5q4",
@@ -127,7 +135,8 @@
       "between": "handleDataChannelChat passes msg unchanged to appendMessage; insertAdjacentHTML is a sink the rules know, but the value's origin is a chat message read off a peer connection, not an HTTP request or the browser's URL",
       "fix": "runs the whole data-channel message through js-xss's filterXSS (JSON.stringify then JSON.parse) at the top of handleDataChannelChat",
       "probe": "const chat = document.getElementById('chat')!;\n\nfunction onDataChannelMessage(event: MessageEvent) {\n  const data = JSON.parse(event.data);\n  const html = `<div class=\"msg\"><div class=\"msg-text\">${data.msg}</div></div>`;\n  chat.insertAdjacentHTML('beforeend', html);\n}\n\npc.ondatachannel = (e) => {\n  e.channel.onmessage = onDataChannelMessage;\n};\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-358r-j9r9-9hv6",
@@ -141,7 +150,8 @@
       "between": "the pasted HTML is written into an iframe in the app's origin (scripts run there), then its nodes are moved into the editor; the clipboard is the source, not the request or the URL",
       "fix": "sanitizes siyuanHTML with Lute.Sanitize and parses the rest with DOMParser into an inert document instead of writing to an iframe",
       "probe": "export function paste(event: ClipboardEvent, container: HTMLElement) {\n  const html = event.clipboardData!.getData('text/html');\n  const iframe = document.createElement('iframe');\n  iframe.style.display = 'none';\n  document.body.appendChild(iframe);\n  const doc = iframe.contentWindow!.document;\n  doc.open();\n  doc.write(html);\n  doc.close();\n  while (doc.body.firstChild) container.appendChild(doc.body.firstChild);\n  iframe.remove();\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-wfq7-j297-j875",
@@ -155,7 +165,8 @@
       "between": "the model loader fills the node, argument and value metadata from the file; the views render those strings into the sidebar with innerHTML, and the file itself is the source",
       "fix": "escapes every description and name with this.escape() before the innerHTML assignment (and adds frame-src 'none' to the CSP)",
       "probe": "function renderNode(node: { name: string }, el: HTMLElement) {\n  el.innerHTML = `<span class='line'>name: <b>${node.name}</b></span>`;\n}\n\nasync function load(file: File) {\n  const model = JSON.parse(await file.text());\n  renderNode(model.graph.nodes[0], document.getElementById('sidebar')!);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-h7vv-3j7j-4c9x",
@@ -169,7 +180,8 @@
       "between": "the other write paths in the file already pass their name through sanitizeName(); this branch used output_name raw, and the value only gains the 'element_' prefix and '.png' suffix before the write",
       "fix": "applies sanitizeName() to the name and adds resolveInRefDir(), which resolves the path and refuses anything outside REF_DIR",
       "probe": "import path from 'node:path';\nimport fs from 'node:fs';\n\ninterface Args { output_name?: string }\n\nexport function screenshot(args: Args, refDir: string) {\n  const name = args.output_name || 'shot';\n  const file = path.join(refDir, `element_${name}.png`);\n  fs.writeFileSync(file, Buffer.from('png'));\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-cqf6-7wvc-xg52",
@@ -183,7 +195,8 @@
       "between": "AjaxLife.Utils.LinkURLs rewrites URLs in the message into <a> tags and returns an HTML string, so the value passes through a project function that builds markup before the innerHTML assignment",
       "fix": "escapes the message text with text.escapeHTML() before LinkURLs builds the links",
       "probe": "function linkURLs(text: string) {\n  return text.replace(/(https?:\\/\\/\\S+)/g, '<a href=\"$1\">$1</a>');\n}\n\nfunction appendLine(text: string) {\n  const span = document.createElement('span');\n  span.innerHTML = linkURLs(text);\n  document.getElementById('chat')!.appendChild(span);\n}\n\nsocket.on('instantMessage', (data) => appendLine(data.Message));\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-vj8w-gmcx-c68x",
@@ -197,7 +210,8 @@
       "between": "the EXIF strings are concatenated into one HTML table string and assigned to innerHTML; the file also swaps eval() for JSON.parse in api_relay.html, but the XSS flow is the EXIF render",
       "fix": "builds the table with createEl/createTextNode and appends the nodes instead of assigning innerHTML",
       "probe": "function renderExif(el: HTMLElement, data: any) {\n  let html = '<table class=\"exif\">';\n  for (const item of data.photo.exif) {\n    const value = item.clean ? item.clean._content : item.raw._content;\n    html += '<tr><td>' + item.label + '</td><td>' + value + '</td></tr>';\n  }\n  html += '</table>';\n  el.innerHTML = html;\n}\n\napi.getExif(photoId, (data) => renderExif(el, data));\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-c74p-x565-fv2v",
@@ -211,7 +225,8 @@
       "between": "one client writes the subject into the room record and every other client renders it; the underscore template inserts the subject as HTML, so the value arrives from the database, not from the current page's request",
       "fix": "escapes this.options.subject with $('<div/>').text(subject).html() before the template renders",
       "probe": "function RoomElement(this: any, options: any) {\n  this.options = _.extend({}, options);\n  this.template = _.template($('#room-template').html());\n  this.$el = $('<li />');\n  this.$el.html(this.template(this.options));\n}\n\nroomsRef.on('child_added', function (snap) {\n  new (RoomElement as any)(snap.val());\n});\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     }
   ],
   "usage": {

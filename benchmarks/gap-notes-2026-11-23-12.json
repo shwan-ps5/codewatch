@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-12",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-23 (PLAN.md step 130): leads for rule work; quotes not yet checked one by one",
   "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order: the file has no Python rows, so these are the first 15 cve-pairs-javascript-nonhttp rows (22 javascript rows, then 265 php rows; no PHP row was reached). For each case I read the fix commit's diff (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, files at the fix commit's parent: jupyterlab-git's src/components/diff model and diff widgets, summarize's chrome-extension hover content script, mobile-mcp's src/server.ts, openclaw's src/agents/apply-patch.ts and the qqbot extension (api.ts, outbound.ts, gateway.ts, inbound-attachments.ts, reply-dispatcher.ts, types.ts). No row was skipped.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "no escaping: each label is interpolated into an innerHTML template literal and assigned; the fix creates the same spans with document.createElement and sets span.textContent",
       "fix": "builds the diff banner spans with textContent instead of innerHTML",
       "probe": "export function renderDiffHeader(labels: string[]): HTMLDivElement {\n  const head = document.createElement('div');\n  head.classList.add('jp-git-diff-banner');\n  head.innerHTML = labels\n    .filter(label => !!label)\n    .map(label => `<span>${label}</span>`)\n    .join('');\n  return head;\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-2r69-qgv3-hr65",
@@ -29,7 +30,8 @@
       "between": "content script resolveUrl -> chrome.runtime message -> createHoverController's listener -> buildDaemonRequestBody -> fetch; nothing filtered the host until the fix's isHoverSummarizeUrlAllowed",
       "fix": "adds isHoverSummarizeUrlAllowed (http/https only, no localhost/.local, no private or link-local IPv4/IPv6) and ignores synthetic hover events",
       "probe": "// content script\ndocument.addEventListener('mouseover', (event) => {\n  const anchor = event.target.closest('a[href]');\n  if (!anchor) return;\n  const url = new URL(anchor.getAttribute('href'), location.href);\n  chrome.runtime.sendMessage({ type: 'summarize', url: url.href });\n});\n\n// background\nchrome.runtime.onMessage.addListener((msg) => {\n  if (msg.type !== 'summarize') return;\n  fetch(`http://127.0.0.1:8787/summarize?url=${encodeURIComponent(msg.url)}`);\n});",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-c4qg-j8jg-42q5",
@@ -43,7 +45,8 @@
       "between": "sendMedia -> sendC2CImageMessage -> uploadC2CMedia(url=imageUrl) -> body.url; no scheme or host check before the fix",
       "fix": "adds assertDirectUploadUrlAllowed: https only, then resolvePinnedHostnameWithPolicy before the upload request",
       "probe": "export async function uploadMedia(token, mediaUrl) {\n  const body = { url: mediaUrl };\n  return fetchWithSsrFGuard('https://api.example.com/upload', {\n    method: 'POST',\n    body: JSON.stringify(body),\n  });\n}\n\nexport function sendImage(token, imageUrl) {\n  return uploadMedia(token, imageUrl);\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-jf25-7968-h2h5",
@@ -57,7 +60,8 @@
       "between": "args -> wrapToolWorkspaceRootGuardWithOptions (src/agents/pi-tools.read.ts) which only guarded the `path` key before the fix -> createNodesTool.execute; the fix passes pathParamKeys: ['outPath'] and normalizes the guarded value through assertSandboxPath. the file write itself is in nodes-tool.ts, outside the diff, so the sink is inferred from the tool's screen_record action and the fix's test",
       "fix": "lets the workspace-root guard take extra path parameter keys and guards/normalizes the nodes tool's outPath",
       "probe": "export const nodesTool = {\n  name: 'nodes',\n  parameters: { type: 'object', properties: { outPath: { type: 'string' } } },\n  execute: async (toolCallId, args) => {\n    await recordScreen(args.outPath);\n    return { content: [] };\n  },\n};",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-f6pf-4gjx-c94r",
@@ -71,7 +75,8 @@
       "between": "splitMediaFromOutput -> isLikelyLocalPath / isValidMedia -> mediaUrls -> downstream loader; the fix adds hasTraversalOrHomeDirPrefix so `..` segments and `~` prefixes never reach the loader. the load/send call is not in the diff; only the deferred-validation comment and the tests name the downstream reader",
       "fix": "rejects traversal and home-dir patterns in isLikelyLocalPath and isValidMedia, and strips them from the output text",
       "probe": "const MEDIA_RE = /MEDIA:(\\S+)/g;\n\nexport function splitMediaFromOutput(raw: string) {\n  const mediaUrls: string[] = [];\n  for (const m of raw.matchAll(MEDIA_RE)) mediaUrls.push(m[1]);\n  return { text: raw.replace(MEDIA_RE, ''), mediaUrls };\n}\n\n// caller\nconst { mediaUrls } = splitMediaFromOutput(replyText);\nfor (const u of mediaUrls) await loadWebMedia(u);",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-qf48-qfv4-jjm9",
@@ -85,7 +90,8 @@
       "between": "tool execute -> resolveUploadInput -> isAbsolute / existsSync -> fs.readFile; no allowed-root check before the fix",
       "fix": "routes both reads through loadWebMedia, which enforces the localRoots sandbox, instead of fs.readFile",
       "probe": "const uploadFileTool = {\n  name: 'doc_upload_file',\n  parameters: { type: 'object', properties: { file_path: { type: 'string' } } },\n  execute: async (id, { file_path }) => {\n    const buffer = await fs.readFile(file_path);\n    await drive.upload({ data: buffer, name: basename(file_path) });\n    return { content: [] };\n  },\n};",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-3p2m-h2v6-g9mx",
@@ -100,7 +106,8 @@
       "between": "tool handler destructures saveTo/output and passes them straight to writeFileSync and the mobilecli argv; no check before the fix",
       "fix": "adds validateOutputPath (realpath must resolve under tmpdir or cwd) and validateFileExtension before both writes",
       "probe": "server.tool(\n  'save_screenshot',\n  { saveTo: z.string() },\n  async ({ saveTo }) => {\n    const screenshot = await device.getScreenshot();\n    fs.writeFileSync(saveTo, screenshot);\n  },\n);\n\nserver.tool(\n  'start_screen_recording',\n  { output: z.string().optional() },\n  async ({ output }) => {\n    mobilecli(['screenrecord', '--output', output]);\n  },\n);",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-c6hr-w26q-c636",
@@ -114,7 +121,8 @@
       "between": "message event -> stripBotMention loop -> RegExp -> String.replace; nothing escaped before the fix",
       "fix": "escapeRegExp() over mention.name and mention.key before new RegExp",
       "probe": "export function stripBotMention(text: string, mentions?: { name: string; key: string }[]) {\n  let result = text;\n  for (const mention of mentions ?? []) {\n    result = result.replace(new RegExp(`@${mention.name}\\\\s*`, 'g'), '').trim();\n    result = result.replace(new RegExp(mention.key, 'g'), '').trim();\n  }\n  return result;\n}\n\n// mentions come from the chat message event",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-r5fq-947m-xm57",
@@ -128,7 +136,8 @@
       "between": "patch text -> parsed hunks -> resolvePatchPath -> resolvePathFromCwd (expandPath of `~`, path.resolve) with no boundary check; the fix routes it through assertSandboxPath with root = cwd",
       "fix": "resolvePatchPath goes through assertSandboxPath, so traversal, absolute and symlink escapes are refused",
       "probe": "export async function applyPatch(patch: string, cwd: string) {\n  for (const hunk of parsePatch(patch)) {\n    const target = path.resolve(cwd, hunk.path);\n    await fs.writeFile(target, hunk.contents);\n  }\n}\n\n// patch is the model's apply_patch tool argument",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-9pw5-wx67-q964",
@@ -142,7 +151,8 @@
       "between": "the MCP OAuth flow discovers the URL and calls redirectToAuthorization; before the fix nothing checked the scheme",
       "fix": "refuses anything but http:// or https:// before open()",
       "probe": "import open from 'open';\n\nexport class OAuthProvider {\n  async redirectToAuthorization(authorizationUrl: URL) {\n    await open(authorizationUrl.toString());\n  }\n}\n\n// authorizationUrl comes from the remote server's OAuth metadata",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-p6rm-483j-37jf",
@@ -157,7 +167,8 @@
       "between": "OAuth callback -> McpOAuthClientProvider.redirectToAuthorization -> open(); no validation before the fix",
       "fix": "wraps the URL in strict-url-sanitise's sanitizeUrl before open()",
       "probe": "import open from 'open';\n\nexport class McpOAuthClientProvider {\n  async redirectToAuthorization(authorizationUrl) {\n    await open(authorizationUrl.toString());\n  }\n}\n\n// authorizationUrl comes from the MCP server's OAuth metadata",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-54703",
@@ -171,7 +182,8 @@
       "between": "webview postMessage -> onDidReceiveMessage -> vscode.commands.executeCommand('_crossnote.' + command, ...args) -> updateMarkdown(uri, markdown); neither the command name nor the URI was checked before the fix",
       "fix": "adds a 37-command allowlist, requires args to be an array, checks updateMarkdown's URI against the panel's source URI, and restricts updateMarkdown writes to markdown extensions",
       "probe": "panel.webview.onDidReceiveMessage(async (message) => {\n  await vscode.commands.executeCommand(`_crossnote.${message.command}`, ...message.args);\n});\n\nasync function updateMarkdown(uri: string, markdown: string) {\n  await vscode.workspace.fs.writeFile(vscode.Uri.parse(uri), Buffer.from(markdown));\n}\n\n// the webview runs scripts from the opened repository's .crossnote/head.html",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-41318",
@@ -187,7 +199,8 @@
       "between": "chart reply -> Chartable props -> renderMarkdown (frontend/src/utils/chat/markdown.js, whose link_open/image rules interpolated href/src/alt unencoded) -> __html",
       "fix": "DOMPurify.sanitize() around renderMarkdown output, and HTMLEncode() of href/src/alt in the markdown renderer rules",
       "probe": "import renderMarkdown from '@/utils/chat/markdown';\n\nexport function ChartCaption({ content }) {\n  return (\n    <span\n      dangerouslySetInnerHTML={{ __html: renderMarkdown(content.caption) }}\n    />\n  );\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-32890",
@@ -202,7 +215,8 @@
       "between": "Discord members response -> members list -> template literal -> innerHTML; displayName/username went through escapeHtml but the avatar URL was interpolated raw",
       "fix": "builds the option/display/trigger nodes with createElement and textContent, and sets img.src only when isSafeAvatarUrl(avatar) passes",
       "probe": "function renderMember(member, option) {\n  option.innerHTML = `\n    <img src=\"${member.avatar}\" alt=\"${escapeHtml(member.displayName)}\">\n    <div>${escapeHtml(member.displayName)}</div>\n  `;\n}\n\n// member comes from the platform's guild-members API",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-32626",
@@ -216,7 +230,8 @@
       "between": "chat message content -> contentRef -> renderMarkdown -> __html; no sanitizer before the fix",
       "fix": "DOMPurify.sanitize() (frontend/src/utils/chat/purify) around the rendered markdown",
       "probe": "import renderMarkdown from '@/utils/chat/markdown';\n\nfunction Reply({ content }) {\n  return (\n    <span dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />\n  );\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     }
   ],
   "usage": {
