@@ -301,16 +301,18 @@ def guard(base, head="HEAD", repo=HERE.parent):
     changed = [f for f in _git("diff", "--name-only", "--diff-filter=AM", f"{base}..{head}", cwd=repo).splitlines() if f]
     problems += [f"{name}: not a file research may change" for name in changed if not ALLOWED.match(name)]
     for name in changed:
-        if not ALLOWED.match(name) or name == "AGENTS.md":
-            continue
-        text = _git("show", f"{head}:{name}", cwd=repo)
-        if name.endswith(".json"):
-            problems += status_problem(name, text)
-        if name.startswith("benchmarks/gap-notes-"):
-            problems += gap_note_problems(name, text, head, repo)
-        else:
-            problems += tsv_problems(name, text) if name.endswith(".tsv") else batch_problems(name, text, head, repo)
+        if ALLOWED.match(name) and name != "AGENTS.md":
+            problems += file_problems(name, head, repo)
     return problems
+
+
+def file_problems(name, head, repo):
+    """What's wrong with one candidate batch, its TSV, or a gap-notes file, as committed at head."""
+    text = _git("show", f"{head}:{name}", cwd=repo)
+    if name.endswith(".tsv"):
+        return tsv_problems(name, text)
+    checks = gap_note_problems if name.startswith("benchmarks/gap-notes-") else batch_problems
+    return status_problem(name, text) + checks(name, text, head, repo)
 
 
 def _blind_fixes(head, repo):
