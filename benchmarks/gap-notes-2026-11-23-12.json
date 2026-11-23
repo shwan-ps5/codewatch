@@ -1,0 +1,238 @@
+{
+  "batch": "gap-notes-2026-11-23-12",
+  "status": "research only: not read yet",
+  "method": "The first 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order: the file has no Python rows, so these are the first 15 cve-pairs-javascript-nonhttp rows (22 javascript rows, then 265 php rows; no PHP row was reached). For each case I read the fix commit's diff (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, files at the fix commit's parent: jupyterlab-git's src/components/diff model and diff widgets, summarize's chrome-extension hover content script, mobile-mcp's src/server.ts, openclaw's src/agents/apply-patch.ts and the qqbot extension (api.ts, outbound.ts, gateway.ts, inbound-attachments.ts, reply-dispatcher.ts, types.ts). No row was skipped.",
+  "notes": [
+    {
+      "id": "GHSA-f962-v9hr-pfg5",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "src/components/diff/NotebookDiff.ts:246-247 and PlainTextDiff.ts:75-77 (fix parent): the banner labels are this._model.reference.label / this._model.challenger.label, which the git diff provider fills from the file name / ref of the diff; a crafted filename in a shared repository (`<img src=x onerror=...>.py`, renamed in a commit) is what the advisory exploits",
+      "sink": "src/components/diff/NotebookDiff.ts:397 and PlainTextDiff.ts:221 (fix parent): node.innerHTML = `<div class=\"...\"><span>${label}</span></div>` (and head.innerHTML = labels.map(label => `<span>${label}</span>`)) - browser innerHTML",
+      "between": "no escaping: each label is interpolated into an innerHTML template literal and assigned; the fix creates the same spans with document.createElement and sets span.textContent",
+      "fix": "builds the diff banner spans with textContent instead of innerHTML",
+      "probe": "export function renderDiffHeader(labels: string[]): HTMLDivElement {\n  const head = document.createElement('div');\n  head.classList.add('jp-git-diff-banner');\n  head.innerHTML = labels\n    .filter(label => !!label)\n    .map(label => `<span>${label}</span>`)\n    .join('');\n  return head;\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-2r69-qgv3-hr65",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "apps/chrome-extension/src/entrypoints/hover.content.ts:24-33,346,380 (fix parent): the hovered page's `a[href]` (anchor.getAttribute('href') resolved with location.href) is sent as chrome.runtime.sendMessage({type:'hover:summarize', url}), and the background reads msg.url",
+      "sink": "apps/chrome-extension/src/entrypoints/background/hover-controller.ts:164-180 (fix parent): the daemon request built from msg.url is fetched, so any page can make the extension's daemon fetch 127.0.0.1 or 169.254.169.254",
+      "between": "content script resolveUrl -> chrome.runtime message -> createHoverController's listener -> buildDaemonRequestBody -> fetch; nothing filtered the host until the fix's isHoverSummarizeUrlAllowed",
+      "fix": "adds isHoverSummarizeUrlAllowed (http/https only, no localhost/.local, no private or link-local IPv4/IPv6) and ignores synthetic hover events",
+      "probe": "// content script\ndocument.addEventListener('mouseover', (event) => {\n  const anchor = event.target.closest('a[href]');\n  if (!anchor) return;\n  const url = new URL(anchor.getAttribute('href'), location.href);\n  chrome.runtime.sendMessage({ type: 'summarize', url: url.href });\n});\n\n// background\nchrome.runtime.onMessage.addListener((msg) => {\n  if (msg.type !== 'summarize') return;\n  fetch(`http://127.0.0.1:8787/summarize?url=${encodeURIComponent(msg.url)}`);\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-c4qg-j8jg-42q5",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "extensions/qqbot/src/api.ts:694-720 sendC2CImageMessage(..., imageUrl) and its group twin - imageUrl is the media URL of an outbound agent send (outbound.ts sendMedia ctx.mediaUrl, from the chat/agent message tool)",
+      "sink": "extensions/qqbot/src/api.ts:560,613 (fix parent): body.url = url, handed to QQ's media upload endpoint and fetched by the outbound path (fetchWithSsrFGuard), so a sender-chosen host is contacted server-side",
+      "between": "sendMedia -> sendC2CImageMessage -> uploadC2CMedia(url=imageUrl) -> body.url; no scheme or host check before the fix",
+      "fix": "adds assertDirectUploadUrlAllowed: https only, then resolvePinnedHostnameWithPolicy before the upload request",
+      "probe": "export async function uploadMedia(token, mediaUrl) {\n  const body = { url: mediaUrl };\n  return fetchWithSsrFGuard('https://api.example.com/upload', {\n    method: 'POST',\n    body: JSON.stringify(body),\n  });\n}\n\nexport function sendImage(token, imageUrl) {\n  return uploadMedia(token, imageUrl);\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-jf25-7968-h2h5",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "src/agents/openclaw-tools.ts:207 (fix parent): the nodes tool's arguments (outPath) come from the model as a tool call, AnyAgentTool.execute(toolCallId, args)",
+      "sink": "the wrapped createNodesTool screen_record action records to outPath (src/agents/tools/nodes-tool.ts, not in the diff) - the file is written outside the workspace, e.g. outPath: '/etc/passwd'",
+      "between": "args -> wrapToolWorkspaceRootGuardWithOptions (src/agents/pi-tools.read.ts) which only guarded the `path` key before the fix -> createNodesTool.execute; the fix passes pathParamKeys: ['outPath'] and normalizes the guarded value through assertSandboxPath. the file write itself is in nodes-tool.ts, outside the diff, so the sink is inferred from the tool's screen_record action and the fix's test",
+      "fix": "lets the workspace-root guard take extra path parameter keys and guards/normalizes the nodes tool's outPath",
+      "probe": "export const nodesTool = {\n  name: 'nodes',\n  parameters: { type: 'object', properties: { outPath: { type: 'string' } } },\n  execute: async (toolCallId, args) => {\n    await recordScreen(args.outPath);\n    return { content: [] };\n  },\n};",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-f6pf-4gjx-c94r",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "src/media/parse.ts:201 (fix parent) splitMediaFromOutput(raw) - the `MEDIA:` lines in the assistant's reply text, e.g. `MEDIA:../../etc/passwd` or `MEDIA:~/.ssh/id_rsa`",
+      "sink": "the path returned in result.mediaUrls is later read by loadWebMedia / resolveSandboxedMediaSource (src/media/*, outside the diff); the removed comment said validation was deferred to that load layer",
+      "between": "splitMediaFromOutput -> isLikelyLocalPath / isValidMedia -> mediaUrls -> downstream loader; the fix adds hasTraversalOrHomeDirPrefix so `..` segments and `~` prefixes never reach the loader. the load/send call is not in the diff; only the deferred-validation comment and the tests name the downstream reader",
+      "fix": "rejects traversal and home-dir patterns in isLikelyLocalPath and isValidMedia, and strips them from the output text",
+      "probe": "const MEDIA_RE = /MEDIA:(\\S+)/g;\n\nexport function splitMediaFromOutput(raw: string) {\n  const mediaUrls: string[] = [];\n  for (const m of raw.matchAll(MEDIA_RE)) mediaUrls.push(m[1]);\n  return { text: raw.replace(MEDIA_RE, ''), mediaUrls };\n}\n\n// caller\nconst { mediaUrls } = splitMediaFromOutput(replyText);\nfor (const u of mediaUrls) await loadWebMedia(u);",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-qf48-qfv4-jjm9",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "extensions/feishu/src/docx.ts:536,598 (fix parent): the tool argument file_path of the feishu_doc upload_file / upload_image actions (resolveUploadInput(filePath))",
+      "sink": "extensions/feishu/src/docx.ts:1133,1154 (fix parent): fs.readFile(candidate / filePath) - any file the model names is read and uploaded to Feishu Drive",
+      "between": "tool execute -> resolveUploadInput -> isAbsolute / existsSync -> fs.readFile; no allowed-root check before the fix",
+      "fix": "routes both reads through loadWebMedia, which enforces the localRoots sandbox, instead of fs.readFile",
+      "probe": "const uploadFileTool = {\n  name: 'doc_upload_file',\n  parameters: { type: 'object', properties: { file_path: { type: 'string' } } },\n  execute: async (id, { file_path }) => {\n    const buffer = await fs.readFile(file_path);\n    await drive.upload({ data: buffer, name: basename(file_path) });\n    return { content: [] };\n  },\n};",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3p2m-h2v6-g9mx",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        22,
+        73
+      ],
+      "category": "source",
+      "source": "src/server.ts:584-587,694-705 (fix parent): the MCP tool arguments saveTo (save_screenshot) and output (mobile_start_screen_recording), read from the tool handler's parameters",
+      "sink": "src/server.ts:591 fs.writeFileSync(saveTo, screenshot) and :710 mobilecli(['screenrecord', '--output', outputPath]) - arbitrary file write, and file path inside a device command",
+      "between": "tool handler destructures saveTo/output and passes them straight to writeFileSync and the mobilecli argv; no check before the fix",
+      "fix": "adds validateOutputPath (realpath must resolve under tmpdir or cwd) and validateFileExtension before both writes",
+      "probe": "server.tool(\n  'save_screenshot',\n  { saveTo: z.string() },\n  async ({ saveTo }) => {\n    const screenshot = await device.getScreenshot();\n    fs.writeFileSync(saveTo, screenshot);\n  },\n);\n\nserver.tool(\n  'start_screen_recording',\n  { output: z.string().optional() },\n  async ({ output }) => {\n    mobilecli(['screenrecord', '--output', output]);\n  },\n);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-c6hr-w26q-c636",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        1333
+      ],
+      "category": "source",
+      "source": "extensions/feishu/src/bot.ts:210-213 (fix parent): mention.name and mention.key from the Feishu message event, passed to stripBotMention(text, event.message.mentions)",
+      "sink": "bot.ts:212-213: new RegExp(`@${mention.name}\\s*`, 'g') and new RegExp(mention.key, 'g') - a regex compiled from chat metadata, so a crafted mention name gives ReDoS / regex injection",
+      "between": "message event -> stripBotMention loop -> RegExp -> String.replace; nothing escaped before the fix",
+      "fix": "escapeRegExp() over mention.name and mention.key before new RegExp",
+      "probe": "export function stripBotMention(text: string, mentions?: { name: string; key: string }[]) {\n  let result = text;\n  for (const mention of mentions ?? []) {\n    result = result.replace(new RegExp(`@${mention.name}\\\\s*`, 'g'), '').trim();\n    result = result.replace(new RegExp(mention.key, 'g'), '').trim();\n  }\n  return result;\n}\n\n// mentions come from the chat message event",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-r5fq-947m-xm57",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "src/agents/apply-patch.ts:146,166 (fix parent): hunk.path and hunk.movePath, parsed out of the patch text that arrives as the apply_patch tool call's `patch` argument from the model",
+      "sink": "src/agents/apply-patch.ts:148,168,172 fileOps.writeFile(target.resolved, ...) - writes or moves a file at any path the patch names (`../../escaped.txt`, `/etc/...`)",
+      "between": "patch text -> parsed hunks -> resolvePatchPath -> resolvePathFromCwd (expandPath of `~`, path.resolve) with no boundary check; the fix routes it through assertSandboxPath with root = cwd",
+      "fix": "resolvePatchPath goes through assertSandboxPath, so traversal, absolute and symlink escapes are refused",
+      "probe": "export async function applyPatch(patch: string, cwd: string) {\n  for (const hunk of parsePatch(patch)) {\n    const target = path.resolve(cwd, hunk.path);\n    await fs.writeFile(target, hunk.contents);\n  }\n}\n\n// patch is the model's apply_patch tool argument",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-9pw5-wx67-q964",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        77
+      ],
+      "category": "sink",
+      "source": "src/helpers/node-oauth-client-provider.ts:33 redirectToAuthorization(authorizationUrl) - the OAuth authorization URL the remote MCP server advertises in its authorization-server metadata, i.e. a server-supplied string",
+      "sink": "same line: open(authorizationUrl.toString()) - the `open` npm package hands the string to the OS handler (cmd /c start on Windows), so a URL with shell metacharacters runs commands",
+      "between": "the MCP OAuth flow discovers the URL and calls redirectToAuthorization; before the fix nothing checked the scheme",
+      "fix": "refuses anything but http:// or https:// before open()",
+      "probe": "import open from 'open';\n\nexport class OAuthProvider {\n  async redirectToAuthorization(authorizationUrl: URL) {\n    await open(authorizationUrl.toString());\n  }\n}\n\n// authorizationUrl comes from the remote server's OAuth metadata",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-p6rm-483j-37jf",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        77,
+        78
+      ],
+      "category": "sink",
+      "source": "src/oauth/provider.js:42 redirectToAuthorization(authorizationUrl) - the authorization URL the MCP server or its metadata returns during the OAuth flow",
+      "sink": "same line: open(authorizationUrl.toString()) via the `open` package - command injection through the OS handler on Windows",
+      "between": "OAuth callback -> McpOAuthClientProvider.redirectToAuthorization -> open(); no validation before the fix",
+      "fix": "wraps the URL in strict-url-sanitise's sanitizeUrl before open()",
+      "probe": "import open from 'open';\n\nexport class McpOAuthClientProvider {\n  async redirectToAuthorization(authorizationUrl) {\n    await open(authorizationUrl.toString());\n  }\n}\n\n// authorizationUrl comes from the MCP server's OAuth metadata",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-54703",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        73
+      ],
+      "category": "source",
+      "source": "src/preview-provider.ts:485 (fix parent): previewPanel.webview.onDidReceiveMessage((message) => ...) - message.command / message.args posted by the preview webview, which runs scripts from the opened repository's .crossnote/head.html",
+      "sink": "src/extension-common.ts:976 updateMarkdown(uri, markdown) -> vscode.workspace.fs.writeFile(sourceUri, Buffer.from(markdown)) - a write to any path the webview names (~/.bashrc, authorized_keys)",
+      "between": "webview postMessage -> onDidReceiveMessage -> vscode.commands.executeCommand('_crossnote.' + command, ...args) -> updateMarkdown(uri, markdown); neither the command name nor the URI was checked before the fix",
+      "fix": "adds a 37-command allowlist, requires args to be an array, checks updateMarkdown's URI against the panel's source URI, and restricts updateMarkdown writes to markdown extensions",
+      "probe": "panel.webview.onDidReceiveMessage(async (message) => {\n  await vscode.commands.executeCommand(`_crossnote.${message.command}`, ...message.args);\n});\n\nasync function updateMarkdown(uri: string, markdown: string) {\n  await vscode.workspace.fs.writeFile(vscode.Uri.parse(uri), Buffer.from(markdown));\n}\n\n// the webview runs scripts from the opened repository's .crossnote/head.html",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-41318",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        79,
+        116,
+        1336
+      ],
+      "category": "front-end",
+      "source": "frontend/src/components/WorkspaceChat/ChatContainer/ChatHistory/Chartable/index.jsx:395,414 (fix parent): content.caption, the caption of a chart carried in a chat reply and rendered when the chat is displayed",
+      "sink": "same places: dangerouslySetInnerHTML={{__html: renderMarkdown(content.caption)}} - React writes the rendered markdown HTML into the page",
+      "between": "chart reply -> Chartable props -> renderMarkdown (frontend/src/utils/chat/markdown.js, whose link_open/image rules interpolated href/src/alt unencoded) -> __html",
+      "fix": "DOMPurify.sanitize() around renderMarkdown output, and HTMLEncode() of href/src/alt in the markdown renderer rules",
+      "probe": "import renderMarkdown from '@/utils/chat/markdown';\n\nexport function ChartCaption({ content }) {\n  return (\n    <span\n      dangerouslySetInnerHTML={{ __html: renderMarkdown(content.caption) }}\n    />\n  );\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-32890",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        79,
+        200
+      ],
+      "category": "front-end",
+      "source": "web/script.js:2014 (fix parent): member.avatar, member.displayName and member.username from the Discord guild-member data the dashboard loads",
+      "sink": "web/script.js:2018 option.innerHTML = `<img src=\"${member.avatar}\" alt=\"${escapeHtml(member.displayName)}\">...` (the avatar URL unescaped), repeated at :2058 display.innerHTML and :2384 avatarHtml",
+      "between": "Discord members response -> members list -> template literal -> innerHTML; displayName/username went through escapeHtml but the avatar URL was interpolated raw",
+      "fix": "builds the option/display/trigger nodes with createElement and textContent, and sets img.src only when isSafeAvatarUrl(avatar) passes",
+      "probe": "function renderMember(member, option) {\n  option.innerHTML = `\n    <img src=\"${member.avatar}\" alt=\"${escapeHtml(member.displayName)}\">\n    <div>${escapeHtml(member.displayName)}</div>\n  `;\n}\n\n// member comes from the platform's guild-members API",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-32626",
+      "suite": "cve-pairs-javascript-nonhttp",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "frontend/src/components/WorkspaceChat/ChatContainer/ChatHistory/PromptReply/index.jsx:97 (fix parent): contentRef.current, the assistant reply text of the chat message, streamed from the server and stored with the chat",
+      "sink": "same line: dangerouslySetInnerHTML={{__html: renderMarkdown(contentRef.current)}} - the rendered markdown HTML is written into the page",
+      "between": "chat message content -> contentRef -> renderMarkdown -> __html; no sanitizer before the fix",
+      "fix": "DOMPurify.sanitize() (frontend/src/utils/chat/purify) around the rendered markdown",
+      "probe": "import renderMarkdown from '@/utils/chat/markdown';\n\nfunction Reply({ content }) {\n  return (\n    <span dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />\n  );\n}",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df766843dffeSehMUBTKHXI2Yh",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 29,
+    "tool_calls": 32,
+    "tool_errors": 0,
+    "chars_read": 239840,
+    "tokens": {
+      "input": 99053,
+      "cache_read": 2483840,
+      "output": 23499,
+      "reasoning": 0
+    },
+    "usd": 0.073
+  }
+}
