@@ -2671,3 +2671,20 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    stored 2, archive 2, front-end 1), 18 found (all JavaScript; path traversal 8, command 3, NoSQL 2, regex 2,
    SSRF 2, SQL 1), so for those the miss lies elsewhere than the note says. The Python misses are all covered now;
    the runner has moved on to JavaScript.
+128. **Rules from the Python gap notes, first pass** (2026-11-23). Shapes from the notes' probes, each checked
+   against the real case:
+   - A membership guard no longer clears the value inside its own `if x not in ALLOWED:` branch (the `$X in
+     $ALLOWED` form matched `not in` too), nor `if x != EXPECTED:` inside its branch. nextcloud-mcp-server's note.
+   - `cloudpickle.loads/load` are deserialization sinks (Fugue GHSA-xv5p; still missed: the real call is in a
+     helper the summaries don't reach).
+   - `django.shortcuts.redirect` through its module is a redirect sink, and Django's old `same_origin()` test
+     that replaces the value is a check (Horizon GHSA-j72v; still missed, see open items).
+   - Frappe: `frappe.form_dict`, the non-numeric arguments of `@frappe.whitelist()` methods, and a script
+     report's `execute(filters)` in a module that imports frappe are request input; `frappe.db.sql` is an SQL
+     sink. CVE-2026-55823 and CVE-2026-55796 now found and quiet at their fixes.
+   - A `get_*` helper named for conditions, filters, where, clauses or sql no longer counts as a lookup returning
+     a stored row: it builds a query from its argument (HRMS's `get_conditions(filters)`, a common ERPNext idiom).
+   Skipped: cg's Referer redirect (step 108 decided a redirect to the Referer isn't one), OctoPrint GHSA-x7r7
+   (the probe is the fixed code), resolverapi (Flask-RESTful's abort message is JSON). For the nightly: Frappe
+   whitelist arguments and report filters on any Frappe app, and the narrower lookup-result. Tests in
+   `tests/test_python_gap_notes.py`.

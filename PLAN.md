@@ -79,6 +79,10 @@ Detection gaps, by cases reached (from the sort of the 81 Python misses, step 10
   and both stay flagged.
 - Frameworks with no sources yet: webapp2 (bridgy-fed's `self.request.path_qs`, step 124), Checkmk's own
   `request.get_unicode_input*` (step 123).
+- From the gap notes (step 128): Fugue (`cloudpickle.loads` inside a helper `_decode()`) and Horizon (a second
+  redirect tainted through `get_user_home(users.get_user_from_request(request))`) are still missed though their
+  probe shapes are now caught. A helper handed `request` passes taint to its result, which keeps Horizon's fixed
+  side flagged.
 - JavaScript: path traversal, SSRF and redirects mostly missed; outside HTTP handlers 1 of 38.
 - PHP (steps 70, 73): no summaries across functions and files (most misses); helpers given 'escape' => false,
   lookup results, CakePHP action parameters, by-reference arguments, Twig reading the request, short open tags,
