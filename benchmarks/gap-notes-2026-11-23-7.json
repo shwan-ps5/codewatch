@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-23-7",
+  "status": "research only: not read yet",
+  "method": "rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in file order: the first 15 cve-pairs-javascript rows (no Python rows are left in the file). For each, read the fix commit's diff (gh api repos/O/R/commits/SHA) with test/manifest files skipped, and, where the diff does not show the source or sink, the vulnerable-side files at the fix commit's parent: outerbase chart component, cloudcmd server/rest/index.js and server/markdown/index.js, claude-sesh src/services/enricher.ts and src/web/server.ts, whatismyudid routes/mobileconfig.js, routes/index.js, app.js, views/udid.pug and views/layout.pug, and omnivore packages/api/src/services/create_page_save_request.ts. Advisory summaries came from the local clone of github/advisory-database. Two notes are unsure: GHSA-rm8c-j3vq-fv9j (the entry that lets a caller choose sessionId is not in the diff) and GHSA-rc4g-x5g6-63x3 (Pug's #{udid} escapes the value, so the HTML sink does not explain the XSS; the raw value also goes into the Set-Cookie header). Nothing was skipped, and no blind case was read. 362 rows were in misses.tsv before this batch; 347 remain.",
+  "notes": [
+    {
+      "id": "GHSA-wwf9-7jrc-rv4q",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "src/components/chart/index.tsx:18 (fix parent) value.params.options?.text - the text of a Text widget saved with the dashboard; the widget text is written by the dashboard author and stored, the diff does not show the save path (dashboard data is kept client-side)",
+      "sink": "src/components/chart/index.tsx:44-48 <span dangerouslySetInnerHTML={{__html: markdown}}> - the widget text is parsed as HTML",
+      "between": "TextComponent runs four regex replacements over the text that only wrap matches in <b>, <i>, <u> and <br>, then hands the result to dangerouslySetInnerHTML. Nothing escapes or sanitises it on the way. The fix deletes the replacements and renders {markdown} as a React child. Second explanation: sink (regex-built HTML passed to dangerouslySetInnerHTML).",
+      "fix": "renders the text widget's value as a React text child instead of dangerouslySetInnerHTML",
+      "probe": "function TextWidget({ value }: { value: { params: { options?: { text?: string } } } }) {\n  let text = value.params.options?.text ?? \"\";\n  text = text.replace(/\\*\\*(.*?)\\*\\*/g, \"<b>$1</b>\");\n  text = text.replace(/\\*(.*?)\\*/g, \"<i>$1</i>\");\n  return (\n    <div>\n      <span dangerouslySetInnerHTML={{ __html: text }} />\n    </div>\n  );\n}\n\n// value comes from a dashboard's saved widget configuration",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7xvh-c266-cfr5",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "src/views/pages/Login.vue:159-162 (fix parent) this.welcomeMessage = decodeURIComponent(response.data.propertyValue) after GET .../config-property/public/general/welcome.message.html - the admin-configured welcome message served by the API",
+      "sink": "src/views/administration/configuration/WelcomeMessage.vue:53 <p><span v-html=\"welcomeMessage\" /></p> - Vue's v-html inserts the string as HTML",
+      "between": "the message is stored as a config property by a user with SYSTEM_CONFIGURATION and read back by the login page; both render sites assign it straight to v-html. The fix imports DOMPurify and renders sanitizedWelcomeMessage (computed: DOMPurify.sanitize(this.welcomeMessage)), and also sanitises the value fetched on Login.vue. Second explanation: stored (config value rendered on a different page).",
+      "fix": "runs the configured welcome message through DOMPurify.sanitize before both v-html sinks",
+      "probe": "<template>\n  <div>\n    <b-card>\n      <div slot=\"header\"><h4>Preview</h4></div>\n      <p><span v-html=\"welcomeMessage\" /></p>\n    </b-card>\n  </div>\n</template>\n\n<script>\nimport axios from 'axios';\n\nexport default {\n  data() {\n    return { welcomeMessage: '' };\n  },\n  mounted() {\n    axios.get('/api/config/public/welcome.message.html').then((response) => {\n      this.welcomeMessage = decodeURIComponent(response.data.propertyValue);\n    });\n  },\n};\n</script>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hfj7-542q-8fvv",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        601
+      ],
+      "category": "functions",
+      "source": "packages/diracx-web-components/src/components/Login/LoginForm.tsx:63-66 (fix parent) const redirect = getParam(\"redirect\") - a custom useSearchParamsUtils hook reading the ?redirect= query parameter",
+      "sink": "LoginForm.tsx:64-68 setPath(redirect) - NavigationContext's setter navigates the browser to the value instead of '/', after isAuthenticated becomes true",
+      "between": "useSearchParamsUtils -> LoginForm's useEffect on [isAuthenticated] -> setPath from NavigationContext (the router); the value is never checked for same-origin. The fix deletes the redirect branch (always setPath(\"/\")) and OIDCSecure.tsx stops forwarding window.location.pathname + search into /auth?redirect=. Second explanation: source (a custom hook, not window.location.search directly).",
+      "fix": "drops the ?redirect= parameter entirely, always navigating to '/' and to '/auth' without a return path",
+      "probe": "import { useContext, useEffect } from 'react';\nimport { useOidc } from '@axa-fr/react-oidc';\nimport { NavigationContext } from '../contexts/NavigationProvider';\n\nexport function LoginForm() {\n  const { isAuthenticated } = useOidc();\n  const { setPath } = useContext(NavigationContext);\n  const redirect = new URLSearchParams(window.location.search).get('redirect');\n\n  useEffect(() => {\n    if (isAuthenticated) {\n      if (redirect) setPath(redirect);\n      else setPath('/');\n    }\n  }, [isAuthenticated, setPath]);\n\n  return null;\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-62gx-5q78-wrvx",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "src/requestHandler.ts:376-378 (fix parent) const path = decodeURIComponent(req.path.slice(req.path.indexOf(\"/\", 1) + 1)) - the Express route path of /vault/{path}",
+      "sink": "src/requestHandler.ts:382 this._vaultGet(path, req, res) (and _vaultPut/_vaultPatch/_vaultPost/_vaultMove) - the decoded path is handed to the vault adapter's read/write/delete calls outside this file",
+      "between": "Express routes /vault/* before the handler, so a literal ../ is normalised away, but '..%2F' survives routing; decodeURIComponent then turns %2F into '/', reconstituting the traversal. No path was resolved or confined to the vault root. The fix adds extractVaultPath(), which decodes, posix.resolve()s against a synthetic '/vault' root and rejects anything outside it with 40021. Second explanation: check (the added containment test).",
+      "fix": "decodes in one helper and refuses paths whose posix.resolve() falls outside the vault root",
+      "probe": "import express from 'express';\nimport path from 'path';\nimport { readFile, writeFile } from 'fs/promises';\n\nconst VAULT = '/home/me/vault';\nconst app = express();\n\napp.get('/vault/*', async (req, res) => {\n  const name = decodeURIComponent(req.path.slice(req.path.indexOf('/', 1) + 1));\n  const full = path.join(VAULT, name);\n  res.type('text/plain').send(await readFile(full, 'utf-8'));\n});\n\napp.put('/vault/*', async (req, res) => {\n  const name = decodeURIComponent(req.path.slice(req.path.indexOf('/', 1) + 1));\n  await writeFile(path.join(VAULT, name), req.body);\n  res.sendStatus(204);\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3rxx-xp85-4r8j",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        23
+      ],
+      "category": "functions",
+      "source": "server/rest/index.js:50-54 (fix parent) const name = ponse.getPathName(request); name.replace(apiURL, '') - the request path under /api/v1; onGET strips the leading '/' into cmd (lines 125-126)",
+      "sink": "server/rest/index.js:130 streamPack(root(cmd, rootDir), p.response, packer) - the path is packed and streamed; streamPack() splits it with path.dirname/path.basename and calls operation('pack', ...)",
+      "between": "response middleware -> rest() -> sendData() -> onGET() -> streamPack() -> the packer. root() only maps web separators (mellow.webToWin) and does no containment, so a percent-encoded ../ in the GET path reaches the packer and archives files outside rootDir. The fix resolves through root.resolve(), the containment wrapper added in server/root.js. Second explanation: sink (the streamed archive).",
+      "fix": "builds the pack path with root.resolve(), which rejects a path outside the configured root",
+      "probe": "import http from 'node:http';\nimport path from 'node:path';\nimport { pack } from 'tar-fs';\n\nconst ROOT = '/srv/files';\n\nhttp.createServer((req, res) => {\n  const name = decodeURIComponent(req.url.replace('/api/v1', '') || '/');\n  const cmd = name.replace('/', '');\n  if (cmd.startsWith('pack')) {\n    const target = cmd.replace(/^pack/, '');\n    const dir = path.dirname(target);\n    pack(path.join(ROOT, dir)).pipe(res);\n  }\n}).listen(8000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-cjr4-fpcr-5mvq",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "server/rest/index.js:50-54 (fix parent) ponse.getPathName(request), and the JSON body fields files.from / files.to / names; server/markdown/index.js:40-42 name from the request path plus getQuery(request)",
+      "sink": "server/markdown/index.js:43 read(fileName) (redzip) - arbitrary file read through the markdown endpoint; and the rest path's copy/move/rename/pack/extract helpers, which pass root(...)-mapped paths to fs operations",
+      "between": "markdown: parseName() removes '/markdown' and either concatenates DIR_ROOT or calls root(shortName, rootDir), with no containment (the 'relative' query variant skips rootDir entirely). rest: onPUT's from/to and rename/pack/extract all call root() and then the fs helper. The fix adds root.resolve() in server/root.js (normalize + startsWith(root)) and uses it at every one of those sites. Second explanation: check (no containment before the fix).",
+      "fix": "adds root.resolve() (path.normalize + prefix containment) and uses it for markdown reads and every rest file operation",
+      "probe": "import express from 'express';\nimport path from 'path';\nimport { readFile, rename, cp } from 'fs/promises';\n\nconst ROOT = '/srv/files';\nconst app = express();\napp.use(express.json());\n\napp.get('/markdown/*', async (req, res) => {\n  const name = decodeURIComponent(req.path).replace('/markdown', '');\n  const file = path.normalize(ROOT + name);\n  res.type('text/html').send(await readFile(file, 'utf-8'));\n});\n\napp.put('/api/v1/*', async (req, res) => {\n  const { from, to, names } = req.body;\n  const cmd = req.params[0];\n  if (cmd === 'rename') await rename(path.join(ROOT, from), path.join(ROOT, to));\n  if (cmd === 'copy') await cp(path.join(ROOT, from), path.join(ROOT, to));\n  res.sendStatus(200);\n});",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-rm8c-j3vq-fv9j",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "the sessionId argument of SessionEnricher.isEnriched/getEnrichedData/enrichSession; src/web/server.ts:57 calls enricher.getEnrichedData(s.id) for ids from the session parser, and the enricher's other callers (web/MCP, per the advisory) are outside the diff",
+      "sink": "src/services/enricher.ts:46,54,142 path.join(ENRICHED_DIR, `${sessionId}.json`) followed by fs.existsSync / fs.readFileSync / fs.writeFileSync",
+      "between": "sessionId is interpolated into a filename under ~/.claude-sesh/enriched with no validation, so a value with ../ reads or writes JSON elsewhere. The fix adds enrichedPathFor(), which allowlists [A-Za-z0-9_-] and checks path.dirname(path.resolve(...)) is ENRICHED_DIR, and calls it at all three sites. Missing from what was read: the exact HTTP or MCP entry that lets a caller choose sessionId (the advisory says the attack is local). Second explanation: source.",
+      "fix": "builds every enrichment path through a helper that validates the session id and confirms the resolved file stays in ENRICHED_DIR",
+      "probe": "import express from 'express';\nimport fs from 'fs';\nimport path from 'path';\n\nconst DIR = path.join(process.env.HOME || '', '.app', 'enriched');\nconst app = express();\n\napp.get('/api/sessions/:id', (req, res) => {\n  const file = path.join(DIR, `${req.params.id}.json`);\n  if (!fs.existsSync(file)) return res.sendStatus(404);\n  res.json(JSON.parse(fs.readFileSync(file, 'utf-8')));\n});\n\napp.post('/api/enrich/:id', async (req, res) => {\n  const file = path.join(DIR, `${req.params.id}.json`);\n  fs.writeFileSync(file, JSON.stringify({ id: req.params.id }));\n  res.sendStatus(204);\n});",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-2p7p-3c9x-rwxm",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "apps/frontend/src/app/(app)/api/uploads/[[...path]]/route.ts:31 (fix parent) const { path } = await context.params - a Next.js catch-all route's decoded path segments",
+      "sink": "route.ts:31-33 process.env.UPLOAD_DIRECTORY + '/' + (path ?? []).join('/') passed to createReadStream(filePath) and statSync(filePath)",
+      "between": "the segments are joined with '/' onto the upload directory and streamed with no normalisation; an encoded %2F survives route matching and becomes a separator here. The fix resolves the joined path against the upload directory and returns 404 unless it equals or starts with base + path.sep. Second explanation: sink (createReadStream).",
+      "fix": "resolves the requested path against UPLOAD_DIRECTORY and refuses anything that resolves outside it",
+      "probe": "import { NextRequest, NextResponse } from 'next/server';\nimport { createReadStream, statSync } from 'fs';\n\nexport const GET = async (\n  request: NextRequest,\n  context: { params: Promise<{ path?: string[] }> }\n) => {\n  const { path } = await context.params;\n  const filePath = process.env.UPLOAD_DIRECTORY + '/' + (path ?? []).join('/');\n  const response = new NextResponse(createReadStream(filePath) as any);\n  response.headers.set('content-length', String(statSync(filePath).size));\n  return response;\n};",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-g4jq-25cx-3cw5",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        1333
+      ],
+      "category": "sink",
+      "source": "the basePath argument of SkillParser.parseZipPackage/findSkillMd, derived from the GitHub repository URL path segment typed into the agentSkills.importFromGitHub endpoint (authenticated)",
+      "sink": "apps/server/src/services/skill/parser.ts:203-205 (fix parent) const basePathPattern = new RegExp(`^[^/]+/${basePath.replaceAll(/^\\/|\\/$/g, '')}/SKILL\\\\.md$`) - user input compiled as a regular expression, then tested against every archive entry",
+      "between": "the URL path reaches parseZipPackage -> findSkillMd and is interpolated into the pattern unescaped; `(a+)+` backtracks catastrophically and `[invalid` throws SyntaxError. The fix replaces the dynamic RegExp with a literal endsWith('/<basePath>/SKILL.md') plus a single-segment prefix check.",
+      "fix": "replaces the user-built RegExp with plain string suffix and prefix matching",
+      "probe": "import express from 'express';\n\nconst app = express();\napp.use(express.json());\n\napp.post('/api/import', (req, res) => {\n  const basePath = new URL(req.body.repoUrl).pathname.split('/tree/')[1] || '';\n  const entries = ['repo-main/skills/demo/SKILL.md', 'repo-main/README.md'];\n  const pattern = new RegExp(`^[^/]+/${basePath}/SKILL\\\\.md$`);\n  const found = entries.find((entry) => pattern.test(entry));\n  res.json({ entry: found ?? null });\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-rc4g-x5g6-63x3",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "routes/mobileconfig.js:8-12 (fix parent) url.parse(req.url, true).query.udid, and line 20 req.cookies.newudid - the query parameter or the cookie it was stored in",
+      "sink": "routes/mobileconfig.js:15 res.cookie('newudid', query.udid, ...) puts the raw value into the Set-Cookie header, and line 23 res.render('udid', { udid: cookie }) renders it; views/udid.pug:6 is p #{udid}",
+      "between": "the query value is stored in a cookie for 10 minutes, then read back on the next /enrollment request and rendered. Before the fix neither step checked the value; the fix adds extractValidUdid() (the existing UDID regex) before setting the cookie and before rendering, plus httpOnly and secure. The rendering itself is Pug's escaped interpolation, so the HTML sink does not by itself explain the XSS: what is missing is whether the advisory's sink is the template or the Set-Cookie header carrying the unvalidated value. Second explanation: source (cookie).",
+      "fix": "allowlists the UDID shape before storing it in the cookie and before rendering it, and marks the cookie httpOnly/secure in production",
+      "probe": "const express = require('express');\nconst url = require('url');\nconst cookieParser = require('cookie-parser');\n\nconst app = express();\napp.set('view engine', 'pug');\napp.use(cookieParser());\n\napp.get('/enrollment', (req, res) => {\n  const query = url.parse(req.url, true).query;\n  if (query.udid) {\n    res.cookie('newudid', query.udid, { maxAge: 10 * 60 * 1000 });\n    return res.redirect('/enrollment');\n  }\n  const cookie = req.cookies.newudid;\n  if (cookie) return res.render('udid', { udid: cookie });\n  res.redirect('/');\n});",
+      "confidence": "unsure"
+    },
+    {
+      "id": "GHSA-2w76-4r82-v23p",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "server/modules/api/v1.js:170-189 (fix parent) url.parse(req.url) -> querystring.parse -> queryStr.market, split into data[1] (used directly) and the ticker in currency[1]",
+      "sink": "server/modules/api/v1.js:193 g_constants.dbTables['coins'].selectAll('name, ticker, info, icon', 'ticker=\"'+data[1]+'\"', '', ...) - the request value is concatenated into the WHERE clause",
+      "between": "no escaping in onGetMarketSummary's call; the same ticker elsewhere goes through utils.GetCoinFromTicker, which does escape(ticker). The fix replaces the direct selectAll with await utils.GetCoinFromTicker(data[1]) (a Promise wrapper around the escaped query, server/utils.js) and wraps the handler in try/catch. Second explanation: functions (custom selectAll taking a raw WHERE string).",
+      "fix": "routes the ticker through utils.GetCoinFromTicker, whose query escapes the value, instead of concatenating it into selectAll",
+      "probe": "const http = require('http');\nconst url = require('url');\nconst querystring = require('querystring');\n\nconst db = { selectAll: (cols, where, group, cb) => cb(null, [{ name: where }]) };\n\nhttp.createServer((req, res) => {\n  const parsed = url.parse(req.url);\n  const query = querystring.parse(parsed.query);\n  db.selectAll('name, ticker', 'ticker=\"' + query.market.split('-')[1] + '\"', '', (err, rows) => {\n    res.end(JSON.stringify(rows));\n  });\n}).listen(8000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wfxj-g749-hqjv",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "the projectId path parameter of the /live/visitors/:projectId WebSocket and the cohort.preview timeframe start/end values (validated in packages/validation/src/cohort.validation.ts, plain z.string() before the fix); the WebSocket handler itself is outside the diff",
+      "sink": "packages/db/src/buffers/event-buffer.ts:259 WHERE project_id = '${projectId}' inside chQuery, and packages/db/src/services/cohort.service.ts:112-114 created_at BETWEEN toDate('${start}') AND toDate('${end}') - ClickHouse SQL built by template literals",
+      "between": "the values travel from the socket handler through the validation schemas into the query builders in another package; every other value in cohort.service.ts is escaped with sqlstring.escape, these two were interpolated raw. The fix escapes both dates, escapes projectId in getActiveVisitorCount, and constrains zAbsoluteTimeframe to /^\\d{4}-\\d{2}-\\d{2}$/. Second explanation: sink (raw SQL template literals).",
+      "fix": "runs the timeframe dates and project id through sqlstring.escape and restricts the date schema to YYYY-MM-DD",
+      "probe": "import express from 'express';\nimport { createClient } from '@clickhouse/client';\n\nconst ch = createClient({ url: 'http://localhost:8123' });\nconst app = express();\n\napp.get('/api/cohort', async (req, res) => {\n  const { start, end } = req.query;\n  const sql = `SELECT uniq(profile_id) AS count FROM events\n    WHERE created_at BETWEEN toDate('${start}') AND toDate('${end}')`;\n  const rows = await ch.query({ query: sql, format: 'JSONEachRow' });\n  res.json(await rows.json());\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-w9wc-vx4j-8xwg",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "functions",
+      "source": "packages/api/src/resolvers/subscriptions/index.ts:440 scanFeedsResolver's url argument and packages/api/src/resolvers/webhooks/index.ts:120 setWebhookResolver's input.url - GraphQL mutation arguments from an authenticated user",
+      "sink": "packages/api/src/resolvers/subscriptions/index.ts:447 axios.get(url, rssParserConfig()) - an outbound request to the caller's URL, and the saved webhook URL later posted to by the webhook service",
+      "between": "the same file's subscribe path and createPageSaveRequest already call validateUrl() from services/create_page_save_request.ts, which rejects non-http(s) and private/reserved addresses via private-ip; these two resolvers never called it. The fix adds validateUrl(url) before axios.get and validateUrl(input.url) before the webhook save. Second explanation: check (a validator that existed in another file, applied at a new call site).",
+      "fix": "calls the existing validateUrl() before fetching a scanned feed and before saving a webhook URL",
+      "probe": "import express from 'express';\nimport axios from 'axios';\nimport privateIp from 'private-ip';\n\nconst app = express();\napp.use(express.json());\n\nfunction validateUrl(value) {\n  const u = new URL(value);\n  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Invalid URL');\n  if (privateIp(u.hostname)) throw new Error('Invalid URL');\n  return u;\n}\n\napp.post('/api/scan', async (req, res) => {\n  const url = req.body.url;\n  const response = await axios.get(url);\n  res.json({ title: response.data.slice(0, 200) });\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-952x-346h-wrvr",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "apps/dashboard/src/app/(dashboard)/onboarding/client.tsx:130 useSearchParams().get(\"callbackUrl\") - the URL query parameter of the onboarding page",
+      "sink": "client.tsx:138/143 router.push(callbackUrl) - Next.js client-side navigation to the caller's value",
+      "between": "the effect builds new URL(callbackUrl, window.location.origin) but only rejects an empty or '/' pathname; it never compares origin or protocol, so an absolute off-site URL or a javascript: value is pushed. The fix adds url.origin !== window.location.origin, a protocol allowlist, and a leading-'/' check on the relative branch. Second explanation: source (useSearchParams).",
+      "fix": "refuses a callbackUrl whose origin differs from the page, whose protocol is not http(s), or that does not start with '/'",
+      "probe": "'use client';\n\nimport { useEffect } from 'react';\nimport { useRouter, useSearchParams } from 'next/navigation';\n\nexport function Client() {\n  const router = useRouter();\n  const callbackUrl = useSearchParams().get('callbackUrl') ?? '/';\n\n  useEffect(() => {\n    try {\n      const url = new URL(callbackUrl, window.location.origin);\n      if (url.pathname === '/' || url.pathname === '') return;\n      router.push(callbackUrl);\n    } catch {\n      router.push(callbackUrl);\n    }\n  }, [callbackUrl, router]);\n\n  return null;\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f6rh-g2v9-v6qp",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "server/utils/middleware/embedMiddleware.js:81 (fix parent) const { sessionId, message } = reqBody(request) - the JSON body of POST /embed/:embedId/stream-chat",
+      "sink": "server/models/embedChats.js:38-40 prisma.embed_chats.findMany({ where: { embed_id: embedId, session_id: sessionId } }) and the updateMany at 58-61 - the body's sessionId becomes a Prisma where value",
+      "between": "sessionId is passed from the middleware to the model untouched, so a JSON object such as {\"sessionId\":{\"not\":\"a\"}} is treated as a Prisma filter operator and matches every row; the fix checks typeof sessionId === 'string' && uuid.validate(sessionId) in the middleware and casts session_id to String(sessionId) and embed_id to Number(embedId) in the model. Second explanation: check (the UUID allowlist that was added).",
+      "fix": "requires sessionId to be a UUID string in the middleware and casts both where values in the Prisma queries",
+      "probe": "import express from 'express';\nimport { PrismaClient } from '@prisma/client';\n\nconst prisma = new PrismaClient();\nconst app = express();\napp.use(express.json());\n\napp.post('/embed/:embedId/stream-chat', async (req, res) => {\n  const { embedId } = req.params;\n  const { sessionId } = req.body;\n  const chats = await prisma.embed_chats.findMany({\n    where: { embed_id: embedId, session_id: sessionId },\n  });\n  res.json(chats);\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df8793739ffeQ4bIiA39woZHnQ",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 3,
+    "turns": 25,
+    "tool_calls": 29,
+    "tool_errors": 0,
+    "chars_read": 219753,
+    "tokens": {
+      "input": 197828,
+      "cache_read": 1775028,
+      "output": 22652,
+      "reasoning": 0
+    },
+    "usd": 0.049
+  }
+}
