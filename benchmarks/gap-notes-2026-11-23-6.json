@@ -1,0 +1,248 @@
+{
+  "batch": "gap-notes-2026-11-23-6",
+  "status": "read 2026-11-23 (PLAN.md step 127): leads for rule work; quotes not yet checked one by one",
+  "method": "The 12 python-web rows of misses.tsv (rows 367-378, suite cve-pairs-python-frontend), read before any JavaScript or PHP row as section 9 orders. For each case: the fix commit's diff from the GitHub commits API, then the template or view that holds the sink at the fix commit's parent where the diff did not show it (changedetectionio templates/_helpers.jinja, pgadmin web/pgadmin/settings/__init__.py, OctoPrint src/octoprint/server/util/flask.py, bird-lg lg.py, django-ucamlookup ucamlookup/views.py and utils.py, cabot models/base.py and views.py, changedetectionio/tests/test_security.py at the fix). Then the first 3 javascript rows (rows 2-4 of the file, scope nocodb and tinacms) once the 12 Python rows were read, with the same reading method. Nothing in the file was skipped. No blind suite or results file was read.",
+  "notes": [
+    {
+      "id": "GHSA-mqwh-r366-4224",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "cabot/cabotapp/models/base.py:767 requests.get(self.endpoint, ...) polls the endpoint saved from the check form (cabot/cabotapp/views.py:237, StatusCheck endpoint field); its exception text and response body become result.error at base.py:777 and base.py:781 (the monitored server, not a request to the app, chooses them)",
+      "sink": "cabot/templates/cabotapp/statuscheck_detail.html:81 {% autoescape off %}{{ result.error|default:\"\" }}{% endautoescape %} (Django template output unescaped)",
+      "between": "The periodic check task runs _run() and stores StatusCheckResult.error; StatusCheckDetailView (views.py:563) pages the results and statuscheck_detail.html renders each row with autoescape switched off for the cell",
+      "fix": "removes the autoescape-off block so the error is escaped, and adds URLValidator to the endpoint field",
+      "probe": "# views.py\ndef check_detail(request, pk):\n    check = StatusCheck.objects.get(pk=pk)\n    result = check.results.order_by(\"-time\").first()\n    return render(request, \"check_detail.html\", {\"result\": result})\n\n# check_detail.html\n{% for result in results %}\n<tr>\n  <td>{{ result.time_complete }}</td>\n  <td>{% autoescape off %}{{ result.error|default:\"\" }}{% endautoescape %}</td>\n</tr>\n{% endfor %}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-pjx4-3f3p-29v3",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "ucamlookup/views.py:9 get_users_from_query(request.GET.get('query')) returns the directory's person.visibleName/crsid as JSON (views.py:10); the names come from the lookup service",
+      "sink": "ucamlookup/templates/ucamlookup_users.html:28 select2 formatResult returns person.visibleName + crsid, with escapeMarkup overridden at :40 to return the markup unchanged, so select2 writes the string into the dropdown as HTML",
+      "between": "The page's jQuery ajax posts the typed query to the find_people/find_groups view, processResults hands data.persons to select2, and the overridden escapeMarkup disables select2's own escaping before formatResult/formatSelection output is inserted",
+      "fix": "passes select2's escapeMarkup as a fourth argument into formatResult and formatSelection and drops the no-op escapeMarkup override in the four templates",
+      "probe": "$(\"#id_user\").select2({\n  ajax: {\n    url: \"/lookup/people/\",\n    data: function (term) { return {query: term}; },\n    processResults: function (data) { return {results: data.persons}; }\n  },\n  formatResult: function (person) { return person.visibleName + \" (\" + person.crsid + \")\"; },\n  formatSelection: function (person) { return person.visibleName; },\n  escapeMarkup: function (m) { return m; }\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-pwgc-w4x9-gw67",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "changedetectionio/tests/test_security.py:76-85 POSTs application-notification_urls, -notification_title and -notification_body to settings_page with '\"><img src=x onerror=...>'; the view stores them in the app settings",
+      "sink": "changedetectionio/templates/_helpers.jinja:3 {{ field(**kwargs)|safe }} — the macro that renders each form field's value, in a file named .jinja, for which Flask's select_jinja_autoescape turns autoescaping off, so the stored value is written into the value=\"...\" attribute raw",
+      "between": "settings.html:7 imports render_field/render_common_settings_form from _helpers.jinja and _common_fields.jinja; the settings form is rendered through those macros, so the stored setting breaks out of the attribute and the <img onerror> runs",
+      "fix": "renames _helpers.jinja and _common_fields.jinja to .html so Jinja2's filename-based autoescape applies (and adds a note about naming templates .html)",
+      "probe": "# app.py\n@app.route(\"/settings\", methods=[\"POST\"])\ndef settings():\n    app_config[\"notification_title\"] = request.form[\"notification_title\"]\n    return render_template(\"settings.html\")\n\n# _helpers.jinja  (autoescape is off for this filename)\n{% macro render_field(field) %}\n  <div>{{ field.label }}</div>\n  <div>{{ field(**kwargs)|safe }}</div>\n{% endmacro %}\n\n# settings.html\n{% from '_helpers.jinja' import render_field %}\n{{ render_field(form.notification_title) }}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-rwcv-whm8-fmxm",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "the resource metadata fields (abstract, purpose, constraints_other, data_quality_statement, supplemental_information, keyword names) submitted through the resource metadata edit form and stored on the Resource model",
+      "sink": "geonode/templates/metadata_detail.html:48 {{ resource.abstract|safe }} — and the same |safe on keyword.name at :95, constraints_other at :303, purpose at :320, data_quality_statement at :341 and supplemental_information at :374",
+      "between": "the metadata form saves the raw HTML on the Resource and its keywords; the detail page renders them with |safe, which turns off Django's escaping for values any uploader can set",
+      "fix": "adds a sanitize_html template filter backed by nh3 (geonode/base/templatetags/sanitize_html.py) and applies |sanitize_html before |safe in metadata_detail.html",
+      "probe": "# models.py\nclass Resource(models.Model):\n    abstract = models.TextField(blank=True)\n\n# views.py\ndef metadata_edit(request, pk):\n    res = Resource.objects.get(pk=pk)\n    res.abstract = request.POST[\"abstract\"]\n    res.save()\n    return redirect(\"metadata_detail\", pk=pk)\n\n# metadata_detail.html\n<dd>{{ resource.abstract|safe }}</dd>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-wcm6-wv95-7jw6",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "src/pyload/webui/app/themes/modern/templates/js/packages.js:156 iterates data.links from the package API, whose url and name come from the downloads the user adds (link names/URLs from the container or the added link)",
+      "sink": "packages.js:192 $(div).html(html), where html was built at :178-187 by concatenating link.url into href='...' and link.name into the anchor body; jQuery parses that string as HTML",
+      "between": "createLinks(data) builds one HTML string per link and assigns it with .html(), so a quote or markup in the name breaks out of the attribute and a javascript:/onerror payload in the name executes",
+      "fix": "adds onclick='return false' to the anchor so the built link is not followed (both the modern and pyplex themes)",
+      "probe": "function createLinks(data) {\n    var ul = $(\"#children\");\n    ul.html(\"\");\n    $.each(data.links, function (key, link) {\n        var li = document.createElement(\"li\");\n        var html = \"<span><a href='\" + link.url + \"'>\" + link.name + \"</a></span>\";\n        $(li).html(html);\n        ul.append(li);\n    });\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-x7mf-wrh9-r76c",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "src/octoprint/plugins/classicwebcam/static/js/classicwebcam_settings.js:196 the webcam snapshot test's AJAX response: response.response.content and response.response.assumed_content_type, produced by the server fetching the snapshot URL the user saved",
+      "sink": "classicwebcam_settings.js:207 message: $(\"<p>\" + text + \"</p><p><img src=\\\"data:\" + mimeType + \";base64,\" + content + \"\\\" ... /></p>\") — jQuery parses the string as HTML",
+      "between": "testWebcamSnapshotUrl posts the configured URL, the plugin returns base64 content plus the remote Content-Type; the script splits the type, concatenates both into markup and hands it to showMessageDialog, which inserts it with jQuery",
+      "fix": "builds the dialog from $(\"<p>\").text(text) and $(\"<img>\").attr(\"src\", \"data:\" + mimeType + \"...\") instead of an HTML string",
+      "probe": "$.ajax({url: \"/api/webcam/test\", type: \"POST\", data: {url: url}}).done(function (response) {\n    var content = response.response.content;\n    var mimeType = response.response.assumed_content_type.split(\";\")[0];\n    showMessageDialog({\n        title: \"Snapshot test\",\n        message: $(\"<p>Snapshot</p><p><img src=\\\"data:\" + mimeType + \";base64,\" + content + \"\\\" /></p>\")\n    });\n});",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xrf4-39fm-j5f2",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "src/fava/application.py:385 help_page(page_slug) renders a help page; src/fava/template_filters.py:157 format_errormsg() wraps the account name found in a beancount error message in an <a href> tag and returns the concatenated string; the messages come from the ledger file the user loads",
+      "sink": "src/fava/templates/_layout.html:46 {{ content|safe }}, src/fava/templates/errors.html:16 {{ error.message|format_errormsg|safe }} and src/fava/templates/help.html:15 {{ help_html|safe }}",
+      "between": "the helper returns plain str markup that the template then pipes through |safe; a Markup-typed value was needed instead, so anything interpolated into the message (account names, ledger text) was inserted into the page unescaped",
+      "fix": "removes |safe from the templates and returns markupsafe.Markup from render_entries, format_errormsg and help_page so only the intended markup is trusted",
+      "probe": "# filters.py\ndef format_errormsg(message):\n    account = re.search(ACCOUNT_RE, message).group()\n    url = url_for(\"account\", name=account)\n    return message.replace(account, '<a href=\"%s\">%s</a>' % (url, account))\n\n# errors.html\n<td class=\"pre\">{{ error.message|format_errormsg|safe }}</td>\n\n# layout.html\n{% block content %}{{ content|safe }}{% endblock %}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xv64-8p4r-94gq",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "web/pgadmin/settings/__init__.py:107-117 the /settings/store view takes data from request.form (or a JSON body) and store_setting() saves the layout value for the user; the advisory names this endpoint",
+      "sink": "web/pgadmin/browser/templates/browser/js/utils.js:89 layout: '{{ layout }}', inside the JS module the browser loads; a single quote in the stored setting ends the JS string and the rest is script",
+      "between": "store_setting writes a Setting row; the browser template renders pgBrowser.utils with the user's stored layout inside a single-quoted literal and no JS escaping (theme and tabSize are rendered the same way)",
+      "fix": "renders layout with {{ layout|tojson }} so the value is JSON-encoded for the JS context (the commit also carries unrelated node.js/tree.js changes)",
+      "probe": "# settings.py\n@blueprint.route(\"/store\", methods=[\"POST\"])\n@login_required\ndef store():\n    store_setting(request.form[\"setting\"], request.form[\"value\"])\n    return make_json_response(success=True)\n\n# utils.js, rendered by Jinja into a JS module\npgBrowser.utils = {\n  layout: '{{ layout }}',\n  theme: '{{ theme }}'\n};",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xvxq-g8hw-fx4g",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "src/octoprint/server/views.py:372 reverse_proxy_test() renders whatever get_reverse_proxy_info() returns; the values are built from request headers in src/octoprint/server/util/flask.py (X-Forwarded-For, Host, X-Script-Name, X-Forwarded-Proto), so the client chooses them",
+      "sink": "src/octoprint/templates/reverse_proxy_test.jinja2:88 <td>{{ client_ip }}</td> and :130 {{ headers[\"X-Forwarded-For\"] }}, with the same values also written into the <script> block at :25-30",
+      "between": "the view passes client_ip, server_name, server_path, cookie_suffix and the headers dict to render_template; the template prints them (and joins them into JS string literals) without |e, so a quote or tag in a forwarded header becomes markup or script",
+      "fix": "adds |e to every interpolation in reverse_proxy_test.jinja2 and the other affected templates (and stops formatting app id into the translated auth-dialog text)",
+      "probe": "# views.py\n@app.route(\"/reverse_proxy_test\")\ndef reverse_proxy_test():\n    headers = {\"X-Forwarded-For\": request.headers.get(\"X-Forwarded-For\")}\n    return render_template(\"reverse_proxy_test.jinja2\",\n                           client_ip=request.headers.get(\"X-Forwarded-For\"),\n                           headers=headers)\n\n# reverse_proxy_test.jinja2\n<td>{{ client_ip }}</td>\n{% for key, value in headers.items() %}\n  <li><code>{{ key }}</code>: <code>{{ value }}</code></li>\n{% endfor %}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-xjrp-9qff-8prg",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "lg.py:627 set_session(request_type, hosts, proto, expression) — the last URL path segment of /traceroute/<hosts>/<proto>/<expression> (and the name segment at :290), i.e. a route parameter the client chooses",
+      "sink": "templates/layout.html:123 request_args = \"{{session.request_args|safe}}\"; inside the page's <script> block",
+      "between": "set_session (lg.py:95-103) copies the value into Flask's session; every rendered page extends layout.html, where |safe turns off escaping so a quote closes the JS string and the remainder runs",
+      "fix": "drops |safe from request_args so Jinja escapes it for the attribute/JS string",
+      "probe": "# lg.py\n@app.route(\"/traceroute/<hosts>/<proto>/<expression>\")\ndef traceroute(hosts, proto, expression):\n    set_session(\"traceroute\", hosts, proto, expression)\n    return render_template(\"traceroute.html\")\n\ndef set_session(request_type, hosts, proto, request_args):\n    session.update({\"request_type\": request_type, \"hosts\": hosts,\n                    \"proto\": proto, \"request_args\": request_args})\n\n# layout.html\n<script>\n  request_args = \"{{session.request_args|safe}}\";\n</script>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-fq55-48v3-mc95",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "website/web/static/js/graph/conversionSunburst.js:76 the sunburst/treemap node names are built from the converted bundle (obj.name, STIX type, relationship_type, MISP category), so the labels are data from the converted event, not a fixed string",
+      "sink": "conversionSunburst.js:296 tooltip: { trigger: 'item', formatter: p => `<strong>${p.name}</strong>...` } — ECharts parses a function formatter's return value as HTML",
+      "between": "the conversion result is fetched and turned into tree/flatData nodes (conversionSunburst.js:74-78); the option's formatter interpolates p.name and p.value straight into the tooltip markup, which ECharts sets with innerHTML on hover",
+      "fix": "adds sunburstTooltipFormatter/treemapTooltipFormatter that pass every interpolated value through escapeHtml from searchHighlight.js",
+      "probe": "const nodes = objects.map(o => ({name: o.name, value: o.count}));\n\nconst option = {\n    tooltip: {\n        trigger: 'item',\n        formatter: p => `<strong>${p.name}</strong><br>${p.value} item(s)`\n    },\n    series: [{type: 'sunburst', data: nodes}]\n};\n// ECharts treats the formatter's return value as HTML",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-q8hg-3vqv-f8v3",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "frontend/src/query/Query.svelte:66 the query API's res.table and the error passed to setResult (Query.svelte:69-70); the query string is the user's and the backend renders table cells and error text from it and the ledger",
+      "sink": "frontend/src/query/Query.svelte:109 {@html error} and :107 {@html result.table}; frontend/src/modals/EntryContext.svelte:38 {@html inventory.join(\"<br>\")}",
+      "between": "each query result is kept in query_results keyed by the query text and rendered inside <details>; {@html} inserts the string as markup, so error text or a rendered table cell containing HTML runs as script",
+      "fix": "renders {error} as text and iterates the inventory amounts with {#each} and <br /> instead of {@html}",
+      "probe": "<script>\n  let result = null, error = null;\n  async function run(q) {\n    try { result = await api.query(q); }\n    catch (e) { error = e; }\n  }\n</script>\n\n{#if result}\n  {@html result.table}\n{:else if error}\n  {@html error}\n{/if}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-wf6c-hrhf-86cw",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "packages/nocodb/src/modules/auth/auth.controller.ts:252 @Param('tokenId') tokenId on GET /auth/password/reset/:tokenId — a path parameter the visitor chooses",
+      "sink": "packages/nocodb/src/modules/auth/ui/auth/resetPassword.ts:71 token: <%= token %>, inside the page's inline <script> object literal (the sibling emailVerify.ts at :45 is the same), fed by auth.controller.ts:260 token: JSON.stringify(tokenId)",
+      "between": "renderPasswordReset (auth.controller.ts:249) ejs-renders the resetPassword template with the JSON.stringify'd token; JSON.stringify escapes quotes but not '<' or '</script>', so a token containing </script><script>...</script> ends the inline script and the rest runs; the template's <%= %> is what escapes it once the value is quoted",
+      "fix": "passes the raw tokenId and quotes the placeholder in the template (token: '<%= token %>'), so EJS's HTML escaping covers the '<'",
+      "probe": "@Get('/auth/password/reset/:tokenId')\nasync render(@Param('tokenId') tokenId: string, @Res() res: Response) {\n  res.send(ejs.render(template, { token: JSON.stringify(tokenId) }));\n}\n\nconst template = `<div id=\"app\"></div>\n<script>\n  new Vue({ data: { token: <%= token %> } }).$mount('#app');\n</script>`;",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-h6r4-xvw6-jc5h",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "packages/nc-gui/components/virtual-cell/Formula.vue:14 renderValue(cellValue?.value) — the formula column's value read from the table, stored earlier through the data API",
+      "sink": "packages/nc-gui/components/virtual-cell/Formula.vue:33 <div v-if=\"urls\" v-html=\"urls\" />, where urls is replaceUrlsWithLink(result.value) (Formula.vue:17) and packages/nc-gui/utils/urlUtils.ts:10-17 splices <a> outerHTML into the raw text",
+      "between": "replaceUrlsWithLink builds anchors with textContent but returns the untouched surrounding text; the component hands the result to v-html, so any HTML stored in the cell value is inserted as markup",
+      "fix": "HTML-encodes the whole text first (tempEl.textContent = rawText; sanitisedText = tempEl.innerHTML) before the URI::(...) replacement",
+      "probe": "<script setup>\nconst props = defineProps({ cellValue: Object });\nconst result = computed(() => renderValue(props.cellValue?.value));\nconst urls = computed(() => replaceUrlsWithLink(result.value));\n</script>\n\n<template>\n  <div v-if=\"urls\" v-html=\"urls\" />\n  <div v-else>{{ result }}</div>\n</template>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    },
+    {
+      "id": "GHSA-c42q-qvc3-j6vg",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "packages/@tinacms/web-components/src/tina-markdown.js:73 node.url from the rich-text AST node (markdown content stored in the CMS; node.type 'a' or 'img')",
+      "sink": "tina-markdown.js:73-74 el.href = node.url and el.src = node.url — a javascript: URL in href executes on click, and img src is written from the same value",
+      "between": "renderNode() creates the element from the AST node type and assigns node.url straight to the DOM property; only text children go through textContent, and no scheme check existed before the assignment",
+      "fix": "routes both assignments through sanitizeUrl (@tinacms/mdx/sanitize-url), whose allow list is http, https, mailto, tel and xref",
+      "probe": "function renderNode(node) {\n  const el = document.createElement(node.type === 'a' ? 'a' : 'img');\n  if (node.url && node.type === 'a') el.href = node.url;\n  if (node.url && node.type === 'img') el.src = node.url;\n  for (const child of node.children || []) el.appendChild(document.createTextNode(child.text || ''));\n  return el;\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
+    }
+  ],
+  "usage": {
+    "session": "ses_df8b018b3ffeXMP6X64d3jMnZw",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 3,
+    "turns": 35,
+    "tool_calls": 38,
+    "tool_errors": 0,
+    "chars_read": 214136,
+    "tokens": {
+      "input": 88072,
+      "cache_read": 2690560,
+      "output": 28917,
+      "reasoning": 0
+    },
+    "usd": 0.039
+  }
+}
