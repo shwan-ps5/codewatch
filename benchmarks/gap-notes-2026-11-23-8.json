@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-23-8",
+  "status": "research only: not read yet",
+  "method": "rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in file order: the first 15 cve-pairs-javascript rows (no Python rows are left at the top of the file). For each one I read the fix commit's diff (gh api repos/O/R/commits/SHA) with test and manifest files skipped, and, where the diff does not show the source or the sink, the vulnerable-side files at the fix commit's parent: mintplex-labs/anything-llm server/utils/files/multer.js, server/utils/files/index.js (normalizePath), collector/index.js, collector/processLink/index.js, collector/processLink/convert/generic.js and collector/utils/url/index.js; sbs20/scanservjs packages/server/src/api.js, scan-controller.js, classes/request.js and classes/command-builder.js; saxman/maps-js-icoads http-server.js; plankanban/planka server/api/controllers/attachments/download-thumbnail.js; ether/etherpad-lite src/templates/pad.html; gitpod-io/gitpod components/server/src/user/user-controller.ts, components/server/src/auth/authenticator.ts and components/server/src/auth/login-completion-handler.ts; openwhyd/openwhyd app/controllers/api/user.js and app/models/user.js; walinejs/waline packages/server/src/controller/token.js, packages/server/src/logic/token.js and logic/base.js; tryghost/ghost ghost/core/core/server/services/members/members-api/repositories/EventRepository.js, ghost/core/core/server/api/endpoints/members.js and the members-api controllers/services; deco-cx/apps website/loaders/analyticsScript.ts and website/handlers/fresh.ts. Advisory summaries and details came from the local clone of github/advisory-database. One note is unsure: GHSA-qwwx-fhv3-c8q4 (the diff drops the configurable analytics URL but does not show whether props.url is request-supplied or editor-configured). Nothing was skipped, and no blind case was read. 347 rows were in misses.tsv before this batch; 332 remain.",
+  "notes": [
+    {
+      "id": "GHSA-866h-pm2w-j493",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "server/utils/files/multer.js:18-21 (fix parent) filename: function (_, file, cb) { file.originalname = Buffer.from(file.originalname, \"latin1\").toString(\"utf8\"); cb(null, file.originalname); } - file.originalname is the multipart upload's filename, chosen by the manager/admin uploading a document",
+      "sink": "the same callback hands the name to multer's diskStorage, which writes the upload at path.join(destination, file.originalname); a name whose latin1->utf8 decode yields ../ writes outside the collector/hotdir upload directory",
+      "between": "there are four storages in the file (file upload, API upload, logo and profile picture); only pfpUploadStorage replaced the name with a uuid, the other three kept the client name. Nothing normalised it before multer opened the destination file. The fix wraps each name in normalizePath() from server/utils/files/index.js, which path.normalize()s and strips leading ../ sequences. Second explanation: source (the multipart filename).",
+      "fix": "runs every kept upload filename through normalizePath() before multer writes it",
+      "probe": "const express = require('express');\nconst multer = require('multer');\nconst path = require('path');\n\nconst storage = multer.diskStorage({\n  destination: (req, file, cb) => cb(null, '/srv/app/uploads'),\n  filename: (req, file, cb) => {\n    file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');\n    cb(null, file.originalname);\n  },\n});\nconst upload = multer({ storage });\nconst app = express();\n\napp.post('/api/upload', upload.single('file'), (req, res) => {\n  res.json({ stored: path.join('/srv/app/uploads', req.file.originalname) });\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-cw8v-p9jq-r69x",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "check",
+      "source": "collector/index.js:52-55 (fix parent) app.post('/process-link', ...): const { link } = reqBody(request) - the JSON body of the document collector's link endpoint, which the app fills with the link a manager/admin submits",
+      "sink": "collector/processLink/convert/generic.js:50 new PuppeteerWebBaseLoader(link, {...}).load() - headless Chromium is pointed at the caller's URL, so it can reach services on the host's private network",
+      "between": "processLink(link) in collector/processLink/index.js:4-6 calls validURL(link) first; the vulnerable validURL in collector/utils/url/index.js only parsed the URL and checked the scheme, so 10/172/192/127 addresses passed. The fix adds isInvalidIp(), which rejects those first octets after the IP regex matches. Second explanation: sink (a headless-browser page load, not fetch/axios).",
+      "fix": "validURL() now rejects addresses whose first octet is 10, 172, 192 or 127",
+      "probe": "const express = require('express');\nconst puppeteer = require('puppeteer');\n\nfunction validURL(value) {\n  try {\n    const u = new URL(value);\n    if (!['https:', 'http:'].includes(u.protocol)) return false;\n    return true;\n  } catch {\n    return false;\n  }\n}\n\nconst app = express();\napp.use(express.json());\n\napp.post('/process-link', async (req, res) => {\n  const { link } = req.body;\n  if (!validURL(link)) return res.sendStatus(400);\n  const browser = await puppeteer.launch();\n  const page = await browser.newPage();\n  await page.goto(link);\n  const text = await page.evaluate(() => document.body.innerText);\n  await browser.close();\n  res.json({ text });\n});\n\napp.listen(8888);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-72wm-hh56-9gp6",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "check",
+      "source": "collector/index.js:52-55 (fix parent) app.post('/process-link', ...): const { link } = reqBody(request) - the link submitted for collection",
+      "sink": "collector/processLink/convert/generic.js:50 new PuppeteerWebBaseLoader(link, {...}).load() - the browser navigates the caller's URL, and with a file:// URL it reads local files into the document store",
+      "between": "processLink() calls validURL() (collector/utils/url/index.js) before the load; before the fix that function only did new URL(url) and returned true for any parsable value, so file:, data: and the rest passed. The fix adds VALID_PROTOCOLS = ['https:', 'http:'] and compares destination.protocol. Second explanation: sink (the page loader, not a file or HTTP client call).",
+      "fix": "validURL() now allows only the http: and https: schemes",
+      "probe": "const express = require('express');\nconst puppeteer = require('puppeteer');\n\nfunction validURL(value) {\n  try {\n    new URL(value);\n    return true;\n  } catch {\n    return false;\n  }\n}\n\nconst app = express();\napp.use(express.json());\n\napp.post('/process-link', async (req, res) => {\n  const { link } = req.body;\n  if (!validURL(link)) return res.sendStatus(400);\n  const browser = await puppeteer.launch();\n  const page = await browser.newPage();\n  await page.goto(link);\n  const html = await page.content();\n  await browser.close();\n  res.json({ html });\n});\n\napp.listen(8888);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-x8qg-5w28-wmr9",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "packages/backend/src/routers/projectRouter.ts:245 (fix parent) req.params.fileId - the :fileId route parameter of the CSV download endpoint; slackRouter.ts:61 req.params.imageId is the same shape for the Slack image endpoint",
+      "sink": "projectRouter.ts:251 const filePath = path.join('/tmp', req.params.fileId); then res.sendFile(filePath) - Express serves the joined path, so fileId='csv-../../../etc/passwd' escapes /tmp",
+      "between": "the only guard was !req.params.fileId.startsWith('csv-'), which the traversal string satisfies because it begins with the prefix; nothing checked the rest of the name or that the result stayed in /tmp. The fix also requires endsWith('.csv') ('.png' for the Slack route) and removes '..' before joining. Second explanation: functions (route parameter through a router handler into path.join).",
+      "fix": "adds the extension check and strips '..' from both file ids before path.join('/tmp', ...)",
+      "probe": "import express from 'express';\nimport path from 'path';\nimport fs from 'fs';\n\nconst app = express();\n\napp.get('/api/v1/projects/:projectId/csv/:fileId', (req, res) => {\n  if (!req.params.fileId.startsWith('csv-')) return res.sendStatus(404);\n  const filePath = path.join('/tmp', req.params.fileId);\n  if (!fs.existsSync(filePath)) return res.sendStatus(404);\n  res.set('Content-Type', 'text/csv');\n  res.sendFile(filePath);\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-h5q9-8q57-gqh2",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        78
+      ],
+      "category": "check",
+      "source": "packages/server/src/api.js:59-72 (fix parent) the preview route builds a Request from req.params.deviceId / mode / source / brightness, and scan-controller.js:31 builds one from the scan request body (packages/server/src/classes/request.js:33-103 copies data.params values such as deviceId, mode, source, brightness, contrast, ald)",
+      "sink": "packages/server/src/api.js:72-74 const cmd = `${scanimageCommand.scan(request)}`; await Process.spawn(cmd) - the built command line is run by a shell; scan-controller.js:66 does the same for a full scan",
+      "between": "the values go through CommandBuilder.arg()/build() (packages/server/src/classes/command-builder.js); before the fix _format() rejected a single quote and quoted a string only when it contained $, space, #, backslash or semicolon, so &, |, backticks, parentheses and newlines were emitted unquoted. The fix allowlists [0-9a-z-=/~.:] for an unquoted argument, quotes everything else, type-checks booleans/numbers and adds redirect(). Second explanation: sink (shell execution of a constructed string).",
+      "fix": "CommandBuilder quotes every argument outside a conservative character allowlist and rejects non-scalar values",
+      "probe": "const express = require('express');\nconst { exec } = require('child_process');\n\nclass CommandBuilder {\n  constructor(cmd) { this.cmd = cmd; this.args = []; }\n  _format(value) {\n    if (typeof value === 'string') {\n      if (value.includes(\"'\")) throw new Error('quote');\n      if (['$', ' ', '#', '\\\\', ';'].some((c) => value.includes(c))) return `'${value}'`;\n    }\n    return `${value}`;\n  }\n  arg(...values) { this.args.push(...values.map((v) => this._format(v))); return this; }\n  build() { return [this.cmd, ...this.args].join(' '); }\n}\n\nconst app = express();\napp.use(express.json());\n\napp.post('/api/scan', (req, res) => {\n  const cmd = new CommandBuilder('scanimage')\n    .arg('--device', req.body.params.deviceId)\n    .arg('--mode', req.body.params.mode)\n    .arg('-b', req.body.params.brightness)\n    .build();\n  exec(cmd, (err, stdout) => res.json({ stdout, error: err && err.message }));\n});\n\napp.listen(8080);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-5pph-5f85-479x",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "http-server.js:24 (fix parent) var filePath = request.url; - the path of the plain Node HTTP request, with the query string cut off at lines 27-29",
+      "sink": "http-server.js:31 filePath = '.' + filePath, then http-server.js:59 fs.readFile(filePath, ...) and http-server.js:66 fs.createReadStream(filePath) - a '../..' request path reads files above the served directory",
+      "between": "the request handler concatenates the URL onto '.' and hands it to fs.exists(), then into the fs.exists callback and fs.readFile; no resolution or root check existed. The fix switches to path.resolve('.' + filePath), compares the result with path.resolve('.') and returns 403 when the prefix differs. Second explanation: source (request.url in a raw http.createServer handler).",
+      "fix": "resolves the requested path and refuses it unless it starts with the server's root directory",
+      "probe": "const http = require('http');\nconst fs = require('fs');\nconst path = require('path');\n\nconst ROOT = path.resolve('.');\n\nhttp.createServer((req, res) => {\n  let filePath = req.url.split('?')[0];\n  filePath = path.join(ROOT, filePath);\n  fs.exists(filePath, (exists) => {\n    if (!exists) {\n      res.writeHead(404);\n      return res.end();\n    }\n    fs.createReadStream(filePath).pipe(res);\n  });\n}).listen(8080);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-5c4f-cr5c-fm9x",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "server/api/controllers/attachments/download-thumbnail.js:17-20 (fix parent) the filename input of the Sails action, fed by the :filename segment of GET /attachments/:id/download/thumbnails/:filename (server/config/routes.js:83)",
+      "sink": "download-thumbnail.js:53-58 path.join(sails.config.custom.attachmentsPath, attachment.dirname, 'thumbnails', inputs.filename); download-thumbnail.js:67 fs.createReadStream(filePath) - a filename of ../../... reads any file the server can open",
+      "between": "the action validates only its id input (regex ^[0-9]+$); filename is a plain required string, joined into the path with no normalisation. The fix removes the filename input and the route parameter, serving the fixed cover-256.jpg instead. Second explanation: sink (fs.createReadStream).",
+      "fix": "drops the filename parameter from the route and the action, always reading the fixed cover-256.jpg thumbnail",
+      "probe": "const express = require('express');\nconst path = require('path');\nconst fs = require('fs');\n\nconst app = express();\nconst ATTACHMENTS = '/srv/attachments';\n\napp.get('/attachments/:id/download/thumbnails/:filename', (req, res) => {\n  const filePath = path.join(ATTACHMENTS, req.params.id, 'thumbnails', req.params.filename);\n  if (!fs.existsSync(filePath)) return res.sendStatus(404);\n  res.type('image/jpeg');\n  fs.createReadStream(filePath).pipe(res);\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wm6p-54cv-qxf5",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        79
+      ],
+      "category": "front-end",
+      "source": "src/templates/pad.html:369 (fix parent) window.onerror = function(msg, url, line) - browsers that do not encode the path of the page (IE 11, per the advisory) pass the page URL, including its path, as url",
+      "sink": "pad.html:371-373 box.innerHTML = '<p><b>An error occurred while loading the pad</b></p>' + '<p><b>'+msg+'</b> ' + '<small>in '+ url +' (line '+ line +')</small></p>' - the URL is concatenated into HTML and assigned to innerHTML",
+      "between": "the handler is inline JavaScript in the pad template; nothing escapes url before the concatenation. The fix requires ../static/js/pad_utils in the template and wraps the value with padutils.escapeHTML(url). Second explanation: template (the fix lands in a template's inline script, but the sink is browser JavaScript).",
+      "fix": "escapes the URL with padutils.escapeHTML before it is concatenated into the innerHTML error box",
+      "probe": "<div id=\"editorloadingbox\"></div>\n<script>\n  window.onerror = function (msg, url, line) {\n    var box = document.getElementById('editorloadingbox');\n    box.innerHTML = '<p><b>An error occurred while loading</b></p>'\n      + '<p><b>' + msg + '</b> '\n      + '<small>in ' + url + ' (line ' + line + ')</small></p>';\n  };\n</script>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-r48p-vhgj-x8mm",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        601
+      ],
+      "category": "functions",
+      "source": "components/server/src/user/user-controller.ts:487 (fix parent) const returnToURL = req.query.redirect || req.query.returnTo - Express query parameters on GET /login and GET /authorize",
+      "sink": "components/server/src/auth/login-completion-handler.ts:75 response.redirect(returnTo), where returnTo comes from the value stored during the login flow (components/server/src/auth/authenticator.ts:95-101 reads req.query.returnTo and passes it on at line 125)",
+      "between": "user-controller.ts had getSafeReturnToParam(), which only allowed a URL starting with the configured host or homepage, but it was called on the logout path and on the no-host login branch only; /login with a host and /authorize handed req.query.returnTo to the authenticator untouched. The fix calls ensureSafeReturnToParam(req) at both routes, which rewrites req.query.returnTo through the same validator before the flow stores it. Second explanation: check (an existing validator, not applied at every entry).",
+      "fix": "sanitises req.query.returnTo on /login and /authorize before the authenticator stores and redirects to it",
+      "probe": "const express = require('express');\n\nconst app = express();\nconst HOST = 'https://app.example.com';\n\nfunction safeReturnTo(req) {\n  const value = req.query.redirect || req.query.returnTo;\n  if (value && value.toLowerCase().startsWith(HOST)) return value;\n  return undefined;\n}\n\napp.get('/login', (req, res) => {\n  const returnTo = req.query.returnTo;\n  req.session.returnTo = returnTo;\n  res.redirect('/oauth/complete');\n});\n\napp.get('/oauth/complete', (req, res) => {\n  res.redirect(req.session.returnTo || '/');\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-224m-3wgx-rg59",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        943
+      ],
+      "category": "sink",
+      "source": "app/controllers/api/user.js:342 (fix parent) fetchUserByIdOrHandle(reqParams.id, reqParams, ...) - reqParams is the JSON body of POST /api/user, so id can be an object such as {\"$ne\": null}",
+      "sink": "app/models/user.js:268 fetchByUid/fetch -> mongodb findOne({ _id: typeof uid == 'string' ? ObjectId(uid) : uid }) (the same pattern in fetchAndProcessUserById and fetchUserNameById, and { handle: handle } in fetchByHandle) - a non-string object is used as a Mongo query value, so query operators are honoured",
+      "between": "handlePublicRequest() routes reqParams.id to fetchUserByIdOrHandle -> fetchByUid; for a string it converts to an ObjectId, but any other type is put into the filter as-is, which is what makes {\"$ne\": ...} match the first user. The fix adds toObjectIdOrNull() (only an ObjectId or a valid ObjectId string, else null) and uses it in fetchByUid, fetchAndProcessUserById, fetchUserNameById and fetchUserNamesByIds, plus a typeof string guard in fetchByHandle and fetchUserByIdOrHandle. Second explanation: check (the string-only ObjectId branch looked like validation).",
+      "fix": "converts ids through toObjectIdOrNull() and rejects non-strings, so a JSON object can no longer become a Mongo filter",
+      "probe": "const express = require('express');\nconst { MongoClient, ObjectId } = require('mongodb');\n\nconst client = new MongoClient('mongodb://localhost:27017');\nconst app = express();\napp.use(express.json());\n\napp.post('/api/user', async (req, res) => {\n  const uid = req.body.id;\n  const db = client.db('app');\n  const user = await db.collection('user').findOne({\n    _id: typeof uid === 'string' ? new ObjectId(uid) : uid,\n  });\n  res.json(user);\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-jf75-q64q-g65r",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        943
+      ],
+      "category": "check",
+      "source": "packages/server/src/controller/token.js:17 (fix parent) const { email, password, code } = this.post() - the JSON body of POST /api/token, where email can be an object such as {\"$ne\": null}",
+      "sink": "packages/server/src/controller/token.js:18 this.modelInstance.select({ email }) - the value becomes the Mongo filter for the Users model; the storage adapter drops a non-string field, so the empty filter matches the first user, whose password is then checked at line 26",
+      "between": "logic/token.js's postAction (the ThinkJS action for the same route) did no type checks before the controller ran; the fix adds this.rules with email {required, email} and password {required, string}, which rejects the object before it reaches the model. Second explanation: sink (an object literal used as a Mongo query).",
+      "fix": "adds ThinkJS input rules requiring an email-shaped email and a string password on POST /api/token",
+      "probe": "const express = require('express');\nconst { MongoClient } = require('mongodb');\n\nconst client = new MongoClient('mongodb://localhost:27017');\nconst app = express();\napp.use(express.json());\n\napp.post('/api/token', async (req, res) => {\n  const { email, password } = req.body;\n  const db = client.db('blog');\n  const user = await db.collection('Users').findOne({ email });\n  if (!user || user.password !== password) return res.status(401).json({ errno: 1 });\n  res.json({ errno: 0, data: { email: user.email } });\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-95f6-rfpg-c3w8",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        1333
+      ],
+      "category": "check",
+      "source": "the pattern argument of the /session/grep endpoint (src/embedded-server.ts, outside the diff), validated by validateRegex in src/validation.ts:92-98 (fix parent) - the regex pattern sent by the caller",
+      "sink": "src/session-manager.ts:473 (fix parent) const regex = new RegExp(pattern, 'i'); history.filter((ev) => regex.test(JSON.stringify(ev))) - a catastrophic pattern such as (a+)+$ blocks the event loop on a long event",
+      "between": "validateRegex only checked that new RegExp(pattern) compiled and returned it; its own comment said it does not detect catastrophic backtracking. The fix compiles the pattern with RE2 (linear time) in both validateRegex and grepSession. Second explanation: sink (user input reaching a RegExp constructor).",
+      "fix": "compiles user-supplied grep patterns and the validated regex with RE2 instead of V8's RegExp",
+      "probe": "const express = require('express');\n\nconst history = Array.from({ length: 1000 }, (_, i) => ({ type: 'message', content: 'a'.repeat(50) + i }));\nconst app = express();\napp.use(express.json());\n\napp.post('/session/grep', (req, res) => {\n  const { pattern } = req.body;\n  const regex = new RegExp(pattern, 'i');\n  const hits = history.filter((ev) => regex.test(JSON.stringify(ev))).slice(0, 100);\n  res.json({ hits });\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-p3h2-2j4p-p83g",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        22
+      ],
+      "category": "archive",
+      "source": "src/controllers/mcpbController.ts:142-145 (fix parent) manifest.name, read from the manifest.json inside the .mcpb ZIP uploaded through the multer middleware on the MCPB upload route",
+      "sink": "src/controllers/mcpbController.ts:145 const finalExtractDir = path.join(path.dirname(mcpbFilePath), `server-${manifest.name}`), then fs.mkdirSync(finalExtractDir) and the archive is extracted there; manifest.name='../../../etc/x' writes outside data/uploads/mcpb, and cleanupOldMcpbServer(manifest.name) deletes by the same name",
+      "between": "the upload handler reads the manifest from the uploaded archive and uses its name as a directory name with no validation. The fix adds validateMcpbServerName() (allowlist [A-Za-z0-9._-], rejects '..' and separators) and resolveMcpbServerExtractDir(), which path.resolve()s the target and refuses anything whose relative path leaves the base directory, for both the extraction and the cleanup. Second explanation: sink (path.join before mkdir/extract).",
+      "fix": "validates the manifest name and confines the extract directory to the upload base before creating or cleaning it",
+      "probe": "const express = require('express');\nconst multer = require('multer');\nconst AdmZip = require('adm-zip');\nconst fs = require('fs');\nconst path = require('path');\n\nconst upload = multer({ dest: '/tmp/mcpb' });\nconst app = express();\n\napp.post('/api/mcpb/upload', upload.single('mcpbFile'), (req, res) => {\n  const zip = new AdmZip(req.file.path);\n  const manifest = JSON.parse(zip.readAsText('manifest.json'));\n  const finalExtractDir = path.join('/srv/data/uploads/mcpb', `server-${manifest.name}`);\n  fs.mkdirSync(finalExtractDir, { recursive: true });\n  zip.extractAllTo(finalExtractDir, true);\n  res.json({ installed: manifest.name });\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-gjrp-xgmh-x9qq",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "ghost/core/core/server/api/endpoints/members.js:505-511 (fix parent) getEventTimeline(frame.options) on GET /ghost/api/admin/members/events, whose filter option comes from the request's ?filter= query parameter",
+      "sink": "ghost/core/core/server/services/members/members-api/repositories/EventRepository.js:507-518 (fix parent) WHERE r.post_id = '${postId}' - postId is read from the parsed mongo filter (filter['data.post_id'] or the $and member) and interpolated into raw SQL",
+      "between": "the Admin API passes options.filter (NQL) into the event repository, which turns it into a mongo filter (getNQLSubset/removePostIdFilter) and then lifts data.post_id out of the object; the value was never checked to be an ObjectID, so a quote in the filter broke out of the literal. The fix extracts getPostIdFromFilter(), requires ObjectID.isValid() and interpolates postId.toHexString(). Second explanation: sink (raw SQL string).",
+      "fix": "validates data.post_id as an ObjectID and interpolates its hex string instead of the raw filter value",
+      "probe": "const express = require('express');\nconst knex = require('knex')({ client: 'sqlite3', connection: { filename: '/tmp/ghost.db' } });\n\nconst app = express();\n\napp.get('/ghost/api/admin/members/events', async (req, res) => {\n  const filter = req.query.filter || '';\n  const match = /data\\.post_id:([^,\\]]+)/.exec(filter);\n  const postId = match ? match[1] : '';\n  const rows = await knex.raw(\n    `SELECT mce.id, mce.member_id FROM members_click_events mce\n     INNER JOIN redirects r ON mce.redirect_id = r.id\n     WHERE r.post_id = '${postId}'`\n  );\n  res.json(rows);\n});\n\napp.listen(3000);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-qwwx-fhv3-c8q4",
+      "suite": "cve-pairs-javascript",
+      "cwe": [
+        918
+      ],
+      "category": "source",
+      "source": "website/loaders/analyticsScript.ts:19 (fix parent) const url = props.url || DEFAULT_ANALYTICS_SCRIPT_URL - the url prop of the AnalyticsScript loader, resolved from the incoming page request's block/loader parameters (the advisory names it the Parameter Handler)",
+      "sink": "website/loaders/analyticsScript.ts:23 const original = await fetchSafe(url, STALE) - a server-side fetch of the caller's URL, whose body is returned to the caller, so any internal address can be read",
+      "between": "the loader hands props.url straight to fetchSafe with no scheme or address check; the fix ignores the prop entirely (props is renamed _) and always fetches DEFAULT_ANALYTICS_SCRIPT_URL. Whether props.url is attacker-controlled or only set by the site editor is not shown in the diff, which is why this is unsure. Second explanation: sink (fetchSafe, a deco wrapper around fetch).",
+      "fix": "drops the configurable analytics URL and always fetches the hard-coded default script",
+      "probe": "import { fetchSafe } from '../utils/fetch.ts';\n\ninterface Props {\n  url: string;\n}\n\nexport default async function AnalyticsScript(props: Props): Promise<Response> {\n  const url = props.url || 'https://cdn.example.com/analytics.js';\n  const original = await fetchSafe(url);\n  const response = new Response(original.body, original);\n  response.headers.set('Content-Type', 'text/javascript');\n  return response;\n}",
+      "confidence": "unsure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df8424378ffeDmewLyZlq86BM8",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 38,
+    "tool_calls": 52,
+    "tool_errors": 0,
+    "chars_read": 266120,
+    "tokens": {
+      "input": 219682,
+      "cache_read": 3723528,
+      "output": 31780,
+      "reasoning": 0
+    },
+    "usd": 0.063
+  }
+}
