@@ -2633,3 +2633,9 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    `pending --gaps` counts the unread ones. The nightly summary reports both runners. Tests:
    `test_guard_takes_gap_notes_about_open_cases_only`, tests/test_export_misses.py,
    `test_the_gap_notes_runner_is_asked_about_its_own_units`.
+123. **Pull request #11 reviewed; topic 17 done** (2026-11-23). Four batches, 1 accepted and kept: Checkmk 31dfe9231eee
+   in cve-pairs-python (WATO bulk import's file_id request parameter joined into the upload directory as
+   '<file_id>.csv', then opened, written and unlinked; the fix requires it to be alphanumeric). Topic 17's searches
+   now cover every phrase for every month 2021-01..2026-11 and no framework candidate is left unread; the 2,186 rows
+   left are repositories that declare no topic-8 framework. Marked done in AGENTS.md: the hourly runner now does
+   topic 16 once a day and otherwise stops, and new months go to the weekly upkeep.
