@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-1",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-23 (PLAN.md step 126): leads for rule work; quotes not yet checked one by one",
   "method": "First 15 rows of ~/codewatch-research/gaps/misses.tsv (rows 2-16, all cve-pairs-python, taken in file order). For each case the fix commit was fetched with gh api repos/O/R/commits/SHA (per-file patches) and, where the patch did not show the vulnerable side, the files at the fix commit's parent with gh api contents?ref=SHA^ (validate.py, api/v1/validate.py, file_store.py, server/handlers.py, editor.py, utils.py, lektor/admin/modules/api.py, lektor/db.py, views/article.py, templatetags/wiki_tags.py, includes/searchresult.html, endpoints.py, resolverapi/__init__.py, helpers.py, app_blueprint.py, templates/login.html, routers/terminals.py, postgres/utils.py, postgres/base.py, postgres/queryparser.py, workflows/views.py, common/_workflow.html, views/auth_forms.py, stacks/forms.py, common/_form_field.html, upload/handlers/common/vector.py, servers/main.py, servers/dependencies.py, utils/urls.py). All API calls were one at a time with 2 s between. Nothing was skipped: every row yielded a note. Notes describe the vulnerable side (the fix's parent) and the line numbers in it. GHSA-h3h4-3r2q-9m76 is unsure because the repo has no template or other code that turns the Flask-RESTful abort message into HTML, so the reflected-XSS rendering the advisory names is not visible in the repository.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "the route imports validate_code from the lfx package (another file, outside the API tree); validate_code parses the string with ast.parse, then per FunctionDef compiles and exec's it inside a context built by _create_langflow_execution_context(); no check between the body field and exec",
       "fix": "compiles each function definition without exec'ing it and drops the execution-context builder",
       "probe": "from fastapi import FastAPI\nfrom pydantic import BaseModel\nimport ast\n\napp = FastAPI()\n\nclass Code(BaseModel):\n    code: str\n\ndef validate_code(code):\n    tree = ast.parse(code)\n    for node in tree.body:\n        if isinstance(node, ast.FunctionDef):\n            exec(compile(ast.Module(body=[node], type_ignores=[]), \"<string>\", \"exec\"), {})\n\n@app.post(\"/validate\")\nasync def post_validate(code: Code):\n    validate_code(code.code)\n    return {\"ok\": True}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (code-injection), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-wqmh-qccw-pqwf",
@@ -29,7 +30,8 @@
       "between": "handler -> _get_tracking_store().start_trace(trace_info) -> FileStore.start_trace (file_store.py:1755) only calls _validate_experiment_id, never the trace id -> os.path.join with the client's trace_id; no containment check",
       "fix": "adds _validate_trace_id rejecting empty, . / .., separators and ids that normalization would alter, and calls it in start_trace and _delete_traces",
       "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nROOT = \"/tmp/mlruns\"\n\n@app.post(\"/traces\")\ndef start_trace():\n    trace_id = request.json[\"trace\"][\"trace_id\"]\n    d = os.path.join(ROOT, \"traces\", trace_id)\n    os.makedirs(d, exist_ok=True)\n    with open(os.path.join(d, \"trace.yaml\"), \"w\") as f:\n        f.write(\"x\")\n    return {\"ok\": True}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (path-traversal), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-wv28-7fpw-fj49",
@@ -43,7 +45,8 @@
       "between": "api endpoint -> db.edit (db.py:2136) -> make_editor_session (editor.py:36) -> EditorSession.get_fs_path (editor.py:211-224) -> pad.db.to_fs_path -> untrusted_to_os_path. The helper's name and the strip/replace look like sanitizing, but nothing resolves or contains the result",
       "fix": "make_editor_session validates the path with parse_path and untrusted_to_os_path rebuilds it from cleanup_path and refuses anything outside the content root",
       "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nCONTENT = \"/srv/content\"\n\ndef untrusted_to_os_path(path):\n    return path.strip(\"/\").replace(\"/\", os.sep)\n\nclass EditorSession:\n    def __init__(self, path):\n        self.path = path\n    @property\n    def fs_path(self):\n        return os.path.join(CONTENT, untrusted_to_os_path(self.path))\n\n@app.post(\"/api/edit\")\ndef edit():\n    data = request.get_json()\n    ts = EditorSession(data[\"path\"])\n    with open(ts.fs_path, \"w\") as f:\n        f.write(data.get(\"data\", \"\"))\n    return {\"ok\": True}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (path-traversal), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-wj85-w4f4-xh8h",
@@ -57,7 +60,8 @@
       "between": "request GET q -> SearchView.query -> context search_query -> src/wiki/templates/wiki/includes/searchresult.html:17 {{ article.render|get_content_snippet:search_query }} -> get_content_snippet -> clean_text -> re.compile(keyword) -> kw_p.sub; article markdown -> markdown preprocessors -> the two backtracking regexes. No escaping of the keyword and no bound on the compiled pattern",
       "fix": "re.escape(keyword) before compiling, and replaces both markdown regexes with patterns that do not backtrack catastrophically",
       "probe": "import re\nfrom django import template\nfrom django.shortcuts import render\n\nregister = template.Library()\n\n@register.filter\ndef snippet(content, keyword):\n    return re.compile(r\"(\\S*%s\\S*)\" % keyword, re.IGNORECASE).sub(r\"<b>\\1</b>\", content)\n\ndef search(request):\n    q = request.GET[\"q\"]\n    return render(request, \"search.html\", {\"q\": q, \"articles\": []})\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-wp72-7hj9-5265",
@@ -71,7 +75,8 @@
       "between": "handler -> store.create_registered_model (file_store.py:133) -> _validate_model_name(name) at line 146 and again inside _get_registered_model_path at line 172 -> os.path.join with the raw name. The validator checks length/emptiness and looks like a sanitizer but allows \"/\" and \"..\"",
       "fix": "wraps _validate_model_name with a check that contains_path_separator(name) rejects separators",
       "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nMODELS = \"/tmp/models\"\n\ndef validate_model_name(name):\n    if not name:\n        raise ValueError(\"invalid name\")\n\n@app.post(\"/registered-models/create\")\ndef create():\n    name = request.json[\"name\"]\n    validate_model_name(name)\n    path = os.path.join(MODELS, name)\n    os.makedirs(path)\n    return {\"ok\": True}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-h3h4-3r2q-9m76",
@@ -85,7 +90,8 @@
       "between": "Falcon/Flask-RESTful route parameter -> get() -> valid_args -> abort(400, message=<user input>). The repository has no template or error handler: the message is serialized by Flask-RESTful, which the advisory treats as reflected XSS; the HTML rendering is not visible in the repo",
       "fix": "removes the user input from all three messages and returns fixed text",
       "probe": "from flask import Flask\nfrom flask_restful import Api, Resource, abort\n\napp = Flask(__name__)\napi = Api(app)\n\nclass Lookup(Resource):\n    def get(self, rdtype, domain):\n        if rdtype not in (\"A\", \"AAAA\", \"MX\"):\n            abort(400, message=\"%s type is not supported\" % rdtype)\n        return {\"domain\": domain}\n\napi.add_resource(Lookup, \"/<rdtype>/<domain>\")\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-3mmf-29wp-jc9p",
@@ -99,7 +105,8 @@
       "between": "login view -> get_redirect_url (helpers.py:41) -> is_safe_url (helpers.py:35) which urljoin's the raw location against host_url and compares the netloc, then returns the untouched location; the check exists but does not normalize backslashes or encoded separators, and the same value is rendered into the login page",
       "fix": "redirects only to a known endpoint name through url_for, and is_safe_url now rejects relative values that do not start with \"/\"",
       "probe": "from flask import Flask, redirect, request\nfrom urllib.parse import urljoin, urlparse\n\napp = Flask(__name__)\n\ndef is_safe_url(location):\n    ref = urlparse(request.host_url)\n    test = urlparse(urljoin(request.host_url, location))\n    return test.scheme in (\"http\", \"https\") and ref.netloc == test.netloc\n\n@app.route(\"/login\")\ndef login():\n    nxt = request.values.get(\"next\")\n    if nxt and is_safe_url(nxt):\n        return redirect(nxt)\n    return redirect(\"/dashboard\")\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-j657-m4c4-24jq",
@@ -113,7 +120,8 @@
       "between": "WebSocket route -> ws_terminal -> f-string URL; an encoded ?/&/? in session_id survives one decode and is decoded again by the upstream, so it injects a user_id before the appended one. The HTTP sibling proxy_terminal sanitizes its path, this path did not",
       "fix": "urllib.parse.quote(session_id, safe='') before it is put in the upstream URL",
       "probe": "import urllib.parse\nimport websockets\nfrom fastapi import FastAPI, WebSocket\n\napp = FastAPI()\n\n@app.websocket(\"/terminals/{session_id}\")\nasync def ws_terminal(websocket: WebSocket, session_id: str, policy_id: str | None = None):\n    await websocket.accept()\n    base = \"ws://terminal:8000\"\n    if policy_id:\n        url = f\"{base}/p/{policy_id}/api/terminals/{session_id}\"\n    else:\n        url = f\"{base}/api/terminals/{session_id}\"\n    url += \"?\" + urllib.parse.urlencode({\"user_id\": \"me\"})\n    async with websockets.connect(url) as upstream:\n        await upstream.send(await websocket.receive_text())\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-8prr-286p-4w7j",
@@ -127,7 +135,8 @@
       "between": "utils.from_params -> QueryParser().parse(params['q']) (postgres/queryparser.py:283-288) -> repr() of the parsed tree, with the raw search terms concatenated into the WHERE string -> Query(where=..., vars={}) -> base.py SELECT ... WHERE {query.where} -> _fetchall -> cursor.execute. The value crosses utils.py, queryparser.py and base.py and is never passed as a parameter",
       "fix": "the parser returns (sql, params) with %(name)s placeholders and utils merges those params into the query vars before cursor.execute",
       "probe": "import psycopg2\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\ndef parse(query):\n    return \"lower(resource) ~ '%s'\" % query\n\n@app.get(\"/alerts\")\ndef alerts():\n    q = request.args.get(\"q\")\n    where = \"1=1\"\n    if q:\n        where += \" AND \" + parse(q)\n    cur = psycopg2.connect(\"dbname=alerts\").cursor()\n    cur.execute(\"SELECT * FROM alerts WHERE \" + where)\n    return {\"rows\": cur.fetchall()}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (sql-injection), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-7h8w-hj9j-8rjw",
@@ -141,7 +150,8 @@
       "between": "API route -> GitHandler.get_git_diff (git_handler.py:137-140) -> self.git_diff_cmd.format(file_path=file_path) -> git_diff.py -> run(); the double quotes around the path look like shell quoting but a path containing a double quote closes them and the rest is interpreted by the shell",
       "fix": "shlex.quote the ref:path argument and the file_path, and execute the command as an argument list",
       "probe": "import subprocess\nfrom fastapi import FastAPI\n\napp = FastAPI()\nREPO = \"/workspace/repo\"\n\ndef run(cmd, cwd):\n    return subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True).stdout\n\n@app.get(\"/git/diff\")\ndef git_diff(path: str):\n    return {\"diff\": run(f'git show \"HEAD:{path}\"', REPO)}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (command-injection), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-f8fh-xp28-q59m",
@@ -155,7 +165,8 @@
       "between": "get_context_data puts the value in context['REDIRECT_URL'] (views.py:94) -> horizon/templates/horizon/common/_workflow.html:7 hidden input value=\"{{ REDIRECT_URL }}\" -> browser POSTs it back -> post() (views.py:168) reads it from request.POST -> redirect. The value round-trips through the template hidden field, so a GET-only source rule misses the sink",
       "fix": "checks redirect_to with django.utils.http.is_safe_url against request.get_host() and drops it otherwise",
       "probe": "from django import shortcuts\nfrom django.views import generic\n\nclass WorkflowView(generic.TemplateView):\n    template_name = \"workflow.html\"\n    redirect_param_name = \"next\"\n\n    def get_context_data(self, **kwargs):\n        ctx = super().get_context_data(**kwargs)\n        ctx[\"REDIRECT_URL\"] = self.request.GET.get(self.redirect_param_name)\n        return ctx\n\n    def post(self, request, *args, **kwargs):\n        next_url = request.POST.get(self.redirect_param_name)\n        return shortcuts.redirect(next_url or \"/\")\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-rhjj-f6gq-6gx2",
@@ -169,7 +180,8 @@
       "between": "heat template (request body) -> parameter fields built from its parameters -> help_text on a Django form field -> Horizon's form field template marks help_text safe inside the tooltip title; the value is escaped only by the fix, not by the template",
       "fix": "html.escape(param.get('Description', '')) before it becomes help_text",
       "probe": "import json\nfrom django import forms\nfrom django.shortcuts import render\n\ndef build_fields(template_validate):\n    fields = {}\n    for key, param in template_validate[\"parameters\"].items():\n        fields[key] = forms.CharField(\n            label=param.get(\"Label\", key),\n            help_text=param.get(\"Description\", \"\"),\n        )\n    return fields\n\ndef launch(request):\n    fields = build_fields(json.loads(request.POST[\"template\"]))\n    Form = type(\"F\", (forms.Form,), fields)\n    return render(request, \"launch.html\", {\"form\": Form()})\n# template: <span title=\"{{ field.help_text|safe }}\"></span>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-j72v-mpwp-rg79",
@@ -183,7 +195,8 @@
       "between": "login form handle() -> request.REQUEST -> redirect() with no origin check; the value is an absolute URL from the request and is used verbatim",
       "fix": "drops next unless django.utils.http.same_origin(build_absolute_uri(next), build_absolute_uri()) holds",
       "probe": "from django import shortcuts\nfrom django.views import View\n\nclass LoginView(View):\n    def post(self, request):\n        redirect_to = request.REQUEST.get(\"next\", \"\")\n        # authenticate the user\n        return shortcuts.redirect(redirect_to or \"/\")\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-9fpx-fr6j-2vh6",
@@ -197,7 +210,8 @@
       "between": "upload handler -> create_ogr2ogr_command builds an options string with the values wrapped in double quotes (lines 281 and 283) -> import_with_ogr2ogr splits it on spaces and joins it back into one shell string. The double quotes look like escaping but a name containing one breaks out",
       "fix": "shlex.quote each value, shlex.split the option string and run Popen with an argument list and shell=False (psql branch piped in Python)",
       "probe": "import subprocess\nfrom django.http import JsonResponse\n\ndef create_ogr2ogr_command(files, original_name, alternate):\n    input_file = files[\"temp_vrt_file\"]\n    options = f'\"{input_file}\" -lco FID=ogc_fid '\n    options += f'-nln {alternate} \"{original_name}\"'\n    return options\n\ndef import_layer(request):\n    options = create_ogr2ogr_command(request.FILES, request.POST[\"name\"], request.POST[\"alternate\"])\n    subprocess.Popen(\"ogr2ogr \" + options, shell=True)\n    return JsonResponse({\"ok\": True})\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (command-injection), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-7r34-79r5-rcc9",
@@ -211,7 +225,8 @@
       "between": "ASGI middleware -> _process_authentication_headers -> header_config -> get_jira_fetcher/get_confluence_fetcher -> requests session; the fix's redirect hook is attached to header_jira_fetcher.jira._session, showing the same session does outbound fetches. No check existed before the fix",
       "fix": "adds validate_url_for_ssrf (scheme, IP-literal, DNS resolution and allowlist checks) in the middleware and a response hook blocking redirects to internal targets",
       "probe": "import requests\n\nasync def app(scope, receive, send):\n    if scope[\"type\"] == \"http\":\n        headers = {k.decode().lower(): v.decode() for k, v in scope[\"headers\"]}\n        base_url = headers.get(\"x-atlassian-jira-url\")\n        if base_url:\n            requests.get(base_url + \"/rest/api/2/myself\",\n                         headers={\"Authorization\": headers.get(\"authorization\", \"\")})\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     }
   ],
   "usage": {

@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-22-1",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-23 (PLAN.md step 126): leads for rule work; quotes not yet checked one by one",
   "method": "First 15 rows of ~/codewatch-research/gaps/misses.tsv (rows 2-16, all cve-pairs-python, taken in file order). For each case the fix commit was fetched with gh api repos/O/R/commits/SHA (per-file patches) and, where the patch did not show the vulnerable side, the file at the fix commit's parent with gh api contents?ref=SHA^ (terminals.py, views.py, query.py, restore.py, media_importer.py, api/__init__.py, stac.py, login.jinja2, www/views.py, www/utils.py, pandas_util.py). All API calls were one at a time with 2 s between. Nothing was skipped: every row yielded a note. Notes describe the vulnerable side (the fix's parent) and the line numbers in it.",
   "notes": [
     {
@@ -16,7 +16,8 @@
       "between": "the request body's enable_custom_filters key is merged into the session settings (views.py:1224 base_settings[\"enable_custom_filters\"], global_state.set_settings at 1234) by one request; a second request's /query endpoint reads it back with global_state.load_flag (2092, 3392) to decide whether the query argument is allowed, then build_query() concatenates it into the pandas query; no check on the query text anywhere",
       "fix": "blocks enable_custom_filters from being set through update-settings (raises ValueError), so the query path stays disabled",
       "probe": "import pandas as pd\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\ndata = pd.DataFrame({'a': [1, 2]})\nstate = {'custom': False}\n\n@app.post('/settings')\ndef settings():\n    state['custom'] = request.get_json().get('enable_custom_filters', state['custom'])\n    return jsonify(ok=True)\n\n@app.get('/query')\ndef query():\n    q = request.args.get('query')\n    if q and not state['custom']:\n        return jsonify(error='disabled')\n    rows = data.query(q).to_dict('records')\n    return jsonify(rows)",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-xv5p-fjw5-vrj6",
@@ -31,7 +32,8 @@
       "between": "the form value is base64-decoded and passed straight to cloudpickle.loads; no validation, no allow-list of callables; the route is registered by start_server() at line 81",
       "fix": "adds a startup warning that the RPC server has no authentication; the deserialization flow itself is unchanged",
       "probe": "import base64, cloudpickle\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.post('/invoke')\ndef invoke():\n    payload = str(request.form.get('value'))\n    args, kwargs = cloudpickle.loads(base64.b64decode(payload.encode('ascii')))\n    return str(args)\n\nif __name__ == '__main__':\n    app.run()",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-w228-rfpx-fhm4",
@@ -45,7 +47,8 @@
       "between": "the header value is passed to redirect() unchanged when the invoice could not be undone; nothing on the way checks the target. Note the review decision (PLAN.md step 108, cg GHSA-w228) that a redirect to the Referer is not an open redirect; this case is still an open suite entry, and what explains the miss is that the value is a request header, not a query/body argument",
       "fix": "redirects to the URL returned by undo_invoice() instead of to request.referrer",
       "probe": "from flask import Flask, redirect, request, jsonify\n\napp = Flask(__name__)\n\n@app.get('/invoice/<int:invoice_id>')\ndef invoice(invoice_id):\n    ok = False\n    if not ok:\n        return redirect(request.referrer)\n    return jsonify(ok=True)",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-pfwg-rxf4-97c3",
@@ -59,7 +62,8 @@
       "between": "the form value is stored verbatim as models.Url(url=url) (52-55) and committed; a later GET of the short URL loads it and redirects to url.url[1:]; no validation of scheme or host at storage or at redirect time",
       "fix": "adds _validate_url(), which accepts only //superset/dashboard/ and //superset/explore/ prefixes, and checks it both before storing and before redirecting (invalid ones redirect to /)",
       "probe": "from flask import Flask, redirect, request\n\napp = Flask(__name__)\nurls = {}\n\n@app.post('/shortner/')\ndef shortner():\n    uid = str(len(urls) + 1)\n    urls[uid] = request.form.get('data')\n    return uid\n\n@app.get('/r/<uid>')\ndef follow(uid):\n    return redirect(urls[uid][1:])",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (open-redirect), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-g3cm-qg2v-2hj5",
@@ -73,7 +77,8 @@
       "between": "the value goes through is_safe_url() (helpers.py:35-38), which already compared urljoin(request.host_url, location)'s netloc with the host's, so the code looked validated; the check did not reject a relative value not starting with '/' and the referrer fallback was accepted as a redirect target, so it is a weak existing validator that codewatch may take for a sanitizer",
       "fix": "replaces both the raw next value and the referrer with url_for() of a named endpoint (BuildError falls back), and drops the next/referrer handling from is_safe_url",
       "probe": "from urllib.parse import urljoin, urlparse\nfrom flask import Flask, redirect, request\n\napp = Flask(__name__)\n\ndef is_safe_url(location):\n    ref = urlparse(request.host_url)\n    test = urlparse(urljoin(request.host_url, location))\n    return test.scheme in ('http', 'https') and ref.netloc == test.netloc\n\n@app.get('/login')\ndef login():\n    for location in request.values.get('next'), request.referrer:\n        if location and is_safe_url(location):\n            return redirect(location)\n    return 'login form'",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-frvj-c5qp-xj4w",
@@ -88,7 +93,8 @@
       "between": "the path is unquoted in a loop capped at 8 rounds (terminals.py:40-45); when the cap is hit the loop leaves the value still percent-encoded, so the literal check on '..' (51) and the prefix checks pass and a once-more-decoded path becomes a traversal upstream; the existing decode-and-check looked like a sanitizer",
       "fix": "fails closed when unquote(path) still changes the value after the cap, returning None in both helpers",
       "probe": "import posixpath\nfrom urllib.parse import unquote\nfrom flask import Flask, request, redirect\n\napp = Flask(__name__)\n\ndef sanitize(path):\n    decoded = path\n    for _ in range(8):\n        once = unquote(decoded)\n        if once == decoded:\n            break\n        decoded = once\n    cleaned = posixpath.normpath(decoded).lstrip('/')\n    if cleaned.startswith('..') or cleaned == '.':\n        return None\n    return cleaned\n\n@app.get('/proxy/<path:path>')\ndef proxy(path):\n    safe = sanitize(path)\n    if safe is None:\n        return 'bad', 400\n    return redirect('/static/' + safe)",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-f9fq-78ch-4wmj",
@@ -102,7 +108,8 @@
       "between": "get_safe_url() (views.py:156-176) already parsed the URL and compared scheme/netloc with the request host, so the value looked validated; urlparse's handling of the string let values through that the client then followed, so the old validator is what codewatch may take for a sanitizer",
       "fix": "rewrites get_safe_url to urljoin the value onto request.host_url and reject it unless the joined scheme is http/https and its netloc equals the host's (plus the existing semicolon check)",
       "probe": "from urllib.parse import urlparse\nfrom flask import Flask, request, redirect\n\napp = Flask(__name__)\n\ndef get_safe_url(url):\n    if not url:\n        return '/'\n    parsed = urlparse(url)\n    if parsed.scheme in ['http', 'https', ''] and parsed.netloc in [request.host, '']:\n        return url\n    return '/'\n\n@app.post('/run')\ndef run():\n    origin = get_safe_url(request.form.get('origin'))\n    return redirect(origin)",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-8gh5-qqh8-hq3x",
@@ -117,7 +124,8 @@
       "between": "the fix adds Users.get_user_by_id(file.user_id) and refuses unless that uploader is an admin, before the existing owner-or-admin test; it changes an authorization decision, not a value reaching a dangerous call, so there is no source->sink to note",
       "fix": "only serves uploaded HTML content as HTML when the file's uploader has the admin role",
       "probe": "",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: no probe"
     },
     {
       "id": "GHSA-25g8-2mcf-fcx9",
@@ -131,7 +139,8 @@
       "between": "import_from_zip opens the archive with zipfile.ZipFile and calls extractall(); the only earlier check is the .zip filename suffix (restore.py:172), nothing looks at member names; download_backup() in backups/__init__.py:146-157 is the sibling path fix for a filename from the route",
       "fix": "walks zf.infolist() and refuses any member whose realpath escapes the temp directory, adds a decompressed-size cap and a UUID check on entry names, and resolves 'latest' before validating the download filename",
       "probe": "import os, tempfile, zipfile\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.post('/restore/start')\ndef restore():\n    uploaded = request.files['zip_file']\n    with tempfile.TemporaryDirectory() as tmp:\n        with zipfile.ZipFile(uploaded.stream) as zf:\n            zf.extractall(tmp)\n    return 'restored'",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-2wvg-62qm-gj33",
@@ -145,7 +154,8 @@
       "between": "the value crosses the webui layer into the API object and then into pyload/core/utils/web/check.py and network/request_factory.get_url(); nothing tested the host, so any URL the user supplied made the server fetch it",
       "fix": "parses the URL, requires scheme http/https and hostname, and requires is_global_host(hostname) (a new check in core/utils/web/check.py) before get_url() is called",
       "probe": "from urllib.parse import urlparse\nimport ipaddress, socket, requests\n\ndef is_global_host(host):\n    try:\n        return ipaddress.ip_address(socket.gethostbyname(host)).is_global\n    except (OSError, ValueError):\n        return False\n\ndef parse_urls(url=None):\n    if url:\n        parsed = urlparse(url)\n        if parsed.scheme in ('http', 'https') and parsed.hostname and is_global_host(parsed.hostname):\n            return requests.get(url).text\n    return ''",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-hp84-p2gq-6fvr",
@@ -159,7 +169,8 @@
       "between": "the JSON fields are put into the Jinja template's option list and the rendered string becomes the psql command line (BatchProcess, __init__.py:222-227); the template is SQL, so HTML autoescaping does nothing and no value is validated before render",
       "fix": "adds validate_maintenance_data() (allow-lists INDEX_CLEANUP, a bounded int for PARALLEL, a regex for BUFFER_USAGE_LIMIT) and quotes reindex_tablespace with qtIdent in the template",
       "probe": "from flask import Flask, request, render_template_string\nimport json, subprocess\n\napp = Flask(__name__)\n\nTPL = '''VACUUM ({% if d.parallel %}PARALLEL {{ d.parallel }}{% endif %}{% if d.limit %}, BUFFER_USAGE_LIMIT \"{{ d.limit }}\"{% endif %}) {{ d.table }};'''\n\n@app.post('/maintenance')\ndef maintenance():\n    d = json.loads(request.data)\n    query = render_template_string(TPL, d=d)\n    subprocess.run(['psql', '--command', query], check=False)\n    return 'queued'",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (command-injection), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-x7r7-wmj8-vv5g",
@@ -173,7 +184,8 @@
       "between": "the query value is used twice without any validation: as the login redirect target and as a JavaScript string in the template (second miss: the template/JS side, where HTML escaping is not escaping for a JS string); the fix shows both mattered",
       "fix": "parses the value with urlparse and falls back to the index URL when the scheme or netloc is non-empty",
       "probe": "from flask import Flask, redirect, render_template_string, request\nfrom urllib.parse import urlparse\n\napp = Flask(__name__)\nTPL = '<script>var REDIRECT_URL = \"{{ redirect_url|e }}\";</script>'\n\n@app.get('/login')\ndef login():\n    redirect_url = request.args.get('redirect', '/')\n    parsed = urlparse(redirect_url)\n    if parsed.scheme != '' or parsed.netloc != '':\n        redirect_url = '/'\n    return render_template_string(TPL, redirect_url=redirect_url)",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-f6pr-83pg-ghh6",
@@ -187,7 +199,8 @@
       "between": "the value crosses pygeoapi's API layer (stac.py) into a provider plugin (provider/filesystem.py:get_data_path) as the dirpath argument; the provider concatenates it onto self.data and walks/opens it, without a containment test",
       "fix": "rejects a dirpath containing '..' with ProviderInvalidQueryError before building data_path",
       "probe": "import os\nfrom flask import Flask, request\n\napp = Flask(__name__)\nDATA = '/srv/data'\n\n@app.get('/stac/<path:path>')\ndef stac_path(path):\n    dirpath = path.replace('collection', '', 1)\n    data_path = DATA + dirpath\n    return str(os.listdir(data_path))",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: codewatch's rules find the probe (path-traversal), so the miss lies elsewhere than the note says"
     },
     {
       "id": "GHSA-hwv5-w8gm-fq9f",
@@ -201,7 +214,8 @@
       "between": "the path goes through sanitized_join() (xhu.py:42-45), which does (root / path).absolute() and then checks str(result).startswith(str(root) + \"/\"); .absolute() does not resolve '..', so the containment check passes and the file lands outside DATA_ROOT; an existing check that looks like a sanitizer",
       "fix": "drops sanitized_join for flask.safe_join(root, sub_path) and catches werkzeug.exceptions.NotFound instead of ValueError",
       "probe": "import pathlib\nfrom flask import Flask, request\n\napp = Flask(__name__)\nROOT = pathlib.Path('/srv/uploads')\n\ndef sanitized_join(path, root):\n    result = (root / path).absolute()\n    if not str(result).startswith(str(root) + '/'):\n        raise ValueError('outside root')\n    return result\n\n@app.put('/<path:path>')\ndef put_file(path):\n    dest = sanitized_join(path, ROOT)\n    dest.parent.mkdir(parents=True, exist_ok=True)\n    dest.write_bytes(request.get_data())\n    return 'ok'",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-m5gr-86j6-99jp",
@@ -215,7 +229,8 @@
       "between": "the archive is read and all members extracted into a fresh mkdtemp() with no inspection of member names; the extracted tree is then walked and uploaded as media (109-181)",
       "fix": "walks zip_file.namelist() and raises when a member's realpath escapes the temp directory before extractall()",
       "probe": "import os, tempfile, zipfile\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.post('/media/import')\ndef import_media():\n    upload = request.files['file']\n    with tempfile.TemporaryDirectory() as tmp:\n        with zipfile.ZipFile(upload.stream) as zf:\n            zf.extractall(tmp)\n        return str(os.listdir(tmp))",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     }
   ],
   "usage": {

@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-3",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-23 (PLAN.md step 126): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 2-16 of ~/codewatch-research/gaps/misses.tsv (the first 15 candidates left in file order: the 11 cve-pairs-python-nonhttp rows, then the first 4 cve-pairs-javascript rows), so Python came first as section 9 asks. No row was skipped; none of the 15 was already noted in gap-notes-2026-11-22-1.json or gap-notes-2026-11-23-{1,2}.json. For each case the fix commit was fetched with gh api repos/O/R/commits/SHA (per-file patch, tests/docs skipped, about 2 s between calls) and, where the diff did not show the source line or the sink, the file at the fix commit's parent was fetched raw with gh api repos/O/R/contents/PATH?ref=PARENT_SHA and searched for the source/sink symbols (tools/skills_tool.py, agent/tools/vision/vision.py, agent/src/memory/persistent.py, src/stata_mcp/stata/stata_do/do.py, ufo/client/mcp/http_servers/mobile_mcp_server.py, misp_modules/modules/expansion/sourcecache.py, codebase_rag/mcp/tools.py, src/netlicensing_mcp/client.py plus tools/products.py, plugins/techdocs-backend/src/service/router.ts, plugins/proxy-backend/src/service/router.ts, packages/commons-server/src/libs/server/server.ts, bbot/modules/postman_download.py, bbot/modules/docker_pull.py, chirp/drivers/kenwood_itm.py). Cases were read from the vulnerable side (the fix's parent). GHSA-8wqc-v2q8-vff2 is marked unsure: the diff and parent show the weak prefix check and the file-read sink, but not the template that carries request data into the configured file path. GHSA-cv3r-c5h8-f4g5 is a not-a-flow note: its commit is an authentication guard, not the path traversal its CWE-22 row suggests. 406 of the file's 421 rows are left after this batch (python-nonhttp left: 0, javascript left: 77, javascript-nonhttp left: 37, php left: 265, python-frontend left: 27).",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "skill_view() builds all_dirs from SKILLS_DIR and get_external_skills_dirs() (:920-924), joins the raw name onto each at :962, records the match with _record(), and reads the skill file at :1030; the plugin-namespace fall-through joins local_category_name at :972 with the same problem. Nothing rejects '..' or an absolute name on the way. Second explanation: functions (the name travels skill_view -> _record -> read_text) and an agent-tool argument as the source.",
       "fix": "adds _skill_lookup_path_error() and calls it before the qualified-name dispatch and before the categorized fall-through: rejects absolute POSIX and Windows paths, Windows drive paths, and any '..' component",
       "probe": "from pathlib import Path\n\nSKILLS = Path(\"/srv/skills\")\n\ndef skill_view(name: str) -> str:\n    for root in (SKILLS,):\n        direct = root / name\n        if direct.is_dir() and (direct / \"SKILL.md\").exists():\n            return (direct / \"SKILL.md\").read_text(encoding=\"utf-8\")\n        if direct.with_suffix(\".md\").exists():\n            return direct.with_suffix(\".md\").read_text(encoding=\"utf-8\")\n    return \"not found\"",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-2xj7-6vvg-p9hp",
@@ -29,7 +30,8 @@
       "between": "the tool argument image goes to _build_image_content (:657), which hands remote URLs to _download_to_data_url (:664 -> :689) and fetches them at :691 with no host or scheme restriction beyond the \"http(s)\" prefix, so 127.0.0.1:8080, 10.0.0.5 or 169.254.169.254 is fetched and its body base64-encoded back to the model. Second explanation: functions (image -> _build_image_content -> _download_to_data_url). The same commit also adds _safe_skill_dir() for a skill-install traversal in agent/skills/service.py, a second flow.",
       "fix": "adds _validate_url_safe(): requires http/https, resolves the hostname and refuses private, loopback, link-local and reserved addresses before _download_to_data_url is called",
       "probe": "import requests\n\ndef vision_tool(image: str) -> bytes:\n    if image.startswith((\"http://\", \"https://\")):\n        return requests.get(image, timeout=30).content\n    return open(image, \"rb\").read()",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-3j25-mjx3-pwg4",
@@ -43,7 +45,8 @@
       "between": "_save() passes the tool argument straight to MemoryStore.add() (:90); add() only slugifies the *name* (and re-hashes it when empty), interpolates memory_type unslugified into the filename (:304), joins it onto the memory directory (:305) and writes (:320). memory_type=\"../../x\" therefore writes a markdown file outside the memory dir; nothing compares it with the four allowed types. Second explanation: source (an agent-tool argument).",
       "fix": "rejects any memory_type not in MEMORY_TYPES before a path is built, and turns the ValueError into a tool error in _save()",
       "probe": "from pathlib import Path\n\nBASE = Path(\"/srv/memory\")\nMEMORY_TYPES = {\"user\", \"feedback\", \"project\", \"reference\"}\n\ndef remember(kwargs: dict) -> str:\n    return str(save(kwargs[\"title\"], kwargs[\"content\"], kwargs.get(\"memory_type\", \"project\")))\n\ndef save(name: str, content: str, memory_type: str = \"project\") -> Path:\n    path = BASE / f\"{memory_type}_{name.strip().lower()}.md\"\n    path.write_text(content, encoding=\"utf-8\")\n    return path",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-m54h-vhf9-3w3m",
@@ -58,7 +61,8 @@
       "between": "save_workspace() takes the workspace dict that handle_event() got from the Postman API response, joins its name onto output_dir, creates the directory and writes <id>.zip (collection names are used the same way at :80-83 for the JSON members); no normalization or containment test. Second explanation: sink (helpers.mkdir / the zip write are not calls codewatch watches) and the provenance of the name is a remote JSON response.",
       "fix": "tagifies the workspace and collection names and returns None when the resolved folder is not under the resolved output_dir",
       "probe": "import json, urllib.request\nfrom pathlib import Path\n\nOUT = Path(\"/srv/scans\")\n\ndef save_workspace() -> None:\n    data = json.load(urllib.request.urlopen(\"https://api.postman.com/workspaces\"))\n    for ws in data[\"workspaces\"]:\n        folder = OUT / ws[\"name\"]\n        folder.mkdir(parents=True, exist_ok=True)\n        (folder / f\"{ws['id']}.zip\").write_bytes(b\"\")\n\nsave_workspace()",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-3mp7-vp6j-2mxx",
@@ -72,7 +76,8 @@
       "between": "docker_api_request() asks the registry for /v2/<repo>/tags/list, and on a 401 takes the realm, service and scope out of the WWW-Authenticate response header by string splitting and requests the resulting URL, with no check that the realm host belongs to the registry. Any host the answered registry names is contacted. Second explanation: sink (helpers.request on a header-derived URL).",
       "fix": "adds _parse_www_authenticate() and _validate_realm(): the realm's registrable domain must equal the registry's, otherwise the request is skipped",
       "probe": "import httpx\n\nasync def tags(registry: str, repository: str) -> bytes:\n    async with httpx.AsyncClient(follow_redirects=True) as client:\n        r = await client.get(f\"{registry}/v2/{repository}/tags/list\")\n        if r.status_code == 401:\n            hdr = r.headers.get(\"www-authenticate\", \"\")\n            realm = hdr.split('realm=\"')[1].split('\"')[0]\n            service = hdr.split('service=\"')[1].split('\"')[0]\n            auth = await client.get(f\"{realm}?service={service}\")\n            return auth.content\n        return r.content",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-6rmm-3cfr-7939",
@@ -86,7 +91,8 @@
       "between": "_clean_tmode() is called per CSV row by the generic_csv loader for kenwood_itm images; the text after TXSIG/RXSIG is handed to eval() with no parsing at all, so a cell containing __import__('os').system(...) or a file read runs in the app. The value comes from an imported file, not from a request. Second explanation: sink (eval of a field read from a user-supplied file).",
       "fix": "replaces both eval() calls with kenwood_tone.parse_qtdqt() and teaches it the kenwood 'I' polarity",
       "probe": "import csv\n\ndef load(fh) -> list:\n    out = []\n    for row in csv.DictReader(fh):\n        rtone = eval(row[\"TXSIG\"])\n        ctone = eval(row[\"RXSIG\"])\n        out.append((rtone, ctone))\n    return out",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-4p62-hqp5-g644",
@@ -100,7 +106,8 @@
       "between": "execute_dofile() turns log_file_name into log_name (:81), builds log_file = self.log_file_path / f\"{log_name}.log\" (:82) through generate_log_file() (:132), and generate_log_command() interpolates the path into `log using \"...\"` (:127-130) inside the command script Stata reads on stdin (:187); the same string is written into the temporary .do batch file at :219 and that file is run with shell=True at :226. A '\"' or newline in the name closes the quoting and appends Stata or shell commands. Second explanation: source (an MCP tool argument).",
       "fix": "validates log_file_name against ^[A-Za-z0-9_.-]{1,128}$ and rejects path traversal components before the log path is built",
       "probe": "import subprocess\n\ndef run_stata(stata_cli: str, workdir: str, log_file_name: str) -> None:\n    log_file = f\"{workdir}/{log_file_name}.log\"\n    commands = f'''\n    capture log close\n    log using \"{log_file}\", replace text name(text_log)\n    log close _all\n    exit, STATA\n    '''\n    proc = subprocess.Popen([stata_cli], stdin=subprocess.PIPE, text=True, cwd=workdir)\n    proc.communicate(input=commands)",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-105793",
@@ -114,7 +121,8 @@
       "between": "the @mcp.tool() press_key handler passes key_code unchanged as one argv element of `adb shell input keyevent`; an argument-list exec normally reads as injection-safe, but `adb shell` concatenates its arguments and the device shell parses them again, so a ';', '&&' or backtick in key_code executes on the phone. The raw value is also echoed into the result (:1181). Second explanation: source (an MCP tool argument).",
       "fix": "requires key_code to match ^[A-Z0-9_]+$ before the subprocess call",
       "probe": "import asyncio\n\nasync def press_key(adb_path: str, key_code: str) -> dict:\n    proc = await asyncio.create_subprocess_exec(\n        adb_path, \"shell\", \"input\", \"keyevent\", key_code,\n        stdout=asyncio.subprocess.PIPE,\n        stderr=asyncio.subprocess.PIPE,\n    )\n    out, err = await proc.communicate()\n    return {\"success\": proc.returncode == 0, \"output\": out.decode()}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-vmhf-j68f-c7h8",
@@ -129,7 +137,8 @@
       "between": "handler() reads the attribute value out of the request JSON and passes it unchecked to __archiveLink(), which hands it to the third-party url_archiver library's fetch(); nothing checks the scheme or that the host is public. Second explanation: source (the module's JSON request body) - the fetch itself is in a library, the module only wraps it.",
       "fix": "adds is_safe_url(): only http(s) URLs whose host resolves solely to globally routable addresses are archived, otherwise an error is returned",
       "probe": "import json\nfrom urllib.request import urlopen\n\ndef handler(q: str) -> dict:\n    request = json.loads(q)\n    url = request[\"attribute\"][\"value\"]\n    data = urlopen(url, timeout=30).read()\n    return {\"results\": {\"capture\": data.hex()}}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-vvr2-h2jp-838m",
@@ -143,7 +152,8 @@
       "between": "read_file() has two branches: with offset/limit it joins the raw file_path onto project_root and opens it (:562-565); without them it delegates to self._file_reader_tool.function(file_path) (:586-588), which does its own path validation. The paginated branch skipped that validator, but the handler still contains a call that looks like a sanitiser, so a rule sees read_file() as covered. Second explanation: functions (the value is passed to a tool object that validates in the other branch).",
       "fix": "resolves the joined path and requires it to stay under the resolved project root in the paginated branch",
       "probe": "import itertools\nfrom pathlib import Path\n\nROOT = Path(\"/srv/project\")\n\ndef read_file(file_path: str, offset=None, limit=None) -> str:\n    if offset is not None or limit is not None:\n        full_path = ROOT / file_path\n        with open(full_path, encoding=\"utf-8\") as f:\n            start = offset or 0\n            return \"\".join(itertools.islice(f, start, start + (limit or 10)))\n    return checked_read(file_path)\n\ndef checked_read(file_path: str) -> str:\n    p = (ROOT / file_path).resolve()\n    p.relative_to(ROOT.resolve())\n    return p.read_text(encoding=\"utf-8\")",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "CVE-2026-57496",
@@ -157,7 +167,8 @@
       "between": "the tool function builds the path string and calls nl_get/nl_post/nl_put/nl_delete, which only prepend BASE_URL; httpx applies RFC 3986 dot-segment removal, so a product_number of \"../token\" collapses the request onto the token endpoint, whose response is not redacted and leaks the plaintext APIKEY number and SHOP URL. Second explanation: sink (an HTTP client URL path, where the harm is the client's normalization).",
       "fix": "adds _validated_path() in front of all four helpers: unquotes each segment and rejects '.', '..', '/' or '\\\\' inside a segment and control characters",
       "probe": "import httpx\n\nBASE_URL = \"https://api.example.test/rest\"\n\nasync def get_product(product_number: str) -> dict:\n    async with httpx.AsyncClient() as client:\n        r = await client.get(f\"{BASE_URL}/product/{product_number}\")\n        return r.json()",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-7mfx-xg57-53c9",
@@ -172,7 +183,8 @@
       "between": "the permission middleware decodes req.path and normalizes it with path.posix.normalize(decodeURI(path)), then only rejects a result equal to '..' or starting with '../'; a backslash is not a POSIX separator, so '..\\\\private' survives the guard, and on a Windows-backed publisher (azureBlobStorage, local fs) it resolves as a parent-directory step past the permission-checked entity. Second explanation: framework (express router.use path handling).",
       "fix": "resolves the decoded path under a virtual '/entity' root with path.posix.resolve and rejects anything outside it, anything containing a backslash, and any remaining '..' - replacing the old normalize-and-prefix guard",
       "probe": "const express = require('express');\nconst path = require('node:path');\n\nfunction isWithin(requestPath) {\n  const rel = path.posix.normalize(decodeURI(requestPath).replace(/^\\/+/, ''));\n  return rel !== '..' && !rel.startsWith('../');\n}\n\nconst router = express.Router();\nrouter.use('/static/docs/:namespace/:kind/:name', (req, res, next) => {\n  if (!isWithin(req.path)) {\n    res.sendStatus(404);\n    return;\n  }\n  next();\n});\nrouter.use('/static/docs', publisher.docsRouter());",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-9ghw-48h5-v2w5",
@@ -187,7 +199,8 @@
       "between": "configureMiddlewares() mounts one proxy middleware per configured route and express hands it the request; the path rewrite removes the proxy prefix and http-proxy-middleware forwards the remaining path verbatim, so dot segments move the request to a sibling endpoint of the target (the advisory's 'unintended routing'). The parent had no path check at all. Second explanation: functions (the value goes into buildMiddleware in another module and then into the proxy library).",
       "fix": "adds a middleware before the proxy that decodeURIComponent()s req.url up to '?', normalizes backslashes and answers 400 when any segment is '..'",
       "probe": "const express = require('express');\nconst http = require('node:http');\n\nconst app = express();\n\napp.use('/api/proxy/test', (req, res) => {\n  const upstream = http.request({ host: 'target.com', path: req.url }, up => up.pipe(res));\n  req.pipe(upstream);\n});",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: missed"
     },
     {
       "id": "GHSA-cv3r-c5h8-f4g5",
@@ -201,7 +214,8 @@
       "between": "the fix adds a requireSseAuth middleware (a Bearer token check) to GET /sse and POST /messages, a startup check refusing SSE=true on a non-loopback HOST without SSE_AUTH_TOKEN, a loopback-only docker-compose binding and a non-root Docker USER. The misses row carries CWE-22, but the commit is about unauthenticated exposure (a missing permission check), not path traversal.",
       "fix": "gates the SSE endpoints behind SSE_AUTH_TOKEN (or an explicit opt-out) and refuses a non-loopback SSE bind without one",
       "probe": "",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-23: no probe"
     },
     {
       "id": "GHSA-8wqc-v2q8-vff2",
@@ -216,7 +230,8 @@
       "between": "getSafeFilePath() resolved the templated path and then only tested startsWith() against the static base or options.environmentDirectory (:2351-2366): a sibling directory sharing the prefix passes, and an absolute templated path whose static base resolves to '/' allows any file. The caller then reads the file. Second explanation: sink (createReadStream / readFileSync on a path the checks let through).",
       "fix": "replaces the prefix comparisons with path.relative() containment tests, resolves the static base through the environment dir and rejects a base that is the filesystem root",
       "probe": "const path = require('node:path');\nconst { createReadStream } = require('node:fs');\nconst express = require('express');\n\nconst app = express();\nconst envDir = '/srv/mock';\n\napp.get('/file', (req, res) => {\n  const filePath = path.resolve(envDir, req.query.path);\n  if (!filePath.startsWith(envDir)) {\n    res.sendStatus(403);\n    return;\n  }\n  createReadStream(filePath).pipe(res);\n});",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-23: missed"
     }
   ],
   "usage": {
