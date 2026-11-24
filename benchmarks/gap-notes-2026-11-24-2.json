@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-24-2",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-24 (PLAN.md step 135): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order; the file holds 89 missed cases, all cve-pairs-php (no Python, no JavaScript), so this batch is PHP only. For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA), and, where the diff did not show the source or the sink, the changed files at the fix commit's parent (gh api contents?ref=SHA^): notice.php, resources/paging.php, app/fifo_list/fifo_interactive.php, resources/views/v1/search/index.twig with app/Http/Controllers/SearchController.php, core-bundle/.../DC_Folder.php, includes/class-wp-statistics-pages.php, app/operator_panel/exec.php, interface/forms/eye_mag/taskman_functions.php with interface/forms/eye_mag/taskman.php, www/include/configuration/configObject/contactgroup/formContactGroup.php with contactGroup.php, inc/Ui/PageDiff.php, includes/html/pages/tools/oxidized-cfg-check.inc.php and includes/html/print-customoid.php, application/libraries/api/MY_Countries_Api_Object.php, serendipity_admin_image_selector.php, code/sitefeatures/PageCommentInterface.php, apps/user_webdavauth/settings.php. Nothing was skipped and nothing was left unsure: every case showed the request value and the call it reaches. Categories: check 1, functions 4, sink 4, source 5, template 1.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "the 'alphanohtml' filter argument makes GETPOST() read as an HTML sanitizer (the print looks safe), but the value is printed unchanged; the fix wraps both prints in dol_escape_htmltag(). Second explanation: check (the filter name suggests HTML is stripped).",
       "fix": "escapes the transphrase/transkey output with dol_escape_htmltag() and replaces the two load() calls with loadLangs()",
       "probe": "<?php\nfunction input($key, $filter = '') {\n    $v = isset($_REQUEST[$key]) ? (string)$_REQUEST[$key] : '';\n    if ($filter === 'alphanohtml') { $v = trim($v); }\n    return $v;\n}\n$phrase = input('transphrase', 'alphanohtml');\nif ($phrase) print $phrase;\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-9mmx-cmc3-wvg7",
@@ -29,7 +30,8 @@
       "between": "paging() (resources/paging.php:27) treats $param as an opaque string, so tainted data never sits next to the sink in the file that prints it; the fix rebuilds $param into $sanitized_parameters key by key (regex on the key, asc/desc only, urlencode on values) and escape()s $self. Second explanation: source ($_SERVER['PHP_SELF']/QUERY_STRING).",
       "fix": "rebuilds $param into $sanitized_parameters with an allowed key regex and urlencode, and escape()s $_SERVER['PHP_SELF'] before printing",
       "probe": "<?php\nfunction paging($rows, $param) {\n    $self = $_SERVER['PHP_SELF'];\n    $page = 2;\n    echo \"<input type='button' onClick=\\\"window.location = '\".$self.\"?page=$page\".$param.\"';\">\\n\";\n}\n$param = '&search=' . $_REQUEST['search'];\npaging(100, $param);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-76hx-mpx5-4j3h",
@@ -43,7 +45,8 @@
       "between": "$fifo_name only feeds a permission check (:46) and a name split (:53-55); the visible echo at :98 reads $_REQUEST['c'] again. The fix filters the assignment at :42 with preg_replace('#[^a-zA-Z0-9\\_\\@\\-./]#', ''). Second explanation: front-end (the value lands in a JavaScript string that builds the polling URL).",
       "fix": "strips everything but [a-zA-Z0-9_@-./] from $_REQUEST['c'] at the assignment (the echo at :98 is left as it was)",
       "probe": "<?php\n$queue = trim($_REQUEST['c']);\n?>\n<script>\nvar url = 'poll.php?c=<?php echo trim($_REQUEST[\"c\"]); ?>';\nsetInterval(function () { document.getElementById('box').innerHTML = load(url); }, 1000);\n</script>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-mrc2-h7q2-pp97",
@@ -57,7 +60,8 @@
       "between": "the search phrase is parsed into words by SearchInterface::getWordsAsString() and handed to the view as $query, so the template prints a value that is never a request variable in its own scope; the fix adds |escape to query inside the trans() call, so |raw only applies to the translated wrapper. Second explanation: source ($request->get('q') through a searcher object).",
       "fix": "escapes the query before it is interpolated into the translated string ({query: query|escape})",
       "probe": "{# $query comes from the controller: $query = $request->get('q') #}\n<form action=\"/search\" method=\"get\">\n    <input type=\"text\" name=\"q\" value=\"{{ fullQuery }}\">\n    <input type=\"submit\" value=\"{{ 'search'|_ }}\">\n</form>\n<p>{{ trans('search.results_for', {query: query})|raw }}</p>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-vq59-x6mq-4wgw",
@@ -71,7 +75,8 @@
       "between": "only the keyword uses the ? placeholder, so the prepare() call makes the whole statement read as parameterised while $strField stays raw; the fix drops $strField and hardcodes `name REGEXP ?` (and stops saving the field in the session). Second explanation: check (a parameterised statement).",
       "fix": "removes the POSTed field name from the statement (hardcodes `name REGEXP ?`) and stops storing it in the session",
       "probe": "<?php\n$field = $_POST['field'];\n$keyword = $_POST['value'];\n$stmt = $db->prepare(\"SELECT * FROM \" . $table . \" WHERE \" . $field . \" REGEXP ?\");\n$stmt->limit(1)->execute($keyword);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-8ff5-r74w-ww6j",
@@ -85,7 +90,8 @@
       "between": "the URI runs through filter_var(FILTER_SANITIZE_STRING), RemoveQueryStringUrl and sanitize_page_uri() before it is concatenated into the SQL, and the second statement is a prepare() with one %d, so the block looks parameterised; the fix esc_sql()s $page_uri in both. Second explanation: sink (prepare() with a %d around concatenated strings).",
       "fix": "wraps $page_uri in esc_sql() in both statements",
       "probe": "<?php\n$uri = filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_STRING);\n$uri = preg_replace('/\\?.*/', '', $uri);\n$row = $wpdb->get_row(\"SELECT page_id FROM pages WHERE uri = '\" . $uri . \"'\", ARRAY_A);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-gfg4-38v6-p8x8",
@@ -100,7 +106,8 @@
       "between": "check_str() is the project's own string cleaner, so the value looks sanitised; it goes through str_replace() on status words and straight into the socket command. The fix adds an allowlist (originate, uuid_record, uuid_transfer, eavesdrop, uuid_kill, else empty) and blanks any command containing 'system'. Second explanation: check (check_str looks sanitising).",
       "fix": "allows only originate/uuid_record/uuid_transfer/eavesdrop/uuid_kill commands and blanks any command containing 'system'",
       "probe": "<?php\n$cmd = trim(check_str($_GET['cmd']));\n$fp = stream_socket_client('tcp://127.0.0.1:8021');\nfwrite($fp, \"api \" . $cmd . \"\\n\\n\");\necho fread($fp, 4096);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-348r-6928-rfcr",
@@ -114,7 +121,8 @@
       "between": "the request array is handed to make_task($ajax_req) in another file, which copies from_id/to_id/pid/doc_type/doc_id/enc into locals (:39-44); that file already uses ?-placeholders for its SELECTs (:46, :50, :54), so only the INSERT concatenates. The fix parameterises the INSERT and adds text()/attr() around the echoed values. Second explanation: check (the file's other queries are parameterised).",
       "fix": "parameterises the INSERT (?, ?, ... with an array) and escapes the filename/link output with text()/attr()",
       "probe": "<?php\n// taskman.php\n$req = $_REQUEST;\nmake_task($req);\n\n// taskman_functions.php\nfunction make_task($req) {\n    global $db;\n    $from = $req['from_id'];\n    $pid  = $req['pid'];\n    $sql = \"INSERT INTO tasks (FROM_ID, PATIENT_ID) VALUES ('$from', '$pid')\";\n    sqlQuery($sql);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-j5wx-jvw3-j363",
@@ -128,7 +136,8 @@
       "between": "the request is read in the controller file and $cg_id reaches the included form through the include scope, so the file with the sink never shows a request variable; the same file only checks it with $acl->getContactGroupAclConf() (:40-47). The fix prepares the statement and binds :cg_id as (int).",
       "fix": "prepares the statement and binds :cg_id as (int)",
       "probe": "<?php\n// contactGroup.php\n$cg_id = isset($_GET['cg_id']) ? $_GET['cg_id'] : (isset($_POST['cg_id']) ? $_POST['cg_id'] : null);\nrequire_once('formContactGroup.php');\n\n// formContactGroup.php\n$row = $db->query(\"SELECT * FROM contactgroup WHERE cg_id = '\" . $cg_id . \"' LIMIT 1\");\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-g9j7-8vx6-5gr7",
@@ -142,7 +151,8 @@
       "between": "the value is stored on the object in handle() and printed later in show(); the fix keeps it in a local $mode, accepts only 'inline'/'sidebyside' (in_array) and hsc()s it at the output. Second explanation: functions (handle() -> preference -> show()).",
       "fix": "validates difftype against inline/sidebyside and escapes it with hsc() at the output",
       "probe": "<?php\nclass DiffView {\n    protected $pref = array();\n    public function handle($INPUT) {\n        if ($INPUT->has('difftype')) { $this->pref['difftype'] = $INPUT->str('difftype'); }\n    }\n    public function show() {\n        echo '<table class=\"diff diff_'.$this->pref['difftype'].'\">';\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-5229-94p3-7wwq",
@@ -156,7 +166,8 @@
       "between": "the POSTed YAML is parsed by the Symfony Yaml component and the messages come back from validate_oxidized_cfg() (a LibreNMS helper), so the printed string is two calls away from the request; the fix htmlspecialchars()es each $error and intval()s page_num. Second explanation: source (a YAML body instead of a plain parameter).",
       "fix": "htmlspecialchars() on each validation error and intval() on page_num",
       "probe": "<?php\n$cfg = Yaml::parse($_POST['config']);\nforeach (validate_cfg($cfg) as $error) {\n    echo \"<div class='alert alert-danger'>$error</div>\";\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-r43c-fmg7-h9x5",
@@ -170,7 +181,8 @@
       "between": "the SQL fragment is assembled in _get_country_by_name()/_get_country_by_iso() and executed in _get_countries(), which receives $where and $limit as arguments, so the request never appears next to the query; the fix passes an array to the ORM (where(array('country' => $name)) and limit()). Second explanation: functions.",
       "fix": "replaces the string WHERE/LIMIT fragments with ORM where(array(...)) and limit()",
       "probe": "<?php\nclass CountriesApi {\n    public function handle() {\n        return $this->byName($this->request['name']);\n    }\n    private function byName($name) {\n        $where = \" WHERE country = '$name' \";\n        return $this->run($where);\n    }\n    private function run($where = '') {\n        return $this->db->query(\"SELECT id, country FROM country $where\");\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-q35v-wxvc-p575",
@@ -184,7 +196,8 @@
       "between": "the value goes straight from $serendipity['GET']['textarea'] into the URL argument of the image list, which echoes it into the toolbar; the fix htmlspecialchars()es it. Second explanation: functions (the printing is inside serendipity_displayImageList()).",
       "fix": "htmlspecialchars() around $serendipity['GET']['textarea'] before it is put in the URL",
       "probe": "<?php\n$textarea = $serendipity['GET']['textarea'];\n$url = '?step=1&textarea=' . $textarea;\necho '<div class=\"media-toolbar\"><a href=\"' . $url . '\">insert</a></div>';\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-gv6c-59h4-9pmg",
@@ -198,7 +211,8 @@
       "between": "the same class writes serialize($data) back into the cookie (:275, :336), so the read looks like the app loading its own state; the fix switches both directions to Convert::raw2json()/json2array(). Second explanation: check (a round trip of the app's own serialized data).",
       "fix": "writes and reads the cookie as JSON (Convert::raw2json/json2array) instead of serialize()/unserialize()",
       "probe": "<?php\nclass CommentForm {\n    public function load() {\n        $cookie = Cookie::get('FormData');\n        if ($cookie) {\n            $this->form->loadDataFrom(unserialize($cookie));\n        }\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-229x-cgvj-5q56",
@@ -212,7 +226,8 @@
       "between": "the debug line sits directly above the branch that saves the setting; the fix deletes the line. Second explanation: source (print_r() as the output call).",
       "fix": "removes the print_r($_POST) debug output",
       "probe": "<?php\nif (isset($_POST['webdav_url'])) {\n    save_setting('user_webdavauth_url', $_POST['webdav_url']);\n}\nprint_r($_POST);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     }
   ],
   "usage": {
