@@ -1,0 +1,249 @@
+{
+  "batch": "gap-notes-2026-11-24-2",
+  "status": "read 2026-11-24 (PLAN.md step 135): leads for rule work; quotes not yet checked one by one",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order; the file holds 89 missed cases, all cve-pairs-php (no Python, no JavaScript), so this batch is PHP only. For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA), and, where the diff did not show the source or the sink, the changed files at the fix commit's parent (gh api contents?ref=SHA^): notice.php, resources/paging.php, app/fifo_list/fifo_interactive.php, resources/views/v1/search/index.twig with app/Http/Controllers/SearchController.php, core-bundle/.../DC_Folder.php, includes/class-wp-statistics-pages.php, app/operator_panel/exec.php, interface/forms/eye_mag/taskman_functions.php with interface/forms/eye_mag/taskman.php, www/include/configuration/configObject/contactgroup/formContactGroup.php with contactGroup.php, inc/Ui/PageDiff.php, includes/html/pages/tools/oxidized-cfg-check.inc.php and includes/html/print-customoid.php, application/libraries/api/MY_Countries_Api_Object.php, serendipity_admin_image_selector.php, code/sitefeatures/PageCommentInterface.php, apps/user_webdavauth/settings.php. Nothing was skipped and nothing was left unsure: every case showed the request value and the call it reaches. Categories: check 1, functions 4, sink 4, source 5, template 1.",
+  "notes": [
+    {
+      "id": "GHSA-m396-2x3h-v3v4",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "htdocs/public/notice.php:47-48 (fix parent): `if (GETPOST('transphrase', 'alphanohtml')) print GETPOST('transphrase', 'alphanohtml');` and the same for transkey inside `$langs->trans()` - the request is read through Dolibarr's GETPOST() helper ($_REQUEST plus a filter argument), not $_GET/$_POST",
+      "sink": "htdocs/public/notice.php:47-48: `print` of the same value straight into the page body, no escaping; :48 prints the translated transkey, so the output is a wrapper around the request string",
+      "between": "the 'alphanohtml' filter argument makes GETPOST() read as an HTML sanitizer (the print looks safe), but the value is printed unchanged; the fix wraps both prints in dol_escape_htmltag(). Second explanation: check (the filter name suggests HTML is stripped).",
+      "fix": "escapes the transphrase/transkey output with dol_escape_htmltag() and replaces the two load() calls with loadLangs()",
+      "probe": "<?php\nfunction input($key, $filter = '') {\n    $v = isset($_REQUEST[$key]) ? (string)$_REQUEST[$key] : '';\n    if ($filter === 'alphanohtml') { $v = trim($v); }\n    return $v;\n}\n$phrase = input('transphrase', 'alphanohtml');\nif ($phrase) print $phrase;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-9mmx-cmc3-wvg7",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "functions",
+      "source": "resources/paging.php:27 (fix parent) only receives `$param` as an argument; its callers on several interface pages build it from the URL arguments of the request (advisory), so the read itself is in files the fix does not touch",
+      "sink": "resources/paging.php:68-69,77-78,81 and :126: `$prev = \"<input class='btn' ... onClick=\\\"window.location = '\".$self.\"?page=$page\".$param.\"';\">\\n\";` - $param is concatenated into an HTML attribute and into inline JavaScript ($self = $_SERVER['PHP_SELF'] at :55)",
+      "between": "paging() (resources/paging.php:27) treats $param as an opaque string, so tainted data never sits next to the sink in the file that prints it; the fix rebuilds $param into $sanitized_parameters key by key (regex on the key, asc/desc only, urlencode on values) and escape()s $self. Second explanation: source ($_SERVER['PHP_SELF']/QUERY_STRING).",
+      "fix": "rebuilds $param into $sanitized_parameters with an allowed key regex and urlencode, and escape()s $_SERVER['PHP_SELF'] before printing",
+      "probe": "<?php\nfunction paging($rows, $param) {\n    $self = $_SERVER['PHP_SELF'];\n    $page = 2;\n    echo \"<input type='button' onClick=\\\"window.location = '\".$self.\"?page=$page\".$param.\"';\">\\n\";\n}\n$param = '&search=' . $_REQUEST['search'];\npaging(100, $param);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-76hx-mpx5-4j3h",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "app/fifo_list/fifo_interactive.php:42 (fix parent): `$fifo_name = trim($_REQUEST[\"c\"]);` - a URL parameter, read a second time inside the script block at :98",
+      "sink": "app/fifo_list/fifo_interactive.php:98: `var url = 'fifo_interactive_inc.php?c=<?php echo trim($_REQUEST[\"c\"]); ?>';` - the request value is echoed inside a quoted string in an inline <script> block, and the response is written into innerHTML at :94",
+      "between": "$fifo_name only feeds a permission check (:46) and a name split (:53-55); the visible echo at :98 reads $_REQUEST['c'] again. The fix filters the assignment at :42 with preg_replace('#[^a-zA-Z0-9\\_\\@\\-./]#', ''). Second explanation: front-end (the value lands in a JavaScript string that builds the polling URL).",
+      "fix": "strips everything but [a-zA-Z0-9_@-./] from $_REQUEST['c'] at the assignment (the echo at :98 is left as it was)",
+      "probe": "<?php\n$queue = trim($_REQUEST['c']);\n?>\n<script>\nvar url = 'poll.php?c=<?php echo trim($_REQUEST[\"c\"]); ?>';\nsetInterval(function () { document.getElementById('box').innerHTML = load(url); }, 1000);\n</script>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-mrc2-h7q2-pp97",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "app/Http/Controllers/SearchController.php:65-73 (fix parent): `$fullQuery = (string)$request->get('q'); $searcher->parseQuery($fullQuery); $query = $searcher->getWordsAsString(); ... return view('search.index', compact('query', ...));`",
+      "sink": "resources/views/v1/search/index.twig:34: `{{ trans('firefly.search_for_query', {query: query})|raw}}` - the query is interpolated into a translated string and the whole string is marked |raw",
+      "between": "the search phrase is parsed into words by SearchInterface::getWordsAsString() and handed to the view as $query, so the template prints a value that is never a request variable in its own scope; the fix adds |escape to query inside the trans() call, so |raw only applies to the translated wrapper. Second explanation: source ($request->get('q') through a searcher object).",
+      "fix": "escapes the query before it is interpolated into the translated string ({query: query|escape})",
+      "probe": "{# $query comes from the controller: $query = $request->get('q') #}\n<form action=\"/search\" method=\"get\">\n    <input type=\"text\" name=\"q\" value=\"{{ fullQuery }}\">\n    <input type=\"submit\" value=\"{{ 'search'|_ }}\">\n</form>\n<p>{{ trans('search.results_for', {query: query})|raw }}</p>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-vq59-x6mq-4wgw",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "core-bundle/src/Resources/contao/drivers/DC_Folder.php:2772 (fix parent): `$strField = \\Input::post('tl_field', true);` - the field selector of the file-manager search form",
+      "sink": "DC_Folder.php:2780-2782: `$this->Database->prepare(\"SELECT * FROM \" . $this->strTable . \" WHERE \" . $strField . \" REGEXP ?\")->limit(1)->execute($strKeyword);` - the column name is concatenated into the statement",
+      "between": "only the keyword uses the ? placeholder, so the prepare() call makes the whole statement read as parameterised while $strField stays raw; the fix drops $strField and hardcodes `name REGEXP ?` (and stops saving the field in the session). Second explanation: check (a parameterised statement).",
+      "fix": "removes the POSTed field name from the statement (hardcodes `name REGEXP ?`) and stops storing it in the session",
+      "probe": "<?php\n$field = $_POST['field'];\n$keyword = $_POST['value'];\n$stmt = $db->prepare(\"SELECT * FROM \" . $table . \" WHERE \" . $field . \" REGEXP ?\");\n$stmt->limit(1)->execute($keyword);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
+    },
+    {
+      "id": "GHSA-8ff5-r74w-ww6j",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "check",
+      "source": "includes/class-wp-statistics-pages.php:130 (fix parent): `$page_uri = $_SERVER[\"REQUEST_URI\"];` then :157 filter_var($page_uri, FILTER_SANITIZE_STRING) and the class's own get_page_uri()/sanitize_page_uri() (:170-199)",
+      "sink": "includes/class-wp-statistics-pages.php:218: `$wpdb->get_row(\"SELECT `page_id` FROM `\".DB::table('pages').\"` WHERE `date` = '...' \" . (array_key_exists(\"search_query\", $current_page) ? \"AND `uri` = '\" . $page_uri . \"'\" : \"\") . \"AND `type` = '{$current_page['type']}' AND `id` = {$current_page['id']}\", ARRAY_A);` and :221 the same string inside `$wpdb->prepare(..., $current_page['id'])`",
+      "between": "the URI runs through filter_var(FILTER_SANITIZE_STRING), RemoveQueryStringUrl and sanitize_page_uri() before it is concatenated into the SQL, and the second statement is a prepare() with one %d, so the block looks parameterised; the fix esc_sql()s $page_uri in both. Second explanation: sink (prepare() with a %d around concatenated strings).",
+      "fix": "wraps $page_uri in esc_sql() in both statements",
+      "probe": "<?php\n$uri = filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_STRING);\n$uri = preg_replace('/\\?.*/', '', $uri);\n$row = $wpdb->get_row(\"SELECT page_id FROM pages WHERE uri = '\" . $uri . \"'\", ARRAY_A);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
+    },
+    {
+      "id": "GHSA-gfg4-38v6-p8x8",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        78,
+        79
+      ],
+      "category": "sink",
+      "source": "app/operator_panel/exec.php:50-54 (fix parent): `$switch_cmd = trim(check_str($_GET[\"cmd\"])); $action = trim(check_str($_GET[\"action\"])); $data = trim(check_str($_GET[\"data\"])); $direction = trim(check_str($_GET[\"direction\"]));`",
+      "sink": "app/operator_panel/exec.php:134 and :162: `$switch_result = event_socket_request($fp, 'api '.$switch_cmd);` (also :140/149/158 with ' '.$tmp_value) - the request string becomes a FreeSWITCH API command on the event socket",
+      "between": "check_str() is the project's own string cleaner, so the value looks sanitised; it goes through str_replace() on status words and straight into the socket command. The fix adds an allowlist (originate, uuid_record, uuid_transfer, eavesdrop, uuid_kill, else empty) and blanks any command containing 'system'. Second explanation: check (check_str looks sanitising).",
+      "fix": "allows only originate/uuid_record/uuid_transfer/eavesdrop/uuid_kill commands and blanks any command containing 'system'",
+      "probe": "<?php\n$cmd = trim(check_str($_GET['cmd']));\n$fp = stream_socket_client('tcp://127.0.0.1:8021');\nfwrite($fp, \"api \" . $cmd . \"\\n\\n\");\necho fread($fp, 4096);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-348r-6928-rfcr",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "interface/forms/eye_mag/taskman.php:100-103 (fix parent): `$ajax_req = $_REQUEST; if ($_REQUEST['action']=='make_task') { make_task($ajax_req); }`",
+      "sink": "interface/forms/eye_mag/php/taskman_functions.php:94-98: `$sql = \"INSERT into form_taskman (REQ_DATE, FROM_ID, TO_ID, PATIENT_ID, DOC_TYPE, DOC_ID, ENC_ID) VALUES (NOW(), '$from_id', '$to_id','$patient_id','$doc_type','$doc_id','$enc')\"; sqlQuery($sql);`",
+      "between": "the request array is handed to make_task($ajax_req) in another file, which copies from_id/to_id/pid/doc_type/doc_id/enc into locals (:39-44); that file already uses ?-placeholders for its SELECTs (:46, :50, :54), so only the INSERT concatenates. The fix parameterises the INSERT and adds text()/attr() around the echoed values. Second explanation: check (the file's other queries are parameterised).",
+      "fix": "parameterises the INSERT (?, ?, ... with an array) and escapes the filename/link output with text()/attr()",
+      "probe": "<?php\n// taskman.php\n$req = $_REQUEST;\nmake_task($req);\n\n// taskman_functions.php\nfunction make_task($req) {\n    global $db;\n    $from = $req['from_id'];\n    $pid  = $req['pid'];\n    $sql = \"INSERT INTO tasks (FROM_ID, PATIENT_ID) VALUES ('$from', '$pid')\";\n    sqlQuery($sql);\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-j5wx-jvw3-j363",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "www/include/configuration/configObject/contactgroup/contactGroup.php:41-43 (fix parent): `isset($_GET[\"cg_id\"]) ? $cG = $_GET[\"cg_id\"] : $cG = null;` ... `$cG ? $cg_id = $cG : $cg_id = $cP;` then `require_once($path . \"formContactGroup.php\")` at :97/:103/:109",
+      "sink": "www/include/configuration/configObject/contactgroup/formContactGroup.php:67: `$DBRESULT = $pearDB->query(\"SELECT * FROM `contactgroup` WHERE `cg_id` = '\" . $cg_id . \"' LIMIT 1\");`",
+      "between": "the request is read in the controller file and $cg_id reaches the included form through the include scope, so the file with the sink never shows a request variable; the same file only checks it with $acl->getContactGroupAclConf() (:40-47). The fix prepares the statement and binds :cg_id as (int).",
+      "fix": "prepares the statement and binds :cg_id as (int)",
+      "probe": "<?php\n// contactGroup.php\n$cg_id = isset($_GET['cg_id']) ? $_GET['cg_id'] : (isset($_POST['cg_id']) ? $_POST['cg_id'] : null);\nrequire_once('formContactGroup.php');\n\n// formContactGroup.php\n$row = $db->query(\"SELECT * FROM contactgroup WHERE cg_id = '\" . $cg_id . \"' LIMIT 1\");\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
+    },
+    {
+      "id": "GHSA-g9j7-8vx6-5gr7",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "inc/Ui/PageDiff.php:108-113 (fix parent): `if ($INPUT->has('difftype')) { $this->preference['difftype'] = $INPUT->str('difftype'); } else { $mode = get_doku_pref('difftype', null); if (isset($mode)) ... }` - the request is read through DokuWiki's $INPUT helper, not $_GET",
+      "sink": "inc/Ui/PageDiff.php:225: `echo '<table class=\"diff diff_'.$this->preference['difftype'] .'\">';` (the same value then picks the switch() branch at :228)",
+      "between": "the value is stored on the object in handle() and printed later in show(); the fix keeps it in a local $mode, accepts only 'inline'/'sidebyside' (in_array) and hsc()s it at the output. Second explanation: functions (handle() -> preference -> show()).",
+      "fix": "validates difftype against inline/sidebyside and escapes it with hsc() at the output",
+      "probe": "<?php\nclass DiffView {\n    protected $pref = array();\n    public function handle($INPUT) {\n        if ($INPUT->has('difftype')) { $this->pref['difftype'] = $INPUT->str('difftype'); }\n    }\n    public function show() {\n        echo '<table class=\"diff diff_'.$this->pref['difftype'].'\">';\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-5229-94p3-7wwq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "functions",
+      "source": "includes/html/pages/tools/oxidized-cfg-check.inc.php:8-9 (fix parent): `$oxidized_cfg = Yaml::parse($_POST['config']); $validate_cfg = validate_oxidized_cfg($oxidized_cfg);` - a YAML document posted in a form field; the second hunk's source is includes/html/print-customoid.php:77 `$page_num = $_POST['page_num'];`",
+      "sink": "oxidized-cfg-check.inc.php:11: `echo \"<div class='alert alert-danger'>$error</div>\";` - the validation message is printed into HTML; print-customoid.php:78-80 concatenates $page_num into the $where passed to dbFetchCell()",
+      "between": "the POSTed YAML is parsed by the Symfony Yaml component and the messages come back from validate_oxidized_cfg() (a LibreNMS helper), so the printed string is two calls away from the request; the fix htmlspecialchars()es each $error and intval()s page_num. Second explanation: source (a YAML body instead of a plain parameter).",
+      "fix": "htmlspecialchars() on each validation error and intval() on page_num",
+      "probe": "<?php\n$cfg = Yaml::parse($_POST['config']);\nforeach (validate_cfg($cfg) as $error) {\n    echo \"<div class='alert alert-danger'>$error</div>\";\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-r43c-fmg7-h9x5",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "source",
+      "source": "application/libraries/api/MY_Countries_Api_Object.php:63-64 (fix parent): `$this->response_data = $this->_get_country_by_name($this->request['name']);` (also :81 for iso, :46-47 for id) - `$this->request` is the API request array filled by Ushahidi's dispatcher, not $_GET",
+      "sink": "MY_Countries_Api_Object.php:181-185: `$where = \"\\n WHERE country = '$name' \"; $where .= \"ORDER by id DESC\"; $limit = \"\\nLIMIT 0, $this->list_limit\";` and :103-106 `$this->query = \"SELECT id, iso, country as `name`, capital FROM `\".$this->table_prefix.\"country` $where $limit\"; $items = $this->db->query($this->query);`",
+      "between": "the SQL fragment is assembled in _get_country_by_name()/_get_country_by_iso() and executed in _get_countries(), which receives $where and $limit as arguments, so the request never appears next to the query; the fix passes an array to the ORM (where(array('country' => $name)) and limit()). Second explanation: functions.",
+      "fix": "replaces the string WHERE/LIMIT fragments with ORM where(array(...)) and limit()",
+      "probe": "<?php\nclass CountriesApi {\n    public function handle() {\n        return $this->byName($this->request['name']);\n    }\n    private function byName($name) {\n        $where = \" WHERE country = '$name' \";\n        return $this->run($where);\n    }\n    private function run($where = '') {\n        return $this->db->query(\"SELECT id, country FROM country $where\");\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-q35v-wxvc-p575",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "serendipity_admin_image_selector.php:296 (fix parent): the media list is called with `'?serendipity[step]=1' . $add_url . '&amp;serendipity[textarea]='. $serendipity['GET']['textarea']` - Serendipity puts the request in $serendipity['GET'], not $_GET",
+      "sink": "same line: serendipity_displayImageList() (:292-300) builds the media toolbar links from that URL and prints them into the selector page",
+      "between": "the value goes straight from $serendipity['GET']['textarea'] into the URL argument of the image list, which echoes it into the toolbar; the fix htmlspecialchars()es it. Second explanation: functions (the printing is inside serendipity_displayImageList()).",
+      "fix": "htmlspecialchars() around $serendipity['GET']['textarea'] before it is put in the URL",
+      "probe": "<?php\n$textarea = $serendipity['GET']['textarea'];\n$url = '?step=1&textarea=' . $textarea;\necho '<div class=\"media-toolbar\"><a href=\"' . $url . '\">insert</a></div>';\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-gv6c-59h4-9pmg",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        502
+      ],
+      "category": "source",
+      "source": "code/sitefeatures/PageCommentInterface.php:219 (fix parent): `$cookie = Cookie::get('PageCommentInterface_Data');` - the comment form's state comes from the request cookie through SilverStripe's Cookie class",
+      "sink": "code/sitefeatures/PageCommentInterface.php:225: `$form->loadDataFrom(unserialize($cookie), false, $visibleFields);` - the cookie string is unserialized",
+      "between": "the same class writes serialize($data) back into the cookie (:275, :336), so the read looks like the app loading its own state; the fix switches both directions to Convert::raw2json()/json2array(). Second explanation: check (a round trip of the app's own serialized data).",
+      "fix": "writes and reads the cookie as JSON (Convert::raw2json/json2array) instead of serialize()/unserialize()",
+      "probe": "<?php\nclass CommentForm {\n    public function load() {\n        $cookie = Cookie::get('FormData');\n        if ($cookie) {\n            $this->form->loadDataFrom(unserialize($cookie));\n        }\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-229x-cgvj-5q56",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "apps/user_webdavauth/settings.php:25 (fix parent): `if($_POST) { if(isset($_POST['webdav_url'])) ... }` - the admin settings form's POST data",
+      "sink": "apps/user_webdavauth/settings.php:24: `print_r($_POST);` - the whole POST array is printed into the settings page, with no echo/print statement for a rule to match",
+      "between": "the debug line sits directly above the branch that saves the setting; the fix deletes the line. Second explanation: source (print_r() as the output call).",
+      "fix": "removes the print_r($_POST) debug output",
+      "probe": "<?php\nif (isset($_POST['webdav_url'])) {\n    save_setting('user_webdavauth_url', $_POST['webdav_url']);\n}\nprint_r($_POST);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    }
+  ],
+  "usage": {
+    "session": "ses_df2e5004fffe72CEYhyYqqPewo",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 44,
+    "tool_calls": 45,
+    "tool_errors": 0,
+    "chars_read": 137365,
+    "tokens": {
+      "input": 66571,
+      "cache_read": 2924288,
+      "output": 34515,
+      "reasoning": 0
+    },
+    "usd": 0.039
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "batch": "gap-notes-2026-11-24-6",
+  "status": "read 2026-11-24 (PLAN.md step 135): leads for rule work; quotes not yet checked one by one",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order. The file held 29 missed cases, all cve-pairs-php (no Python, no JavaScript), and none of these 15 had been noted by an earlier run. For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source or the sink, the files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw): pimcore's CustomReportController, adminer's sql.inc.php and include/functions.inc.php, revive's al.php, subrion's ia.core.users.php, Dolibarr's notice.php, phpipam's item-add-submit.php and functions/classes/class.Common.php, LimeSurvey's statistics_helper.php, participantsaction.php and models/Participant.php, intelmq-manager's controller.php, LimeSurveyFileManager.php and globalSettings_view.php, ILIAS's ilPRGAssignmentFilter.php, ilStudyProgrammeMembersTableGUI.php, RegistrationCodeRepository.php and RegistrationCodesTable.php, roundcube's rcmail_action.php and rcube_imap_generic.php, and freescout's LogViewerController.php and LaravelLogViewer.php. Nothing was skipped. 14 cases are left in the file.",
+  "notes": [
+    {
+      "id": "GHSA-h7f9-cvh5-qw7f",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "bundles/AdminBundle/Controller/Reports/CustomReportController.php:453 $exportFile = $request->get('exportFile'); (Symfony Request GET parameter)",
+      "sink": "bundles/AdminBundle/Controller/Reports/CustomReportController.php:454 new BinaryFileResponse($exportFile); then :457 deleteFileAfterSend(true) (Symfony streams the file at that path and deletes it)",
+      "between": "downloadCsvAction() takes the query parameter straight into the response object; createCsvAction() (:415-420) appends to whatever path the same parameter names, so the same value also steers a write. No fopen/readfile in the diff: the read and the unlink happen inside Symfony's BinaryFileResponse, which a scanner may not treat as a file sink. The fix prefixes PIMCORE_SYSTEM_TEMP_DIRECTORY and wraps the value in basename() (:454) and returns basename($exportFile) at :436.",
+      "fix": "prefixes the temp directory and takes basename() of exportFile before BinaryFileResponse",
+      "probe": "<?php\n// Symfony controller action, route /custom-report/download-csv\n$exportFile = $request->get('exportFile');\nif ($exportFile) {\n    $response = new BinaryFileResponse($exportFile);\n    $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');\n    $response->setContentDisposition('attachment', 'export.csv');\n    $response->deleteFileAfterSend(true);\n    return $response;\n}\nthrow new FileNotFoundException('not found');\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-9pgx-gcph-mpqr",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "adminer/sql.inc.php:225 remove_from_uri(\"sql|limit|error_stops|only_errors\") -> adminer/include/functions.inc.php:736 remove_from_uri() -> :728 relative_uri() -> $_SERVER[\"REQUEST_URI\"] (the raw request URI, not a $_GET access)",
+      "sink": "adminer/sql.inc.php:225 the helper's result is concatenated into a single-quoted JavaScript argument and printed by script() (include/functions.inc.php:123-125 returns \"<script>$source</script>\")",
+      "between": "remove_from_uri() removes only the named query parameters from the URI and returns the rest unchanged; the value is embedded in \"qs('#form').onsubmit = partial(sqlSubmit, qs('#form'), '<uri>');\" and echoed, so a quote or newline in the URI breaks out of the JavaScript string. The fix wraps the helper in js_escape() (functions.inc.php:296, addcslashes) and also strips the history parameter.",
+      "fix": "escapes remove_from_uri() output with js_escape() before it goes into the script block",
+      "probe": "<?php\nfunction relative_uri() {\n    return preg_replace('~^[^?]*/([^?]*)~', '\\1', $_SERVER['REQUEST_URI']);\n}\nfunction remove_from_uri($param = '') {\n    return substr(preg_replace(\"~(?<=[?&])($param)=[^&]*&\", '', relative_uri() . '&'), 0, -1);\n}\nfunction script($source) {\n    return \"<script>$source</script>\";\n}\necho script(\"qs('#form').onsubmit = partial(sqlSubmit, qs('#form'), '\" . remove_from_uri('sql|limit') . \"');\");\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-4j8w-22m8-f38g",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "www/delivery_dev/al.php:25 MAX_commonRegisterGlobalsArray(array('layerstyle')); the local $layerstyle at :26 (a project helper that copies a request parameter into a same-named variable; the file never reads $_GET itself)",
+      "sink": "www/delivery_dev/al.php:32 include MAX_PATH . $conf['pluginPaths']['plugins'] . 'invocationTags/oxInvocationTags/layerstyles/' . $layerstyle . '/layerstyle.inc.php'; (include of a .inc.php chosen by the parameter)",
+      "between": "the parameter is used unchanged as a directory name; :31 guards the include with file_exists() on the same built path, which says nothing about traversal, then :32 includes it, so ../ can walk to any other layerstyle.inc.php on the server. The fix drops the file_exists() guard and rejects anything not matching /^[a-z0-9-]{1,64}$/.",
+      "fix": "replaces the file_exists() guard with an allowlist regex before including the layerstyle",
+      "probe": "<?php\nrequire_once 'init-delivery.php';\nMAX_commonRegisterGlobalsArray(array('layerstyle'));\nif (!isset($layerstyle) || empty($layerstyle)) {\n    $layerstyle = 'geocities';\n}\n$plugin = MAX_PATH . 'plugins/invocationTags/layerstyles/' . $layerstyle . '/layerstyle.inc.php';\nif (file_exists($plugin)) {\n    include $plugin;\n} else {\n    echo '// Cannot load layerstyle';\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-4j79-4m6q-77vf",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "source",
+      "source": "includes/classes/ia.core.users.php:707-709 $s = unserialize($_COOKIE['salt']); (the salt cookie, read inside a protected method of the users class)",
+      "sink": "includes/classes/ia.core.users.php:709 unserialize() on the cookie value (PHP object injection, later code execution through magic methods)",
+      "between": "_getSalt() reads $_COOKIE directly and only inspects $s['salt'] and $s['items'] after the call; no request handler shows the cookie on its way there. The fix replaces the call with json_decode($_COOKIE['salt'], true).",
+      "fix": "replaces unserialize($_COOKIE['salt']) with json_decode()",
+      "probe": "<?php\nclass Users\n{\n    protected function getSalt()\n    {\n        $salt = array();\n        if (isset($_COOKIE['salt']) && $_COOKIE['salt']) {\n            $s = unserialize($_COOKIE['salt']);\n            if (isset($s['salt']) && $s['salt']) {\n                $salt = $s;\n            }\n        }\n        return $salt;\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND unsafe-deserialization"
+    },
+    {
+      "id": "GHSA-2gc5-3h3p-8vpf",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "htdocs/public/notice.php:47 GETPOST('transphrase') (Dolibarr's request wrapper over $_GET/$_POST, called without a filter mode)",
+      "sink": "htdocs/public/notice.php:47 print GETPOST('transphrase'); (raw output into the page; :48 prints the transkey translation the same way)",
+      "between": "GETPOST() returns the request value unchanged unless a mode is passed as the second argument, and the page prints it; there is no escaping on the way. The fix passes 'alphanohtml' to every GETPOST() call (:37 and :47-48), so the wrapper strips markup.",
+      "fix": "adds the 'alphanohtml' filter mode to the GETPOST() calls on the page",
+      "probe": "<?php\ndefine('NOLOGIN', 1);\nfunction GETPOST($name, $check = 'none')\n{\n    $value = $_REQUEST[$name] ?? '';\n    if ($check === 'alphanohtml') {\n        $value = strip_tags($value);\n    }\n    return $value;\n}\nif (GETPOST('transphrase')) {\n    print GETPOST('transphrase');\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-v5x8-2g8c-7279",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "app/admin/nat/item-add-submit.php:89-90 $obj_type = $_POST['object_type']; $obj_id = $_POST['object_id'];",
+      "sink": "functions/classes/class.Common.php:224 \"SELECT * from `$table` where `$method` = ? limit 1;\" (the table name is pasted between backticks into the SQL string; only $value is bound)",
+      "between": "item-add-submit.php:95 calls $Tools->fetch_object($obj_type, 'id', $obj_id); class.Common.php:204 fetch_object() checks only for null/empty then reaches getObjectQuery() at :224, so the POST value becomes a table name in the query. The fix validates $obj_type against ['subnets','ipaddresses'] and is_numeric($obj_id) at the call site, in a file the SQL builder never touches.",
+      "fix": "allowlists the object type and requires a numeric object id before fetch_object()",
+      "probe": "<?php\nclass Tools\n{\n    public function fetch_object($table, $method, $value)\n    {\n        if (is_null($table) || strlen($table) == 0) {\n            return false;\n        }\n        return $this->Database->getObjectQuery(\"SELECT * from `$table` where `$method` = ? limit 1;\", array($value));\n    }\n}\n$obj_type = $_POST['object_type'];\n$obj_id   = $_POST['object_id'];\n$item = $Tools->fetch_object($obj_type, 'id', $obj_id);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-cw3p-hfmp-4qqq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "source",
+      "source": "application/helpers/admin/statistics_helper.php:325-326 for (reset($_POST); $key = key($_POST); next($_POST)) { $postvars[] = $key; } - the POST *keys* become SQL column names",
+      "sink": "application/helpers/admin/statistics_helper.php:373 $thisquestion = Yii::app()->db->quoteColumnName($pv) . \" IN (\"; and the other quoteColumnName() calls at :415, :420, :428, :433, :440, :443, :458, :461, :472, :478 inside buildSelects()",
+      "between": "each POST key is turned into an SQL identifier; quoteColumnName() adds identifier quotes but does not escape quoting characters, so a key carrying a backtick and SQL breaks out of the IN()/comparison. The fix builds $validColumns from the response table schema and replaces every quoteColumnName() with a $quoteColumn closure that throws for unknown columns, wrapped in try/catch. userstatistics_helper.php gets the same change.",
+      "fix": "allowlists POST keys against the response-table columns before quoting them",
+      "probe": "<?php\nfunction buildSelects($postvars)\n{\n    $selects = array();\n    foreach ($postvars as $pv) {\n        if (is_array($_POST[$pv])) {\n            $selects[] = Yii::app()->db->quoteColumnName($pv) . \" IN (\"\n                . implode(',', array_map('intval', $_POST[$pv])) . \")\";\n        }\n    }\n    return implode(' AND ', $selects);\n}\n$postvars = array_keys($_POST);\n$where = buildSelects($postvars);\n$rows = Yii::app()->db->createCommand('SELECT * FROM responses WHERE ' . $where)->queryAll();\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
+    },
+    {
+      "id": "CVE-2020-11016",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        78
+      ],
+      "category": "check",
+      "source": "intelmq-manager/php/controller.php:107 filter_input(INPUT_POST, \"msg\") (POST field of the Inspect tool's send action)",
+      "sink": "intelmq-manager/php/controller.php:153 proc_open($cmd, ...) with $cmd built at :145-152 from $arguments (shell command)",
+      "between": ":107 builds \"message send '\" . escapeshellarg(filter_input(INPUT_POST, \"msg\")) . \"'\" - escapeshellarg already adds single quotes, and the literal quotes around it neutralise them: for msg=x;id the shell sees ''x;id'' and runs id. $arguments is sprintf'ed into $command at :145 and passed to proc_open() at :153. escapeshellarg() in the vulnerable line looks like a working sanitiser; the fix only removes the surrounding quotes.",
+      "fix": "drops the literal single quotes around escapeshellarg() in the send command",
+      "probe": "<?php\n$scope = filter_input(INPUT_GET, 'scope');\n$arguments = '';\nif ($scope == 'run') {\n    $arguments = 'run ' . escapeshellarg(filter_input(INPUT_GET, 'bot')) . ' ';\n    if (filter_input(INPUT_GET, 'cmd') == 'send') {\n        $arguments .= \"message send '\" . escapeshellarg(filter_input(INPUT_POST, 'msg')) . \"'\";\n    }\n}\n$command = sprintf('/usr/bin/sudo -u intelmq intelmqctl %s', $arguments);\n$proc = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "CVE-2020-11455",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "application/controllers/admin/LimeSurveyFileManager.php:398 public function getZipFile($path) - Yii binds the action's $path argument from the request (?path=...)",
+      "sink": "application/controllers/admin/LimeSurveyFileManager.php:414 @readfile($path); and :417 unlink($path);",
+      "between": "the path is only passed through basename() for the download name; :406 guards the read with if (is_file($path) || true), which is always true, so any path is read and then deleted. No request read appears in the method: the value arrives as an action parameter. The fix stops passing the path in the URL, stores it in $_SESSION['__path'] and checks a real is_file().",
+      "fix": "keeps the zip path in the session and requires is_file() instead of 'is_file($path) || true'",
+      "probe": "<?php\nclass LimeSurveyFileManager extends CAction\n{\n    public function getZipFile($path)\n    {\n        $filename = basename($path);\n        if (is_file($path) || true) {\n            header('Content-Type: application/zip');\n            header('Content-Disposition: attachment; filename=\"' . $filename . '\"');\n            @readfile($path);\n            unlink($path);\n        }\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "CVE-2014-5017",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "application/controllers/admin/participantsaction.php:776-780 $sidx = Yii::app()->request->getPost('sidx'); $sord = Yii::app()->request->getPost('sord'); $order = $sidx . ' ' . $sord;",
+      "sink": "application/models/Participant.php:352 $data->setOrder($order); inside getParticipantsSelectCommand(), whose query is run at :253 $data->queryAll()",
+      "between": "getParticipants_json() hands $order to Participant::model()->getParticipants() (:797), which forwards it to getParticipantsSelectCommand() (:251), which appends it with setOrder() unquoted; only the WHERE values are bound. The fix allowlists $sidx against $participantfields and forces $sord to 'desc' or 'asc' in the controller.",
+      "fix": "allowlists the sort column against the participant fields and forces the sort direction",
+      "probe": "<?php\nfunction getParticipants_json()\n{\n    $sidx = Yii::app()->request->getPost('sidx');\n    $sidx = !empty($sidx) ? $sidx : 'lastname';\n    $sord = Yii::app()->request->getPost('sord');\n    $sord = !empty($sord) ? $sord : 'asc';\n    $order = $sidx . ' ' . $sord;\n\n    $data = Yii::app()->db->createCommand()->select('p.*')->from('{{participants}} p');\n    $data->setOrder($order);\n    return $data->queryAll();\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "CVE-2014-5016",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "application/views/admin/globalSettings_view.php:364 $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] (host and raw request URI, not a $_GET access)",
+      "sink": "application/views/admin/globalSettings_view.php:364 the pair is concatenated into '<a href=\"https://...\" title=\"...\">' and sprintf'ed into the warning text printed on the admin settings page (HTML attribute)",
+      "between": "the request URI is put inside a double-quoted href attribute with no escaping, so a URI carrying a quote and markup breaks out of the attribute and the tag on the settings page; the fix replaces $_SERVER['REQUEST_URI'] with $this->createUrl('admin/globalsettings/sa'). The same advisory also applies strip_tags() to getQuery('pid') in participantsaction.php:838.",
+      "fix": "builds the link with createUrl() instead of the raw request URI",
+      "probe": "<?php\n// admin settings view\n$thisforce_ssl = getGlobalSetting('force_ssl');\n$warning_force_ssl = sprintf(\n    $clang->gT('Warning: before turning on HTTPS, %s check if this link works.%s'),\n    '<a href=\"https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . '\" title=\"test\">',\n    '</a>'\n);\necho $warning_force_ssl;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-c8p4-fj9c-w845",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "components/ILIAS/StudyProgramme/classes/class.ilStudyProgrammeMembersTableGUI.php:405-412 getFilterValues() / getFilterValue($item) (the members table's name filter, taken from the table GUI filter form)",
+      "sink": "components/ILIAS/StudyProgramme/classes/model/Assignments/ilPRGAssignmentFilter.php:54-56 'memberdata.firstname LIKE \\'%' . $value . '%\\' OR ...' (the name filter concatenated into SQL in toConditions())",
+      "between": "the table GUI collects the filter values and passes them with custom_filter->withValues($filter_values) (:113); ilPRGAssignmentFilter::toConditions() loops over getCleanedValues() (:42) and pastes the name value into three LIKE clauses, which the assignment repository then puts in its WHERE. The fix switches the LIKE clauses to $DIC->database()->like() and casts the status value.",
+      "fix": "uses ilDBInterface::like() for the name filter and casts the status value",
+      "probe": "<?php\nclass AssignmentFilter\n{\n    protected array $values = [];\n\n    public function withValues(array $values): self\n    {\n        $this->values = $values;\n        return $this;\n    }\n\n    public function toConditions(): array\n    {\n        $conditions = [];\n        foreach ($this->values as $field => $value) {\n            if ($field === 'name') {\n                $conditions[] = '(memberdata.firstname LIKE \\'%' . $value . '%\\')';\n            }\n        }\n        return $conditions;\n    }\n}\n$filter = (new AssignmentFilter())->withValues(['name' => $_GET['name']]);\n$where = implode(' AND ', $filter->toConditions());\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-55vh-rh24-385f",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "components/ILIAS/Registration/src/RegistrationCodesTable.php:132-144 getRecords() splits the table's Order object into $order_field/$order_direction and passes them to getCodesData() (the registration-code table's sort field and direction)",
+      "sink": "components/ILIAS/Registration/src/RegistrationCodeRepository.php:96 $sql .= ' ORDER BY ' . $order_field . ' ' . $order_direction; then $this->db->query($sql) at :100",
+      "between": "the sort key and direction travel from the table GUI as method arguments and are concatenated into the SQL string unquoted (the only special case is mapping 'generated' to 'generated_on'). The fix maps the field through SORT_FIELDS, limits the direction to ASC/DESC and wraps the identifier in quoteIdentifier().",
+      "fix": "maps the sort field through an allowlist, validates the direction and quotes the identifier",
+      "probe": "<?php\nclass RegistrationCodeRepository\n{\n    private $db;\n\n    public function getCodesData(string $order_field, string $order_direction, int $offset, int $limit): array\n    {\n        $sql = 'SELECT * FROM reg_registration_codes';\n        if ($order_field) {\n            $sql .= ' ORDER BY ' . $order_field . ' ' . $order_direction;\n        }\n        $this->db->setLimit($limit, $offset);\n        return $this->db->fetchAll($this->db->query($sql));\n    }\n}\n$rows = $repo->getCodesData($_GET['order'], $_GET['direction'], 0, 50);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-vch9-h7xh-rp47",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        93
+      ],
+      "category": "check",
+      "source": "program/include/rcmail_action.php:785 $_uid = rcube_utils::get_input_value('_uid', INPUT_GPC, true) (the _uid request parameter)",
+      "sink": "program/lib/Roundcube/rcube_imap_generic.php:2489 $request = \"{$key} {$cmd} {$message_set} (\" . ... , sent by putLine() at :2495 (the uid list is pasted into the IMAP protocol line; UID STORE at :2371 is the same shape)",
+      "between": "get_uids() explodes the parameter (:807) and accepts each part only when preg_match('/^[0-9:.]+$/', $uid) at :824 passes; $ also matches before a trailing newline, so '123\\nA2 DELETE ...' passes, and the accepted string keeps the CRLF into the UID FETCH/STORE command, where it starts a second IMAP command. The regex looks like a working check. The fix anchors it with \\z.",
+      "fix": "anchors the uid regex with \\z so a trailing CRLF cannot pass",
+      "probe": "<?php\n$uids = explode(',', $_GET['_uid']);\n$result = [];\nforeach ($uids as $uid) {\n    if (preg_match('/^[0-9:.]+$/', $uid)) {\n        $result[] = $uid;\n    }\n}\n$message_set = implode(',', $result);\n$key = 'A1';\n$request = \"{$key} UID FETCH {$message_set} (FLAGS)\";\n$conn->putLine($request);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "CVE-2026-62855",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        23
+      ],
+      "category": "functions",
+      "source": "overrides/rap2hpoutre/laravel-log-viewer/src/Rap2hpoutre/LaravelLogViewer/LogViewerController.php:51 setFolder(Crypt::decrypt($this->request->input('f'))) and :126 pathToLogFile(Crypt::decrypt($this->request->input('l'))) (Laravel request inputs f and l, decrypted)",
+      "sink": "overrides/rap2hpoutre/laravel-log-viewer/src/Rap2hpoutre/LaravelLogViewer/LaravelLogViewer.php:179 $file = app('files')->get($this->file); (Laravel file read; the controller also deletes with app('files')->delete($this->log_viewer->pathToLogFile($file)) at :112)",
+      "between": "the decrypted folder is stored by setFolder() (:55) and pathToLogFile() (:100) joins folder and file as $logsPath . '/' . $folder . '/' . $file; setFile() (:87-88) and the download action then read or delete that path with app('files'). The value passes a crypto call and two methods before the file call, and the fix strips \\\\ / NUL : and '..' from both names in setFolder() and pathToLogFile().",
+      "fix": "strips path separators, NUL, ':' and '..' from the folder and file names",
+      "probe": "<?php\nclass LogViewer\n{\n    protected $folder;\n\n    public function setFolder($folder)\n    {\n        $this->folder = $folder;\n    }\n\n    public function pathToLogFile($file)\n    {\n        $logsPath = storage_path('logs');\n        $logsPath .= ($this->folder) ? '/' . $this->folder : '';\n        return $logsPath . '/' . $file;\n    }\n\n    public function read($file)\n    {\n        return app('files')->get($this->pathToLogFile($file));\n    }\n}\n$viewer = new LogViewer();\n$viewer->setFolder(Crypt::decrypt($request->input('f')));\necho $viewer->read(Crypt::decrypt($request->input('l')));\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    }
+  ],
+  "usage": {
+    "session": "ses_df2094440ffeOL7V8t6nud5QK1",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 71,
+    "tool_calls": 71,
+    "tool_errors": 1,
+    "chars_read": 190485,
+    "tokens": {
+      "input": 84449,
+      "cache_read": 5428224,
+      "output": 37465,
+      "reasoning": 0
+    },
+    "usd": 0.103
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "batch": "gap-notes-2026-11-24-1",
+  "status": "read 2026-11-24 (PLAN.md step 135): leads for rule work; quotes not yet checked one by one",
+  "method": "First 15 rows of ~/codewatch-research/gaps/misses.tsv, in file order: row 1 is cve-pairs-python, rows 2-15 are cve-pairs-php; the file held 104 missed cases (1 Python, 103 PHP, no JavaScript). For each case I read the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the vulnerable side, the changed files at the fix commit's parent (gh api contents?ref=SHA^): bulk_import.py; errors/processor.php, errors/default/page.phtml and report.phtml; module/frontend/add.php; usersearch.php; app/View/Templates/upload_file.ctp and app/Controller/TemplatesController.php; index.php; phpmyfaq/admin/index.php and header.php; app/messages/messages_thread.php; ImageController.php and routes/web.php; admin/user_list_backend.php; www/admin/campaign-zone-zones.php; main/calendar/agenda_list.php and main/inc/lib/agenda.lib.php; ajaxIndex.ctp; Pay2PayPayment.php; includes/html/forms/customoid.inc.php. All API calls were one at a time with 2 s between. Nothing was skipped: 15 of 15 noted, all with source and sink visible in the fix's parent. 89 rows remain unread in misses.tsv (all cve-pairs-php).",
+  "notes": [
+    {
+      "id": "FIX-Checkmk-checkmk-31dfe9231eee",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "cmk/gui/wato/pages/bulk_import.py:130-133 (fix parent): _file_path() calls request.get_unicode_input_mandatory(\"file_id\", \"%s-%d\" % (user.id, int(time.time()))) - the file id is a request variable read through Checkmk's own wrapper, not request.args/form",
+      "sink": "same file, :133 return self._upload_tmp_path / (\"%s.csv\" % file_id), then :148 store.save_text_to_file(self._file_path(), ...), :170 csv_file = self._file_path().open(...) and :267 self._file_path().unlink() - the value is joined to the temp directory and the result is written, opened and deleted",
+      "between": "page() (:321-325) branches on request.has_var(\"file_id\"); the read side opens and parses the CSV, the write side saves the upload, the delete side unlinks it. No normalisation or containment check exists before the join; the fix makes file_id alphanumeric and generates a uuid for uploads, which rejects ../ on both the read and write paths. Second explanation: sink (Path.__truediv__ / .open() / save_text_to_file is not one of the calls a path rule knows).",
+      "fix": "requires file_id.isalnum() (MKUserError otherwise) and sets the upload's file_id to uuid.uuid4().hex",
+      "probe": "from pathlib import Path\nfrom flask import Flask, request\n\napp = Flask(__name__)\nTMP = Path(\"/tmp/host-import\")\n\ndef file_path(file_id):\n    return TMP / (\"%s.csv\" % file_id)\n\n@app.post(\"/import\")\ndef upload():\n    file_id = request.form[\"file_id\"]\n    path = file_path(file_id)\n    path.write_text(request.form[\"csv\"])\n    return {\"ok\": True, \"size\": len(path.read_text())}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-qxw7-h2wh-cqrv",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "errors/processor.php:93-99 (fix parent): if (!empty($_SERVER['SCRIPT_NAME'])) { ... $this->_scriptName = $_SERVER['SCRIPT_NAME']; } - the base path comes from SCRIPT_NAME, which on the servers the advisory describes is derived from the request path",
+      "sink": "errors/default/page.phtml:20 and :33 (fix parent): <base href=\"<?php echo $this->getSkinUrl()?>\" /> and <a href=\"<?php echo $this->getBaseUrl()?>\">, plus errors/default/report.phtml:48 the form action and :92 <pre><?php echo $this->reportData[0] ?> - the URL/error text is printed into attributes and the page without escaping",
+      "between": "getBaseUrl() (:193-199) returns $this->_scriptName, getSkinUrl() (:157-160) appends the error directory and configured skin, and _setReportData() (:364-377) copies a script_name saved with the report; the templates echo all of them raw. The fix wraps getSkinUrl()/getBaseUrl()/reportData[0] in htmlspecialchars(). Second explanation: source ($_SERVER['SCRIPT_NAME'] may not be treated as request data).",
+      "fix": "escapes the base/skin URLs and the report's first line with htmlspecialchars(..., ENT_QUOTES, 'UTF-8')",
+      "probe": "<?php\n$scriptName = $_SERVER['SCRIPT_NAME'];\n$baseUrl = 'http://' . $_SERVER['HTTP_HOST'] . $scriptName;\n?><html><head><base href=\"<?php echo $baseUrl ?>\" /></head>\n<body><a href=\"<?php echo $baseUrl ?>\">home</a></body></html>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-52gv-22v4-2jg6",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "module/frontend/add.php:65-67 (fix parent): $loc_id = $_POST[\"loc_id\"]; $timing_id = $_POST[\"timing_id\"]; $pos_id = $_POST[\"pos_id\"]; (the same pattern for p_id at :132/:147 and $to at :161)",
+      "sink": "add.php:69-70 (and :134-135, :148-149, :163-164) $sql = \"insert into PHOTO values (member_seq.nextval, '$caption', $owner, $loc_id, $timing_id, $pos_id, systimestamp)\"; $stid = oci_parse($db_conn, $sql); oci_execute($stid) - the POST values are concatenated unquoted into the statement",
+      "between": "only $caption/$msg go through clean(); the numeric-looking ids ($loc_id, $timing_id, $pos_id, $p_id, $to) are inserted raw, so a string that closes the value list can append a subquery. The fix wraps each in intval(). Second explanation: check (clean() on the caption makes the branch look sanitised).",
+      "fix": "intval() on every numeric POST field before the statement is built (and clean() on msg)",
+      "probe": "<?php\n$loc_id = $_POST['loc_id'];\n$timing_id = $_POST['timing_id'];\n$sql = \"insert into PHOTO values (seq.nextval, '$caption', $owner, $loc_id, $timing_id, systimestamp)\";\n$stid = oci_parse($conn, $sql);\noci_execute($stid);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-88jc-7q78-58rq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "usersearch.php:105 (fix parent): <input name=\"n\" type=\"text\" value=\"<?=$_GET['n']?>\" ...> (and :115, :118, :126, :129, :141, :144, :173, :176, :189, :221, :230, :233, :242, :245 for r, r2, em, ip, co, ma, d, d2, ul, ul2, ls, ls2, dl, dl2)",
+      "sink": "the same lines print the query value into value=\"...\" and into the td class-highlight expression, e.g. :105 <td<?=$_GET['n']?$highlight:\"\"?>>, so a quote in n closes the attribute and the rest becomes HTML",
+      "between": "get_user_icons() (:34-94) and the inline form build the search form; the page never escapes the query parameters. The fix wraps the string fields in htmlspecialchars_uni() and casts the numeric ones with intval(). Second explanation: sink (the output is a short echo tag in a PHP page, not a template file).",
+      "fix": "htmlspecialchars_uni() on n/em/ip/co/ma/d/d2/ls/ls2 and intval() on r/r2/ul/ul2/dl/dl2",
+      "probe": "<?php\n$n = $_GET['n'];\n?><form method=\"get\">\n<input name=\"n\" type=\"text\" value=\"<?=$n?>\" size=\"35\">\n</form>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-x452-92r9-f88f",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "app/Controller/TemplatesController.php:419-425 (fix parent): uploadFile($elementId, $batch) sets 'element_id' => $elementId from the route's path parameters; for a POST the uploaded file names also reach the view through $fileArray (:432-438, :456 json_encode of $file['name'])",
+      "sink": "app/View/Templates/upload_file.ctp:21 and :26 (fix parent): <span id=\"fileUploadButton_<?php echo $element_id; ?>\" ... onClick=\"templateFileUploadTriggerBrowse('<?php echo $element_id; ?>');\"> and templateFileHiddenAdd(fileArray, '<?php echo $element_id; ?>', ...); - the value is printed into an id, an attribute and a JS string",
+      "between": "the view also prints $fileArray raw into JSON.parse('...') (:25) and $result into showMessage (:27); $element_id crosses the controller-to-view boundary with no escaping and the quote in the JS string is the breakout. The fix uses h() for $element_id/$batch/$result and json_encode() for the onClick argument. Second explanation: source (route parameters).",
+      "fix": "escapes $element_id, $batch and $result with h() and passes $element_id to JavaScript via json_encode()",
+      "probe": "<?php /* $element_id is a route parameter */ ?>\n<span id=\"fileUploadButton_<?php echo $element_id; ?>\"\n      onClick=\"templateFileUploadTriggerBrowse('<?php echo $element_id; ?>');\">Upload</span>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-h8mf-8qf9-cg8w",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "index.php:299 and :303 (fix parent): if ($_POST['id']) ... WHERE id = \".($_POST['id']).\";\" - the contact id from the save form (search()/get()/delete() take their value as an argument from run(), which is outside this file)",
+      "sink": "index.php:300-315 (fix parent): $q = \"UPDATE ... people SET form = '\".$c->real_escape_string(...).\"', name = '\".$c->real_escape_string($_POST['name']).\"' ... WHERE id = \".($_POST['id']).\";\"; $result = db($q, $c) - the unquoted id ends the WHERE clause and db() runs the string",
+      "between": "the name/form/updated values are escaped with real_escape_string() while id is concatenated raw, so the statement looks parameterised at a glance; db() is the project's query helper, not a native driver call. The fix quotes and escapes id, and comment()/commentdelete() get the same treatment. Second explanation: check (the real_escape_string calls around the id).",
+      "fix": "quotes and real_escape_string()s $_POST['id'] in update, delete, comment and commentdelete",
+      "probe": "<?php\n$id = $_POST['id'];\n$name = $_POST['name'];\n$q = \"UPDATE people SET name = '\".$c->real_escape_string($name).\"', updated = '\".time().\"' WHERE id = \".$id.\";\";\n$result = db($q, $c);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-cp9c-phxx-55xm",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "phpmyfaq/admin/index.php:118-120 (fix parent): $action = Filter::filterInput(INPUT_GET, 'action', FILTER_UNSAFE_RAW); if (is_null($action)) { $action = Filter::filterInput(INPUT_POST, 'action', FILTER_UNSAFE_RAW); } - the action query/form parameter, read with FILTER_UNSAFE_RAW",
+      "sink": "phpmyfaq/admin/header.php:404 and :421 (fix parent): <form ... action=\"index.php<?= (isset($action) ? '?action=' . $action : ''); ?>\" method=\"post\"> - the raw action is appended to the form action attribute",
+      "between": "index.php requires header.php (:329) after the action is read, and header.php builds the admin menu and the search form with the same global; the fix converts $action once, at index.php:122, before any include. Second explanation: functions (the sink is in an included file).",
+      "fix": "runs $action through Strings::htmlentities() right after it is read",
+      "probe": "<?php\n$action = $_GET['action'];\n?>\n<form action=\"index.php<?= isset($action) ? '?action=' . $action : '' ?>\" method=\"post\">\n  <input type=\"submit\">\n</form>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-3gg9-8j69-7cv4",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "app/messages/messages_thread.php:44 (fix parent): $contact_uuid = $_GET['contact_uuid']; - the contact_uuid query parameter (the neighbouring $number goes through preg_replace('{[\\D]}', '', ...) at :43)",
+      "sink": "same file, :276, :298 and :323 (fix parent): echo \"... $('img#src_message-bubble-image-em_\".$contact_uuid.\"') ...\"; and echo \"... refresh_thread('\".$number.\"','\".$contact_uuid.\"');\" ... - the value is printed into an id selector, an onclick attribute and a JS string",
+      "between": "the value is used unsanitised in the message thread markup and the inline refresh script; nothing escapes it. The fix replaces it with null unless is_uuid() accepts it, i.e. an allowlist check where none existed. Second explanation: sink (echo of a string into HTML/JS).",
+      "fix": "only keeps $_GET['contact_uuid'] when is_uuid() accepts it, otherwise null",
+      "probe": "<?php\n$contact_uuid = $_GET['contact_uuid'];\necho \"<span id='thread_refresh' onclick=\\\"refresh_thread('$contact_uuid');\\\">refresh</span>\";\necho \"<script>$('#contact_current').val('\".$contact_uuid.\"');</script>\";\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-g66g-3vwf-hfgf",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "source",
+      "source": "routes/web.php:10 (fix parent): Route::get('/uploads/images/{path}', 'Images\\ImageController@showImage') - the {path} route parameter, which Laravel passes as the method argument",
+      "sink": "app/Http/Controllers/Images/ImageController.php:38-45 (fix parent): $path = storage_path('uploads/images/' . $path); if (!file_exists($path)) {...} return response()->file($path); - ../../ in the route value walks out of the uploads directory and the file is served",
+      "between": "showImage(string $path) concatenates the route value and only checks file_exists(), which is not a containment check; the fix replaces it with ImageService::pathExistsInLocalSecure() (disk exists + MIME image/*) and streams through the storage disk. Second explanation: sink (response()->file()).",
+      "fix": "checks the path on the local secure disk and streams it via the storage disk instead of storage_path() + response()->file()",
+      "probe": "<?php\nuse Illuminate\\Support\\Facades\\Route;\n\nRoute::get('/uploads/images/{path}', function (string $path) {\n    $file = storage_path('uploads/images/' . $path);\n    if (!file_exists($file)) {\n        abort(404);\n    }\n    return response()->file($file);\n});\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-m8vf-6qcj-hmj6",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "check",
+      "source": "admin/user_list_backend.php:67 and :70 (fix parent): $col = $_REQUEST[\"order\"][0][\"column\"]; ... $sOrder .= $aColumns[$col].' '.$_REQUEST[\"order\"][0][\"dir\"].', '; - the DataTables ordering parameters",
+      "sink": "same file, :70-72 and :155/:162-166 (fix parent): the $sOrder string is concatenated into $sQuery and run by pwg_query($sQuery), so dir/column reach the ORDER BY clause",
+      "between": "start and length are checked with check_input_parameter(..., PATTERN_ID) (:16-17) and the column must be marked searchable (:68), which makes the block look validated; dir is never checked and $aColumns[$col] can be out of range. The fix adds preg_match('/^(asc|desc)$/i', ...) around dir. Second explanation: sink (pwg_query).",
+      "fix": "accepts dir only when preg_match('/^(asc|desc)$/i', ...) matches",
+      "probe": "<?php\n$columns = ['user_id', 'username', 'email'];\n$order = 'ORDER BY ' . $columns[$_REQUEST['order'][0]['column']] . ' ' . $_REQUEST['order'][0]['dir'];\n$sql = \"SELECT user_id, username, email FROM users $order LIMIT 0, 50\";\n$result = pwg_query($sql);\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-r4jw-9g3r-5qh6",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "www/admin/campaign-zone-zones.php:19 and :34 (fix parent): phpAds_registerGlobalUnslashed('status'); ... $oTpl = OA_Admin_UI_CampaignZoneLink::createTemplateWithModel($status); - status is the request parameter registered as a global (the advisory: campaign-zone-zones.php?status=)",
+      "sink": "lib/templates/admin/campaign-zone-zones.html:19-28 (fix parent): <!--rows-{$status}-start-->, <span id=\"page-{$status}\"> and <table id=\"zones-{$status}\"> - Smarty prints the value into an HTML comment, ids and later the select-all ids",
+      "between": "the controller registers the request value and hands it to the template model untouched; the template prints {$status} at 11 places without |escape. The fix adds |escape to every occurrence. Second explanation: sink (Smarty output).",
+      "fix": "applies |escape to $status in each of the template's id/comment occurrences",
+      "probe": "<?php\n$status = $_GET['status'];\n$tpl = new Smarty();\n$tpl->assign('status', $status);\n$tpl->display('campaign-zone-zones.tpl');\n/* campaign-zone-zones.tpl:\n   <!--rows-{$status}-start-->\n   <table id=\"zones-{$status}\"><tbody></tbody></table>\n*/\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-fmqx-vmh5-vr5v",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "functions",
+      "source": "main/calendar/agenda_list.php:15 (fix parent): $type = isset($_REQUEST['type']) ? $_REQUEST['type'] : null; - the type query parameter (the fix allowlists personal/course/admin/platform)",
+      "sink": "main/inc/lib/agenda.lib.php:2935-2942 (fix parent): Display::url(..., $codePath.\"calendar/agenda_list.php?type={$this->type}&$cidReq\") and the same at :2957, :2962, :3070 - $this->type (set from the constructor argument at :159) is concatenated into link URLs that Display::url renders as href",
+      "between": "agenda_list.php passes $type to new Agenda($type) (:38); only the breadcrumb URL escapes it with Security::remove_XSS() (:18), while the Agenda object stores it raw and displayActions() builds the toolbar links from it. The fix replaces the raw value with an in_array() allowlist before the object is created. Second explanation: template (the link is HTML output).",
+      "fix": "keeps $_REQUEST['type'] only when in_array() finds it in ['personal','course','admin','platform']",
+      "probe": "<?php\n$type = $_REQUEST['type'];\n$html = '<a href=\"calendar/agenda_list.php?type=' . $type . '\">Agenda</a>';\necho $html;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-9wr9-qg9q-m8vj",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "app/Controller/TemplateElementsController.php:16-20 (fix parent): public function index($id) { ... $template = $this->TemplateElement->Template->checkAuthorisation($id, ...) - the id is a route parameter of the template element index",
+      "sink": "app/View/TemplateElements/ajax/ajaxIndex.ctp:11 (fix parent): <div ... onClick=\"templateAddElementClicked(<?php echo $id; ?>);\">+</div> - the id is printed into a JavaScript call in an attribute",
+      "between": "the controller passes $id to the view without a numeric check (the fix adds is_numeric() and throws otherwise); in the view it is echoed raw, so a quote/script value breaks out of the attribute. The fix also wraps it with h(). Second explanation: source (route parameter).",
+      "fix": "rejects a non-numeric $id with MethodNotAllowedException and escapes it with h() in the ajax view",
+      "probe": "<?php /* $id is a route parameter */ ?>\n<div onClick=\"templateAddElementClicked(<?php echo $id; ?>);\">+</div>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-c49v-35ff-q9f7",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        611
+      ],
+      "category": "sink",
+      "source": "application/components/payment/Pay2PayPayment.php:59 (fix parent): $xml = base64_decode(str_replace(' ', '+', $_POST['xml'])); - the payment notification's xml POST field",
+      "sink": "same file, :61: $data = simplexml_load_string($xml); - the XML is parsed with external entity loading left enabled",
+      "between": "only the transaction signature is checked afterwards (:65-66), so the parser sees the document first; the fix calls libxml_disable_entity_loader(true) before the parse (PHP < 8). Second explanation: check (the signature check comes after the parser).",
+      "fix": "disables the libxml entity loader before simplexml_load_string()",
+      "probe": "<?php\n$xml = base64_decode(str_replace(' ', '+', $_POST['xml']));\n$data = simplexml_load_string($xml);\necho $data->status;\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-g5r6-vrmx-9gwj",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "includes/html/forms/customoid.inc.php:17 (fix parent): $device_id = $_POST['device_id']; - the device_id POST field of the custom OID form (other fields go through mres(), this one does not)",
+      "sink": "same file, :75-76 (fix parent): $query = \"SELECT * FROM `devices` WHERE `device_id` = $device_id LIMIT 1\"; $device = dbFetchRow($query); - the unquoted value is concatenated and dbFetchRow() runs the query",
+      "between": "the assignment and the query are 58 lines apart in the same 'test' branch; mres() on name/oid/datatype/action makes the handler look sanitised, and dbFetchRow($query) without a params array is the project's wrapper. The fix uses a ? placeholder and passes [$device_id]. Second explanation: check (the mres calls on the sibling fields).",
+      "fix": "changes the query to device_id = ? and passes [$device_id] to dbFetchRow()",
+      "probe": "<?php\n$device_id = $_POST['device_id'];\nif ($_POST['action'] == 'test') {\n    $device = dbFetchRow(\"SELECT * FROM devices WHERE device_id = $device_id LIMIT 1\");\n    echo $device['hostname'];\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    }
+  ],
+  "usage": {
+    "session": "ses_df31bdf66ffeqzvz9Sysv88FVA",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 31,
+    "tool_calls": 30,
+    "tool_errors": 0,
+    "chars_read": 242731,
+    "tokens": {
+      "input": 280884,
+      "cache_read": 2477836,
+      "output": 37178,
+      "reasoning": 0
+    },
+    "usd": 0.072
+  }
+}

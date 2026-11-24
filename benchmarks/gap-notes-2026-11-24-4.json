@@ -1,0 +1,248 @@
+{
+  "batch": "gap-notes-2026-11-24-4",
+  "status": "read 2026-11-24 (PLAN.md step 135): leads for rule work; quotes not yet checked one by one",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order. The file held 59 missed cases, all cve-pairs-php (no Python, no JavaScript), and all were unread (rows 1-45 had been noted by the three earlier runs today, which the runner has removed). For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source or the sink, the file at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw). Nothing was skipped.",
+  "notes": [
+    {
+      "id": "GHSA-r7gx-6pwm-3xc3",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "admin/copy_field.php:32 $f_dest_field = gpc_get( 'dest_id' ); (Mantis's gpc_get request wrapper over $_GET/$_POST, defined in core/gpc_api.php)",
+      "sink": "admin/copy_field.php:61 echo '<p>Invalid destination field (' . $f_dest_field . ') specified.</p>'; and :46 echo ... copy_field.php?source_id=...&dest_id=<?php echo $f_dest_field?> inside the Refresh link's href (HTML output)",
+      "between": "gpc_get() returns the raw request value with no cleaning; it is echoed unescaped into the href attribute at line 46 before the whitelist runs, and again at line 61 in the branch that rejects values not in array('fixed_in_version'). The in_array check at line 60 is a whitelist, but it happens after the header markup is already printed, so the rejected value is still rendered twice (second reason: check).",
+      "fix": "moves the whitelist before any output and escapes the echoed value with string_attribute()",
+      "probe": "<?php\nfunction gpc_get( $name ) {\n    if ( isset( $_GET[$name] ) ) { return $_GET[$name]; }\n    return $_POST[$name];\n}\n\n$field = gpc_get( 'dest_id' );\necho '<a href=\"page.php?dest_id=' . $field . '\">Refresh</a>';\nif ( !in_array( $field, array( 'fixed_in_version' ) ) ) {\n    echo '<p>Invalid destination field (' . $field . ')</p>';\n    exit;\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-jfjq-rg72-h4xp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "url.php:15-17/27/31 $_GET['url'] (query parameter)",
+      "sink": "url.php:27 window.location='\" . htmlspecialchars($_GET['url']) . \"'; inside an echoed <script> block (JavaScript string context, then window.location)",
+      "between": "three guards run before the echo: PMA_isValid(), preg_match('/^https?:\\/\\/[^\\n\\r]*$/') and PMA_isAllowedDomain(); htmlspecialchars() escapes <>& and double quotes but not the single quote that ends the JavaScript string, so a URL such as http://x/';alert(1)// breaks out and runs. The same value is also htmlspecialchars()'d into the printf message at line 31.",
+      "fix": "escapes for JavaScript with PMA_escapeJsString() (libraries/js_escape.lib.php) instead of htmlspecialchars()",
+      "probe": "<?php\n$url = $_GET['url'];\nif ( preg_match( '/^https?:\\/\\/[^\\n\\r]*$/', $url ) ) {\n    echo \"<script type='text/javascript'>\n        window.location='\" . htmlspecialchars( $url ) . \"';\n    </script>\";\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-ffmq-g5qm-f3vf",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "core/current_user_api.php:194 $f_filter_string = gpc_get_string( 'filter', '' ); (the ?filter= query parameter)",
+      "sink": "core/current_user_api.php:206 $t_filter = unserialize( $f_filter_string ); (PHP object injection)",
+      "between": "inside current_user_get_bug_filter(); a numeric filter takes the token branch at lines 200-204 and the token value is unserialized instead, while every non-numeric value goes straight into unserialize() at line 206 with no validation; the resulting object is returned and used as the current issue filter.",
+      "fix": "deletes the unserialize() of the URL filter string and returns false instead",
+      "probe": "<?php\n$filter = $_GET['filter'];\nif ( !is_numeric( $filter ) ) {\n    $f = unserialize( $filter );\n    var_dump( $f );\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND unsafe-deserialization"
+    },
+    {
+      "id": "GHSA-7mfw-g8x4-rq2w",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "mod/feedback/show_nonrespondents.php:33 $subject = optional_param('subject', '', PARAM_CLEANHTML); (Moodle query/form parameter)",
+      "sink": "mod/feedback/show_nonrespondents.php:276 echo '<input type=\"text\" id=\"feedback_subject\" ... value=\"'.$subject.'\" />'; (HTML attribute context)",
+      "between": "optional_param() runs PARAM_CLEANHTML, which cleans the text for HTML bodies but keeps markup and does not escape the double quote, so the value can close the value=\"...\" attribute; the same $subject is also put into the message event at line 106. The contact form is redisplayed on validation failure.",
+      "fix": "wraps $subject in s() (Moodle's htmlspecialchars wrapper) at the echo",
+      "probe": "<?php\n$subject = optional_param( 'subject', '', PARAM_CLEANHTML );\necho '<input type=\"text\" name=\"subject\" value=\"' . $subject . '\" />';\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-g4q2-gc49-8q5w",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "wp-admin/includes/class-file-upload-upgrader.php:103 $this->filename = $_GET[$urlholder]; (GET parameter whose name is passed to the constructor, normally 'package')",
+      "sink": "wp-admin/includes/class-file-upload-upgrader.php:104 $this->package = $uploads['basedir'] . '/' . $this->filename; then :121 return @unlink( $this->package ); and the upgrader's install/unpack of that path",
+      "between": "the constructor takes $urlholder from its caller, checks only empty() and is_numeric() on the GET value, and in the back-compat branch concatenates it under wp_upload_dir()['basedir']; the traversal (../../wp-config.php) is carried in the public $package property and used by cleanup() here and by the upgrade functions in other files; the property hop is what hides the flow.",
+      "fix": "applies sanitize_file_name() to the GET value and refuses a realpath outside the uploads basedir",
+      "probe": "<?php\nclass File_Upload_Upgrader {\n    public $package;\n    public $filename;\n    public function __construct( $form, $urlholder ) {\n        $uploads = wp_upload_dir();\n        $this->filename = $_GET[ $urlholder ];\n        $this->package = $uploads['basedir'] . '/' . $this->filename;\n    }\n    public function cleanup() {\n        if ( file_exists( $this->package ) ) {\n            return @unlink( $this->package );\n        }\n        return true;\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-j8f8-65f8-c2p3",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "source",
+      "source": "admin/cat_options.php:43-44 isset($_POST['cat_true']) (multi-value POST array; also cat_false at :82-83)",
+      "sink": "admin/cat_options.php:54 and :74 WHERE id IN ('.implode(',', $_POST['cat_true']).') passed to pwg_query(); same for cat_false at :92",
+      "between": "the branch is gated only by isset() and count() > 0 plus check_pwg_token(); the array elements are joined with implode() straight into the UPDATE statement for the comments and representative sections, so an element such as 1) OR SLEEP(5)-- is injected. The source is an array-typed request parameter, not a scalar.",
+      "fix": "adds check_input_parameter('cat_true', $_POST, true, PATTERN_ID) and the same for cat_false",
+      "probe": "<?php\nif ( isset( $_POST['cat_true'] ) && count( $_POST['cat_true'] ) > 0 ) {\n    $query = '\nUPDATE categories\n  SET commentable = \\'false\\'\n  WHERE id IN (' . implode( ',', $_POST['cat_true'] ) . ')\n;';\n    pwg_query( $query );\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-pm8h-6f66-cjgm",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "stored",
+      "source": "admin/configuration.php:162-165 if ( !empty($_POST['order_by']) ) { foreach ($_POST['order_by'] as $i => $val) (multi-value POST array from the order-by selectors)",
+      "sink": "admin/configuration.php:197 $_POST['order_by'] = 'ORDER BY '.implode(', ', $order_by); saved to CONFIG_TABLE at :284-289, reloaded by load_conf_from_db() at :296 and later concatenated into listing queries such as admin/batch_manager_unit.php:203 '.$conf['order_by'].'",
+      "between": "each element is only checked for non-emptiness and duplication, then array_slice()'d and imploded into an ORDER BY string; the config save at :286 escapes single quotes for the string literal, which does not help because the value is later used unquoted as an ORDER BY expression, so the injection happens on a later page from the stored configuration.",
+      "fix": "adds check_input_parameter('order_by', $_POST, true, whitelist regex built from array_keys($sort_fields))",
+      "probe": "<?php\nif ( !empty( $_POST['order_by'] ) ) {\n    $order_by = array_slice( $_POST['order_by'], 0, 3 );\n    $_POST['order_by'] = 'ORDER BY ' . implode( ', ', $order_by );\n}\n$value = $_POST['order_by'];\n$query = \"UPDATE config SET value = '\" . str_replace( \"'\", \"''\", $value ) . \"' WHERE param = 'order_by'\";\npwg_query( $query );\nload_conf_from_db();\n// later listing page\n$query = 'SELECT * FROM images ' . $conf['order_by'];\npwg_query( $query );\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-v528-jq4x-4c82",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "admin/batch_manager_unit.php:50 $collection = explode(',', $_POST['element_ids']); (comma-separated id list in one POST parameter)",
+      "sink": "admin/batch_manager_unit.php:54-59 SELECT ... WHERE id IN ('.implode(',', $collection).') run by pwg_query()",
+      "between": "the request string is split with explode() into $collection and immediately rejoined with implode() into the IN (...) list; the only gate is isset($_POST['submit']) and check_pwg_token() elsewhere, so an element such as 1) OR SLEEP(5)-- is injected. The value crosses array containers (explode/implode) rather than a project function, so a rule that only matches request superglobals concatenated directly into SQL loses it.",
+      "fix": "adds check_input_parameter('element_ids', $_POST, false, '/^\\d+(,\\d+)*$/') before the explode",
+      "probe": "<?php\nif ( isset( $_POST['submit'] ) ) {\n    $collection = explode( ',', $_POST['element_ids'] );\n    $query = '\nSELECT id, date_creation\n  FROM images\n  WHERE id IN (' . implode( ',', $collection ) . ')\n;';\n    $result = pwg_query( $query );\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-35mg-p597-mvg8",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "check",
+      "source": "admin/user_list_backend.php:68-71 $_REQUEST['iDisplayStart'], $_REQUEST['iDisplayLength']; :78-86 $_REQUEST['iSortCol_'.$i] and $_REQUEST['sSortDir_'.$i] (DataTables query parameters)",
+      "sink": "admin/user_list_backend.php:140-147 $sQuery = \"SELECT ... $sWhere $sOrder $sLimit\"; pwg_query($sQuery) (ORDER BY / LIMIT built from the request)",
+      "between": "the values pass through pwg_db_real_escape_string() (and intval() for the column index) before being concatenated; escaping is the wrong defence in an ORDER BY or LIMIT position, where no quote is needed: sSortDir_0=asc,(SELECT ...) injects. The strings are assembled into $sQuery and executed at line 147.",
+      "fix": "adds check_input_parameter('iSortCol_'.$i, ..., PATTERN_ID) and '/^(asc|desc)$/' on sSortDir_'.$i, and drops the escaping",
+      "probe": "<?php\n$aColumns = array( 'user_id', 'username', 'status', 'email' );\nif ( isset( $_REQUEST['iSortCol_0'] ) ) {\n    $sOrder = 'ORDER BY ';\n    for ( $i = 0; $i < intval( $_REQUEST['iSortingCols'] ); $i++ ) {\n        if ( $_REQUEST[ 'bSortable_' . intval( $_REQUEST['iSortCol_' . $i] ) ] == 'true' ) {\n            $sOrder .= $aColumns[ intval( $_REQUEST['iSortCol_' . $i] ) ] . ' '\n                . pwg_db_real_escape_string( $_REQUEST['sSortDir_' . $i] ) . ', ';\n        }\n    }\n}\n$sQuery = 'SELECT * FROM users ' . $sOrder;\npwg_query( $sQuery );\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-7q4p-hfw9-98qc",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "setup/classes/class.ilSetupGUI.php:99 $this->cmd = $_GET[\"cmd\"]; and :599 $_GET[\"cmd\"] (setup.php query parameter)",
+      "sink": "setup/classes/class.ilSetupGUI.php:599 $this->tpl->setVariable(\"VAL_CMD\", $_GET[\"cmd\"]); (ilTemplate variable substituted unescaped into the setup header template's {VAL_CMD})",
+      "between": "displayHeader() assigns the request value to the template variable VAL_CMD; ilTemplate later replaces {VAL_CMD} in the header template, so the attacker's cmd ends up in the HTML body, and line 525 also builds LINK_LANG from $this->cmd. The dangerous call is the template API, not echo.",
+      "fix": "wraps $_GET[\"cmd\"] in htmlspecialchars() at the setVariable call",
+      "probe": "<?php\nclass SetupPage {\n    protected $tpl;\n    protected $cmd;\n    public function __construct() {\n        $this->cmd = $_GET['cmd'];\n    }\n    public function displayHeader() {\n        $this->tpl->setVariable( 'VAL_CMD', $_GET['cmd'] );\n        $this->tpl->parseCurrentBlock();\n    }\n}\n// template: <input type=\"hidden\" name=\"cmd\" value=\"{VAL_CMD}\" />\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-gqmj-f46x-wqhw",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "functions",
+      "source": "db_central_columns.php:94 $total_rows = $_REQUEST['total_rows']; (query parameter, gated only by isset() and truthiness at :93)",
+      "sink": "libraries/central_columns.lib.php:622 '<input type=\"hidden\" name=\"total_rows\" value=\"' . $total_rows . '\"/>' (also :636, :650 and :811), built by PMA_getHTMLforTableNavigation() / PMA_getHTMLforAddCentralColumn() and added to the response",
+      "between": "the controller takes the request value and passes it as the $total_rows argument to PMA_getHTMLforAddNewColumn() (:103), PMA_getHTMLforTableNavigation() (:115) and PMA_getHTMLforAddCentralColumn() (:117-118); those helper functions in another file concatenate it into hidden input value attributes with no escaping, so a total_rows such as 1\"><script>alert(1)</script> is rendered. The fix validates the integer in the controller, so the sink functions are not in the diff (second reason: source isn't in the diff).",
+      "fix": "accepts total_rows only when PMA_isValid($_REQUEST['total_rows'], 'integer') is true",
+      "probe": "<?php\nfunction get_navigation( $total_rows, $pos ) {\n    return '<form action=\"page.php\" method=\"post\">'\n        . '<input type=\"hidden\" name=\"total_rows\" value=\"' . $total_rows . '\"/>'\n        . '<input type=\"hidden\" name=\"pos\" value=\"' . $pos . '\"/>'\n        . '</form>';\n}\n$total_rows = !empty( $_REQUEST['total_rows'] ) ? $_REQUEST['total_rows'] : 0;\necho get_navigation( $total_rows, 0 );\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
+    },
+    {
+      "id": "GHSA-mcf6-65g5-v6wj",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "index.php:293 $filename = isset($_REQUEST[$request]) ? trim($_REQUEST[$request]) : false; (the deleteFile / deleteTheme / deletePlugin parameter; $request is the parameter name from the list at :286-290)",
+      "sink": "index.php:303 wCMS::recursiveDelete(\"{$folder}/{$filename}\"); which at :587-594 recurses with glob() and calls rmdir() / unlink()",
+      "between": "wCMS::$loggedIn and a hash_equals() token gate the action; the only value check is that the name is not the active theme at :297, with no containment test, so a deleteFile such as ../../database.js is concatenated onto __DIR__.'/files' and handed to the class's own recursiveDelete(), which recursively removes directories and files. The request superglobal with a variable key and the project delete helper are two hops from the actual rmdir()/unlink().",
+      "fix": "resolves realpath() of the base and of the target and proceeds only when the target lies inside the base directory",
+      "probe": "<?php\nclass FileManager {\n    public static function deleteFiles() {\n        foreach ( array( array( __DIR__ . '/files', 'deleteFile' ), array( __DIR__ . '/themes', 'deleteTheme' ) ) as $entry ) {\n            list( $folder, $request ) = $entry;\n            $filename = isset( $_REQUEST[$request] ) ? trim( $_REQUEST[$request] ) : false;\n            if ( !$filename || empty( $filename ) ) { continue; }\n            if ( file_exists( \"{$folder}/{$filename}\" ) ) {\n                self::recursiveDelete( \"{$folder}/{$filename}\" );\n            }\n        }\n    }\n    private static function recursiveDelete( $file ) {\n        if ( is_dir( $file ) ) {\n            foreach ( glob( $file . '*' ) as $dir ) { self::recursiveDelete( $dir ); }\n            rmdir( $file );\n        } elseif ( is_file( $file ) ) {\n            unlink( $file );\n        }\n    }\n}\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-x5jc-34xf-c24q",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "the account update form's name and email POST fields, redisplayed through form_value('name') / form_value('email') after a failed validation (the onUpdate handler and the October form_value helper are not in the diff)",
+      "sink": "components/account/update.htm:5 and :10 value=\"{{ form_value('name') }}\" / value=\"{{ form_value('email') }}\" (attribute value in the rendered form)",
+      "between": "form_value() returns the submitted value already wrapped as safe HTML, so the template engine's automatic escaping does not apply; a name such as x\" onfocus=\"alert(1) autofocus=\" closes the value=\"...\" attribute. The fix renders {{ user.name }} and {{ user.email }}, which do go through the engine's escaper.",
+      "fix": "replaces the form_value() calls with user.name / user.email so the template engine escapes them",
+      "probe": "{{ form_ajax('onUpdate', { model: user }) }}\n    <div class=\"form-group\">\n        <label for=\"accountName\">Full Name</label>\n        <input name=\"name\" type=\"text\" class=\"form-control\" id=\"accountName\" value=\"{{ form_value('name') }}\">\n    </div>\n    <div class=\"form-group\">\n        <label for=\"accountEmail\">Email</label>\n        <input name=\"email\" type=\"email\" class=\"form-control\" id=\"accountEmail\" value=\"{{ form_value('email') }}\">\n    </div>\n    <button type=\"submit\" class=\"btn btn-default\">Save</button>\n{{ form_close() }}\n",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-wc4p-4hcx-cmvc",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "app/View/Elements/eventattribute.ctp:141 $this->here (CakePHP's current request URL, path and query, passed through Router::url( $this->here, true ))",
+      "sink": "app/View/Elements/eventattribute.ctp:141 onClick=\"toggleDeletedAttributes('<?php echo Router::url( $this->here, true );?>');\" (single-quoted JavaScript string in an HTML attribute)",
+      "between": "the view element echoes the current URL into the JavaScript argument; a URL whose path segment or named parameter carries a quote ends the string, so the payload sent in the event-view URL fires when the show-deleted-attributes tab is clicked. The fix rebuilds the URL from $this->here, urlencode()s each slash-separated segment into $urlHere and echoes that instead.",
+      "fix": "urlencodes every segment of $this->here and echoes the rebuilt URL at the onClick handler",
+      "probe": "<?php $here = Router::url( $this->here, true ); ?>\n<div id=\"filter_deleted\" role=\"button\" tabindex=\"0\"\n     onClick=\"toggleDeletedAttributes('<?php echo $here; ?>');\">\n    Include deleted attributes\n</div>\n<div id=\"filter_warning\" role=\"button\" tabindex=\"0\"\n     onClick=\"filterAttributes('warning', '<?php echo h( $event['Event']['id'] ); ?>');\">\n    Warnings\n</div>\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-hrpm-3rq3-r229",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "bug_report_page.php:99-101 $f_platform = gpc_get_string( 'platform', '' ); $f_os = gpc_get_string( 'os', '' ); $f_os_build = gpc_get_string( 'os_build', '' ); (Mantis's gpc_get_string wrapper over the request)",
+      "sink": "bug_report_page.php:294, :311 and :331 projax_autocomplete( 'platform_get_with_prefix', 'platform', array( 'value' => $f_platform, ... ) ); the Projax helper writes value=\"$value\" into an <input> with no escaping",
+      "between": "gpc_get_string() returns the request value raw and the page hands it to projax_autocomplete(), which builds the input tag and drops 'value' into the attribute, so a platform such as x\" onfocus=\"alert(1) autofocus=\" executes; the second call site in bug_update_advanced_page.php:438-474 feeds it values read back from the bug record, i.e. stored. The dangerous call is the Projax helper (core/projax_api.php plus the bundled library), which the page code never escapes.",
+      "fix": "passes string_attribute() values to projax_autocomplete() at the three call sites in bug_report_page.php and bug_update_advanced_page.php",
+      "probe": "<?php\nfunction gpc_get_string( $name, $default = '' ) {\n    return isset( $_GET[$name] ) ? $_GET[$name] : $default;\n}\nfunction projax_autocomplete( $url, $name, $params ) {\n    echo '<input type=\"text\" name=\"' . $name . '\" value=\"' . $params['value'] . '\" />';\n}\n$platform = gpc_get_string( 'platform', '' );\nprojax_autocomplete( 'platform_get_with_prefix', 'platform', array( 'value' => $platform, 'size' => '32' ) );\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    }
+  ],
+  "usage": {
+    "session": "ses_df277176fffetAMl1vT8SQOchF",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 3,
+    "turns": 41,
+    "tool_calls": 44,
+    "tool_errors": 0,
+    "chars_read": 209907,
+    "tokens": {
+      "input": 251468,
+      "cache_read": 3167840,
+      "output": 32312,
+      "reasoning": 0
+    },
+    "usd": 0.133
+  }
+}
