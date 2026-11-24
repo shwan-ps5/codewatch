@@ -148,10 +148,10 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 | [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 15 of 35 flagged | 17 of 35 flagged |
 | [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
 | [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |
-| CVE fix pairs, Python: 109 advisories and fixes in web apps (vulnerable commit, then its fix) | 64 of 109 found, 16 still flagged after the fix | 71 of 109 found, 25 still flagged |
-| CVE fix pairs, Python front end: 31 advisories fixed in templates or front-end JS | 4 of 31 found | 14 of 31 found, 8 still flagged |
+| CVE fix pairs, Python: 110 advisories and fixes in web apps (vulnerable commit, then its fix) | 66 of 110 found, 15 still flagged after the fix | 71 of 110 found, 25 still flagged |
+| CVE fix pairs, Python front end: 31 advisories fixed in templates or front-end JS | 4 of 31 found | 16 of 31 found, 8 still flagged |
 | CVE fix pairs, JS/TS: 103 advisories in web apps | 22 of 103 found, 9 still flagged | 46 of 103 found, 32 still flagged |
-| CVE fix pairs, PHP: 340 advisories in PHP apps and CMSs | 75 of 340 found, 27 still flagged | 83 of 340 found, 36 still flagged |
+| CVE fix pairs, PHP: 341 advisories in PHP apps and CMSs | 75 of 341 found, 27 still flagged | 83 of 341 found, 36 still flagged |
 | CVE fix pairs whose input isn't an HTTP request (desktop, bot, agent and MCP tool input): 15 Python, 38 JS/TS | 5 of 53 found, 2 still flagged | 16 of 53 found, 11 still flagged |
 | Blind CVE fix pairs, first round (never looked at before this run): 5 Python, 4 JS/TS | Python 2 of 5 found, 1 still flagged; JS 1 of 4, 1 still flagged | same, JS 2 still flagged |
 | Blind ordinary apps (Django, FastAPI, Express, NestJS; expected clean) | false alarms in 2 of 4 apps (12 findings, 10 in the Express app) | |

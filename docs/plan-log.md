@@ -2706,3 +2706,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    unchanged at 8; verdict unchanged (4). Template notes: `|safe` and autoescape-off on stored values are already
    review hotspots (`codewatch.templates.unescaped-output`); verdict needs 42 H. For the nightly: the new hotspot on
    the learning-set apps' front ends. Tests in `tests/test_javascript_fetched_data.py`.
+132. **Topic 16's batches of 2026-11-23 and 2026-11-24 reviewed** (pull request #15). 8 batches, 27 advisories
+   read, none accepted. The rejections stand as written: library and framework code (Symfony components, symfony/ux
+   icons), stored values with no request path in the diff (three HumHub modules, rConfig's object injection), the
+   source outside the diff (AVideo, Trilium), fixes over step 22's size or in several commits (idno, Community
+   Store, rConfig, AutoGPT), existing guards made stricter, an unmerged fix (erpsaas), Go code (fusion) and an
+   unreachable method (TastyIgniter).
+133. **95 more gap notes read** (2026-11-24, pull request #16), all PHP (batches 18-23). Probes scanned as in step 126:
+   74 missed, 21 found (XSS 10, SQL injection 6, path traversal 4, and one unsure). Leads for the PHP rule work,
+   which waits for the Python target. The gap runner skipped four runs overnight with 6 batches waiting: reviews
+   the same morning keep it going. `cve-pairs-php` scores 341 of its 342 cases: b2evolution GHSA-j89p-9ppx-p8gj
+   (added in 1c6e9ec) has never produced a result in a nightly; to look at.
