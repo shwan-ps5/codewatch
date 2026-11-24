@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-23",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-24 (PLAN.md step 133): leads for rule work; quotes not yet checked one by one",
   "method": "rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in file order: the file holds 117 missed cases and all of them are cve-pairs-php rows (no Python and no JavaScript rows at all), so this batch is the first 15 PHP cases. For each one I read the fix commit's message and diff (gh api repos/O/R/commits/SHA) and, from the fix commit's parent, the changed files' context around every hunk: meol1 opdracht4/index.php; mediawiki-extensions-I18nTags I18nTags_body.php; xataface install/install_form.js.php; nflpick-em.com LoadUsers.php; pimcore LoginController.php plus Admin/Login/login.html.twig (to confirm the |raw sink); pimcore TranslationController.php twice (filter and export); contao DC_Folder.php (plus the class's isValid/isMounted siblings and its Input::get('pid') callers); sandbox-theme functions.php; osTicket-plugins audit/class.audit.php; phpmyfaq send2friend.php and Export/Html5.php; cerebrate InstanceController.php and InstanceTable.php; MISP CustomPaginationTool.php; pimcore SearchController.php (findAction's condition parts and getPermittedPaths); teampass api/Model/AuthModel.php. Nothing skipped; 15 of 15 noted. xataface's install/installer.php returned 404 at the parent, so that one note is marked unsure about the source side. 102 rows remain unread in misses.tsv (all cve-pairs-php).",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "the route closure calls GetAnimal($where) directly; the is_numeric() ternary is the only check and it guards just the numeric branch, while the naam branch concatenates the raw value into the SQL. Second explanation: sink (prepare() called with an already-built string).",
       "fix": "binds the value (bin2hex + UNHEX(:where)) instead of concatenating it, and turns emulated prepares off",
       "probe": "<?php\n$pdo = new PDO('mysql:host=localhost;dbname=app', 'u', 'p');\n$where = $_GET['name'];\n$sql = 'SELECT id, name FROM animals WHERE '\n     . (is_numeric($where) ? \"id='\" . $where . \"'\" : \"name='\" . $where . \"'\")\n     . ' LIMIT 1';\n$stmt = $pdo->prepare($sql);\n$stmt->execute();\nforeach ($stmt->fetchAll() as $row) {\n    echo htmlspecialchars($row['name']);\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-99j7-w4jf-xqq8",
@@ -29,7 +30,8 @@
       "between": "the parser calls the hook during parse and takes its return as HTML (tag functions, unlike parser functions, are unescaped by default); nothing escapes $data on the way. Second explanation: sink (a plain string return, no echo/print, so no output call to see).",
       "fix": "passes each hook's text through $parser->recursiveTagParse() instead of returning it raw",
       "probe": "<?php\nclass TagHooks {\n    public static function onParserFirstCallInit(Parser $parser) {\n        $parser->setHook('formatnum', [__CLASS__, 'formatNumber']);\n    }\n    public static function formatNumber($data, $params, $parser) {\n        return '<strong>' . $data . '</strong>' . $data;\n    }\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-64wv-c7jw-jw2q",
@@ -43,7 +45,8 @@
       "between": "installer.php (not in the diff) answers the FTP test with an object whose message repeats the FTP host/the server's reply; eval() runs that response and innerHTML renders message. Second explanation: sink (the eval + innerHTML pair in browser code). installer.php, which builds the message from the posted host, is not in the diff (its path at the parent returned 404), so the source side is inferred from the form post and the advisory.",
       "fix": "JSON.parse instead of eval, and innerText instead of innerHTML",
       "probe": "function testftp(form) {\n  fetch('installer.php?ftphost=' + encodeURIComponent(form.ftp_host.value))\n    .then((r) => r.text())\n    .then((result) => {\n      var results = eval('(' + result + ')');\n      document.getElementById('ftp-test-results').innerHTML = results.message;\n    });\n}",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-35g7-p3m9-m7r9",
@@ -57,7 +60,8 @@
       "between": "execute() reads both values and passes them to _Load_Users(); $direction is normalised by a ternary ($direction === 'asc' ? 'ASC' : 'DESC') while $sort goes through untouched; the select() wrapper takes a complete SQL string. Second explanation: check (the direction ternary looks like validation of the ORDER BY clause).",
       "fix": "a switch allowlist of the seven sortable columns before the query is built",
       "probe": "<?php\nfunction post($k) { return isset($_POST[$k]) ? $_POST[$k] : null; }\n$sort = post('sort');\n$direction = post('direction') === 'asc' ? 'ASC' : 'DESC';\n$sql = \"SELECT u.*, COUNT(g.id) AS remaining\n        FROM users u LEFT OUTER JOIN games g ON 1 = 1\n        WHERE g.week = ?\n        GROUP BY u.id\n        ORDER BY {$sort} {$direction}\";\n$stmt = $db->prepare($sql);\n$stmt->execute([$week]);\n$rows = $stmt->fetchAll();",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-fq95-rx4q-qgg2",
@@ -71,7 +75,8 @@
       "between": "loginAction() puts the query value into $params['error'] and renders the template, which marks it raw; nothing escapes it on the way. Second explanation: sink (the |raw filter).",
       "fix": "escapes the GET value with SecurityHelper::convertHtmlSpecialChars() before it reaches the template",
       "probe": "<?php\nclass LoginController {\n    public function login(Request $request) {\n        $params = ['error' => $request->get('too_many_attempts')];\n        return $this->render('login.html.twig', $params);\n    }\n}\n/* login.html.twig:\n   <div class=\"text error\">{{ error|raw }}</div>\n*/",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-jwg4-qcgv-5wg6",
@@ -85,7 +90,8 @@
       "between": "getGridFilterCondition() rewrites fieldname (ltrim '_', language checks) and sets $field = $fieldname for string/date filters, then the condition string goes to the listing's query; $db->quote($value) makes the statement look parameterised. Second explanation: functions.",
       "fix": "quotes the column too, with $db->quoteIdentifier($field)",
       "probe": "<?php\n$field = $_GET['field'];\n$operator = 'LIKE';\n$value = '%' . $_GET['value'] . '%';\n$condition = $field . ' ' . $operator . ' ' . $db->quote($value);\n$list->setCondition($condition);\n$list->load();",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-xmg8-w465-mr56",
@@ -99,7 +105,8 @@
       "between": "getGridFilterCondition() builds each condition with $db->quote($value) (the field name is not quoted), joins them with implode(' AND '), and the string crosses into Pimcore\\Model\\Translation\\Listing::setCondition() in another class, so the query runs inside the ORM. Second explanation: sink.",
       "fix": "builds placeholders (:placeHolderN, :filterTerm) with a params array and passes both to setCondition(), and strips '--' from field names",
       "probe": "<?php\nfunction filters($request) {\n    $parts = [];\n    foreach (json_decode($request->get('filter'), true) as $f) {\n        $parts[] = $f['fieldname'] . ' LIKE ' . $db->quote('%' . $f['value'] . '%');\n    }\n    return implode(' AND ', $parts);\n}\n$condition = filters($request);\nif ($condition) {\n    $list->setCondition($condition);\n}\n$list->load();",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-fp7q-xhhw-6rj3",
@@ -113,7 +120,8 @@
       "between": "ajaxTreeView() checked only Environment::get('isAjaxRequest') before the fix; the sibling methods call isMounted()/file_exists() first and the class has isValid() (Validator::isInsecurePath), but neither runs here; the value then crosses into generateTree() and the Files class. Second explanation: check (the class's isValid/isMounted helpers look like folder validation). the caller that fills $strFolder from the request is not in the diff; the sibling methods' Input::get('pid', true) and the fix's isValid() (which reads pid and runs isInsecurePath) are what identify the source.",
       "fix": "calls isValid($strFolder) and refuses a folder that is not a directory or not mounted, and treats a non-array DCA root as unmounted",
       "probe": "<?php\nclass FolderDriver {\n    public function ajaxTreeView($folder, $level) {\n        return $this->generateTree($this->rootDir . '/' . $folder, $level);\n    }\n    private function generateTree($path, $level) {\n        $out = '';\n        foreach (scandir($path) as $f) {\n            $out .= '<li>' . htmlspecialchars($f) . '</li>';\n        }\n        return $out;\n    }\n}\n$driver->ajaxTreeView($_GET['folder'], 0);",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-hxpr-67mw-jh59",
@@ -127,7 +135,8 @@
       "between": "sandbox_body_class() collects the classes and prints them with print(); the theme's templates call it inside class=\"<?php sandbox_body_class() ?>\", so the query value lands in the attribute. Second explanation: sink (print() of a concatenated string, no esc_attr).",
       "fix": "casts the page value with intval() before it is used in the classes",
       "probe": "<?php\nfunction body_class() {\n    global $wp_query;\n    $classes = [];\n    if (($page = $wp_query->get('paged')) && $page > 1) {\n        $classes[] = 'paged-' . $page;\n    }\n    print join(' ', $classes);\n}\n?><body class=\"<?php body_class(); ?>\">",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-qw96-mrmv-h5qw",
@@ -141,7 +150,8 @@
       "between": "getQuery() calls self::getOrder($_REQUEST['order']) and splices the result into ORDER BY; getOrder's allowlist array $orderWays is not defined in its scope (it is a local of getQuery), so the check silently never fires and $order is returned as sent. Second explanation: functions.",
       "fix": "defines the DESC/ASC array inside getOrder() and returns only a value from it (also accepting the argument)",
       "probe": "<?php\nfunction getOrder($order) {\n    if ($_REQUEST['order'] && $orderWays[strtoupper($_REQUEST['order'])]) {\n        $order = $orderWays[strtoupper($_REQUEST['order'])];\n    }\n    return $order ? $order : 'DESC';\n}\n$order_column = 'timestamp';\n$order = getOrder($_REQUEST['order']);\n$sql = \"SELECT * FROM audit ORDER BY $order_column $order LIMIT 10\";\n$rows = $db->query($sql);",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-m8q9-7v2f-qjx9",
@@ -155,7 +165,8 @@
       "between": "urlencode() is applied only inside the send2friendLink sprintf (:56-62) while the raw value goes to the template; the fix escapes it with Strings::htmlentities. Second explanation: sink (the template placeholder).",
       "fix": "htmlentities the value before it reaches the template (and the Html5 export escapes topic names the same way)",
       "probe": "<?php\n$lang = $_GET['artlang'];\n$template->parse('mainPageContent', [\n    'lang' => $lang,\n    'send2friendLink' => '/index.php?action=faq&amp;artlang=' . urlencode($lang),\n]);\n/* template: <a href=\"{send2friendLink}\">{lang}</a> */",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-9wmw-wg92-52h9",
@@ -169,7 +180,8 @@
       "between": "searchAll() is called from the controller with the query values and the same $limit is used for each model's find()->limit() in the loop (:109 on). The ORM call looks parameterised, so a value injected into LIMIT is not seen as SQL. Second explanation: functions.",
       "fix": "is_numeric($limit) ? $limit : 5 in the controller plus an int type on the model method",
       "probe": "<?php\nclass ItemsController extends AppController {\n    public function search() {\n        $limit = $this->request->getQuery('limit', 5);\n        $value = $this->request->getQuery('search');\n        $table = TableRegistry::get('Items');\n        $query = $table->find()->where(['value LIKE' => '%' . $value . '%']);\n        $rows = $query->limit($limit)->all()->toList();\n        return $this->response->withType('json')->withStringBody(json_encode($rows));\n    }\n}",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-ghwg-ghc8-5p6j",
@@ -183,7 +195,8 @@
       "between": "createPaginationRules() copies page/limit from $options and does arithmetic on them; the controller passes the request's params and the view builds the numbered links from $params, so the value only becomes HTML in a template the diff does not touch. Second explanation: sink. the view that prints the page value is not in the diff, so where the value becomes HTML is inferred from the pagination fields the tool returns.",
       "fix": "is_numeric() fallbacks for page (1) and limit (60) before any arithmetic",
       "probe": "<?php\nfunction createPaginationRules($items, $options) {\n    $params = ['count' => count($items), 'limit' => 60, 'page' => 1];\n    foreach (['page', 'limit'] as $v) {\n        if (isset($options[$v])) {\n            $params[$v] = $options[$v];\n        }\n    }\n    $params['current'] = 1 + ($params['page'] - 1) * $params['limit'];\n    return $params;\n}\n$p = createPaginationRules($items, $_GET);\necho '<a href=\"?page=' . $p['page'] . '\">' . $p['page'] . '</a>';",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-42c3-wvww-gcqj",
@@ -197,7 +210,8 @@
       "between": "the three arrays are only exploded; $query goes through filterQueryParam() but these do not; they cross into getPermittedPaths($types) in the same controller and into the condition parts handed to Data\\Listing, so the SQL is built outside the diff. Second explanation: check (filterQueryParam exists for 'query' only). getPermittedPaths() and the class-definition lookups that consume the values are not in the diff; the quoted IN lists and the advisory are what place the sink in the search listing's SQL.",
       "fix": "preg_replace keeps only [a-z,] / [a-z0-9_,] in type, subtype and class before they are used",
       "probe": "<?php\n$params = array_merge($_POST, $_GET);\n$classnames = explode(',', $params['class'] ?? '');\n$parts = [];\nforeach ($classnames as $c) {\n    $parts[] = $db->quote($c);\n}\n$condition = '(subtype IN (' . implode(',', $parts) . '))';\n$list = new Data\\Listing();\n$list->setCondition($condition);\n$list->load();",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-ppxm-q2h4-v7mm",
@@ -211,7 +225,8 @@
       "between": "the values are reused in two more queries (:45, :58) and passed to decryptPrivateKey() and createUserJWT(); the API router (outside the diff) parses login/password/apikey from the request body and calls the model. Second explanation: source (function arguments, not superglobals). the router that reads the credentials from the request is not in the diff; the advisory and the method's parameters are what identify the source.",
       "fix": "runs the three values through dataSanitizer's trim|escape before the queries and splits the generic-key and user-key checks",
       "probe": "<?php\nclass AuthModel extends Database {\n    public function getUserAuth(string $login, string $password, string $apikey): array {\n        $rows = $this->select(\"SELECT id, pw FROM \" . prefixTable('users') . \" WHERE login='\" . $login . \"'\");\n        $api = $this->select(\"SELECT count(*) FROM \" . prefixTable('api') . \" WHERE value='\" . $apikey . \"'\");\n        return [$rows, $api];\n    }\n}\n$model = new AuthModel();\n$model->getUserAuth($body['login'], $body['password'], $body['apikey']);",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     }
   ],
   "usage": {

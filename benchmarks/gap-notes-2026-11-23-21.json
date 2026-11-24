@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-21",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-24 (PLAN.md step 133): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in the file's order (the file holds only cve-pairs-php cases today; no Python or JavaScript case was in it, so the PHP group was taken first as section 9 requires). All 15 were confirmed present as open cases in the cve-pairs-php suite. For each case the fix commit's diff was fetched with the GitHub API, and where the diff did not show the source, the sink or the way between them, the parent commit's files were fetched too: opnsense LogController.php and Diagnostics/log.volt + Cron/ItemController.php and Cron/index.volt, pimcore AssetController.php (import and zip regions) and GridHelperService.php/QueryParams.php, dynacase freedomrss_search.php, ipandlanguageredirect LocalDatabase.php/AbstractIpToCountry.php/RedirectController.php/RedirectService.php, PsychoStats login.php and acp/login.html, monitor-ninja controllers/schedule.php and scheduled_reports.php, mh_httpbl mod1/index.php, moodle mod/wiki/classes/external.php and mod/wiki/locallib.php, concretecms account/messages.php controller and single page, SemanticMediaWiki TimeValueFormatter.php and Query/Result/ResultArray.php, debug-bar class-debug-bar-queries.php, osticket ajax.php/include/ajax.staff.php/templates/quick-add.tmpl.php/dispatcher. Each advisory's description was read from GitHub's advisories API. Every note was read from the fix's parent side. 15 cases noted of 152 rows in misses.tsv, all of them PHP; 137 are left for the next runs.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "LogController::__call() -> renderPage($module, $scope) (:38) assigns both to the view (:41-42); Phalcon's dispatcher hands the URL segments to __call with no route declaration, and the Volt template interpolates them into JavaScript string literals",
       "fix": "htmlspecialchars($module/$scope, ENT_QUOTES|ENT_HTML401) in renderPage before assigning them to the view",
       "probe": "<?php\n// Phalcon MVC: /ui/diagnostics/log/{module}/{scope} reaches __call as action + argument\nclass LogController extends \\Phalcon\\Mvc\\Controller\n{\n    public function __call($name, $arguments)\n    {\n        $module = substr($name, 0, -6);\n        $scope = $arguments[0];\n        $this->view->module = $module;\n        $this->view->scope = $scope;\n    }\n}\n?>\n<script>\n  $(\"#grid-log\").UIBootgrid({ search: '/api/diagnostics/log/<?= $module ?>/<?= $scope ?>' });\n</script>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-wm32-j2xh-9mq5",
@@ -29,7 +30,8 @@
       "between": "openAction assigns `$this->view->selected_uuid = $uuid` (:46) and picks the Cron index view (:49); the Volt template writes the value into a JavaScript call, where HTML escaping does not end the string literal",
       "fix": "htmlspecialchars($uuid, ENT_QUOTES|ENT_HTML401) before assigning it to the view",
       "probe": "<?php\n// route: /ui/cron/item/open/{uuid}\n$uuid = $route->getParam('uuid');\n$this->view->selected_uuid = $uuid;\n$this->view->pick('OPNsense/Cron/index');\n?>\n<script>\n  openDialog('<?= $selected_uuid ?>');\n</script>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-34hj-v8fm-x887",
@@ -43,7 +45,8 @@
       "between": "serverPath is put through realpath() and a str_starts_with() containment test (:2473-2476), but that check guards the directory only; each member of the `::`-separated files list is appended unchecked and handed to Asset::create()/checkForPharStreamWrapper()",
       "fix": "realpath($serverPath.$file) for each file and a str_starts_with() test against $serverPath before the import loop",
       "probe": "<?php\n$serverPath = realpath('/var/www/html' . $_POST['serverPath']);\nif (!str_starts_with($serverPath, '/var/www/html')) {\n    throw new Exception('outside web root');\n}\nforeach (explode('::', $_POST['files']) as $file) {\n    $absolutePath = $serverPath . $file;      // ../ is not checked here\n    copy($absolutePath, '/var/www/assets/' . basename($file));\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND path-traversal"
     },
     {
       "id": "GHSA-c9hw-557q-f8hq",
@@ -57,7 +60,8 @@
       "between": "QueryParams::extractSortingSettings() validates only the direction (:40, `'DESC' : 'ASC'`); prepareListingForGrid() (:548) takes the property name, splits it on `~` (:569) or appends it to the table name (:582), and the value only gets quoted in the fix",
       "fix": "quote every identifier with $list->quoteIdentifier() (table name plus field, brick containerKey and brickfield) before building the order key",
       "probe": "<?php\n$params  = json_decode($_GET['sort'], true);\n$orderKey = $params[0]['property'];              // e.g. \"~brick~field\"\n$order   = strtoupper($params[0]['direction']) === 'DESC' ? 'DESC' : 'ASC';\n$parts   = explode('~', $orderKey);\n$sql = 'SELECT * FROM object_store ORDER BY ' . $parts[0] . '.' . $parts[1] . ' ' . $order;\n$db->fetchAll($sql);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-v9mp-h44v-2qrv",
@@ -71,7 +75,8 @@
       "between": "the three request values are pasted into SearchDoc filter strings; pg_escape_string() was the only treatment and escapes quotes without adding any, so the literal `'` around $str is what the attacker closes",
       "fix": "replace pg_escape_string() with pg_escape_literal(), which returns a quoted literal",
       "probe": "<?php\n$str  = $_GET['str'];\n$user = $_GET['user'];\n$filter = \"(title ~* '\" . pg_escape_string($str) . \"')\";\n$filter .= \" and (owner = \" . pg_escape_string($user) . \")\";\n$search = new SearchDoc('', 'SEARCH');\n$search->addFilter($filter);\n$search->search();\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-4xf2-7qfv-mgfx",
@@ -85,7 +90,8 @@
       "between": "$ipAddress goes from the Extbase action through RedirectService.php:133 `$ipToCountry->getCountryFromIp($ipAddress)` to IpToCountry.php:23-30 and into LocalDatabase::getCountryCodeFromIpInDatabase(); nothing validates it on the way",
       "fix": "a sanitizeIpAddress() helper that strips every character except digits and dots before the address is concatenated into the SQL",
       "probe": "<?php\n// TYPO3 Extbase plugin: tx_myext_pi1[ipAddress]=...\npublic function redirectAction(string $ipAddress = '')\n{\n    if ($ipAddress === '') {\n        $ipAddress = \\TYPO3\\CMS\\Core\\Utility\\GeneralUtility::getIndpEnv('REMOTE_ADDR');\n    }\n    $sql = 'select countryCode from tx_iptocountry'\n         . ' where inet_aton(\"' . $ipAddress . '\") >= inet_aton(ipRangeStart) limit 1';\n    $country = $this->connection->query($sql)->fetchColumn(0);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-j46h-rhfq-fcxj",
@@ -99,7 +105,8 @@
       "between": "login.php copies the GET fields onto the theme (assign_request_vars), the acp login template interpolates `{$ref}` in the hidden field used to return to the previous page, and the fix escapes $_GET['ref'] before that assignment",
       "fix": "`$_GET['ref'] = htmlspecialchars($_GET['ref']);` in login.php before assign_request_vars()",
       "probe": "<?php\n$ref = $_GET['ref'];\n$theme->assign_request_vars(array('ref'), true);\n?>\n<input name=\"ref\" value=\"<?= $ref ?>\" type=\"hidden\" />\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-rpgp-vx5c-cwff",
@@ -113,7 +120,8 @@
       "between": "the controller reads $_REQUEST and passes the values as arguments to the static Scheduled_reports_Model::edit_report() (:148) and update_report_field() (:353); only the id is cast to int in the controller, the model concatenates the rest straight into the SQL string, and the fix escapes them there",
       "fix": "wrap $rep_type, $saved_report_id, $period, $report_time, $report_on, $report_period and the update column name in $db->escape()/escape_column()",
       "probe": "<?php\nclass Scheduled_reports_Model\n{\n    static function edit_report($id = false, $rep_type = false, $saved_report_id = false, $period = false)\n    {\n        $db  = Database::instance();\n        $sql = \"UPDATE scheduled_reports SET report_type_id=\" . $rep_type\n             . \", report_id=\" . $saved_report_id . \", period_id=\" . $period\n             . \" WHERE id=\" . (int)$id;\n        $db->query($sql);\n    }\n}\n$id = $_REQUEST['report_id'];\nScheduled_reports_Model::edit_report($id, $_REQUEST['type'], $_REQUEST['saved_report_id'], $_REQUEST['period']);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-6g88-ffmq-6wvg",
@@ -127,7 +135,8 @@
       "between": "the TYPO3 backend module function moduleContent() reads the module's GET/POST parameters with t3lib_div::_GP() and pastes them into the WHERE and ORDER BY strings it gives exec_SELECTquery(); the fix quotes block_ip with fullQuoteStr() and whitelists the sort column",
       "fix": "fullQuoteStr() for block_ip, an in_array() whitelist for the sort column and an ASC/DESC check for the direction, intval() for the whitelist octets",
       "probe": "<?php\nfunction moduleContent()\n{\n    $where = '';\n    if (t3lib_div::_GP('block_ip')) {\n        $where = \"block_ip = '\" . t3lib_div::_GP('block_ip') . \"'\";\n    }\n    $order = t3lib_div::_GP('sort') . ' ' . strtoupper(t3lib_div::_GP('order'));\n    $res = $GLOBALS['TYPO3_DB']->exec_SELECTquery('*', 'tx_mhhttpbl_blocklog', $where, '', $order);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-7mmc-22g7-3xq2",
@@ -141,7 +150,8 @@
       "between": "the external function's parameters arrive from the web-service request; only the direction is checked (`!= 'ASC' && != 'DESC'` at :463), so the sortby value reaches wiki_get_page_list() (:470) unchecked and is spliced into the query",
       "fix": "get_safe_orderby() with an explicit column map, applied to sortby/sortdirection before wiki_get_page_list()",
       "probe": "<?php\nfunction wiki_get_page_list($swid, $sort = 'title ASC')\n{\n    global $DB;\n    return $DB->get_records('wiki_pages', array('subwikiid' => $swid), $sort);\n}\n\n$options = $params['options'];\n$sort = 'title ASC';\nif (!empty($options['sortby'])) {\n    if ($options['sortdirection'] != 'ASC' && $options['sortdirection'] != 'DESC') {\n        $options['sortdirection'] = 'ASC';\n    }\n    $sort = $options['sortby'] . ' ' . $options['sortdirection'];\n}\nwiki_get_page_list($subwiki->id, $sort);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-vcpr-hm2m-gjjj",
@@ -155,7 +165,8 @@
       "between": "reply() looks the message up and sets `$this->set('msgID', $msgID)` (:122) from the request argument, not from the loaded message; the single-page template prints that value into the reply form's hidden field",
       "fix": "set the view's msgID from `$msg->getMessageID()` instead of the request value",
       "probe": "<?php\nclass AccountMessagesController extends PageController\n{\n    public function reply($boxID, $msgID)\n    {\n        $msg = UserPrivateMessage::getByID($msgID, $mailbox);\n        $this->set('msgID', $msgID);\n    }\n}\n?>\n<?= $form->hidden(\"msgID\", $msgID); ?>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-4x35-vr82-xvj6",
@@ -169,7 +180,8 @@
       "between": "each comma-separated id is pasted unquoted into an `id IN (...)` fragment, joined with the other filters (:2199) and handed to Asset\\Listing::setCondition(); nothing casts the values to int, and the fix quotes them with $db->quote()",
       "fix": "build a quoted list with $db->quote($selectedId) before implode, so the ids become SQL string literals",
       "probe": "<?php\n$selectedIds = $_GET['selectedIds'];\n$conditionFilters = [];\nif (!empty($selectedIds)) {\n    $conditionFilters[] = 'id IN (' . implode(',', explode(',', $selectedIds)) . ')';\n}\n$list = new Asset\\Listing();\n$list->setCondition(implode(' AND ', $conditionFilters));\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-p9g7-73wv-cwgh",
@@ -183,7 +195,8 @@
       "between": "the printout format string is parsed from the query text (Special:Ask) as the data value's output format; getCaptionFromFreeFormat() copies every non-format character of the `-F[ ... ]` body into the caption verbatim, and the HTML formatter emits that caption unescaped inside <time>",
       "fix": "pass an `$asHtml` flag down from format()/getPreferredCaption() and htmlspecialchars() the caption at the HTML boundary only",
       "probe": "<?php\n// Special:Ask?q=...|?Date#-F[<script>alert(1)</script>]\n$printRequest = PrintRequest::newFromText($rawPrintout);\nif ($printRequest->getOutputFormat()) {\n    $dataValue->setOutputFormat($printRequest->getOutputFormat());\n}\n$format  = $dataValue->getOutputFormat();\npreg_match(\"/\\[([^\\]]*)\\]/\", $format, $matches);\n$caption = $intlTimeFormatter->format($matches[1]);   // literals copied verbatim\nreturn '<time datetime=\"' . $iso . '\">' . $caption . '</time>';   // raw HTML\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-2mv3-mwwf-9mrv",
@@ -197,7 +210,8 @@
       "between": "the panel's render() reads $_GET['debug_queries'] (:25) and builds the link from the current URL; the fixed code wraps add_query_arg() in esc_url(), the vulnerable code echoes the URL builder's output as-is",
       "fix": "esc_url( add_query_arg( 'debug_queries', 'true' ) ) before it goes into the href",
       "probe": "<?php\n$show_many = isset($_GET['debug_queries']);\nif ($wpdb->num_queries > 500 && !$show_many) {\n    $link = add_query_arg('debug_queries', 'true');   // built from the current URL\n    echo '<p><a href=\"' . $link . '\">Show them anyway</a></p>';   // not escaped\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-qj56-r3xc-5qwh",
@@ -211,7 +225,8 @@
       "between": "get_path_info() was a pass-through of the server variable; the AJAX handlers copy it into $path and the quick-add template echoes it into the form action, so `#\"><script>...` in the path breaks the attribute",
       "fix": "htmlentities() on both $_SERVER['PATH_INFO'] and $_SERVER['ORIG_PATH_INFO'] inside get_path_info()",
       "probe": "<?php\nfunction get_path_info() {\n    if (isset($_SERVER['PATH_INFO']))\n        return $_SERVER['PATH_INFO'];\n    if (isset($_SERVER['ORIG_PATH_INFO']))\n        return $_SERVER['ORIG_PATH_INFO'];\n    return null;\n}\n$path = ltrim(get_path_info(), '/');\n?>\n<form method=\"post\" action=\"#<?php echo $path; ?>\">\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     }
   ],
   "usage": {

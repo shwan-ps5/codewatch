@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-22",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-24 (PLAN.md step 133): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 1-20 of ~/codewatch-research/gaps/misses.tsv, taken in file order (all cve-pairs-php, PHP first per section 9); nothing skipped. For each case the fix commit's diff was fetched with gh api repos/O/R/commits/SHA, and where the diff does not show them the parent (SHA^) versions of the files holding the source and the sink were fetched as well (Request.class.php, RestServer.php, the phpMyFAQ admin dispatcher, the Magento WYSIWYG helper/controller, procedures.php, comments.php). 20 cases noted; 117 rows of misses.tsv left.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "validate() copies the three raw POST values into the error strings and into $GLOBALS['err'] (lines 125-126); print_err() then echoes every array entry into the setup page. The value crosses validate() -> global array -> print_err(), all in one file.",
       "fix": "strip_tags() is applied to fpuser, email and www before they are put into the error strings.",
       "probe": "<?php\n$err = array();\nif (isset($_POST['fpuser'])) {\n    if (!ctype_alnum($_POST['fpuser'])) {\n        $err[] = $_POST['fpuser'] . \" is not a valid username\";\n    }\n}\nif (isset($_POST['email'])) {\n    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {\n        $err[] = $_POST['email'] . \" is not a valid email address\";\n    }\n}\nif (isset($err)) {\n    echo \"<ul>\";\n    foreach ($err as $val) {\n        echo \"<li>$val</li>\";\n    }\n    echo \"</ul>\";\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-2qf9-qchx-rh67",
@@ -29,7 +30,8 @@
       "between": "explode() splits the request value into type and name; a switch replaces $type with an absolute upload directory; $name is appended to it with no validation, so ../.. walks out of the upload directory.",
       "fix": "strips '..', '/' and '\\\\' out of $name before it is appended to the directory.",
       "probe": "<?php\nif (isset($_GET['deletefile'])) {\n    list($type, $name) = explode('-', $_GET['deletefile'], 2);\n    switch ($type) {\n        case 'images':\n            $base = '/var/www/uploads/images/';\n            break;\n        default:\n            $base = '/var/www/uploads/attachs/';\n    }\n    if (file_exists($base . $name)) {\n        unlink($base . $name);\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND path-traversal"
     },
     {
       "id": "GHSA-qcj5-62mc-73xh",
@@ -43,7 +45,8 @@
       "between": "set_rules() stores each rule as array(name, operator, input); to_sql() and _get_sql_album()/_get_sql_artist()/_get_sql_song() pick the rule value up as $input, hash it into a table alias and interpolate it into the LIMIT clause before the query is prepared.",
       "fix": "wraps $input and $count in (int) at every LIMIT interpolation (five in Search.php, one in Stats::get_user).",
       "probe": "<?php\nclass Search {\n    private $rules = array();\n    public function set_rules($data) {\n        foreach (array_keys($data) as $rule) {\n            if (preg_match('/^rule_(\\d+)$/', $rule, $m)) {\n                $this->rules[] = array('recent', $data['rule_' . $m[1] . '_input'] ?? '');\n            }\n        }\n    }\n    public function to_sql() {\n        $table = array();\n        foreach ($this->rules as $rule) {\n            $input = $rule[1];\n            $key = md5($input);\n            $table['addition_' . $key] = \"LEFT JOIN (SELECT `id` FROM `album` ORDER BY `id` DESC LIMIT $input) AS `addition_$key`\";\n        }\n        return 'SELECT * FROM `album` ' . implode(' ', $table);\n    }\n}\n$search = new Search();\n$search->set_rules($_REQUEST);\n$db->query($search->to_sql());\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-4vf7-8qf6-f3f9",
@@ -57,7 +60,8 @@
       "between": "par() extracts title/url/notes/redirect from the URL in browser JavaScript, decodeURIComponent leaves the characters intact, and window.onload -> redirect() writes them into innerHTML without escaping; the server only prints the <script> block.",
       "fix": "adds escapeHtml() (createTextNode/innerHTML round trip) and wraps title, url and localStorage['lastPod'] in it before the innerHTML writes.",
       "probe": "<script>\nfunction par(name) {\n    var re = new RegExp(\"[\\\\?&]\" + name + \"=([^&]*)\");\n    var m = re.exec(window.location.href);\n    return m ? m[1] : \"\";\n}\nvar title = decodeURIComponent(par(\"title\"));\nvar url = decodeURIComponent(par(\"url\"));\nwindow.onload = function () {\n    document.getElementById(\"shareurl\").innerHTML = url;\n    document.getElementsByTagName(\"body\")[0].innerHTML = \"Sharing <b>\" + title + \"</b>\";\n};\n</script>",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-wx4g-2jhx-899v",
@@ -71,7 +75,8 @@
       "between": "each address fails FILTER_VALIDATE_EMAIL, is concatenated into \"Invalid email address - \" . $rec, and the string is handed to $Result->show(); the print happens inside another class, so the echo is not in the file that reads the request.",
       "fix": "wraps $rec in escape_input() before it is concatenated into the message.",
       "probe": "<?php\nclass Result {\n    public function show($class, $text) {\n        print $this->show_message($class, $text);\n    }\n    private function show_message($class, $text) {\n        return \"<div class='alert alert-$class'>$text</div>\";\n    }\n}\n$Result = new Result();\nforeach (explode(\",\", $_POST['recipients']) as $rec) {\n    if (!filter_var(trim($rec), FILTER_VALIDATE_EMAIL)) {\n        $Result->show(\"danger\", _(\"Invalid email address\") . \" - \" . $rec);\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-crvg-xv76-f4pq",
@@ -85,7 +90,8 @@
       "between": "the value is written to the options table without being one of the template locations returned by look_for_templates(); a later admin page reads it back through get_option() and prints it in the template selector/header. The echoing file is not part of the diff.",
       "fix": "builds the list of valid template locations from look_for_templates() and exits with 403 when activate_template is not in it, so the option can only hold a known template.",
       "probe": "<?php\n// the option is stored by one request\nif (isset($_GET['activate_template'])) {\n    save_option('selected_clients_template', $_GET['activate_template']);\n    ps_redirect(BASE_URI . 'templates.php');\n}\n// and read back by the next one\n$current = get_option('selected_clients_template');\necho '<link rel=\"stylesheet\" href=\"templates/' . $current . '/style.css\">';\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-5vpv-xmcj-9q85",
@@ -100,7 +106,8 @@
       "between": "getCurrentPath() only accepts the request node when is_dir($path) && stripos($path, $currentPath) !== false (a substring containment check); deleteDirectory() then only checks that the path starts with the root (strpos($pathCmp, $rootCmp) === 0) and rebuilds a thumbnail path from the remainder. A NUL byte or a '..' segment in the request value defeats both checks.",
       "fix": "adds a rejection of NUL bytes and of any '..' path segment to the guard in deleteDirectory().",
       "probe": "<?php\nclass Storage {\n    public function deleteDirectory($path) {\n        $root = $this->getRoot();\n        $pathCmp = rtrim($path, '/');\n        if (strpos($pathCmp, $root) !== 0) {\n            throw new Exception('Cannot delete directory');\n        }\n        $io = new Varien_Io_File();\n        $io->rmdir($root . '/' . ltrim(substr($pathCmp, strlen($root)), '/'), true);\n    }\n}\n$node = $_GET['node'];\n$path = realpath(convertIdToPath($node));\nif (is_dir($path) && stripos($path, $root) !== false) {\n    $_SESSION['current_path'] = $path;\n}\n$storage = new Storage();\n$storage->deleteDirectory($_SESSION['current_path']);\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-v57q-v4p2-v4p5",
@@ -114,7 +121,8 @@
       "between": "the login script passes the POST value as a method argument; login() concatenates it into the SQL string with no escaping (the commit message says magic_quotes_gpc used to cover this) and hands the string to the database manager.",
       "fix": "adds htmlspecialchars(addslashes($user/$pass)) inside login(), plus SecurityManager::formPrep() and SQLPrep() in Field.php.",
       "probe": "<?php\nclass LoginManager {\n    public function login($user, $pass) {\n        $sql = \"select `users`.* from `users` where `username` LIKE '$user'\";\n        return DatabaseManager::checkError($sql);\n    }\n}\n$manager = new LoginManager();\n$manager->login($_POST['username'], $_POST['password']);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-8h56-r5w9-2prx",
@@ -128,7 +136,8 @@
       "between": "the request value is formatted straight into the query-builder's where() string; the sink is the query builder, not a call that executes SQL, and the execution happens through the Joomla model/database layer.",
       "fix": "casts contentid with intval() before it is concatenated; the smartloader view dies unless owner is one of module/plugin/component/article.",
       "probe": "<?php\n$db = JFactory::getDbo();\n$query = $db->getQuery(true);\n$query->select('*')->from('#__content');\n$query->where(\"id = '\" . JRequest::getVar(\"contentid\", 0, \"GET\") . \"'\");\n$db->setQuery($query);\n$rows = $db->loadObjectList();\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-xvv5-7cf4-2v4c",
@@ -142,7 +151,8 @@
       "between": "the two request values are carried through include(\"tool-lookupids.php\") and get_invocation_dir_name($invocation_user, $invocation_id) before several echo statements print them into the error HTML with no escaping.",
       "fix": "requires ctype_alnum() on both invocation_id and invocation_user right after they are read, and redirects to the dashboard when either fails.",
       "probe": "<?php\n$invocation_user = $_REQUEST['invocation_user'];\n$invocation_id = $_REQUEST['invocation_id'];\n$dir = get_invocation_dir_name($invocation_user, $invocation_id);\nif (!is_dir($dir)) {\n    echo \"<h1>Add Resources to Slice</h1>\";\n    echo \"<p class='error'>Files for <b>$invocation_user-$invocation_id</b> not found.</p>\";\n    exit;\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-66rw-9q89-rr6x",
@@ -156,7 +166,8 @@
       "between": "the header value is split and passed into the Store class, which builds the SQL by concatenation; the vulnerable code already calls prepare() and execute(), so the statement looks parameterized although no value is bound.",
       "fix": "replaces the concatenated values with ? placeholders and binds every column/value and the id before execute().",
       "probe": "<?php\nclass Store {\n    public static $pdo;\n    public function getById($table, $id) {\n        $query = 'SELECT * FROM `' . $table . '` WHERE `id`=' . $id;\n        $sth = self::$pdo->prepare($query);\n        $sth->execute();\n        return $sth->fetchAll();\n    }\n}\n$parts = explode(':', $_SERVER['HTTP_HMAC']);\n$store = new Store();\n$user = $store->getById('user', $parts[0]);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-gjw6-4ppg-h3xg",
@@ -170,7 +181,8 @@
       "between": "the request value never appears in a superglobal expression inside the vulnerable method: it is bound to the method argument by the dispatcher's reflection over the parameters, then interpolated into the SQL text.",
       "fix": "uses :interval and :country_code placeholders and passes array(':interval' => intval($interval)) / array(':country_code' => $country_code) to execute().",
       "probe": "<?php\nclass AddInfo {\n    public function get_info($interval) {\n        $sql = \"SELECT release_tag, count(*) FROM phone_home_tb\";\n        if ($interval !== '1') {\n            $sql .= \" WHERE reg_date >= DATE_SUB(CURDATE(), INTERVAL $interval DAY)\";\n        }\n        $stmt = $this->conn->prepare($sql);\n        $stmt->execute();\n        return $stmt->fetchAll();\n    }\n}\n$request = array('interval' => $_GET['interval']);\n$method = 'get_info';\n$service = new AddInfo();\n$result = call_user_func_array(array($service, $method), $request);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-m9xr-8cx7-53pj",
@@ -184,7 +196,8 @@
       "between": "the normal action goes through Strings::htmlentities() at :123, but the redirect-action path bypasses that line and assigns the raw POST value to $action; FILTER_UNSAFE_RAW is a filter call that sanitizes nothing, in a file that otherwise escapes the action.",
       "fix": "changes the filter for redirect-action to FILTER_SANITIZE_SPECIAL_CHARS.",
       "probe": "<?php\n$action = Filter::filterInput(INPUT_GET, 'action', FILTER_UNSAFE_RAW);\nif (is_null($action)) {\n    $action = Filter::filterInput(INPUT_POST, 'action', FILTER_UNSAFE_RAW);\n}\nif (!is_null($action)) {\n    $action = Strings::htmlentities($action);\n}\n$redirectAction = Filter::filterInput(INPUT_POST, 'redirect-action', FILTER_UNSAFE_RAW);\nif (is_null($action) && '' !== $redirectAction && 'logout' !== $redirectAction) {\n    $action = $redirectAction;\n}\nswitch ($action) {\n    default:\n        echo '<h1>' . $action . '</h1>';\n}\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-gw2r-m9xw-9gvr",
@@ -198,7 +211,8 @@
       "between": "comments.php passes the POST text into procedures.php; there $newsId and $currentUserId are intval()'d but $text is interpolated raw, and the same text is later echoed at comments.php:97 when the comments are listed.",
       "fix": "escapes $text with mysqli_real_escape_string($link, $text) before it is concatenated into the INSERT.",
       "probe": "<?php\n// site/comments.php\nif (isset($_POST['submit'])) {\n    $postNewsId = intval($_POST['newsId']);\n    sendComments($postNewsId, $_POST['text']);\n}\n// site/procedures.php\nfunction sendComments($newsId, $text) {\n    global $link;\n    $newsId = intval($newsId);\n    $currentUserId = intval(getActiveUserID());\n    mysqli_query($link, \"INSERT INTO newsComments SET news = $newsId, user = $currentUserId, text = '$text', date = NOW()\");\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-3356-grh4-xpc8",
@@ -212,7 +226,8 @@
       "between": "getStatsByType() already has a guard at :21-22 ($year > $latest or !ctype_digit($year) resets the value) before the interpolation; the fix leaves the guard and quotes the value with the database's quote() instead, so a year value that satisfies the guard still ends up in the LIKE clause unquoted.",
       "fix": "replaces the manual quotes with $db->quote($year . '%') and filters the ajax input as UINT (get('data', date('Y'), 'UINT')).",
       "probe": "<?php\nclass ModHelper {\n    public static function getStatsByType($year) {\n        $latest = self::getLatestYear();\n        if (($year > $latest) or !(ctype_digit($year))) {\n            $year = $latest;\n        }\n        $query = 'SELECT arten.title AS label, count(data1) AS value\n                  FROM #__eiko_einsatzberichte AS berichte\n                  WHERE berichte.state=1 AND berichte.date1 LIKE \\'' . $year . '%\\'';\n        return self::executeQuery($query, 1);\n    }\n    public static function getAjax() {\n        $input = JFactory::getApplication()->input;\n        $data = $input->get('data');\n        return json_encode(self::getStatsByType($data));\n    }\n}\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-x38j-4h5h-pvg6",
@@ -226,7 +241,8 @@
       "between": "the POST values are read at the top of auth.inc.php and handed to the password-check class as method arguments before any SQL is built, so neither the query nor the interpolation is in the file the fix changes; the fix escapes them at the point they are read.",
       "fix": "wraps login, login_password and LANG in addslashes() right after they are read from $_POST.",
       "probe": "<?php\n$login = $_POST['login'];\n$password = $_POST['login_password'];\nif ($login && $password) {\n    $pwd = new password;\n    $result = $pwd->check(\"adminuser\", $login, $password, $CRYPT);\n}\n// lib/password-class: builds the lookup with the value interpolated\n// $sql = \"SELECT * FROM adminuser WHERE username='$login'\";\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-3j3x-f853-j95p",
@@ -240,7 +256,8 @@
       "between": "the request value is first rewritten by several preg_replace() calls and split by preg_match_all() (with htmlspecialchars_decode() dropping the escaping) into single words; each word is then interpolated into the SQL string, so the value reaching the query is a transformed element of an array, not the request variable.",
       "fix": "wraps $word in $this->db->sql_escape() in both queries.",
       "probe": "<?php\npublic function list_keywords($event) {\n    $keywords = $this->request->variable('keywords', '');\n    $keywords = preg_replace('#\\sand\\s#iu', ' +', $keywords);\n    $split = preg_replace('#([^\\p{L}\\p{N}\\'*\"()])#u', '$1$1', trim(htmlspecialchars_decode(strtolower($keywords))));\n    preg_match_all('#(?:[^\\p{L}\\p{N}*\"()]|^)([+\\-|]?[\\p{L}\\p{N}*\"()]+)#u', $split, $m);\n    foreach ($m[1] as $word) {\n        $sql = 'SELECT word_id FROM ' . SEARCH_WORDLIST_TABLE . ' WHERE word_text = \"' . $word . '\"';\n        $result = $this->db->sql_query($sql);\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-2rwp-q9wg-42qm",
@@ -254,7 +271,8 @@
       "between": "the old code only rejected a module name containing '/' or '\\\\' (the check was at the bottom of the block, after file_exists() had already been called), and '.' was not rejected at all, so './' or '..' prefixes passed; the fix moves the test before the file_exists() and adds '.'.",
       "fix": "moves the hostile-value test ahead of file_exists() and adds '.'; on a hit it clears the session and mails the administrator instead of proceeding.",
       "probe": "<?php\nif (!file_exists('func/' . $_GET['a'] . '.php')) {\n    $module = 'main';\n    $qstring = $_SERVER['REQUEST_URI'];\n} else {\n    $module = $_GET['a'];\n}\nif (strstr($module, '/') || strstr($module, '\\\\')) {\n    exit('You have been banned from this site.');\n}\ninclude 'func/' . $module . '.php';\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND path-traversal"
     },
     {
       "id": "GHSA-68hv-8926-j34c",
@@ -268,7 +286,8 @@
       "between": "the framework binds the request value to the method argument; the controller then passes it to the access check and to the upload handler, which save it through the model. The SQL that the cast protects is outside the diff.",
       "fix": "casts $model_id and $id with (int) before the access check and the upload/download handlers see them.",
       "probe": "<?php\nclass D2filesController extends Controller {\n    public function actionUpload($model_name, $model_id) {\n        if (!$this->performReadValidation($model_name, $model_id)) {\n            throw new CHttpException(403, 'You are not authorized to perform this action.');\n        }\n        $handler = new UploadHandlerD2files(array(\n            'model_name' => $model_name,\n            'model_id' => $model_id,\n        ));\n    }\n    protected function performReadValidation($model_name, $model_id) {\n        $m = $model_name::model();\n        $modelMain = $m->findByPk($model_id);\n        return $modelMain !== null;\n    }\n}\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-p576-j8jp-6qr7",
@@ -282,7 +301,8 @@
       "between": "the JSON parameters are stored in $this->params (:88) and read back by getParam('cputime') at :278; Restapi.php:195 already checks intval($params['cputime']) against the upper limit, but only for the bound, so a value like '1; rm -rf /' passes the check and is interpolated raw into the command line.",
       "fix": "getParam() replaces a non-numeric value with the numeric default when the default is numeric, and intval()s the value in the upper-limit check.",
       "probe": "<?php\n// application/controllers/Restapi.php\n$run = $this->post('run_spec');\n$params = isset($run->parameters) ? $run->parameters : array();\nif (isset($params['cputime']) &&\n        intval($params['cputime']) > intval($CI->config->item('cputime_upper_limit_secs'))) {\n    $this->error(\"cputime exceeds maximum allowed on this Jobe server\", 400);\n}\n$this->task = new LanguageTask($run->sourcefilename, $input, $params);\n\n// application/libraries/LanguageTask.php\npublic function run_in_sandbox($wrappedCmd) {\n    $cputime = $this->getParam('cputime');\n    $sandboxCmd = 'sudo runguard --user=' . $this->user . ' --cputime=' . $cputime\n        . ' sh -c ' . escapeshellarg($wrappedCmd) . ' >prog.out 2>prog.err';\n    file_put_contents('prog.cmd', $sandboxCmd);\n    exec('bash prog.cmd');\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     }
   ],
   "usage": {

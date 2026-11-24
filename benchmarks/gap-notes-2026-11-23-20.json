@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-20",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-24 (PLAN.md step 133): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv, in the file's order (it holds only cve-pairs-php cases today; no Python or JavaScript case was in the file). For each case the fix commit's diff was fetched with the GitHub API, and where the diff did not show the source or the sink the parent commit's files were fetched too: pimcore ClassDefinition.php/Block.php, librenms logs.inc.php/LegacyController.php/index.php/html index and api_functions.inc.php, phpipam import-load-data.php/import-vlan-preview.php/import-vlan-check.php, moneymanagerex show_function.php/functions_database.php/show.php, 123solar detailed.php, contao FileSelector.php, contao-cookiebar CookiebarController.php, Ecommerce-CodeIgniter Languages.php, mautic DashboardController.php, DiscuzX install/index.php and install_function.php, phpMyFAQ api.service.php/Faq.php/News.php. Each advisory's description was read from GitHub's advisories API. Every note was read from the fix's parent side. 15 cases noted of 167 rows in misses.tsv, all of them PHP; 152 are left for the next runs.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "the UID is stored as the class definition's id; loading any object of that class calls Block::load(), which concatenates `$object->getClassId()` (and the fieldcollection/objectbrick `containerKey`, :744-773) into the table name unquoted; the only check is the unanchored regex above, so a UID like `1 UNION SELECT ...-- ` passes it (missing `$` anchor)",
       "fix": "anchors both regexes with `$` and quotes every table name with quoteIdentifier(), casting ids and indices to int",
       "probe": "<?php\n$id = $_POST['classId'];\n\nif (!preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9_]+)?/', $id)) {\n    throw new Exception('bad class id');\n}\n\n$db = new PDO('sqlite:/var/app.db');\n$query = 'SELECT value FROM object_store_' . $id . ' WHERE oo_id = 1';\n$db->fetchOne($query);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-v7w9-63xh-6r3w",
@@ -29,7 +30,8 @@
       "between": "the router-built `$vars['section']` reaches the switch() default branch in logs.inc.php and is passed as the `$message` argument of report_this(), a formatting helper in another file; nothing escapes it on either side",
       "fix": "htmlentities() on $message and the two config values inside report_this()",
       "probe": "<?php\nfunction report_this($message)\n{\n    return '<h2>' . $message . ' <a href=\"/issues\">report this</a></h2>';\n}\n\n$vars = ['section' => $_GET['section']];\n\nswitch ($vars['section']) {\n    case 'syslog':\n        break;\n    default:\n        echo report_this('Unknown section ' . $vars['section']);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-fpg3-c7pp-9cgh",
@@ -43,7 +45,8 @@
       "between": "the uploaded file is parsed into $data by the included import-load-data.php, the preview page includes import-*-check.php which walks $data and concatenates every cell into table HTML; no escaping on either side",
       "fix": "escape_input() on the mapped field names and on each cell value while the CSV/XLS is parsed",
       "probe": "<?php\n$data = [];\n$fh = fopen($_FILES['import']['tmp_name'], 'r');\n$cols = str_getcsv(fgets($fh));\n\nwhile (($line = fgets($fh)) !== false) {\n    $data[] = array_combine($cols, str_getcsv($line));\n}\n\n$rows = '';\nforeach ($data as $record) {\n    $rows .= '<tr><td>' . $record['name'] . '</td><td>' . $record['description'] . '</td></tr>';\n}\n\necho '<table>' . $rows . '</table>';\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-crcx-wcr8-prj5",
@@ -57,7 +60,8 @@
       "between": "the array is passed to db_function::transaction_delete_group() in another file, which loops over it to build the IN list; no element is cast or quoted",
       "fix": "builds `?` placeholders with str_repeat and prepares/executes the statement with the array",
       "probe": "<?php\nfunction delete_group(array $ids)\n{\n    $db = new PDO('sqlite:/var/data.db');\n    $list = '';\n    for ($i = 0; $i < count($ids); $i++) {\n        $list = $list . $ids[$i] . ',';\n    }\n    $db->exec('DELETE FROM transactions WHERE ID IN (' . rtrim($list, ',') . ');');\n}\n\nif (isset($_POST['delete'])) {\n    delete_group($_POST['ids']);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-9hfc-v7j8-8744",
@@ -71,7 +75,8 @@
       "between": "$_POST['date1'] must only contain a date-shaped substring for the unanchored preg_match to pass (`1/1/2024'><script>` does), is copied to $date1, cut with substr() into $titledate/$csvdate1 (:232-233) and also printed in the JS block (:409); nothing escapes it",
       "fix": "htmlspecialchars() the POST value where it is assigned to $date1",
       "probe": "<?php\n$regexp = '/[0-9]{1,2}\\/[0-9]{1,2}\\/[0-9]{4}/';\n\nif (!empty($_POST['date1']) && preg_match($regexp, $_POST['date1'])) {\n    $date1 = $_POST['date1'];\n} else {\n    $date1 = date('d/m/Y');\n}\n\necho \"<input name='date1' id='datepickid' value='$date1' size=7 maxlength=10>\";\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-4p75-5p53-65m9",
@@ -85,7 +90,8 @@
       "between": "generateAjax joins the posted folder onto kernel.project_dir (:349) and calls renderFiletree(), which recurses over the same path (:522); the only check is isProtectedPath() (:349, looking for `.public` files), never a containment test against the user's file mounts",
       "fix": "adds isMounted(): rejects insecure paths, then requires Path::isBasePath() against the user's filemounts (or the upload path for admins) before anything is listed",
       "probe": "<?php\nclass FileSelector\n{\n    public function generateAjax($folder)\n    {\n        return $this->renderFiletree('/var/www/project/' . $folder);\n    }\n\n    protected function renderFiletree($path)\n    {\n        if (!is_dir($path)) {\n            return '';\n        }\n        $out = '';\n        foreach (scandir($path) as $entry) {\n            $out .= '<li>' . $entry . '</li>';\n        }\n        return $out;\n    }\n}\n\n$selector = new FileSelector();\necho $selector->generateAjax($_POST['folder']);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-296q-rj83-g9rq",
@@ -99,7 +105,8 @@
       "between": "the route segment is used as a language code and handed to the template without any format check; only `redirect` is validated (:70-74)",
       "fix": "adds Validator::isLocale($locale) and returns a 400 response for anything that is not a locale",
       "probe": "<?php\nuse Symfony\\Component\\HttpFoundation\\Request;\nuse Symfony\\Component\\HttpFoundation\\Response;\nuse Symfony\\Component\\Routing\\Annotation\\Route;\n\nclass BlockController\n{\n    /** @Route(\"/block/{locale}/{id}\") */\n    public function block(Request $request, $locale, $id)\n    {\n        $html = '<div lang=\"' . $locale . '\">blocked</div>';\n        return new Response($html);\n    }\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-pj54-fm22-6g5p",
@@ -113,7 +120,8 @@
       "between": "the query parameter is concatenated into the directory handed to rreadDir(); each php file found there is included, so a traversal reaches arbitrary php files - local file inclusion/code execution; the language name was not validated at all",
       "fix": "adds ctype_alnum($_GET['editLang']) and is_dir() checks before reading, and tokenizes the php files to allow only the `$lang` variable",
       "probe": "<?php\nfunction read_dir_recursive($dir)\n{\n    $found = [];\n    foreach (scandir($dir) as $entry) {\n        if ($entry === '.' || $entry === '..') {\n            continue;\n        }\n        $path = $dir . '/' . $entry;\n        if (is_dir($path)) {\n            $found = array_merge($found, read_dir_recursive($path));\n        } elseif (substr($entry, -4) === '.php') {\n            $found[] = $path;\n        }\n    }\n    return $found;\n}\n\n$dir = 'app/language/' . $_GET['editLang'] . '/';\nforeach (read_dir_recursive($dir) as $file) {\n    require $file;\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND path-traversal"
     },
     {
       "id": "GHSA-jh57-j3vq-h438",
@@ -127,7 +135,8 @@
       "between": "$order is concatenated into `d.\\`$order\\` ASC` at :321 after only the stristr() test at :320 (a value containing ` asc` skips the quoting), then spliced into the ORDER BY clause",
       "fix": "replaces the stristr() test with `preg_match('/^([a-z_]+)(?: (desc|asc))?$/i', $order, ...)` and rebuilds the order from the captured identifier and direction, defaulting to hostname",
       "probe": "<?php\n$order = $_GET['order'];\n\nif (empty($order)) {\n    $order = 'hostname';\n}\n\nif (stristr($order, ' desc') === false && stristr($order, ' asc') === false) {\n    $order = 'd.`' . $order . '` ASC';\n}\n\n$db = new PDO('sqlite:/var/app.db');\n$db->query(\"SELECT * FROM devices AS d ORDER BY $order\");\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND sql-injection"
     },
     {
       "id": "GHSA-fhcx-f7jg-jx3f",
@@ -141,7 +150,8 @@
       "between": "the request value goes through the getNameFromRequest() helper, is also used as a snapshot name (:318) and export filename (:355), and is substituted into the translated notice that the page prints",
       "fix": "InputHelper::clean() on the value inside getNameFromRequest()",
       "probe": "<?php\nfunction getNameFromRequest($request)\n{\n    return $request->get('name', date('Y-m-dTH:i:s'));\n}\n\n$name = getNameFromRequest($_POST);\n$message = str_replace('%name%', $name, 'Dashboard %name% has been saved.');\n$type = 'notice';\n\necho '<div class=\"alert alert-' . $type . '\">' . $message . '</div>';\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-gfwf-8f5m-89hq",
@@ -155,7 +165,8 @@
       "between": "the value is held in the global $uchidden and printed by show_next_step() in another file; with no check it is interpolated into the hidden field that the next step posts back (:474-482)",
       "fix": "unserialize()/urldecode() the value, blank it unless it holds the expected ucapi/ucfounderpw keys, otherwise dhtmlspecialchars() it",
       "probe": "<?php\nfunction getgpc($k)\n{\n    if (isset($_GET[$k])) {\n        return $_GET[$k];\n    }\n    return isset($_POST[$k]) ? $_POST[$k] : '';\n}\n\n$uchidden = getgpc('uchidden');\n\nfunction show_next_step($step)\n{\n    global $uchidden;\n    echo \"<form action='index.php' method='post'>\";\n    echo \"<input type='hidden' name='step' value='$step' />\";\n    echo \"<input type='hidden' name='uchidden' value=\\\"$uchidden\\\" />\";\n    echo '</form>';\n}\n\nshow_next_step(2);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-2grw-mc9r-822r",
@@ -169,7 +180,8 @@
       "between": "the request values travel as getter calls on a FaqEntity object into Faq::create()/update(); the same sprintf list escapes keywords, question, answer and author but not email and notes",
       "fix": "wraps getEmail() and getNotes() in `$this->config->getDb()->escape()` in both create() and update()",
       "probe": "<?php\nclass FaqEntity\n{\n    private $email;\n    private $notes;\n\n    public function __construct($email, $notes)\n    {\n        $this->email = $email;\n        $this->notes = $notes;\n    }\n\n    public function getEmail()\n    {\n        return $this->email;\n    }\n\n    public function getNotes()\n    {\n        return $this->notes;\n    }\n}\n\nfunction create($db, FaqEntity $faq)\n{\n    $query = sprintf(\n        \"INSERT INTO faq (email, notes) VALUES ('%s', '%s')\",\n        $faq->getEmail(),\n        $faq->getNotes()\n    );\n    $db->query($query);\n}\n\ncreate(new PDO('sqlite:/var/faq.db'), new FaqEntity($_POST['email'], $_POST['notes']));\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-48vw-jpf8-hwqh",
@@ -183,7 +195,8 @@
       "between": "FILTER_VALIDATE_URL accepts quotes and angle brackets, so the value survives; it is cut with Strings::substr() and formatted into the answer, which is then saved through FaqEntity->setAnswer() and rendered on the FAQ page later",
       "fix": "Strings::htmlentities($contentLink) where it is used as the link text",
       "probe": "<?php\n$contentLink = filter_var($_POST['contentlink'], FILTER_VALIDATE_URL);\n$answer = $_POST['answer'];\n\nif (!is_null($contentLink) && substr($contentLink, 7) !== '') {\n    $answer = sprintf(\n        '%s<br><div id=\"newFAQContentLink\"><a href=\"https://%s\" target=\"_blank\">%s</a></div>',\n        $answer,\n        substr($contentLink, 7),\n        $contentLink\n    );\n}\n\n$stmt = $db->prepare('INSERT INTO faq (answer) VALUES (?)');\n$stmt->execute([$answer]);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-qgxx-4xv5-6hcw",
@@ -197,7 +210,8 @@
       "between": "the data array crosses from the controller into News::addNewsEntry()/updateNewsEntry() in another class; header, content, authorName, link and linkTitle are escaped, authorEmail is concatenated raw into the VALUES list",
       "fix": "escape() on $data['authorEmail'] in both addNewsEntry() and updateNewsEntry()",
       "probe": "<?php\nfunction addNewsEntry($db, array $data)\n{\n    $query = sprintf(\n        \"INSERT INTO news (header, author_email) VALUES ('%s', '%s')\",\n        $db->escape($data['header']),\n        $data['authorEmail']\n    );\n    return $db->query($query);\n}\n\naddNewsEntry(new PDO('sqlite:/var/news.db'), $_POST);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-66c2-p8rh-qx87",
@@ -211,7 +225,8 @@
       "between": "the keyword from the query string is echoed back into the input by the helper, which would escape it unless `escape => false` is passed",
       "fix": "drops `'escape' => false` from both control() calls so the helper escapes the value",
       "probe": "<?php // search form template ?>\n<?php echo $this->Form->create(null, ['type' => 'get']) ?>\n<?php echo $this->Form->control('q', ['escape' => false]) ?>\n<?php echo $this->Form->submit('Search') ?>\n<?php echo $this->Form->end() ?>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     }
   ],
   "usage": {

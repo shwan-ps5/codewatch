@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-23-18",
-  "status": "research only: noted 2026-11-23, not reviewed or scanned",
+  "status": "read 2026-11-24 (PLAN.md step 133): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 31-45 of ~/codewatch-research/gaps/misses.tsv (the batch after gap-notes-2026-11-23-17), in file order. All 197 rows of that file are cve-pairs-php, so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and, where the diff did not show source or sink, the files at the fix commit's parent: Cacti host_templates.php and lib/html_utility.php; Craft src/controllers/UpdaterController.php, BaseUpdaterController.php, src/db/Connection.php and src/web/Controller.php; LimeSurvey SideBarWidget.php and the side_bar view; thirtybees controllers/front/post.php (classes/Media.php is not in the module; Media::addJsDef is the core's); agency-code-repo search.php and includes.php (out()/webify() are defined further down the include chain, which was not reached); Moodle grade/import/csv/index.php and the CSV output renderer; mejiro index.php; basercms MailMessagesController.php; librenms includes/html/table/address-search.inc.php, includes/html/vars.inc.php, includes/html/pages/ports.inc.php, includes/html/pages/search.inc.php, includes/html/pages/search/fdb.inc.php and includes/html/pages/search/ipv4.inc.php; opnsense src/www/index.php; cockpit install/index.php; MISP app/View/Events/index.ctp, app/Controller/EventsController.php, ListTopBar/scaffold.ctp, group_simple.ctp, element_simple.ctp and element_embedded.ctp. The advisory text of GHSA-x684-96hh-833x, GHSA-28gc-4qq5-8q26, GHSA-347h-34jg-3w64, GHSA-4755-g2xw-m698 and GHSA-cr6c-qgxp-9j83 was read from the local clone of the advisory database. Two cases are unsure: thirtybees (the printing side, Media::addJsDef, is in the framework, not this module) and MISP (element_simple.ctp already applies h() at the sink, so how the value broke out at the parent commit is not fully clear; the change is the view's h()). No case was skipped. Rows 46-197 are left for the next run.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "the value only passes a `!= '-1'` comparison; the neighbouring filters of the same function wrap theirs in db_qstr() (:845, :849); $sql_where is pasted into two whole queries executed by Cacti's own wrappers db_fetch_cell()/db_fetch_assoc(), which take a finished SQL string (the advisory notes it is an incomplete fix for CVE-2024-54146)",
       "fix": "reads the parameter with get_filter_request_var() (FILTER_VALIDATE_INT), so only an integer can reach the query",
       "probe": "<?php\n$gt = get_request_var('graph_template');\n\n$sql_where = '';\nif ($gt != '-1') {\n    $sql_where = '(gt_id = ' . $gt . ')';\n}\n\n$total = db_fetch_cell(\"SELECT COUNT(*) FROM host_template AS ht WHERE $sql_where\");\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-x684-96hh-833x",
@@ -29,7 +30,8 @@
       "between": "actionRestoreDb() reads dbBackupPath out of $this->data and hands it to restore() with no check that it is a backup this install made; the advisory is the RCE you get when the security key is known and the body is forged",
       "fix": "requires the path to exist and FileHelper::isWithin($backupPath, Craft::$app->getPath()->getDbBackupPath()) before restoring",
       "probe": "public function beforeAction($action): bool\n{\n    $this->data = Json::decode($this->request->getBodyParam('data'));\n    return true;\n}\n\npublic function actionRestoreDb()\n{\n    $path = $this->data['dbBackupPath'];\n    $this->getDb()->restore($path);\n    return $this->asJson(['ok' => true]);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-wj23-9h6j-cj83",
@@ -43,7 +45,8 @@
       "between": "Box rows -> SideBarWidget::run() -> $this->render('side_bar', ['icons' => $boxesData]) -> the view echoes title/url without CHtml::encode",
       "fix": "CHtml::encode() on title and url in the view, and LSYii_Validators (isUrl / plain text) rules added on the Box model",
       "probe": "<?php foreach ($icons as $icon): ?>\n<div class=\"sidebar-icon\">\n    <a href=\"<?= $icon['url'] ?>\" title=\"<?= $icon['title'] ?>\" class=\"btn\">\n        <i class=\"<?= $icon['ico'] ?>\"></i>\n    </a>\n</div>\n<?php endforeach; ?>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-gf72-wcjm-p5f6",
@@ -57,7 +60,8 @@
       "between": "initContent() builds the three sharing_* definitions; the URI is the only one that comes from the request, and it reaches the script block of every rendering of the post page",
       "fix": "uses the post's own canonical link ($post->link) instead of the request URI",
       "probe": "Media::addJsDef([\n    'sharing_name' => addcslashes($post->title, \"'\"),\n    'sharing_url'  => addcslashes(Tools::getHttpHost(true) . $_SERVER['REQUEST_URI'], \"'\"),\n    'sharing_img'  => addcslashes(Tools::getHttpHost(true) . '/img/post.jpg', \"'\"),\n]);\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-857w-xw9q-mv53",
@@ -71,7 +75,8 @@
       "between": "the value is checked against a list of search types (:37-40), but that only picks the branch; the message still carries the raw value through alert_mark() into out(); the quick-search value is passed to object_quick_search() (:54)",
       "fix": "strip_tags() on both request values and webify() (the project's HTML escaper) around the message before out()",
       "probe": "<?php\ninclude 'includes.php';\n$qs_type = $_REQUEST['QSType'];\n\nif (!in_array($qs_type, array_keys($QUICK_SEARCHES))) {\n    agency_top_header();\n    out(alert_mark('Unknown Quick Search Type: ' . $qs_type));\n    page_close();\n    exit;\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-28gc-4qq5-8q26",
@@ -85,7 +90,8 @@
       "between": "uploaded file -> csv_import_reader -> import_preview_page($header, $data) -> the cells go into html_table untouched, so an HTML cell in the spreadsheet runs in the teacher's session",
       "fix": "array_map('s', ...) over the header and over every row of the preview, s() being Moodle's HTML escaper",
       "probe": "public function import_preview_page($header, $data) {\n    $table = new html_table();\n    $table->head = $header;\n    $table->data = $data;\n    return html_writer::table($table);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-347h-34jg-3w64",
@@ -99,7 +105,8 @@
       "between": "file -> read_gps_location()/exif_read_data() -> concatenated into $exif_info and $map_url -> echoed in the grid; nothing is escaped on the way. The same page still echoes URL segments of `$_GET['d']` unescaped in its breadcrumb (:229-237, `echo \"... ?d=\" . $higher_dir_cascade . \"'>\" . $higher_dir . \"</a>\"`)",
       "fix": "htmlentities() around the GPS values and around each EXIF value before it is concatenated into the page",
       "probe": "<?php\n$exif = exif_read_data($file);\n$aperture = $exif['COMPUTED']['ApertureFNumber'] ?? null;\n$datetime = $exif['EXIF']['DateTimeOriginal'] ?? null;\n\n$exif_info = '<img src=\"camera.svg\" />' . $aperture . ' ' . $datetime;\n\necho '<div class=\"caption\">' . $exif_info . '</div>';\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-hmqj-gv2m-hq55",
@@ -113,7 +120,8 @@
       "between": "func_get_args() -> unset($args[0]) -> implode('/', $args) (:263-265) -> appended to the base path with no normalisation -> file_get_contents(); the extension is only used to pick the Content-Type (:268-274)",
       "fix": "resolves the base directory and the joined path with realpath() and answers notFound() unless the result stays under the base",
       "probe": "public function admin_attachment()\n{\n    $args = func_get_args();\n    unset($args[0]);\n    $file = implode('/', $args);\n\n    $filePath = WWW_ROOT . 'files' . DS . 'mail' . DS . $file;\n\n    Header('Content-type: application/octet-stream; name=' . $file);\n    echo file_get_contents($filePath);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-mr6h-7x2m-rgmq",
@@ -127,7 +135,8 @@
       "between": "two transforms sit in front of the concatenation and look like sanitising: strip_tags() at the source (which does not stop SQL) and the str_replace() of MAC separators; every other filter of the same file binds its value with `?` and $param (:9-10, :18-24, :43-50), only the MAC clause was concatenated",
       "fix": "replaces the concatenation with a `?` placeholder and pushes '%'.value.'%' onto $param",
       "probe": "<?php\n$address = $_REQUEST['address'];\n\n$sql  = ' FROM `ports` AS I, `devices` AS D';\n$sql .= \" WHERE I.device_id = D.device_id AND `ifPhysAddress` LIKE '%\" .\n        trim(str_replace([':', '-', '.'], '', $address)) . \"%'\";\n\n$count_sql = \"SELECT COUNT(`port_id`) $sql\";\n$total = dbFetchCell($count_sql, []);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
     },
     {
       "id": "GHSA-mvpr-5hhj-h3c8",
@@ -141,7 +150,8 @@
       "between": "POST with origin=dashboard -> config.xml (:68-77) -> next GET reads it back at :39-42 `$pconfig = $config['widgets'];` -> printed raw, so the value one request stored executes in the next one",
       "fix": "legacy_html_escape_form_data($pconfig) on the GET side (:40) and filter_var($_POST['column_count'], FILTER_SANITIZE_NUMBER_INT) on the POST side",
       "probe": "<?php\nif ($_SERVER['REQUEST_METHOD'] === 'POST') {\n    $config['widgets']['column_count'] = $_POST['column_count'];\n    write_config();\n    header('Location: /index.php');\n    exit;\n}\n\n$pconfig = $config['widgets'];\n?>\n<input type=\"hidden\" value=\"<?= $pconfig['column_count']; ?>\" name=\"column_count\" />\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-qxrq-376q-p39h",
@@ -155,7 +165,8 @@
       "between": "the value stops being a superglobal at vars.inc.php; from there it is just an array element, concatenated into a string variable ($output / $hasvalue) that is printed later, so nothing marks it as request data any more",
       "fix": "htmlspecialchars() around each of the three values where they are concatenated",
       "probe": "<?php\n$vars = [];\nforeach ($_POST as $k => $v) {\n    $vars[$k] = $v;\n}\n\n$hasvalue = !empty($vars['hostname']) ? \"value='\" . $vars['hostname'] . \"'\" : '';\n$output   = \"<input type='text' name='hostname' \" . $hasvalue . \">\";\n$output  .= \"<input type='text' name='ifAlias' value='\" . $vars['ifAlias'] . \"'>\";\n\necho $output;\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-m6jj-fgmh-3p8r",
@@ -169,7 +180,8 @@
       "between": "the echo sits between the JS string fragments of the header template (:28-118), so the value has to be escaped for a JS string that is itself part of the page's HTML; nothing is applied, and a quote or a `+` breaks out of the template the page evaluates",
       "fix": "htmlspecialchars() around the echoed value",
       "probe": "<?php\n$phrase = $_POST['searchPhrase'];\n?>\n<script>\nvar templates = {\n    header: \"<input type=\"text\" id=\"address\" value=\"\"+\n<?php echo '\"' . $phrase . '\"+'; ?>\n    \"\" />\"\n};\n</script>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-57m2-mpc7-gwgx",
@@ -183,7 +195,8 @@
       "between": "basename() keeps the include to a single path segment, and the same value is printed into the error message when no such page exists; the POST values are read directly inside the included page fragment and printed into a JS string",
       "fix": "htmlspecialchars() on the search type in the error message (:49) and on the two POST values inside the JS template (ipv4.inc.php:379-380); the include path itself is unchanged",
       "probe": "<?php\n$search_type = basename($_GET['search'] ?? 'ipv4');\n\nif (file_exists(\"pages/search/$search_type.inc.php\")) {\n    include \"pages/search/$search_type.inc.php\";\n} else {\n    echo report_this(\"Unknown search type $search_type\");\n}\n?>\n<script>\nvar cfg = {\n    interface: '<?php echo $_POST['interface']; ?>',\n    address: '<?php echo $_POST['address']; ?>'\n};\n</script>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-g3mv-64h3-h482",
@@ -197,7 +210,8 @@
       "between": "the value also picks the install directory (:62-68) and is passed to Cockpit::instance() (:77-79); at the output it is interpolated into a string inside an array handed to implode(), so the page prints an expression, not the variable, and nothing between the GET and the echo checks it",
       "fix": "preg_replace('/[^a-z0-9\\-_]/', '', $_GET['space']) so only a plain space name is kept",
       "probe": "<?php\n$space = null;\nif (isset($_GET['space']) && $_GET['space']) {\n    $space = $_GET['space'];\n    $spaceDir = __DIR__ . \"/.spaces/{$space}\";\n}\n?>\n<a href=\"?<?= implode('&', [time(), ($space ? \"space={$space}\" : \"\")]) ?>\">Retry installation</a>\n<a href=\"../<?= ($space ? \":{$space}\" : \"\") ?>\">Continue</a>\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: FOUND xss"
     },
     {
       "id": "GHSA-cr6c-qgxp-9j83",
@@ -211,7 +225,8 @@
       "between": "the element does escape the parameter with h(), which looks like a sanitizer but escapes for HTML: the browser decodes &#039; back to a quote before the JS parser sees it, so a quote in the filter still ends the JS string; the URL filter value is built in the controller and crosses into the view and the top-bar element unescaped",
       "fix": "escapes $urlparams with h() in the view before it is handed to the top bar",
       "probe": "// controller\n$urlparams = '';\nforeach ($this->passedArgs as $k => $v) {\n    $urlparams .= $k . ':' . $v . '/';\n}\n$this->set('urlparams', $urlparams);\n\n// view\necho $this->element('ListTopBar/scaffold', ['data' => ['children' => [['children' => [[\n    'title' => 'Modify filters',\n    'onClick' => 'getPopup',\n    'onClickParams' => [$urlparams, 'events', 'filterEventIndex'],\n]]]]]]);\n\n// element\n$onClickParams[] = '\\'' . h($param) . '\\'';\n$onClick = sprintf('onclick=\"%s(%s)\"', h($data['onClick']), implode(',', $onClickParams));\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
     }
   ],
   "usage": {
