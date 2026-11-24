@@ -2717,3 +2717,11 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    which waits for the Python target. The gap runner skipped four runs overnight with 6 batches waiting: reviews
    the same morning keep it going. `cve-pairs-php` scores 341 of its 342 cases: b2evolution GHSA-j89p-9ppx-p8gj
    (added in 1c6e9ec) has never produced a result in a nightly; to look at.
+134. **Topic 16's batches new-5 and new-6 of 2026-11-24 reviewed** (pull request #18). 5 advisories read, none
+   accepted: Twig's own escaper and sandbox (library code), an agent prompt workspace and vedo (not app code or no
+   HTTP request), and Cockpit's stored XSS rendered from the database.
+135. **90 more gap notes read** (2026-11-24, pull request #17): 89 PHP and the new Python case Checkmk
+   31dfe9231eee. Probes: 62 missed, 28 found (XSS 20, SQL injection 5, unsafe deserialization 4; a probe can hit
+   more than one). Checkmk's probe misses even with Flask's `request.form` as the source: a path built with
+   `Path / value` (here returned from a helper) and then written, read, opened or unlinked isn't a known sink.
+   Checkmk's own source is `request.get_unicode_input_mandatory(...)`. A Python lead for the target.
