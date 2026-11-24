@@ -127,7 +127,7 @@ Target (agreed 2026-11-23): Python first until `cve-pairs-python` verdict detect
 and the miss rate, not finds: the suites grew faster than the finds (Python misses 22 to 45 from 2026-11-06 to 2026-11-23), and with topic 17 done they now grow
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
 
-1. The 44 Python misses, each with a gap note: the small server-side sources, sinks and checks first (steps 126,
+1. The 44 Python misses (Checkmk addressed in step 136, to be confirmed by the nightly), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E).
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
