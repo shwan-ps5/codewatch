@@ -1,0 +1,220 @@
+{
+  "batch": "gap-notes-2026-11-24-7",
+  "status": "research only: not read yet",
+  "method": "Rows 1-14 of ~/codewatch-research/gaps/misses.tsv, in file order. The file held 14 missed cases (15 lines: a header plus 14 rows), all cve-pairs-php, no Python or JavaScript, and none had been noted by an earlier run. For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source or the sink, the files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw): chamilo's model.ajax.php, egroupware's Saml.php, TestLink's planUrgency.php and testPlanUrgency.class.php, Fork CMS's Search/Index.php and Engine/Header.php, fusionpbx's dialplan_detail_edit.php and call_centers/cmd.php, OpenEMR's portal/lib/download_template.php, Admidio's TableAccess.php, Session.php and common.php, AVideo's objects/Streamer.php, objects/Login.php and install/test.php, OSSN's dynamic.php, EspoCRM's Core/Utils/Language.php and Tools/LabelManager/LabelManager.php, Piwigo's admin/batch_manager.php, Wavelog's controllers/Oqrs.php, and MISP's ObjectsController.php and Lib/Tools/AttachmentTool.php. Fork CMS, Admidio and AVideo-Encoder were also downloaded as tarballs at the fix's parent to find the callers the diff does not show (SpoonFilter::getGetValue, new Session(), Login::run). Nothing was skipped: all 14 rows have a note. One case is unsure: CVE-2014-9470 (Fork CMS) encodes a canonical URL that Header::parseSeo also encodes at the parent, so only the entry point the fix changes is visible. CVE-2026-135258 (MISP) is unsure because the model method that passes a request attribute id into AttachmentTool::save is not in the diff.",
+  "notes": [
+    {
+      "id": "CVE-2026-45146",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "public/main/inc/ajax/model.ajax.php:230 $filters = json_decode($_REQUEST['filters2']); (jqGrid filter JSON carried in the request body, read through $_REQUEST)",
+      "sink": "public/main/inc/ajax/model.ajax.php:291-292 $extraCondition = $filters->groupOp.' ( '; $extraCondition .= implode($filters->groupOp, $condition_array); the string is concatenated into $whereCondition and handed to getWorkListTeacher/getWorkListStudent/getAllWork at :653-680, which build the SQL that runs",
+      "between": "groupOp is appended once more at :354, between two rules; the WHERE fragment leaves this file as a bare string argument for lib functions (getWorkListTeacher and friends) that run it, so the SQL string is assembled in one file and executed in another. No whitelist or escaping of the keyword. The fix uppercases groupOp and accepts only AND/OR before it is used.",
+      "fix": "validates groupOp against AND and OR before it is concatenated into the WHERE clause",
+      "probe": "<?php\n$filters = json_decode($_REQUEST['filters2']);\n$where = ' 1 = 1 ';\nforeach ($filters->rules as $rule) {\n    $where .= ' AND (' . $rule->field . \" = '\" . $rule->data . \"') \";\n}\n$where .= $filters->groupOp . ' ( ' . implode($filters->groupOp, $parts) . ' ) ';\n$rows = getWorkListTeacher(0, 25, null, null, $where, true);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-pr4x-6fj4-gm4h",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        601
+      ],
+      "category": "sink",
+      "source": "api/src/Auth/Saml.php:131 $_REQUEST['idp'] (query parameter sent when a SAML login is started)",
+      "sink": "api/src/Auth/Saml.php:131-132 $as->requireAuth(preg_match('|^https://|', $_REQUEST['idp']) ? ['saml:idp' => $_REQUEST['idp']] : []); SimpleSAML\\Auth\\Simple::requireAuth() redirects the browser to the IdP URL named by that value",
+      "between": "the only thing in the way is the https:// regex, which accepts any host; the redirect itself is built inside SimpleSAMLphp, so the sink is a library call and no header('Location:') appears in the project's code. The fix rejects the login when the value is not one of the IdPs from self::splitIdP($GLOBALS['egw_info']['server']['saml_idp']).",
+      "fix": "denies login unless the idp parameter names a configured IdP",
+      "probe": "<?php\n$idp = $_REQUEST['idp'];\n$as = new SimpleSAML\\Auth\\Simple('default-sp');\n$as->requireAuth(preg_match('|^https://|', $idp) ? ['saml:idp' => $idp] : []);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2020-8638",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "lib/plan/planUrgency.php:101-103 if (isset($_REQUEST['urgency'])) { $args->urgency_tc = $_REQUEST['urgency']; } (submitted array of tcversion id => urgency)",
+      "sink": "lib/functions/testPlanUrgency.class.php:37 $sql = \" UPDATE {$this->tables['testplan_tcversions']} SET urgency={$urgency} \" . ... executed by exec_query at :40",
+      "between": "planUrgency.php:155-159 loops the request array and calls $tplanMgr->setTestUrgency($argsObj->tplan_id, $id, $urgency) with the values uncast; only testplan_id and tcversion_id pass through prepare_int, urgency does not. The fix casts both to intval() in the caller and prepare_int() in the class.",
+      "fix": "casts the urgency and tc id to integers before the UPDATE is built",
+      "probe": "<?php\nforeach ($_REQUEST['urgency'] as $id => $urgency) {\n    $plan->setTestUrgency($_REQUEST['tplan_id'], $id, $urgency);\n}\n// class method\n$sql = \"UPDATE testplan_tcversions SET urgency={$urgency} WHERE testplan_id=\"\n     . $this->db->prepare_int($testplan_id)\n     . \" AND tcversion_id=\" . $this->db->prepare_int($tc_id);\n$this->db->exec_query($sql);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2014-9470",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "src/Frontend/Modules/Search/Actions/Index.php:234 $_GET['q'] = \\SpoonFilter::getGetValue('q_widget', null, ''); (the framework's own GET accessor, q_widget parameter, copied into the superglobal)",
+      "sink": "src/Frontend/Modules/Search/Actions/Index.php:249-251 $canonicalUrl .= '?q=' . $_GET['q']; $this->header->setCanonicalUrl($canonicalUrl); Engine/Header.php:870-882 then builds '<link rel=\"canonical\" href=\"'.$url.'\">' from $this->links and assigns it as the template's meta, printed raw as {$meta} in Core/Layout/Templates/Head.tpl:11",
+      "between": "setCanonicalUrl() stores the value (Header.php:953-963) and parseSeo() inserts it into the link attributes built by string concatenation. parseSeo also encodes its copy of the URL at :933, so the unescaped output the advisory describes is not visible in this file at the parent; what the fix changes is the entry point, encoding q before it becomes part of the canonical URL. The miss is the source: the value is not read from $_GET at the sink, it arrives through a helper that writes $_GET['q'].",
+      "fix": "htmlspecialchars() on q_widget before it is appended to the canonical URL",
+      "probe": "<?php\n$_GET['q'] = SpoonFilter::getGetValue('q_widget', null, '');\n$canonicalUrl = SITE_URL . '?q=' . $_GET['q'];\n$header->setCanonicalUrl($canonicalUrl);\n// header engine\n$links['canonical'] = array('rel' => 'canonical', 'href' => $this->canonical);\n$html = '<link rel=\"canonical\" href=\"' . $links['canonical']['href'] . '\">';\n$tpl->assign('meta', $html);\n",
+      "confidence": "unsure"
+    },
+    {
+      "id": "CVE-2019-19388",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "app/dialplans/dialplan_detail_edit.php:62 $app_uuid = $_REQUEST[\"app_uuid\"]; (and :59 $dialplan_uuid = $_REQUEST[\"dialplan_uuid\"]; the POST branch at :63-64 overwrites them when the form is submitted)",
+      "sink": "app/dialplans/dialplan_detail_edit.php:224 echo \"...onclick=\\\"window.location='dialplan_edit.php?id=\".$dialplan_uuid.\"&app_uuid=\".$app_uuid.\"';\\\"...\" (values inside a JavaScript string in an HTML attribute) and :479 echo \"<input type='hidden' name='app_uuid' value='$app_uuid'>\\n\";",
+      "between": "nothing validates either value before the echoes; they are read at the top of the page and used in the form ~160 lines later, once inside an onclick handler and once inside a single-quoted attribute. The fix takes the request values only when is_uuid() passes.",
+      "fix": "assigns app_uuid and dialplan_uuid only when is_uuid() accepts them",
+      "probe": "<?php\n$app_uuid = $_REQUEST['app_uuid'];\n$dialplan_uuid = $_REQUEST['dialplan_uuid'];\necho \"<td><input type='button' onclick=\\\"window.location='edit.php?id=\".$dialplan_uuid.\"&app_uuid=\".$app_uuid.\"';\\\" value='back'></td>\";\necho \"<input type='hidden' name='app_uuid' value='$app_uuid'>\\n\";\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2019-16964",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        78
+      ],
+      "category": "sink",
+      "source": "app/call_centers/cmd.php:37 $cmd = $_GET['cmd'];",
+      "sink": "app/call_centers/cmd.php:44 $response = event_socket_request($fp, $cmd); the value is sent as the command on the Asterisk event socket (a switch CLI, not a shell)",
+      "between": "event_socket_create() at :41 opens the socket with the session's credentials, and the whole $_GET string becomes the API command; the value is neither whitelisted nor quoted. The fix allows only load/unload/reload and rebuilds the call as 'api callcenter_config queue '.$cmd.' '.$queue with a uuid-checked queue.",
+      "fix": "whitelists cmd to load, unload or reload and sends a fixed command with a uuid queue",
+      "probe": "<?php\n$cmd = $_GET['cmd'];\n$fp = event_socket_create($_SESSION['ip'], $_SESSION['port'], $_SESSION['password']);\nif ($fp) {\n    event_socket_request($fp, 'api reloadxml');\n    $response = event_socket_request($fp, $cmd);\n    fclose($fp);\n}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2018-17180",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22,
+        89
+      ],
+      "category": "check",
+      "source": "portal/lib/download_template.php:36 $form_filename = $_POST['docid']; (and :37 $pid = $_POST['pid'])",
+      "sink": "portal/lib/download_template.php:372 $templatepath = \"$templatedir/$form_filename\"; :375 the fallback \"$templatedir/\" . $pid . \"/$form_filename\"; read at :423 $zipin->open($templatepath), :441 file_get_contents($templatepath) and :389 finfo_file($templatepath)",
+      "between": "the only thing between the POST value and the read is if (! file_exists($templatepath)) at :374 and the fallback it triggers, a test a scanner may take for path validation; there is no basename or containment. The fix calls check_file_dir_name($form_filename) at :371 and check_file_dir_name($pid) at :375. The same commit also parameterizes the pc_pid SQL built in fetchEvents at :234-243 (:242), which is the CWE-89 side of the case.",
+      "fix": "rejects a docid or pid that is not a plain file name with check_file_dir_name() before the template path is built",
+      "probe": "<?php\n$form_filename = $_POST['docid'];\n$pid = $_POST['pid'];\n$templatepath = \"$templatedir/$form_filename\";\nif (!file_exists($templatepath)) {\n    $templatepath = \"$templatedir/$pid/$form_filename\";\n}\n$zip = new ZipArchive();\n$zip->open($templatepath);\n$data = file_get_contents($templatepath);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2020-11004",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "adm_program/system/common.php:60 $gSessionId = $_COOKIE[COOKIE_PREFIX . '_SESSION_ID']; (session cookie of a visitor with no login), used at :97 new Session($gDb, $gSessionId, COOKIE_PREFIX)",
+      "sink": "adm_program/system/classes/TableAccess.php:448 $sqlWhereCondition .= ' AND ' . $columnName . ' = \\'' . $columnValue . '\\' '; then :452 $this->readData($sqlWhereCondition) (SQL string)",
+      "between": "the cookie value crosses three files: common.php -> Session::__construct (:69 $this->readDataByColumns(array('ses_session_id' => $session))) -> TableAccess::readDataByColumns, which pastes the value into the WHERE string with no quoting. The fix turns the value into a bound parameter and passes array_values($columnArray) to readData().",
+      "fix": "binds the column values instead of concatenating them into the WHERE clause",
+      "probe": "<?php\n$session = $_COOKIE['SESSID'];\n$s = new Session($gDb, $session);\n// Session::__construct\n$this->readDataByColumns(array('ses_session_id' => $session));\n// TableAccess::readDataByColumns\nforeach ($columnArray as $columnName => $columnValue) {\n    $sqlWhereCondition .= ' AND ' . $columnName . \" = '\" . $columnValue . \"' \";\n}\n$returnCode = $this->readData($sqlWhereCondition);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-61569",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "install/test.php:23 Login::run($_REQUEST['user'], $_REQUEST['pass'], $_REQUEST['webSiteRootURL'], true); (plain request values handed to the login routine)",
+      "sink": "objects/Streamer.php:29 $sql = \"SELECT * FROM \" . static::getTableName() . \" WHERE user = '{$user}' AND lower(siteURL) = lower('{$siteURL}') LIMIT 1\"; then :35 $global['mysqli']->query($sql)",
+      "between": "the values travel from the endpoint into Login::run, then Login.php:116 Streamer::createIfNotExists($user, $pass, $aVideoURL, $encodedPass), then static::get($user, $siteURL) with no quoting or prepare on the way. The fix prepares the statement and binds both values (bind_param('ss', $user, $siteURL)).",
+      "fix": "converts the query to a prepared statement binding user and siteURL",
+      "probe": "<?php\nLogin::run($_REQUEST['user'], $_REQUEST['pass'], $_REQUEST['webSiteRootURL'], true);\n// Login::run\n$object->streamers_id = Streamer::createIfNotExists($user, $pass, $aVideoURL, $encodedPass);\n// Streamer\n$sql = \"SELECT * FROM streamers WHERE user = '{$user}' AND lower(siteURL) = lower('{$siteURL}') LIMIT 1\";\n$res = $global['mysqli']->query($sql);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-113388",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "source",
+      "source": "actions/administrator/cache/dynamic.php:12-18 $status = input('status'); $type = input('cache_server_type'); $host = input('host'); $port = input('port'); $username = input('username'); $password = input('password'); (OSSN's input() request helper, not $_GET/$_POST)",
+      "sink": "actions/administrator/cache/dynamic.php:78-95 the values are interpolated into a PHP source template (\"host\" => \"'.$host.'\", ...) written at :97 file_put_contents(ossn_route()->configs . 'ossn.config.dcache.php', $template), so a quote in a field adds PHP code to a config file the application later includes",
+      "between": "input() is the framework's own accessor and its result is never re-read from a superglobal in this file; the values are only used for the connection test before the template is assembled. The fix builds an array and exports it with var_export() so nothing is interpolated as code.",
+      "fix": "writes the settings with var_export() instead of interpolating them into PHP source",
+      "probe": "<?php\n$host = input('host');\n$port = input('port');\n$status = input('status');\n$template = '<?php\n$cfg = array(\n    \"status\" => \"'.$status.'\",\n    \"host\" => \"'.$host.'\",\n    \"port\" => \"'.$port.'\",\n);';\nfile_put_contents($configs . 'config.dcache.php', $template);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-63130",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "application/Espo/Controllers/LabelManager.php:66 $data = $request->getParsedBody(); then $language = $data->language; $scope = $data->scope; (JSON request body of postActionGetScopeData / postActionSaveLabels)",
+      "sink": "application/Espo/Core/Utils/Language.php:230 $path = str_replace('{language}', $this->currentLanguage, $this->customPath) . \"/$scope.json\"; then :236 $this->fileManager->getContents($path) and :259 $this->fileManager->putContents($path, $changedData)",
+      "between": "Controller -> Tools/LabelManager::getScopeData/saveLabels -> Core/Utils/Language::getScopeCustom/saveScopeCustom: the value crosses three files, and the Controller only checked empty(); a ../ in scope or language walks out of the custom language directory on read and write. The fix adds is_string() and basename() checks in the Controller and basename() in Language (:230 area, :244-289).",
+      "fix": "refuses scope/language with a path separator and applies basename() before the file path is built",
+      "probe": "<?php\n$data = $request->getParsedBody();\n$scope = $data->scope;\n$language = $data->language;\n$tool->saveLabels($language, $scope, $labels);\n// Language\n$path = str_replace('{language}', $this->currentLanguage, $this->customPath) . \"/$scope.json\";\n$this->fileManager->putContents($path, $json);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2016-10084",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "admin/batch_manager.php:597 $page['tab'] = $_GET['mode'];",
+      "sink": "admin/batch_manager.php:768 include(PHPWG_ROOT_PATH.'admin/batch_manager_'.$page['tab'].'.php'); a request-named file is included",
+      "between": "the value is only handed to $tabsheet->select($page['tab']) at :606 on the way, so the tab name is used for markup first and as a file name last; no whitelist before the include. The fix adds check_input_parameter('mode', $_GET, false, '/^(global|unit)$/') at :596.",
+      "fix": "whitelists mode to global or unit before the dynamic include",
+      "probe": "<?php\n$page['tab'] = $_GET['mode'];\n$tabsheet = new tabsheet();\n$tabsheet->select($page['tab']);\ninclude(PHPWG_ROOT_PATH . 'admin/batch_manager_' . $page['tab'] . '.php');\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-55508",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "application/controllers/Oqrs.php:223 $callsign = $this->input->post('callsign', TRUE); (CodeIgniter POST accessor with its XSS filter flag on)",
+      "sink": "application/models/Oqrs_model.php:428 $this->db->where('COL_CALL like \"%'.$callsign.'%\"'); then :429 $this->db->get($this->config->item('table_name')) (string condition in the query builder)",
+      "between": "the value is passed at Oqrs.php:227 to Oqrs_model::search_log($callsign), so the source and the sink sit in different files; the TRUE argument only runs CodeIgniter's XSS filter, which a scanner may take for SQL sanitising. The fix builds the query with ? placeholders and a $binding array.",
+      "fix": "replaces the string LIKE condition with a bound parameter",
+      "probe": "<?php\n$callsign = $this->input->post('callsign', TRUE);\n$model->search_log($callsign);\n// model\n$this->db->where('COL_CALL like \"%'.$callsign.'%\"');\n$query = $this->db->get('table_name');\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-135258",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "app/Controller/ObjectsController.php:69 foreach ($this->request->data['Attribute'] as &$attribute) { (attribute array of an object edit POST, ids included)",
+      "sink": "app/Lib/Tools/AttachmentTool.php:587-594 getPath() returns $path . $eventId . DS . $attributeId . $pathSuffix, used by _save at :214 FileAccessTool::writeToFile($this->attachmentDir() . DS . $path, $data, true); a non-integer event or attribute id becomes a path component",
+      "between": "the request attributes go from ObjectsController::edit/revise_object into the object save, which calls AttachmentTool::save/_save -> getPath with the stored/request ids; no digit check existed, so '../' or '.php' in an id moved the write outside the attachment directory. The fix unsets the carried Attribute.id/event_id/object_id at :70 and asserts ctype_digit on both ids in getPath (:590-604). The commit also changes the audit-log event and the session revision handling, so it bundles three fixes.",
+      "fix": "drops request-supplied attribute ids and accepts only digit-only event/attribute ids in attachment paths",
+      "probe": "<?php\nforeach ($this->request->data['Attribute'] as &$attribute) {\n    $attribute['uuid'] = CakeText::uuid();\n}\n$model->save($this->request->data);\n// AttachmentTool\n$path = $this->getPath($shadow, $eventId, $attributeId, $pathSuffix);\nFileAccessTool::writeToFile($this->attachmentDir() . DS . $path, $data, true);\n// getPath\nreturn $path . $eventId . DS . $attributeId . $pathSuffix;\n",
+      "confidence": "unsure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df1647885ffeiSMtZZo9AgxChO",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 56,
+    "tool_calls": 67,
+    "tool_errors": 0,
+    "chars_read": 245201,
+    "tokens": {
+      "input": 100777,
+      "cache_read": 5427456,
+      "output": 45186,
+      "reasoning": 0
+    },
+    "usd": 0.117
+  }
+}
