@@ -1254,6 +1254,31 @@ rules:
                   - metavariable-pattern:
                       metavariable: $INIT
                       pattern-either: *pathlib-value
+              # A path a project helper built and returned, then used: self._file_path().open() (Checkmk
+              # 31dfe9231eee, where _file_path() joins a request's file_id to the upload directory), or
+              # `path = file_path(name); path.write_text(...)`. Only helpers named for a path, so an Odoo record's
+              # unlink() isn't one, and no replace()/rename(), which a returned str has too.
+              # The whole receiver is the helper's call (a regex, since metavariable-pattern also matches inside it:
+              # label-studio's Storage.objects.filter(path=normalize_storage_path(p)).exists() is a query).
+              # Lower-case names only: pathlib.Path(x) is the pathlib sinks' above.
+              - patterns:
+                  - pattern-either:
+                      - patterns:
+                          - pattern: $PATH.$USE(...)
+                          - metavariable-regex:
+                              metavariable: $PATH
+                              regex: &path-helper-call (?s)^(\w+\.)?_*([a-z0-9]+_)*(path|dir|directory|folder|filepath)\(.*\)$
+                      - patterns:
+                          - pattern: $PATH.$USE(...)
+                          - pattern-inside: |
+                              $PATH = $CALL
+                              ...
+                          - metavariable-regex:
+                              metavariable: $CALL
+                              regex: *path-helper-call
+                  - metavariable-regex:
+                      metavariable: $USE
+                      regex: ^(exists|is_file|is_dir|stat|open|read_text|read_bytes|write_text|write_bytes|unlink|rmdir|mkdir|touch|iterdir|glob|rglob|chmod)$
               - pattern: shutil.$OP($PATH, ...)
               # werkzeug's FileStorage.save(path) for an upload, or an image saved under a request-made name.
               # Django storages reject "..", so their save() isn't a sink.

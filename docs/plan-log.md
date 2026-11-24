@@ -2725,3 +2725,17 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    more than one). Checkmk's probe misses even with Flask's `request.form` as the source: a path built with
    `Path / value` (here returned from a helper) and then written, read, opened or unlinked isn't a known sink.
    Checkmk's own source is `request.get_unicode_input_mandatory(...)`. A Python lead for the target.
+136. **Python: a path a helper returned, then used** (2026-11-24; from the Checkmk gap note, step 135). The
+   path-traversal sinks knew `pathlib` uses only where the path was visibly built (`Path(...)`, `base / name`, or
+   a variable assigned one). Checkmk's `_file_path()` reads `file_id` from the request, joins it to the upload
+   directory and returns it; `self._file_path().open()` and `.unlink()` use it. New sink: a file operation (open,
+   unlink, read_text, write_text, exists, ...) on the call of a helper named for a path (`*_path`, `*_dir`,
+   `*_folder`, ...) or on a variable assigned one; the summary pass already makes such a helper a source when it
+   returns request data. Not `replace()`/`rename()`, which a returned str has, nor a helper named otherwise (an Odoo
+   record's `unlink()`). The receiver is matched by a regex anchored at its start, because `metavariable-pattern`
+   also matched inside it: label-studio's `Storage.objects.filter(path=normalize_storage_path(p)).exists()` was a
+   false alarm in the first version. Lower-case helper names only, so `pathlib.Path(x)` stays with the pathlib
+   sinks. Checkmk found (lines 170, 267) and quiet at its fix (`isalnum()` or raise, already a check). Ten apps
+   with the shape scanned with `devtools.py repos` before and after: no new findings. (`repos` and the nightly
+   differ on a few findings per app, e.g. label-studio's data_export/api.py:247, so compare `repos` with `repos`.) For the nightly: path-named helpers on
+   the other apps. Test in `tests/test_python_gap_notes.py`.
