@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-24-5",
+  "status": "research only: not read yet",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order. The file held 44 missed cases, all cve-pairs-php (no Python, no JavaScript), and none of these 15 had been noted by an earlier run. For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source or the sink, the file at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw). Nothing was skipped.",
+  "notes": [
+    {
+      "id": "GHSA-wx9q-hxwx-qv6c",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "view_filters_page.php:96 $f_view_type = gpc_get_string( 'view_type', $t_filter['_view_type'] ); (Mantis's gpc_get_string request wrapper over $_GET/$_POST)",
+      "sink": "view_filters_page.php:108 <input type=\"hidden\" name=\"view_type\" value=\"<?php echo $f_view_type; ?>\" /> (raw echo into an HTML attribute)",
+      "between": "gpc_get_string returns the request value uncleaned; the same value is copied into $t_filter['_view_type'] and passed through filter_ensure_valid_filter() at :98, but the template echoes the raw variable at :108. The fix echoes the validated $t_filter['_view_type'] instead. Second reason in between: the fix relies on a project validator the scanner may not know, while the vulnerable variable is the unvalidated copy.",
+      "fix": "echoes the value after filter_ensure_valid_filter() instead of the raw request variable",
+      "probe": "<?php\nfunction gpc_get_string($name, $default = '') {\n    if (isset($_GET[$name])) return $_GET[$name];\n    if (isset($_POST[$name])) return $_POST[$name];\n    return $default;\n}\n$view_type = gpc_get_string('view_type', 'all');\n$filter = ['_view_type' => $view_type];\n$filter = ensure_valid_filter($filter);\n?>\n<input type=\"hidden\" name=\"view_type\" value=\"<?php echo $view_type; ?>\" />\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hr5p-hr33-m6qp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "app/View/Layouts/default.ctp:101-108 $this->params['controller'] and $this->params['action'] inside the inline <script> (CakePHP request-routing params parsed from the URL path)",
+      "sink": "app/View/Layouts/default.ctp:104-106 var here = '<?php echo $baseurl . '/' . $this->params['controller'] . '/' . $this->params['action']; ?>'; (unescaped echo into a JavaScript string in the layout)",
+      "between": "CakePHP's dispatcher fills $this->params from the matched URL, and the layout prints the controller and action raw, so a request path that keeps markup in those segments is reflected into the page. The fix wraps each with h(). Second reason: the value passes through the framework's routing params, not a request helper the scanner may know.",
+      "fix": "escapes controller and action with h() before printing them into the JS string",
+      "probe": "<?php\n// layout.ctp, CakePHP-style view\n$baseurl = '/';\n$controller = $this->request->getParam('controller');\n$action = $this->request->getParam('action');\n?>\n<script>\nvar baseurl = '<?php echo $baseurl; ?>';\nvar here = '<?php echo $baseurl . '/' . $controller . '/' . $action; ?>';\n</script>\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hf3r-7c2r-pvhg",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "scripts/unlock_tasks.php:40-49 when $_SERVER['argv'] is set the argv pairs are copied into $_GET, then $cycle = $_GET['cycle']; (query parameter when the script is called over HTTP, command-line argument otherwise)",
+      "sink": "scripts/unlock_tasks.php:61-64 $query = \"SELECT `id`, `name` FROM `glpi_crontasks` WHERE `state` = '...' AND unix_timestamp(`lastrun`) + $cycle * `frequency` < unix_timestamp(now())\"; passed to $DB->request($query) (raw concatenation into SQL)",
+      "between": "the value is pasted into the WHERE arithmetic with no cast on the vulnerable side and the query is executed; the fix wraps it in (int).",
+      "fix": "casts $cycle to integer with (int)$_GET['cycle']",
+      "probe": "<?php\n// maintenance script, also reachable over HTTP\nif (isset($_SERVER['argv'])) {\n    for ($i = 1; $i < $_SERVER['argc']; $i++) {\n        $it = explode('=', $_SERVER['argv'][$i], 2);\n        $_GET[$it[0]] = isset($it[1]) ? $it[1] : true;\n    }\n}\n$cycle = $_GET['cycle'];\n$query = \"SELECT id FROM tasks WHERE lastrun + $cycle * frequency < now()\";\nforeach ($DB->request($query) as $task) { echo $task['id']; }\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8qrm-2wm8-6v53",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "core/admin/ajax/file-browser/upload.php:46 $file_name = $replacing ? $replacing : $_FILES[\"files\"][\"name\"][$number]; (uploaded file name)",
+      "sink": "core/admin/ajax/file-browser/upload.php:82 and :84 $errors[] = \"$file_name has a disallowed extension: $extension.\" / \"Uploading $file_name failed (unknown error).\", then :152 echo 'parent.BigTreeFileManager.uploadError(\"'.implode(\"<br />\",$errors).'\",\"'.$success_message.'\");</script>... (file name printed into a JavaScript string in the response)",
+      "between": "the storage-failure branch at :80-85 keeps the raw name; only the earlier upload-error branch at :50 applies htmlspecialchars. The fix escapes the name at :82/:84 and BigTree::safeEncode()s the popped library error at :141. Second reason: the response is script text assembled in PHP, not a template.",
+      "fix": "htmlspecialchars() on the file name in the two failure messages and BigTree::safeEncode() on the popped upload error",
+      "probe": "<?php\n$file_name = $_FILES['files']['name'][0];\n$errors = [];\nif (!$storage->store($_FILES['files']['tmp_name'][0], $file_name, 'files/resources/')) {\n    $errors[] = \"Uploading $file_name failed (unknown error).\";\n}\nif (count($errors)) {\n    echo 'parent.FileManager.uploadError(\"' . implode('<br />', $errors) . '\",\"\");</script></body></html>';\n}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-g5qj-4p4v-2jhc",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "main/webservices/api/v2.php:5 $hash = isset($_REQUEST['hash']) ? $_REQUEST['hash'] : null; (request parameter)",
+      "sink": "main/inc/lib/webservices/Rest.php:824-835 decodeParams() str_replace/base64_decode the string and return unserialize($b64Decoded); v2.php:8-12 then copies the returned array into $_REQUEST (PHP object injection)",
+      "between": "the request value is the only argument to Rest::decodeParams() and no format or type check precedes unserialize. The fix replaces the serialize/base64 pair with json_decode/json_encode and applies Security::remove_XSS to the restored values.",
+      "fix": "json_decode instead of unserialize(base64_decode()), plus Security::remove_XSS on the decoded values",
+      "probe": "<?php\nclass Rest {\n    public static function decodeParams($encoded) {\n        $decoded = str_replace(['-', '_', '.'], ['+', '/', '='], $encoded);\n        $mod4 = strlen($decoded) % 4;\n        if ($mod4) { $decoded .= substr('====', $mod4); }\n        return unserialize(base64_decode($decoded));\n    }\n}\n$hash = $_REQUEST['hash'];\n$params = Rest::decodeParams($hash);\nforeach ($params as $key => $value) { $_REQUEST[$key] = $value; }\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7pc8-wp58-mr3p",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "htdocs_ari/includes/login.php:56 $buf = unserialize(stripslashes($_COOKIE['ari_auth'])); (cookie value)",
+      "sink": "htdocs_ari/includes/login.php:56-63 unserialize() of the attacker-controlled cookie, then the decrypted payload is unserialized again at :63 ($data = unserialize($crypt->decrypt($data,$ARI_CRYPT_PASSWORD))) (PHP object injection)",
+      "between": "the cookie goes straight to unserialize() with only stripslashes() in front; the decrypted data is unserialized a second time. The fix switches both to json_decode(..., true) with an is_array guard.",
+      "fix": "json_decode(..., true) for the cookie envelope and the decrypted data, with an is_array check",
+      "probe": "<?php\n$buf = unserialize(stripslashes($_COOKIE['ari_auth']));\nlist($data, $chksum) = $buf;\nif (md5($data) == $chksum) {\n    $data = unserialize($crypt->decrypt($data, $ARI_CRYPT_PASSWORD));\n    $username = $data['username'];\n    $password = $data['password'];\n}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-9v3w-m552-m6ff",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "www/script/editor/markitup/preview/markdown.php:10 $content = $_POST['preview']; (POST body)",
+      "sink": "www/script/editor/markitup/preview/markdown.php:13-21 MarkdownDocument::createFromString($content), compile(), getHtml() then echo $content (raw HTML from Markdown, including markup the author typed, sent back to the browser)",
+      "between": "the POST value goes through the Markdown renderer, which passes raw HTML through, and the result is echoed with no escaping. The fix runs Pi::service('security')->filter() and then _escape() on the input.",
+      "fix": "filters the input with Pi's security service and escapes it with _escape() before rendering/echo",
+      "probe": "<?php\n$content = $_POST['preview'];\nif (class_exists('MarkdownDocument')) {\n    $markdown = MarkdownDocument::createFromString($content);\n    $markdown->compile();\n    $content = $markdown->getHtml();\n} else {\n    $content = '<pre>' . $content . '</pre>';\n}\necho $content;\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-5437-fx95-vwq6",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "htdocs/core/lib/functions.lib.php:2103-2105 $_SERVER['REQUEST_URI'] and $_SERVER['HTTP_REFERER'] (the request URL and the Referer header)",
+      "sink": "htdocs/core/lib/functions.lib.php:2103-2105 $out .= \"<b>...RequestedUrl...</b> \".$_SERVER['REQUEST_URI'].\"<br>\\n\"; and the Referer line, in the string dol_print_error later echoes as the error page (unescaped server request values in HTML)",
+      "between": "dol_print_error builds the page HTML and prints it; both request values are concatenated raw. The fix wraps them in dol_htmlentities(..., ENT_COMPAT, 'UTF-8'). Second reason: the source is $_SERVER rather than $_GET/$_POST.",
+      "fix": "dol_htmlentities() around REQUEST_URI and HTTP_REFERER",
+      "probe": "<?php\nfunction print_error_page($message) {\n    $out = \"<b>Error:</b> \" . $message . \"<br>\\n\";\n    $out .= \"<b>RequestedUrl:</b> \" . $_SERVER['REQUEST_URI'] . \"<br>\\n\";\n    $out .= \"<b>Referer:</b> \" . $_SERVER['HTTP_REFERER'] . \"<br>\\n\";\n    echo $out;\n}\nprint_error_page('database unavailable');\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-mj2c-5mjv-gmmj",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "bundles/AdminBundle/Controller/Admin/ElementController.php:199-206 $filterJson = $request->get('filter'); $filters = $this->decodeJson($filterJson); then each $filter['property'] (JSON grid filter from the request)",
+      "sink": "bundles/AdminBundle/Controller/Admin/ElementController.php:248-249 $field = '`'.$filter[$propertyKey].'` '; $conditions[] = $field.$operator.' '.$db->quote($value); then $list->setCondition() at :259-261 (request value concatenated as a SQL column identifier)",
+      "between": "the property name is used as an identifier while only the value goes through $db->quote; the fix replaces the hand-built identifier with $db->quoteIdentifier(). Second reason: the injection is in an identifier position, not a quoted string.",
+      "fix": "$db->quoteIdentifier() on the filter property, plus a default for a missing value",
+      "probe": "<?php\n// grid filter JSON from the request\n$filterJson = $request->get('filter');\n$filters = json_decode($filterJson, true);\n$db = Db::get();\n$conditions = [];\nforeach ($filters as $filter) {\n    $value = '%' . $filter['value'] . '%';\n    $field = '`' . $filter['property'] . '` ';\n    $conditions[] = $field . 'LIKE ' . $db->quote($value);\n}\n$list->setCondition(implode(' AND ', $conditions));\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-6gm7-j668-w6h9",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "bundles/AdminBundle/Controller/Admin/RecyclebinController.php:71-79 $filters = $this->decodeJson($request->get('filter')); $filterField = $filter['property']; $filter['value'] (JSON grid filter from the request)",
+      "sink": "bundles/AdminBundle/Controller/Admin/RecyclebinController.php:123 $conditionFilters[] = $field . $operator . \" '\" . $value . \"' \"; (request value pasted between SQL quotes)",
+      "between": "the value only gets '%' wrapping for LIKE and strtotime for dates; the else branch pastes it between single quotes. The fix uses $db->quote($value).",
+      "fix": "$db->quote($value) instead of \"'\" . $value . \"'\"",
+      "probe": "<?php\n$filters = json_decode($request->get('filter'), true);\n$db = Db::get();\n$conditionFilters = [];\nforeach ($filters as $filter) {\n    $field = '`' . $filter['property'] . '` ';\n    $value = '%' . $filter['value'] . '%';\n    $conditionFilters[] = $field . 'LIKE' . \" '\" . $value . \"' \";\n}\n$list->setCondition(implode(' AND ', $conditionFilters));\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-6jhm-4vmx-mr76",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "mod/h5pactivity/classes/external/get_user_attempts.php:85 and :120 $sortorder declared as external_value(PARAM_TEXT, ...) in execute_parameters() is passed into execute() (Moodle web-service/AJAX parameter)",
+      "sink": "mod/h5pactivity/classes/external/get_user_attempts.php:191-193 $sql = \"SELECT DISTINCT {$userfields} FROM {user} u ... WHERE {$capjoin->wheres} {$sortorder}\"; return $DB->get_records_sql($sql, $capjoin->params, ...) (request value concatenated into ORDER BY)",
+      "between": "execute() hands $sortorder to get_active_users(), which appends it to the SQL after the WHERE clause; nothing checks the field name or direction on the vulnerable side. The fix runs it through get_safe_orderby() with an allowlist that maps to u.id/u.firstname/u.lastname.",
+      "fix": "get_safe_orderby() allowlist for the sort field and direction",
+      "probe": "<?php\n// Moodle external (web service) function\nclass get_user_attempts extends external_api {\n    public static function execute_parameters() {\n        return new external_function_parameters([\n            'sortorder' => new external_value(PARAM_TEXT, 'sort', VALUE_DEFAULT, 'id ASC'),\n        ]);\n    }\n    public static function execute($sortorder = 'id ASC') {\n        global $DB;\n        $sql = \"SELECT u.id FROM {user} u WHERE u.deleted = 0 ORDER BY {$sortorder}\";\n        return $DB->get_records_sql($sql);\n    }\n}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-j545-frh3-r9gq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "htdocs/compta/sociales/list.php:58 $search_users = GETPOST('search_users'); (array request parameter, search_users[])",
+      "sink": "htdocs/compta/sociales/list.php:208-209 $sql .= ' AND cs.fk_user IN('.implode(', ', $search_users).')'; (request values imploded into an SQL IN list that the page then runs)",
+      "between": "each array element is pasted into IN (...) with no per-element cast or quote; a later loop at :283 only builds pagination links. The fix wraps the imploded string in $db->sanitize().",
+      "fix": "$db->sanitize(implode(', ', $search_users))",
+      "probe": "<?php\n$search_users = GETPOST('search_users'); // array, search_users[]\n$sql = 'SELECT cs.rowid FROM llx_compta_sociales cs WHERE 1=1';\nif (!empty($search_users)) {\n    $sql .= ' AND cs.fk_user IN('.implode(', ', $search_users).')';\n}\n$resql = $db->query($sql);\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-vj9x-w7ch-f46p",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "bundles/AdminBundle/Controller/Admin/DataObject/ClassificationstoreController.php:1164 $storeId = $request->get('storeId'); (request parameter)",
+      "sink": "bundles/AdminBundle/Controller/Admin/DataObject/ClassificationstoreController.php:1242 $conditionParts[] = '(storeId = ' . $storeId . ')'; then implode and $list->setCondition() at :1290-1292 (request value concatenated into SQL)",
+      "between": "$storeId falls back to $storeIdFromDefinition only when the request value is empty; the request value is concatenated bare. The fix uses $db->quote($storeId).",
+      "fix": "$db->quote($storeId)",
+      "probe": "<?php\n$storeId = $request->get('storeId');\n$db = Db::get();\n$conditionParts = [];\nif ($storeId) {\n    $conditionParts[] = '(storeId = ' . $storeId . ')';\n}\n$list->setCondition(implode(' AND ', $conditionParts));\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-cpq8-x35g-m439",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "admin/upgrade.php:30-32 $oldver = (string)( $_GET['oldver'] ); $oldsql = (string)( $_GET['oldsql'] ); (query parameters)",
+      "sink": "admin/upgrade.php:58-64 echo \" ... <input type='hidden' name='oldver' value='$oldver' /> ... <input type='hidden' name='oldsql' value='$oldsql' /> ...\"; (request values echoed into HTML attribute values)",
+      "between": "the values only pass through a (string) cast, which is not HTML escaping, before being interpolated into the echo'd form. The fix runs yourls_sanitize_version() and intval() in the caller and again in yourls_upgrade() (includes/functions-upgrade.php:14-20). Second reason: the (string) cast may look like a sanitizer.",
+      "fix": "yourls_sanitize_version() for oldver/newver and intval() for oldsql/newsql/step, in admin/upgrade.php and yourls_upgrade()",
+      "probe": "<?php\n$oldver = (string)($_GET['oldver']);\n$oldsql = (string)($_GET['oldsql']);\necho \"\n<form method='get'>\n<input type='hidden' name='step' value='1' />\n<input type='hidden' name='oldver' value='$oldver' />\n<input type='hidden' name='oldsql' value='$oldsql' />\n</form>\";\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-5x33-h32w-6vr2",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "tag/manage.php:41 $filter = optional_param('filter', '', PARAM_NOTAGS); (query parameter)",
+      "sink": "tag/manage.php:214 '<input id=\"id_tagfilter\" name=\"filter\" type=\"text\" value=' . s($filter) . '>' (escaped value placed in an unquoted HTML attribute)",
+      "between": "s() HTML-escapes < > & and the double quote, but the attribute value has no surrounding quotes, so a space or a slash in the escaped value still ends the attribute and starts a new one. The fix adds the missing double quotes. A scanner sees s() as an output sanitizer and stops.",
+      "fix": "adds the quotes around the attribute value: value=\"' . s($filter) . '\"",
+      "probe": "<?php\n$filter = optional_param('filter', '', PARAM_NOTAGS);\nprint('<div class=\"tag-management-form\"><label for=\"id_tagfilter\">Search</label>'.\n    '<input id=\"id_tagfilter\" name=\"filter\" type=\"text\" value=' . s($filter) . '>'.\n    '<input type=\"submit\" value=\"Search\"> </div>');\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df240239affenR2KfnOQ3IkZLU",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 3,
+    "turns": 25,
+    "tool_calls": 30,
+    "tool_errors": 0,
+    "chars_read": 130998,
+    "tokens": {
+      "input": 162193,
+      "cache_read": 1287566,
+      "output": 25607,
+      "reasoning": 0
+    },
+    "usd": 0.087
+  }
+}
