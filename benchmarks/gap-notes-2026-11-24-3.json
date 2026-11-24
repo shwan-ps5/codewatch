@@ -1,0 +1,233 @@
+{
+  "batch": "gap-notes-2026-11-24-3",
+  "status": "research only: not read yet",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order. The file holds 74 missed cases, all cve-pairs-php (no Python, no JavaScript), so this batch is PHP only. Rows 1-30 had already been noted by the two earlier runs today, so these are the next 15. For each case I read the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source or the sink, the file holding them at the fix commit's parent (gh api contents?ref=<parent sha>): view_create.php, src/ZfcUser/Controller/UserController.php, index.php with cms/userprofile.lib.php, classes/site.class.php with classes/adminpage.inc.php, manager/templates/default/header.tpl, pimcore/modules/admin/controllers/AssetController.php, adm_config_report.php, framework/modules/notfound/controllers/notfoundController.php, framework/modules/search/controllers/searchController.php, framework/modules/navigation/controllers/navigationController.php, framework/modules/pixidou/controllers/pixidouController.php with framework/modules/file/models/expFile.php, manage_user_page.php, spikekill.php and frontend/core/engine/javascript.php. Nothing was skipped and nothing was left unsure: every case shows the request read and the call it reaches. Categories: source 4, sink 4, check 3, template 2, functions 2.",
+  "notes": [
+    {
+      "id": "GHSA-372q-3c59-c2w9",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "view_create.php:34-56 (fix parent): `if (isset($_REQUEST['createview'])) { $sql_query = 'CREATE'; ... $sql_query .= $sep . ' VIEW ' . PMA_Util::backquote($_REQUEST['view']['name']); ... $sql_query .= $sep . ' AS ' . $_REQUEST['view']['as'];` - POST fields `view[name]`, `view[column_names]`, `view[as]` concatenated into the statement",
+      "sink": "view_create.php:114-119: `PMA_Message::error(\"<i>$sql_query</i><br /><br />\" . PMA_DBI_getError())` - the SQL string built from the request is echoed into an HTML error message with no escaping",
+      "between": "the same $sql_query also goes to PMA_DBI_try_query() at :65, so a request that makes the CREATE VIEW fail is bounced back with its own text inside the message; nothing sanitizes it on the way, and the fix only wraps the echo in htmlspecialchars(). Second explanation: template (an HTML fragment assembled from request text).",
+      "fix": "wraps $sql_query in htmlspecialchars() inside the error message",
+      "probe": "<?php\n$sql = 'CREATE VIEW ' . $_POST['view']['name'] . ' AS ' . $_POST['view']['as'];\nif (!@mysql_query($sql)) {\n    echo '<i>' . $sql . '</i><br />' . mysql_error();\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-33rh-5hvf-5jjp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "src/ZfcUser/Controller/UserController.php:97-100 (fix parent): `if ($this->getOptions()->getUseRedirectParameterIfPresent() && $request->getQuery()->get('redirect')) { $redirect = $request->getQuery()->get('redirect'); }` then `'redirect' => $redirect` into the view model at :106 - a query parameter",
+      "sink": "view/zfc-user/user/login.phtml:31: `<a href=\"<?php echo $this->url('zfcuser/register') . ($this->redirect ? '?redirect='.$this->redirect : '') ?>\">` - the query value is concatenated into the href attribute and echoed with no escaping",
+      "between": "the controller puts the raw query parameter on the view model; the template reads $this->redirect and prints it inside an attribute, so a `\"` in the parameter closes the href and injects attributes; the fix only touches the template, wrapping the value in escapeUrl().",
+      "fix": "escapes the redirect parameter with $this->escapeUrl() in the login template",
+      "probe": "<?php // controller action\n$redirect = $this->params()->fromQuery('redirect');\nreturn new ViewModel(array('redirect' => $redirect));\n?>\n<a href=\"<?php echo $this->url('login') . ($this->redirect ? '?redirect=' . $this->redirect : '') ?>\">Sign in</a>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7c84-xmm4-5pcv",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "index.php:145-149 (fix parent): `else if(isset($_GET['user'])) { $publicPageRequest = true; $userProfileId = $_GET['user']; $pageFullPath = \"home\"; }` - a GET parameter",
+      "sink": "cms/userprofile.lib.php:25-26: `$profileQuery = 'SELECT `user_name`, `user_fullname`, `user_email` FROM `' . MYSQL_DATABASE_PREFIX . 'users` WHERE `user_id` = \\'' . $userId.\"'\"; $profileResult = mysql_query($profileQuery);` - the id is interpolated into the SQL",
+      "between": "index.php hands $userProfileId to getUserName() (index.php:221) and generatePublicProfile($userProfileId,$userId) (index.php:222); in cms/userprofile.lib.php it becomes `$userId = $userProfileId` and is concatenated into a mysql_query statement. The fix escapes at the entry point instead of in the query, so a rule keyed on the sink file alone never sees the request read.",
+      "fix": "wraps the GET value at index.php:147 in safe_html(escape())",
+      "probe": "<?php // index.php\nif (isset($_GET['user'])) { $profileId = $_GET['user']; }\n$profile = generate_profile($profileId);\n\n// userprofile.lib.php\nfunction generate_profile($userId) {\n    $q = \"SELECT user_name FROM users WHERE user_id = '\" . $userId . \"'\";\n    return mysql_query($q);\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-x77r-29q3-gcgf",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "classes/site.class.php:99 (fix parent): `$this->fdat = (sizeof($_POST) > 0 ? $_POST : $_GET);` - every request field name and value, stored on the site object",
+      "sink": "classes/adminpage.inc.php:305-307: `<input type=hidden name=\"<?=$fdat_field?>\" value=\"<?=$fdat_value?>\">` - each request key and value echoed into hidden-input attributes with short open tags and no escaping",
+      "between": "site.class.php copies the superglobal into $this->fdat in another class; print_language_selectbox() in classes/adminpage.inc.php loops `foreach($site->fdat as $fdat_field=>$fdat_value)` and prints both, so the request value reaches the attribute through an object property across files; the fix adds htmlspecialchars(xss_clean()) to both variables.",
+      "fix": "applies htmlspecialchars(xss_clean()) to $fdat_field and $fdat_value before the hidden inputs are printed",
+      "probe": "<?php\n$fdat = sizeof($_POST) > 0 ? $_POST : $_GET;\nforeach ($fdat as $field => $value) { ?>\n    <input type=\"hidden\" name=\"<?=$field?>\" value=\"<?=$value?>\">\n<?php } ?>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-jv4m-wpwv-6vxg",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "check",
+      "source": "manager/templates/default/header.tpl:27-28 (fix parent): `...&action={$smarty.get.a|strip_tags}\"` and `...?action={$smarty.get.a|strip_tags}{if $_ctx}...` - the manager template reads $_GET['a'] through Smarty",
+      "sink": "the same two lines: the request value is printed inside the `src=\"...\"` attribute of the lang.js.php and modx.config.js.php <script> tags, so a quote in `a` leaves the attribute and adds script attributes",
+      "between": "strip_tags() is applied at output, which removes tags but not quotes or spaces, so the value looks sanitized while the attribute can still be broken; the fix replaces the modifier with htmlspecialchars and casts the action to int in core/model/modx/modmanagerrequest.class.php:122.",
+      "fix": "uses |htmlspecialchars instead of |strip_tags in both script URLs and casts the action parameter to (integer)",
+      "probe": "{* header.tpl *}\n<script src=\"/assets/app.js\"></script>\n<script src=\"/connectors/lang.js.php?action={$smarty.get.a|strip_tags}\"></script>\n<script src=\"/connectors/config.js.php?action={$smarty.get.a|strip_tags}\"></script>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-9f4f-4qr3-8cr7",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "pimcore/modules/admin/controllers/AssetController.php:207-211 (fix parent): `if($this->getParam(\"dir\") && $this->getParam(\"parentId\")) { $parent = Asset::getById($this->getParam(\"parentId\")); $newPath = $parent->getFullPath() . \"/\" . trim($this->getParam(\"dir\"), \"/ \");` - request parameters through Pimcore's controller accessor",
+      "sink": "AssetController.php:216: `$newParent = Asset\\Service::createFolderByPath($newPath);` - the folder path built from `dir` is created by Pimcore's asset service, so `..` segments walk out of PIMCORE_ASSET_DIRECTORY",
+      "between": "only trim('/ ') is applied; the path is handed to Asset\\Service::createFolderByPath() (app model code, no file API in the controller) and the result becomes the parent for the upload at :229-259; the fix adds a realpath()/strpos containment test before the service call.",
+      "fix": "realpath()s PIMCORE_ASSET_DIRECTORY.$newPath and throws unless it starts with PIMCORE_ASSET_DIRECTORY",
+      "probe": "<?php // controller\n$dir = $this->getParam('dir');\n$parent = Asset::getById($this->getParam('parentId'));\n$newPath = $parent->getFullPath() . '/' . trim($dir, '/ ');\n$folder = Asset\\Service::createFolderByPath($newPath);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hcqc-vgvv-6qvv",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "adm_config_report.php:165 (fix parent): `$t_edit_option = gpc_get_string( 'config_option', $t_filter_config_value == META_FILTER_NONE ? '' : $t_filter_config_value );` - Mantis's gpc_get_string() reads GET/POST, not a superglobal",
+      "sink": "adm_config_report.php:483-484: `<input type=\"text\" name=\"config_option\" value=\"<?php echo $t_edit_option; ?>\" ... />` - the request value is echoed into the value attribute unescaped",
+      "between": "the value is passed into print_option_list_from_array() as $p_filter_value and printed in the same page; the only work done on it is the default lookup, so a `\"` in config_option breaks out of the attribute; the fix wraps the echo in string_attribute(). Second explanation: template (inline PHP attribute output).",
+      "fix": "escapes the value with string_attribute($t_edit_option) in the input attribute",
+      "probe": "<?php\nfunction gpc_get_string($name, $default = '') { return isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default; }\n$edit = gpc_get_string('config_option');\n?>\n<input type=\"text\" name=\"config_option\" value=\"<?php echo $edit ?>\" />",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-xf83-mpmg-c458",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "sink",
+      "source": "app/Controller/TemplatesController.php:330-333 (fix parent): `if (isset($this->request->data['Template']['attributes'])) { $attributes = unserialize($this->request->data['Template']['attributes']);` - a POSTed form field (CakePHP request data), hidden in app/View/Templates/populate_event_from_template_attributes.ctp:32 as `'value' => serialize($attributes)`",
+      "sink": "the same line: `unserialize()` is called on the client-controlled string in submitEventPopulation(), so an attacker picks the class and its __wakeup/__destruct runs (PHP object injection)",
+      "between": "the page serialises the attribute list into a hidden field and the event-population action unserialises whatever comes back, with no signature or class allowlist; the fix switches to json_encode()/json_decode(..., true) on both sides.",
+      "fix": "replaces serialize()/unserialize() with json_encode()/json_decode($data, true)",
+      "probe": "<?php\nclass TemplatesController extends AppController {\n    public function submit() {\n        if (isset($this->request->data['Template']['attributes'])) {\n            $attributes = unserialize($this->request->data['Template']['attributes']);\n            foreach ($attributes as $a) {\n                $this->loadModel('Attribute');\n            }\n        }\n    }\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3x74-43v8-rvp5",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "check",
+      "source": "framework/modules/notfound/controllers/notfoundController.php:52-53 (fix parent): `$terms = empty($params[0]) ? '' : $params[0]; if (empty($terms) && !empty($params['title'])) $terms = $params['title'];` - the URL path/title from Exponent's router",
+      "sink": "notfoundController.php:79: `'records'=>$search->getSearchResults($terms, false, 0, 30)` - the term goes into the search model's SQL, and :89 hands it to the template",
+      "between": "stripslashes() and then htmlspecialchars() at :60-63 run on the value, so it looks escaped before the query; htmlspecialchars does nothing for SQL quoting, and the fix adds expString::escape() around the htmlspecialchars call.",
+      "fix": "adds SQL escaping: `$terms = expString::escape(htmlspecialchars($terms));`",
+      "probe": "<?php // controller\n$terms = $params[0];\n$terms = htmlspecialchars($terms);\n$results = (new Search())->getSearchResults($terms);\n\n// model\nclass Search {\n    function getSearchResults($terms) {\n        return mysql_query(\"SELECT * FROM content WHERE body LIKE '%\" . $terms . \"%'\");\n    }\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-qw68-4398-p6jw",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "source",
+      "source": "framework/modules/pixidou/controllers/pixidouController.php:60-67 (fix parent): `switch ($this->params['exitType']) { case 'saveAsCopy': $oldimage = new expFile($this->params['fid']); ... copy(BASE.$this->cacheDir.\"/\".$this->params['cpi'],$oldimage->directory.$copyname);` - Exponent's controller request-param array",
+      "sink": "pixidouController.php:65 and :85: `new expFile($this->params['fid'])` loads the expFiles record for the raw id (expRecord lookup through framework/modules/file/models/expFile.php:277), and `copy()` at :67/:90 reads the source path `$this->cacheDir.'/'.$this->params['cpi']`",
+      "between": "$this->params is filled from GET/POST by Exponent's router; nothing casts or checks fid or cpi before the model lookup and the copy, so both the DB lookup and the file source take request text; the fix intval()s fid and sets exitType='error' when cpi contains '..'.",
+      "fix": "casts fid with intval() and rejects a cpi containing '..' in exitEditor()",
+      "probe": "<?php // controller\nswitch ($this->params['exitType']) {\ncase 'saveAsCopy':\n    $old = new File($this->params['fid']);   // model: SELECT * FROM files WHERE id = <raw id>\n    copy($this->cacheDir . '/' . $this->params['cpi'], $old->directory . 'copy.jpg');\n    break;\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-c7x2-8jwx-9vxp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "check",
+      "source": "framework/modules/search/controllers/searchController.php:55 (fix parent): `$terms = $this->params['search_string'];` - the search box value, from Exponent's router params",
+      "sink": "searchController.php:74: `'records'=>$search->getSearchResults($terms, ...)` - the term is concatenated into SQL inside the search model, and the same value is assigned to the view at the end of search()",
+      "between": "stripslashes() then htmlspecialchars() at :58-61 precede the model call, so the value reads as already escaped; the fix wraps it in expString::escape() as well, because the HTML escaper never quoted it for SQL.",
+      "fix": "replaces the plain htmlspecialchars() with expString::escape(htmlspecialchars($terms))",
+      "probe": "<?php // controller\n$terms = $this->params['search_string'];\n$terms = htmlspecialchars($terms);\n$results = (new Search())->getSearchResults($terms);\n\n// model\nclass Search {\n    function getSearchResults($terms) {\n        return mysql_query(\"SELECT * FROM content WHERE title LIKE '%\" . $terms . \"%'\");\n    }\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7xgm-jxp3-q6jg",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "sink",
+      "source": "framework/modules/navigation/controllers/navigationController.php:860-863 (fix parent): `$move = $router->params['move']; $target = $router->params['target']; $type = $router->params['type'];` - request params through the Exponent router in DragnDropReRank()",
+      "sink": "navigationController.php:866: `$targSec = $db->selectObject(\"section\",\"id=\".$target);` - and the later update in the same method - the request value is concatenated into the where clause passed to Exponent's own database helper",
+      "between": "$target is appended to the where string with no quoting or cast, and $move is used the same way for the re-rank; the fix intval()s both so the helper only ever sees numbers. Second explanation: source ($router->params is filled by Exponent's router, not read as a superglobal).",
+      "fix": "casts move and target with intval() before the section lookups and update",
+      "probe": "<?php // controller\n$target = $router->params['target'];\n$move   = $router->params['move'];\n$section = $db->selectObject('section', 'id=' . $target);\n$db->update('section', array('rank' => $move), 'id=' . $target);",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-w93w-rx52-24qh",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "manage_user_page.php:64 (fix parent): `$f_filter = utf8_strtoupper( gpc_get_string( 'filter', config_get( 'default_manage_user_prefix' ) ) );` - Mantis's gpc_get_string() (GET/POST), upper-cased",
+      "sink": "manage_user_page.php:275: `<input type=\"hidden\" name=\"filter\" value=\"<?php echo $f_filter ?>\" />` - the value is echoed into the attribute unescaped (it is also passed to print_page_links at :373)",
+      "between": "utf8_strtoupper() only changes case, so quotes survive; the same value is used with a bound parameter in the user query at :194, which makes the page look careful, but the hidden field prints it raw; the fix wraps it in string_attribute(). Second explanation: template.",
+      "fix": "escapes $f_filter with string_attribute() before printing the hidden input",
+      "probe": "<?php\nfunction gpc_get_string($n, $d = '') { return isset($_REQUEST[$n]) ? $_REQUEST[$n] : $d; }\n$f_filter = utf8_strtoupper(gpc_get_string('filter'));\n?>\n<form><input type=\"hidden\" name=\"filter\" value=\"<?php echo $f_filter ?>\" /></form>",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-w66g-pq85-j4vq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "source",
+      "source": "spikekill.php:37 (fix parent): `get_nfilter_request_var('method')` - Cacti's unfiltered request accessor (GET/POST)",
+      "sink": "spikekill.php:37: `echo __(\"FATAL: Spike Kill method '%s' is Invalid\\n\", get_nfilter_request_var('method'));` - the request value is sprintf'd by the translation helper and printed straight into the page body",
+      "between": "nothing between: the accessor returns the request value and the echo/__() call prints it; the fix moves htmlspecialchars(..., ENT_QUOTES, 'UTF-8') around the accessor inside the call.",
+      "fix": "wraps the accessor in htmlspecialchars(get_nfilter_request_var('method'), ENT_QUOTES, 'UTF-8')",
+      "probe": "<?php\nfunction get_nfilter_request_var($n) { return isset($_REQUEST[$n]) ? $_REQUEST[$n] : ''; }\nfunction __($fmt, $arg) { return sprintf($fmt, $arg); }\nswitch (get_nfilter_request_var('method')) {\n    default:\n        echo __(\"FATAL: method '%s' is Invalid\\n\", get_nfilter_request_var('method'));\n        exit(1);\n}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-4x28-j85r-668q",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "frontend/core/engine/javascript.php:45 (fix parent): `$this->setModule(SpoonFilter::getGetValue('module', null, ''));` - the GET 'module' parameter through Fork's filter helper",
+      "sink": "javascript.php:63-67: `else $file = FRONTEND_MODULES_PATH . '/' . $this->getModule() . '/js/' . $this->getFile(); ... $tpl->display(FrontendTheme::getPath($file), true);` - module is concatenated into the template path that is then read and displayed",
+      "between": "setModule() (:195-197) stores the value on the object and the constructor builds the path with getModule() afterwards; setFile() (:105-121) checks only the `file` parameter for '../' and realpath, so the module part of the path is never validated; the fix adds an in_array() allowlist against FrontendModel::getModules() inside setModule().",
+      "fix": "setModule() refuses any module not in FrontendModel::getModules()",
+      "probe": "<?php // javascript.php\nclass Script {\n    private $module;\n    public function __construct() {\n        $this->setModule(SpoonFilter::getGetValue('module', null, ''));\n        $file = FRONTEND_MODULES_PATH . '/' . $this->getModule() . '/js/' . $this->getFile();\n        (new Template())->display(Theme::getPath($file), true);\n    }\n    private function setModule($v) { $this->module = (string) $v; }\n    public function getModule() { return $this->module; }\n    public function getFile() { return $this->filename; }\n}",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_df2ae0c21ffeK3yeK6b9pRcLEv",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 52,
+    "tool_calls": 65,
+    "tool_errors": 0,
+    "chars_read": 186785,
+    "tokens": {
+      "input": 87305,
+      "cache_read": 4231936,
+      "output": 35452,
+      "reasoning": 0
+    },
+    "usd": 0.047
+  }
+}
