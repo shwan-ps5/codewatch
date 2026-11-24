@@ -1,0 +1,249 @@
+{
+  "batch": "gap-notes-2026-11-23-19",
+  "status": "read 2026-11-24 (PLAN.md step 133): leads for rule work; quotes not yet checked one by one",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv (the file was refreshed by the nightly run at 19:30 and none of its 182 rows had been noted before), in file order. All 182 rows are cve-pairs-php, so this batch is PHP only. For each case I read the fix commit (gh api repos/O/R/commits/SHA) and the advisory text from the local clone of the advisory database, then the files at the fix commit's parent where the diff did not show source or sink: YesWiki tools/bazar/templates/forms/forms_confirm.twig, tools/templates/templates/alert-message.twig and includes/services/TemplateEngine.php, includes/services/ThemeManager.php; Craft src/controllers/AssetsController.php and src/services/AssetTransforms.php (getTransformIndex/normalizeTransform); Pimcore models/DataObject/ClassDefinition/Data/ManyToManyRelation.php, models/DataObject/ClassDefinition/Service.php (importClassDefinitionFromJson) and models/DataObject/ClassDefinition/Helper/Dao.php; Froxlor lib/Froxlor/Api/Commands/SubDomains.php, Admins.php and IpsAndPorts.php; PureBlog includes/lib/content.php; AdminNeo admin/db.inc.php, admin/database.inc.php, admin/index.php and admin/include/bootstrap.inc.php; Contao core-bundle/src/Controller/ImagesController.php and core-bundle/src/Routing/ImagesLoader.php; phpMyFAQ phpmyfaq/assets/templates/admin/content/faq.editor.twig; Sulu src/Sulu/Bundle/MediaBundle/Controller/MediaStreamController.php; Snipe-IT app/Http/Requests/UploadFileRequest.php and app/Http/Controllers/Api/UploadedFilesController.php; Freeform packages/plugin/src/Library/Attributes/Attributes.php. Five cases are unsure for the reason written in their note: Craft (the fix only adds a type check; the RCE sink after normalizeTransform was not read), Pimcore's SQL injection (the admin grid filter reader that supplies $value was not read: models/DataObject/Listing/Dao.php does not hold it), AdminNeo's file deletion (the database-list page posting $_POST[\"db\"] was not found among admin/*.inc.php; the advisory quotes it), Freeform (the submission reader that fills the attribute map was not read; the isolated Twig renderer and the excluded keys are in the diff), and Pimcore's field-name RCE (the admin import endpoint and the generated-class writer were not read; the setName() comment and the advisory describe them). No case was skipped. Rows 16-182 are left for the next run.",
+  "notes": [
+    {
+      "id": "GHSA-ggqx-43h2-55jp",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "template",
+      "source": "tools/bazar/templates/forms/forms_confirm.twig:5 and :13 `idformulaire: request.get.idformulaire ?? 'error'` and `_t('BAZ_FORM_DELETE', {'formId': request.get.idformulaire})` - the `idformulaire` query parameter, read straight from Twig's `request` global (`/?BazaR&vue=formulaire&action=confirm_delete`)",
+      "sink": "tools/templates/templates/alert-message.twig:2 `<div class=\"alert alert-{{ type }}\">{{ message | raw }}</div>` - the message is printed unescaped; forms_confirm.twig:10-15 builds it as `_t(...) ~ '<br/>' ~ '<b>' ~ ...` and includes that template",
+      "between": "the value goes through the project's `_t()` Twig helper (includes/services/TemplateEngine.php:112-114), which returns `html_entity_decode(_t($key, $params))`: the translation helper decodes entities, so an entity-encoded payload is markup again by the time `|raw` writes it; the second use (form action, :5) builds the URL with the same raw value",
+      "fix": "adds an `int` Twig helper (TemplateEngine.php:112-114) and casts `idformulaire` with `int()` in both places in forms_confirm.twig",
+      "probe": "<div class=\"alert alert-{{ type }}\">{{ message | raw }}</div>\n<form action=\"{{ url({params:{action: type, idformulaire: request.get.idformulaire ?? 'error'}}) }}\" method=\"post\">\n    {{ include('alert-message.twig', {type: 'warning',\n        message: _t('CONFIRM_DELETE', {'formId': request.get.idformulaire})}) }}\n</form>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-f3gw-9ww9-jmc3",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        94
+      ],
+      "category": "functions",
+      "source": "src/controllers/AssetsController.php:1198-1199 `$assetId = $this->request->getRequiredBodyParam('assetId'); $handle = $this->request->getRequiredBodyParam('handle');` - two required POST body parameters of the anonymous `assets/generate-transform` action (Yii/Craft request API, no type)",
+      "sink": "src/controllers/AssetsController.php:1204 `$transformIndexModel = $assetTransforms->getTransformIndex($assetModel, $handle);` -> src/services/AssetTransforms.php:574 `normalizeTransform($transform)` -> :845-861 a non-string array is turned into a transform definition `new AssetTransform($transform)` with attacker-chosen keys (width, height, format, mode...) instead of a named handle",
+      "between": "the handle crosses the controller into Craft's transform service, where only strings are looked up as handles (:890-895); anything else (an array of transform parameters) is accepted as a transform definition and the index is built from it, then `ensureTransformUrlByIndexModel()` (:1212) generates the image - the advisory says this is the additional fix for the earlier RCE GHSA-4w8r-3xrw-v25g",
+      "fix": "adds `if (!is_string($handle)) { throw new BadRequestHttpException('Invalid transform handle.'); }` before the lookup (and a CHANGELOG line)",
+      "probe": "public function actionGenerateTransform()\n{\n    $assetId = $this->request->getRequiredBodyParam('assetId');\n    $handle  = $this->request->getRequiredBodyParam('handle');\n\n    $asset = Craft::$app->getAssets()->getAssetById($assetId);\n    $index = Craft::$app->getAssetTransforms()->getTransformIndex($asset, $handle);\n\n    return $this->redirect(Craft::$app->getAssetTransforms()->ensureTransformUrlByIndexModel($index));\n}",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-w34w-fvp3-68xm",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "includes/services/ThemeManager.php:124 `&& isset($_REQUEST['squelette']) && (is_file('custom/themes/' . $_REQUEST['theme'] . '/squelettes/' . $_REQUEST['squelette']) || is_file('themes/' . ...))` - the `squelette` query parameter of `/?UrkCEO/edit&theme=...&squelette=../../../../etc/passwd`",
+      "sink": "includes/services/ThemeManager.php:268 `$filePath = $themePath . '/squelettes/' . $this->squelette;` then :289 `$fileContent = file_get_contents($filePath);` - the file the request names is read and rendered as the page template",
+      "between": "the request values pass the `is_dir()` / `is_file()` gate at :122-124 (a check that looks like containment but only asks whether the joined path exists), are stored as favourites with setFavorite() (:126-128) and then joined into the theme path at :268; `..%2f` segments in squelette (and theme/style/preset) walk out of themes/ to any file",
+      "fix": "rejects any request value containing '/', resolves theme/style/squelette/preset with realpath()+basename(), requires the squelette to end in .tpl.html and only then stores it as the favourite (55 lines in ThemeManager.php)",
+      "probe": "$theme = $_REQUEST['theme'];\n$squelette = $_REQUEST['squelette'];\n\nif (is_file('themes/' . $theme . '/squelettes/' . $squelette)) {\n    $path = 'themes/' . $theme . '/squelettes/' . $squelette;\n    echo file_get_contents($path);\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-qjpx-5m2p-5pgh",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "functions",
+      "source": "the value of a DataObject grid filter, handed to models/DataObject/ClassDefinition/Data/ManyToManyRelation.php:791-795 `getFilterConditionExt(mixed $value, string $operator, array $params = [])` -> `$this->getRelationFilterCondition($value, $operator, $name)`; the request side is the admin grid's filter parameter, read in Pimcore's listing/controller code, which was not read",
+      "sink": "models/DataObject/ClassDefinition/Data/Extension/RelationFilterConditionParser.php:36 `return '`' . $name . '` = ' . \"'\" . $value . \"'\";` and :40 `return '`' . $name . \"` LIKE '%,\" . $value . \",%' \";` - the filter value is concatenated between quotes into the SQL condition string the listing executes",
+      "between": "the filter value reaches the field's getFilterConditionExt() (one function hop, same class family), and the condition it returns is pasted into the listing query; the neighbouring Multiselect.php:332-347 does the same, and the advisory points at this file as the unsanitized one",
+      "fix": "quotes the column with `$db->quoteIdentifier($name)` and the value with `$db->quote()`, and escapes LIKE wildcards with `Helper::escapeLike()`",
+      "probe": "public function getRelationFilterCondition(?string $value, string $operator, string $name): string\n{\n    if ($operator === '=') {\n        return '`' . $name . '` = ' . \"'\" . $value . \"'\";\n    }\n\n    return implode(' AND ', array_map(\n        fn ($v) => '`' . $name . \"` LIKE '%,\" . $v . \",%'\",\n        array_filter(explode(',', $value))\n    ));\n}\n\n$condition = $field->getRelationFilterCondition($_GET['filter'], '=', 'tags');\n$db->fetchAll('SELECT * FROM objects WHERE ' . $condition);",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-26xq-m8xw-6373",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "lib/Froxlor/Api/Commands/SubDomains.php:438 `$domainname = $this->getParam('domainname', $dn_optional, '');` - the `domainname` field of the SubDomains.get API request (POST body / query, Froxlor's ApiCommand getParam())",
+      "sink": "lib/Froxlor/Api/Commands/SubDomains.php:506-507 `$key = ($id > 0 ? \"id #\" . $id : \"domainname '\" . $domainname . \"'\"); throw new Exception(\"Subdomain with \" . $key . \" could not be found\", 404);` - the request value is put into the exception message, which the API error page prints as HTML",
+      "between": "getParam() -> the value is only punycode-encoded (:442-445) and used in a prepared statement, so it is still attacker text when the lookup fails; the exception message is the error response body (the advisory's payload is an `<a href=...>` tag in the `domain` field of the customer portal, reflected on the error page)",
+      "fix": "drops the value: `throw new Exception(\"Requested subdomain could not be found\", 404);`",
+      "probe": "$domainname = $_POST['domainname'];\n\n$stmt = Database::prepare('SELECT * FROM panel_domains WHERE domain = :d');\n$result = Database::pexecute_first($stmt, ['d' => $domainname]);\nif (!$result) {\n    $key = \"domainname '\" . $domainname . \"'\";\n    throw new Exception('Subdomain with ' . $key . ' could not be found', 404);\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-8jcm-2rmf-8v5r",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "functions",
+      "source": "includes/lib/content.php:826 `$slug = trim($page['slug'] ?? '');` - the `slug` field of the page editor form, arriving inside the `$page` array argument that admin/edit-page.php passes by reference (the form reader is not in the diff)",
+      "sink": "includes/lib/content.php:871-872 `$filename = $slug . '.md'; $path = PUREBLOG_PAGES_PATH . '/' . $filename;` then :904 `file_put_contents($path, $body)` - an unslugified slug with `../` writes outside the pages directory",
+      "between": "save_page() only slugifies when the submitted slug is empty (:832-834), so a supplied slug is used as the file name; the only other test is slug_in_use(); the same omission is fixed in save_post() (:1068), and the patch also rebuilds uploaded image names from the allowed extension (admin/upload-image.php)",
+      "fix": "always runs the submitted slug through slugify() (`$slug = slugify($slug === '' ? $title : $slug);`) in save_page() and save_post(), and builds the upload name as basename + expected extension",
+      "probe": "function save_page(array &$page): bool\n{\n    $slug = trim($page['slug'] ?? '');\n    if ($slug === '') {\n        $slug = slugify($page['title'] ?? '');\n    }\n\n    $path = PAGES_PATH . '/' . $slug . '.md';\n\n    return file_put_contents($path, $page['content'] ?? '') !== false;\n}\n\nsave_page($_POST);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-6vfx-w7q3-42gq",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        73
+      ],
+      "category": "sink",
+      "source": "the database-list page's `db[]` POST field: the advisory quotes `if ($_POST[\"db\"]) { queries_redirect(substr(ME, 0, -1), lang('Databases have been dropped.'), drop_databases($_POST[\"db\"])); }` (the page file itself could not be located among admin/*.inc.php); admin/database.inc.php:11 shows the single-database path posting `[DB]` to the same function",
+      "sink": "admin/drivers/sqlite.inc.php:499 `if (!@unlink($db)) {` inside `drop_databases(array $databases)` - each submitted value is unlinked directly",
+      "between": "drop_databases() receives the posted array and unlinks every element; the SQLite driver's extension checks (`check_sqlite_name`) are applied when creating or renaming a database, not on this delete path, so any relative path the PHP process can write becomes deletable",
+      "fix": "calls `check_sqlite_name($db)` before the unlink and returns false when the name is not a SQLite database file",
+      "probe": "if ($_POST['db']) {\n    drop_databases($_POST['db']);\n}\n\nfunction drop_databases(array $databases): bool\n{\n    foreach ($databases as $db) {\n        if (!@unlink($db)) {\n            return false;\n        }\n    }\n\n    return true;\n}",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-79wv-8rh2-9vp2",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        113
+      ],
+      "category": "source",
+      "source": "admin/include/bootstrap.inc.php:50-51 `if ($_SERVER[\"HTTP_X_FORWARDED_PREFIX\"]) { $_SERVER[\"REQUEST_URI\"] = $_SERVER[\"HTTP_X_FORWARDED_PREFIX\"] . $_SERVER[\"REQUEST_URI\"]; }` - the `X-Forwarded-Prefix` request header, folded into REQUEST_URI at the top of every request",
+      "sink": "admin/include/functions.inc.php:420 `\". \"; path=\" . preg_replace('~\\?.*~', '', $_SERVER[\"REQUEST_URI\"])` in `cookie()` (a raw `header(\"Set-Cookie: ...\")`) and admin/include/bootstrap.inc.php:61 `session_set_cookie_params(0, preg_replace('~\\?.*~', '', $_SERVER[\"REQUEST_URI\"]), \"\", HTTPS, true);` - a header value lands in the cookie Path attribute",
+      "between": "the header is only prepended to REQUEST_URI (:50-52); every later use treats REQUEST_URI as server-generated, so `; Domain=...` or `,` inside the header becomes a new cookie attribute in all Set-Cookie headers and in the session cookie",
+      "fix": "adds `cookie_path()`, which percent-encodes `;` and `,` after stripping the query string, and uses it for both the session cookie parameters and every `Set-Cookie` path",
+      "probe": "if ($_SERVER['HTTP_X_FORWARDED_PREFIX']) {\n    $_SERVER['REQUEST_URI'] = $_SERVER['HTTP_X_FORWARDED_PREFIX'] . $_SERVER['REQUEST_URI'];\n}\n\nsession_set_cookie_params(0, preg_replace('~\\?.*~', '', $_SERVER['REQUEST_URI']), '', false, true);\n\nheader('Set-Cookie: sid=' . rawurlencode($sid)\n    . '; path=' . preg_replace('~\\?.*~', '', $_SERVER['REQUEST_URI'])\n    . '; HttpOnly; SameSite=lax');",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-mrvp-7wmx-5m4h",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        22
+      ],
+      "category": "sink",
+      "source": "core-bundle/src/Routing/ImagesLoader.php:36 route `'/'.$this->pathPrefix.'/{path}'` with `['path' => '.+']` (:41) - the `{path}` route parameter of the public images route, received as `__invoke(string $path)` (ImagesController.php:43) and percent-decoded by Symfony",
+      "sink": "core-bundle/src/Controller/ImagesController.php:47 `$image = $this->imageFactory->create(Path::join($this->targetDir, $path));` and :61 `return new BinaryFileResponse($image->getPath(), 200, ...)` - the joined path is read and streamed back",
+      "between": "Path::join() canonicalises `..` segments instead of refusing them, so a path like `../dummy.jpg` resolves outside the image target directory; nothing compares the result with $this->targetDir before the factory opens it, and the response is the file itself (advisory: reads are limited to contao.image.valid_extensions)",
+      "fix": "joins first, then refuses with a 404 when `!Path::isBasePath($this->targetDir, $path)`, and only then creates the image",
+      "probe": "#[Route('/assets/images/{path}', requirements: ['path' => '.+'])]\npublic function __invoke(string $path): Response\n{\n    $image = $this->imageFactory->create(Path::join($this->targetDir, $path));\n\n    return new BinaryFileResponse($image->getPath());\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-pgwp-vc7q-cvj3",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "stored",
+      "source": "phpmyfaq/src/phpMyFAQ/Controller/Frontend/Api/FaqController.php:109-111 `$answer = Filter::filterVar($data->answer, FILTER_SANITIZE_SPECIAL_CHARS); if (... enableWysiwygEditorFrontend) { $answer = trim(html_entity_decode((string) $answer)); }` - the `answer` member of the JSON body of the public frontend FAQ submission API",
+      "sink": "phpmyfaq/assets/templates/admin/content/faq.editor.twig:127 (and :164, :180) `<textarea id=\"editor\" name=\"answer\" ...>{{ faqData['content'] | raw }}</textarea>` - the stored answer is written into the admin editor's textarea unescaped",
+      "between": "the answer is stored by an unauthenticated request and read back by the admin editor: Filter's FILTER_SANITIZE_SPECIAL_CHARS runs strip_tags(), but html_entity_decode() (:111) turns surviving entities (`&lt;/textarea&gt;&lt;img onerror=...&gt;`) back into a real breakout before the value is saved, so the browser closes the textarea and runs the event handler",
+      "fix": "runs the decoded answer through the HTML sanitizer `$this->faqHelper->cleanUpContent()` before storing, and removes `|raw` from the three editor textareas",
+      "probe": "$answer = filter_var($_POST['answer'], FILTER_SANITIZE_SPECIAL_CHARS);\nif ($wysiwyg) {\n    $answer = trim(html_entity_decode($answer));\n}\n$db->insert('faq', ['content' => $answer]);\n\n<textarea name=\"answer\">{{ faq.content | raw }}</textarea>",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-396x-xmvh-p563",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "app/Http/Requests/UploadFileRequest.php:35 `'file.*' => 'required|mimes:'.config('filesystems.allowed_upload_extensions_for_validator')` (the allowlist includes xml) and app/Http/Controllers/Api/UploadedFilesController.php:106-110, where the uploaded file is stored and logged - the uploaded XML/XSLT document, plus the `?inline=true` query parameter of the show endpoint (:160)",
+      "sink": "app/Http/Controllers/Api/UploadedFilesController.php:160-165 `if (request('inline') == 'true') { $headers = ['Content-Disposition' => 'inline']; return Storage::download(self::$map_storage_path[$object_type].$log->filename, $log->filename, $headers); }` - the attacker's file is served on the Snipe-IT origin with its own content type",
+      "between": "the uploaded file name is stored in the Actionlog and read back in show(); the API applies none of the safe-inline allowlist the web controller uses, so an XML document with an `xml-stylesheet` processing instruction is fetched as a document, the browser applies the attacker's XSLT and runs script in the victim's session (StorageHelper::downloader, used on the non-inline path, also lost the disposition)",
+      "fix": "adds a strict `allowed_inline_display` extension => MIME map in config/filesystems.php, cross-checks the server-detected MIME in StorageHelper::allowSafeInline(), serves inline only for an allowlisted extension+MIME (with nosniff), otherwise forces the attachment downloader, which now sends `application/octet-stream` + nosniff everywhere",
+      "probe": "'file.*' => 'required|mimes:'.config('filesystems.allowed_upload_extensions'),\n\nif (request('inline') == 'true') {\n    $headers = ['Content-Disposition' => 'inline'];\n\n    return Storage::download('private_uploads/'.$log->filename, $log->filename, $headers);\n}",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-gxrg-x694-283w",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        1336
+      ],
+      "category": "sink",
+      "source": "the submitted form field values, held in the attribute map that packages/plugin/src/Library/Attributes/Attributes.php:92 `fromArray(array $attributes)` / :108 `set()` build for the form response (the Freeform submission reader that fills that map was not read; the advisory says public form field values)",
+      "sink": "packages/plugin/src/Library/Attributes/Attributes.php:299-300 `$key = $twig->render($key, $properties); $value = !empty($value) ? $twig->render($value, $properties) : $value;` - the attribute value is compiled and evaluated as Twig source by the isolated renderer",
+      "between": "submitted values become attributes; toHtmlTagArray() renders both key and value through the plugin's isolated Twig environment, so a submitted value containing `{{ ... }}` is evaluated server-side and reflected in the form response (the advisory reports PHP version and absolute paths disclosed)",
+      "fix": "adds `EXCLUDED_TWIG_ATTRIBUTES = ['value', 'name', 'id']` and skips `$twig->render($value, ...)` for those keys, so submitted field values are only escaped into the tag, never compiled",
+      "probe": "$attributes = Attributes::fromArray($_POST['fields']);\n$twig = new Environment(new ArrayLoader([]));\n\nforeach ($attributes as $key => $value) {\n    $replacements[$twig->render($key, $properties)] = $twig->render($value, $properties);\n}\n\necho '<input ' . implode(' ', array_map(\n    fn ($k) => $k . '=\"' . $replacements[$k] . '\"',\n    array_keys($replacements)\n)) . '>';",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-pp4x-ccxq-6r33",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        79
+      ],
+      "category": "sink",
+      "source": "src/Sulu/Bundle/MediaBundle/Controller/MediaStreamController.php:121-123 `if ($request->query->has('inline')) { $forceInline = (bool) $request->get('inline', false); $dispositionType = $forceInline ? ResponseHeaderBag::DISPOSITION_INLINE : ...; }` - the `?inline=1` query parameter on `/media/{id}/download/{slug}`, combined with an uploaded media file",
+      "sink": "src/Sulu/Bundle/MediaBundle/Controller/MediaStreamController.php:186-199 `$response->headers->set('Content-Type', !empty($mimeType) ? $mimeType : 'application/octet-stream'); $response->headers->set('Content-Disposition', $disposition);` - the stored file is returned inline with its stored MIME type and no CSP",
+      "between": "the uploaded file's MIME type is stored on the file version and passed straight to the response; `?inline` overrides the disposition rules for every MIME type, so an HTML upload renders as a document on the Sulu origin with the victim's session (editor with media add permission stores it, admin opens the link)",
+      "fix": "forces attachment for `text/html`, `application/xhtml+xml`, `text/xml` and `application/xml` even when inline is requested, and adds `Content-Security-Policy: sandbox` to the file response",
+      "probe": "$dispositionType = $request->query->has('inline')\n    ? ResponseHeaderBag::DISPOSITION_INLINE\n    : $this->dispositionTypeResolver->getByMimeType($fileVersion->getMimeType());\n\n$response = new BinaryFileResponse($storage->getPath($storageOptions));\n$response->headers->set('Content-Type', $fileVersion->getMimeType());\n$response->headers->set('Content-Disposition', $response->headers->makeDisposition($dispositionType, $fileName));\n\nreturn $response;",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-9x44-4gxf-8c25",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89,
+        94
+      ],
+      "category": "sink",
+      "source": "the `layoutDefinitions` JSON of an imported class definition: models/DataObject/ClassDefinition/Service.php:100-108 `$importData = json_decode($json, true); ... $layout = self::generateLayoutTreeFromArray($importData['layoutDefinitions'], ...)` - each field definition's `name`, set through `Data::setName()` (the admin import/save endpoint that posts this JSON was not read)",
+      "sink": "models/DataObject/ClassDefinition/Data.php:166-176 `setName()` stored the name verbatim; it is emitted into the generated PHP class (`protected $<name>;`) and into `ALTER TABLE ... ADD COLUMN`/`ADD INDEX` in models/DataObject/ClassDefinition/Helper/Dao.php:101-113, where the name was concatenated between backticks",
+      "between": "the imported field name is written into the class source Pimcore generates for the DataObject and into the DDL its Dao executes; a name such as `x;function __construct(){}//` closes the property declaration, so the injected PHP runs with the application's privileges, and a name with a backtick injects SQL into the ALTER TABLE statement",
+      "fix": "rejects any non-empty name not matching `/^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/` in `setName()`, and quotes table/column/index names with `$db->quoteIdentifier()` in the Dao's ALTER TABLE statements",
+      "probe": "foreach ($json['layoutDefinitions']['children'] as $def) {\n    $field = new Input();\n    $field->setName($def['name']);\n    $class->addFieldDefinition($field);\n}\n$class->save();\n\nfile_put_contents($classFile, 'class ' . $class->getName() . \" extends DataObject {\\n\"\n    . '    protected $' . $field->getName() . \";\\n}\");\n\n$db->executeQuery('ALTER TABLE `object` ADD COLUMN `' . $colName . '` ' . $type . ';');",
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-24: missed"
+    },
+    {
+      "id": "GHSA-w27m-rmmf-g5w4",
+      "suite": "cve-pairs-php",
+      "cwe": [
+        89
+      ],
+      "category": "stored",
+      "source": "lib/Froxlor/Api/Commands/Admins.php:251 (add) and :594 (update) `$ipaddress = $this->getParam('ipaddress', true, -1);` - the `ipaddress` array of the admin API request, with no type check on its elements",
+      "sink": "lib/Froxlor/Api/Commands/IpsAndPorts.php:72 `$ip_where = \"WHERE `id` IN (\" . implode(\", \", json_decode($this->getUserDetail('ip'), true)) . \")\";` (the same at :104 and in Domains.php:1016) - the stored ids are pasted into the WHERE clause of the listing query",
+      "between": "Admins.add/update JSON-encode the submitted array into `panel_admins.ip` (the INSERT itself is prepared); the elements are never validated, so a UNION payload is stored as an id; the next IpsAndPorts.listing call by the same account decodes the column and implodes it into the SQL string, returning arbitrary rows (advisory: admin login names and bcrypt hashes)",
+      "fix": "keeps only numeric elements and intvals them at store time (`array_filter($ipaddress, 'is_numeric')`, `json_encode(array_map('intval', $ipaddress))`) and intvals the ids where the IN() clause is built",
+      "probe": "$ipaddress = $_POST['ipaddress'];\n$db->insert('panel_admins', ['ip' => json_encode($ipaddress)]);\n\n$ip_where = 'WHERE `id` IN (' . implode(', ', json_decode($this->getUserDetail('ip'), true)) . ')';\n$db->query('SELECT * FROM panel_ipsandports ' . $ip_where);",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-24: missed"
+    }
+  ],
+  "usage": {
+    "session": "ses_df61cf5b7ffeUGITwMDBNX7Bn9",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 24,
+    "tool_calls": 27,
+    "tool_errors": 0,
+    "chars_read": 266186,
+    "tokens": {
+      "input": 109307,
+      "cache_read": 2339072,
+      "output": 37997,
+      "reasoning": 0
+    },
+    "usd": 0.046
+  }
+}
