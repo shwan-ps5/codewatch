@@ -132,8 +132,8 @@ by about one case a day. JavaScript and PHP rule work waits until then; their ga
    128), then values through several functions and project checks (42 D, E). From step 141 the gap runner also
    checks those notes' quotes (check-quotes) and explains the 15 fixes still flagged (still-flagged notes, with a
    safe look-alike probe): use both before writing a rule. Step 144 won Langflow GHSA-v798 (compile() alone no longer a sink; to
-   confirm in the nightly) and sorted the other found-probe cases by what each needs; moonraker GHSA-3jqf and pgAdmin
-   GHSA-hp84 are next.
+   confirm in the nightly) and sorted the other found-probe cases by what each needs (none a small rule; roxy-wi's
+   double-quoted `shlex.quote` and pgAdmin's SQL templates are the nearest).
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 4. Each morning: read the nightly, review topic 16's batches and read the gap notes (a still-flagged note's probe

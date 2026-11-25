@@ -2821,4 +2821,9 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
      plugin: two dynamic dispatches.
    - lektor GHSA-wv28: five calls through objects (`ctx.tree.edit` to `untrusted_to_os_path`).
    - superset GHSA-pfwg and aperisolve CVE-2026-34977: stored, as their notes say.
-   moonraker GHSA-3jqf and pgAdmin GHSA-hp84 are still to read.
+   - moonraker GHSA-3jqf: the source is Moonraker's own `web_request.get_str('username')` (its JSON-RPC request
+     object, one app's API), and the value reaches the LDAP filter through `run_in_thread(self._perform_ldap_auth,
+     username, password)`, a function passed as a value.
+   - pgAdmin GHSA-hp84: the JSON body goes into a Jinja `.sql` template (`'PARALLEL ' + data.vacuum_parallel`, no
+     `qtLiteral`/`qtIdent` filter) whose output is psql's `--command`. Needs SQL templates as a sink, like the
+     HTML template analyzers: a bigger piece, to weigh against pgAdmin's hundreds of filtered templates.
