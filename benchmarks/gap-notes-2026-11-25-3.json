@@ -1,0 +1,269 @@
+{
+  "batch": "gap-notes-2026-11-25-3",
+  "status": "read 2026-11-25 (PLAN.md step 146): two still-flagged notes (MCP path helpers) and quote checks of earlier notes; corrections spot-checked (alerta queryparser lines)",
+  "method": "15 rows of gaps/misses.tsv in file order (all python): the 2 still-flagged rows first, then 13 check-quotes rows; 41 rows left. For the still-flagged rows I read the fix diff and the changed source files at the fix commit. For each check-quotes row I read the note in the file named in detail, the fix diff and the files at the fix's parent, and checked every quoted line.",
+  "notes": [
+    {
+      "id": "CVE-2026-75612",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "still-flagged",
+      "cwe": [
+        22,
+        73
+      ],
+      "flagged": "codewatch:codewatch.python.web.path-traversal@206,codewatch:codewatch.python.web.path-traversal@212",
+      "flagged_code": "src/yt_mcp/tools/attachments.py:206 if not os.path.isfile(safe_path): and :212 with open(safe_path, \"rb\") as f:",
+      "source": "src/yt_mcp/tools/attachments.py:157-159 async def add_attachment(issue_id: str, file_path: str = \"\", ...) - the MCP tool argument file_path, chosen by the MCP client or an LLM steered by prompt injection",
+      "fix_check": "src/yt_mcp/tools/attachments.py:203 safe_path, err = _confine_attachment_path(file_path); the helper (:38-70) realpaths the value and accepts it only when os.path.commonpath([root, target]) == root for an operator-set YOUTRACK_ATTACHMENT_ROOTS entry, returning an error otherwise (empty allowlist disables the mode). It lies between the tool argument and both flagged lines",
+      "category": "check-unknown",
+      "probe": "import os\n\ndef read_attachment(file_path: str) -> bytes:\n    roots = [os.path.realpath(p) for p in os.environ[\"ATTACH_ROOTS\"].split(os.pathsep) if p]\n    target = os.path.realpath(file_path)\n    for root in roots:\n        if os.path.commonpath([root, target]) == root:\n            with open(target, \"rb\") as f:\n                return f.read()\n    raise ValueError(\"outside the permitted attachment directories\")\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
+    },
+    {
+      "id": "CVE-2026-130154",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "still-flagged",
+      "cwe": [
+        22,
+        306
+      ],
+      "flagged": "codewatch:codewatch.python.web.path-traversal@116,codewatch:codewatch.python.web.path-traversal@129,codewatch:codewatch.python.web.path-traversal@153",
+      "flagged_code": "zyrabit-slm/api-rag/app/domain/services/mcp_service.py:116 src_or_err = _confine_source(source_path), :129 with open(src, \"r\", encoding=\"utf-8\", errors=\"ignore\") as f: and :153 shutil.copy2(src, dest_path)",
+      "source": "zyrabit-slm/api-rag/app/domain/services/mcp_service.py:110 async def import_to_vault(source_path: str, destination_name: str) -> str - both arguments of the MCP tool, supplied by the caller",
+      "fix_check": "mcp_service.py:116 src_or_err = _confine_source(source_path) and :121 dest_or_err = _confine_destination(destination_name); the helpers (:53-77, :80-106) resolve each value with Path(...).resolve(), require the source to be a file under DOCS_DIR or VAULT_IMPORT_ALLOWLIST via Path.relative_to, and require the destination to be a plain basename that stays under the vault. Both sit between the tool arguments and the flagged open()/copy2()",
+      "category": "check-unknown",
+      "probe": "from pathlib import Path\nimport shutil\n\nVAULT = Path(\"/srv/vault\").resolve()\n\ndef _under(p: Path, root: Path) -> bool:\n    try:\n        p.resolve().relative_to(root.resolve())\n        return True\n    except ValueError:\n        return False\n\ndef import_to_vault(source_path: str, destination_name: str) -> str:\n    src = Path(source_path).resolve(strict=False)\n    if not src.is_file() or not _under(src, VAULT):\n        return \"source outside the allowed import directories\"\n    if \"/\" in destination_name or \"\\\\\" in destination_name or Path(destination_name).is_absolute():\n        return \"destination must be a plain filename\"\n    dest = (VAULT / Path(destination_name).name).resolve()\n    if not _under(dest, VAULT):\n        return \"destination escaped the vault\"\n    with open(src, \"r\", errors=\"ignore\") as f:\n        f.read(10000)\n    shutil.copy2(src, dest)\n    return \"ok\"\n",
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
+    },
+    {
+      "id": "GHSA-gjxm-x497-4h6h",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        77,
+        78
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-xv5p-fjw5-vrj6",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        78,
+        502
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-w228-rfpx-fhm4",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        601
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-pfwg-rxf4-97c3",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        601
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-g3cm-qg2v-2hj5",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        601
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "wrong: src/pyload/webui/app/helpers.py:44 for location in flask.request.values.get(\"next\"), flask.request.referrer: in get_redirect_url() (Flask: next query/form value and the Referer header)",
+      "sink": "wrong: src/pyload/webui/app/blueprints/app_blueprint.py:67 return flask.redirect(next) in login() (also at 77; the value comes from get_redirect_url at line 50)",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-frvj-c5qp-xj4w",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        22,
+        918
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "wrong: backend/open_webui/routers/terminals.py:101 safe_path = _sanitize_proxy_path(path) where path is the {path:path} parameter of the route registered at :79 with @router.api_route('/{server_id}/{path:path}', methods=PROXY_METHODS); the same helper shape guards the redirect in routers/models.py:_safe_static_redirect_path",
+      "sink": "wrong: backend/open_webui/routers/terminals.py:105 target_url = f'{base_url}/{safe_path}' and the httpx request to it (path forwarded to the upstream terminal server); routers/models.py:49 _safe_static_redirect_path guards a redirect Location (RedirectResponse at :560/:582/:587)",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f9fq-78ch-4wmj",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        601
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "wrong: airflow/www/views.py:473 return redirect(origin) in redirect_or_json() (called with origin at :1752); the same origin value is used by the JS caller",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8gh5-qqh8-hq3x",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        79,
+        87
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "wrong: backend/open_webui/routers/files.py:442-443 @router.get('/{id}/content/html') async def get_html_file_content_by_id(id: str, user=Depends(get_verified_user))",
+      "sink": "wrong: backend/open_webui/routers/files.py:464 return FileResponse(file_path) - the uploaded .html file is served inline to anyone the existing owner-or-admin test admits; the flaw is who may read it, not an escaping call",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-25g8-2mcf-fcx9",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        22
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-2wvg-62qm-gj33",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        918
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "wrong: src/pyload/core/api/__init__.py:588 page = get_url(url) (pyload's requests-based fetch) in parse_urls()",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hp84-p2gq-6fvr",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        89
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-x7r7-wmj8-vv5g",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        79
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "wrong: from flask import Flask, redirect, render_template_string, request\n\napp = Flask(__name__)\nTPL = '<script>var REDIRECT_URL = \"{{ redirect_url|e }}\";</script>'\n\n@app.get('/login')\ndef login():\n    redirect_url = request.args.get('redirect', '/')\n    if request.args.get('ok'):\n        return redirect(redirect_url)\n    return render_template_string(TPL, redirect_url=redirect_url)\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f6pr-83pg-ghh6",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "cwe": [
+        22
+      ],
+      "checks": "gap-notes-2026-11-22-1.json",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "category": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_ded19d084ffe455CElHPuaIeI9",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 3,
+    "turns": 41,
+    "tool_calls": 43,
+    "tool_errors": 0,
+    "chars_read": 200095,
+    "tokens": {
+      "input": 203531,
+      "cache_read": 2699464,
+      "output": 25062,
+      "reasoning": 0
+    },
+    "usd": 0.107
+  }
+}

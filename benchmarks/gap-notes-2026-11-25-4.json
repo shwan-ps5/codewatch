@@ -1,0 +1,263 @@
+{
+  "batch": "gap-notes-2026-11-25-4",
+  "status": "read 2026-11-25 (PLAN.md step 146): quote checks of earlier notes; corrections spot-checked (Horizon forms.py lines)",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order (the file held 41 work rows, all check-quotes: 30 cve-pairs-python then 11 cve-pairs-python-nonhttp; no JavaScript or PHP rows were reachable in this batch). None was skipped. For each row I read the gap note named in its detail column (benchmarks/gap-notes-2026-11-22-1.json, gap-notes-2026-11-23-1.json, gap-notes-2026-11-23-2.json), the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA, read with 1.5 s between calls) and the source files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw), then checked every quoted file:line and code, the category and the probe against them. Six rows needed no correction; nine had at least one field corrected: three categories (source/check to functions, because the note's own probe is found by codewatch so the miss is the cross-file flow), two source lines, three sink lines, two between steps, two fix descriptions and one probe (a Flask JSON source where the case reads a protobuf body).",
+  "notes": [
+    {
+      "id": "GHSA-hwv5-w8gm-fq9f",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-22-1.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-m5gr-86j6-99jp",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-22-1.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-v798-mcc6-2m3m",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        94
+      ],
+      "category": "wrong: functions - the note's own probe (a FastAPI body field exec'd in the same file) is found by codewatch, so the Pydantic body field is a known source and exec a known sink; in the real flow the body field code.code is read in langflow/api/v1/validate.py and exec()'d in the separate lfx package (lfx/custom/validate.py), so the value crosses files and packages",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wqmh-qccw-pqwf",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "wrong: import os\nfrom flask import Flask, request\nfrom mlflow.protos.service_pb2 import StartTraceV3\n\napp = Flask(__name__)\nROOT = \"/tmp/mlruns\"\n\n@app.post(\"/mlflow/traces\")\ndef start_trace():\n    msg = StartTraceV3.FromString(request.get_data())\n    trace_id = msg.trace.trace_info.trace_id\n    d = os.path.join(ROOT, \"traces\", trace_id)\n    os.makedirs(d, exist_ok=True)\n    return {\"ok\": True}",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wv28-7fpw-fj49",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        22
+      ],
+      "category": "wrong: functions - the note's own probe (request.get_json() into open() in one file) is found by codewatch, so strip/replace is not taken for sanitizing; in the real flow the admin API value goes through db.edit, make_editor_session, EditorSession.get_fs_path and pad.db.to_fs_path before untrusted_to_os_path in another file, and the write is atomic_open in editor.py again",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "wrong: make_editor_session rejects a path that parse_path would not reproduce (raises BadEdit) and untrusted_to_os_path rebuilds the path from cleanup_path instead of strip/replace; the diff adds no containment check against the content root (the new assert clean_path.startswith('/') always holds after cleanup_path)",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wj85-w4f4-xh8h",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        1333
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-wp72-7hj9-5265",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        36
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-h3h4-3r2q-9m76",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        79
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "wrong: resolverapi/endpoints.py:53-55 abort(400, message=\"%s type is not supported\" % rdtype) and abort(400, message=\"%s is not a valid domain name\" % domain), the second abort at line 55 (the note's 54 is the is_valid_hostname test); resolverapi/endpoints.py:96 abort(400, message=\"%s is not a valid ip address\" % ip) in ReverseLookup.valid_args (94-96) - the request value is interpolated into the error message",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3mmf-29wp-jc9p",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        601
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-j657-m4c4-24jq",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        918
+      ],
+      "category": "ok",
+      "source": "wrong: backend/open_webui/routers/terminals.py:253-258 @router.websocket('/{server_id}/api/terminals/{session_id}') async def ws_terminal(ws: WebSocket, server_id: str, session_id: str) - the WebSocket route path parameter session_id comes from the client; policy_id does not, it is read from the saved connection config at terminals.py:281 (connection.get('policy_id')) and the note's 285-294 are the body of the function",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8prr-286p-4w7j",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        89
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "wrong: utils.from_params -> QueryParser().parse(params['q']) in postgres/queryparser.py:182-184 at the fix's parent, where parse() returns repr(query_expr.parseString(query)[0]).replace('__default_field__', default_field) (the note's 283-288 are lines of the post-fix file); repr() of the parsed tree leaves the raw search terms concatenated into the WHERE string -> Query(where=..., vars={}) -> base.py SELECT ... WHERE {query.where} -> _fetchall -> cursor.execute. The value crosses utils.py, queryparser.py and base.py and is never passed as a parameter",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7h8w-hj9j-8rjw",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        78
+      ],
+      "category": "wrong: functions - codewatch finds the note's probe (a FastAPI path parameter into run(..., shell=True) in one file), so the double quotes are not taken for sanitizing; in the real flow the path is read by the /git/diff route, formatted into the command by GitHandler.get_git_diff in git_handler.py and executed by run() in git_diff.py, crossing files",
+      "source": "wrong: openhands/server/routes/files.py:301-308 @app.get('/git/diff') async def git_diff(path: str, ...) - the path query parameter is read by that route and passed at line 322 to runtime.get_git_diff(path, cwd); the note's 267-277 are the sibling git_changes endpoint",
+      "sink": "ok",
+      "between": "wrong: API route -> GitHandler.get_git_diff (git_handler.py:141 result = self.execute(self.git_diff_cmd.format(file_path=file_path), self.cwd), not 137-140) -> git_diff.py -> run(); the double quotes around the path in run(f'git show \"...\"') look like shell quoting but a path containing a double quote closes them and the rest is interpreted by the shell",
+      "fix": "wrong: shlex.quote()s the ref:path argument in git_diff.py (_make_git_show_cmd) and the file_path in git_handler.py before the command string is built; the command is still run as a shell string, not as an argument list",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-f8fh-xp28-q59m",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        601
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-rhjj-f6gq-6gx2",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        79
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "wrong: openstack_dashboard/dashboards/project/stacks/forms.py:313 'help_text': param.get('Description', '') on the generated form field (line 314 is 'required': param.get('Default', None) is None); horizon/templates/horizon/common/_form_field.html:16 renders it as title=\"{{ field.help_text|safe }}\"",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-j72v-mpwp-rg79",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        601
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_dece2d99fffeulhBTRl01WjZCr",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 4,
+    "turns": 49,
+    "tool_calls": 52,
+    "tool_errors": 0,
+    "chars_read": 272412,
+    "tokens": {
+      "input": 107510,
+      "cache_read": 4739840,
+      "output": 31119,
+      "reasoning": 0
+    },
+    "usd": 0.098
+  }
+}
