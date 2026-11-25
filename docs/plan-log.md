@@ -2739,3 +2739,13 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    with the shape scanned with `devtools.py repos` before and after: no new findings. (`repos` and the nightly
    differ on a few findings per app, e.g. label-studio's data_export/api.py:247, so compare `repos` with `repos`.) For the nightly: path-named helpers on
    the other apps. Test in `tests/test_python_gap_notes.py`.
+137. **Topic 16's batches new-7 to new-11 of 2026-11-24 reviewed** (pull request #20). 13 advisories read, 4 accepted
+   by the agents, 2 kept: HarnessRouter CVE-2026-136182 into `cve-pairs-python-frontend` (open; a `next` query
+   parameter read in the Next.js sign-in page and passed to `window.location.assign` in its component; 2 source
+   files, 6 lines plus a new 29-line check) and one blind case in cve-pairs-blind-python-27, unread apart from its
+   size (3 files, 97 lines). Rejected at review: AVideo GHSA-g9x9-q7qj-6mv5 (the payload must be encrypted with
+   the server's saltV2 and carry its APISecret, so only a holder of the server's secrets reaches the shell) and
+   litellm GHSA-vh8q-246j-mm6f (an existing banned-parameter denylist made stricter; the outbound request isn't
+   in the diff). The other 9 rejections stand as written.
+138. **14 more gap notes read** (2026-11-25, pull request #19), all PHP. Probes scanned as in step 126: 11 missed,
+   3 found (XSS 1, path traversal 2). Leads for the PHP rule work, which waits for the Python target.
