@@ -124,7 +124,7 @@ Housekeeping:
 ## Next steps
 
 Target (agreed 2026-11-23): Python first until `cve-pairs-python` verdict detection passes 70% (64 of 109, 59%, on
-2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25; 67 of 107, 63%, after step 143 dropped three cases no rule should fix, so 75 needed), with still-flagged fixes not rising. Measure by misses
+2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25; 67 of 107, 63%, after step 143 dropped three cases no rule should fix; 108 cases after step 145, so 76 needed), with still-flagged fixes not rising. Measure by misses
 and the miss rate, not finds: the suites grew faster than the finds (Python misses 22 to 45 from 2026-11-06 to 2026-11-23), and with topic 17 done they now grow
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
 

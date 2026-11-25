@@ -1619,6 +1619,20 @@
           "scope": [
             "cmk/gui/wato/pages"
           ]
+        },
+        {
+          "id": "CVE-2026-136694",
+          "cve": "CVE-2026-136694",
+          "repo": "https://github.com/eosphoros-ai/DB-GPT.git",
+          "fix": "fc6a5017d5a8509d34700694bbd8a637bde311fb",
+          "cwe": [
+            22
+          ],
+          "license": "MIT",
+          "summary": "DB-GPT: path traversal in skill_upload via the uploaded file name",
+          "scope": [
+            "packages/dbgpt-app/src/dbgpt_app/openapi/api_v1"
+          ]
         }
       ]
     },
