@@ -1,0 +1,249 @@
+{
+  "batch": "gap-notes-2026-11-25-2",
+  "status": "research only: not read yet",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order (the file held 71 work rows, all Python: 17 still-flagged then 54 check-quotes). These 15 are the first Python still-flagged rows and none had a note in an earlier gap-notes file. For each case I read the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA) and the changed source files at the fix commit and its parent (raw.githubusercontent.com), plus parsl/monitoring/queries/pandas.py at the fix commit to see the SQL the two flagged calls reach. Detail's rule@line numbers are line numbers in the scanned file at the fix commit; where several changed files shared a line number I matched the number to the file whose diff hunk covers it. Nothing was skipped; all 15 have a note. The check-quotes rows were left for a later run.",
+  "notes": [
+    {
+      "id": "GHSA-f2mf-q878-gh58",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.sql-injection@169,codewatch:codewatch.python.web.sql-injection@175",
+      "flagged_code": "parsl/monitoring/visualization/views.py:169 df_task = queries.tasks_for_workflow(workflow_id, db.engine) and :175 df_node = queries.nodes_for_workflow(workflow_id, db.engine), at the fix commit",
+      "source": "parsl/monitoring/visualization/views.py:157-158 @app.route('/workflow/<workflow_id>/resource_usage') def workflow_resources(workflow_id): (Flask route path parameter)",
+      "fix_check": "no check on these two lines: the fix rewrote only the two inline queries in the same function (views.py:149 df_tasks = pd.read_sql_query(sqlalchemy.text(query), db.engine, params={'run_id': workflow_id}) and :171-174 the same for df_task_tries). The flagged calls go to parsl/monitoring/queries/pandas.py, which the fix does not touch: tasks_for_workflow still runs read_sql_query(\"... WHERE run_id='%s'\" % (workflow_id), db) at pandas.py:60-65 and nodes_for_workflow the same at :20-25, and the route value (workflow_id at :158) reaches them one call away. The check is not between the source and the flagged lines; the same request value still reaches SQL string formatting inside those helpers",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-2g5w-29q9-w6hx",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.path-traversal@138",
+      "flagged_code": "mindsdb/api/http/namespaces/file.py:138 os.remove(file_path), at the fix commit",
+      "source": "mindsdb/api/http/namespaces/file.py:80 data = request.json (the JSON body of the file upload; its 'file' field is documented at :33) and :129 file_path = os.path.join(temp_dir_path, data['file']) (the cloud branch builds the same path at :122). The multipart branch keeps the client's own file name too (:56-70, UPLOAD_KEEP_FILENAME=True)",
+      "fix_check": "the fix adds safe_extract() (mindsdb/api/http/utils.py:33-38: realpath containment over tar members) and uses it at file.py:137 for .tar.gz only, so the check covers archive members, not the request-made name. It is not between the JSON value and the flagged os.remove at :138, and the .zip branch at :134 still calls extractall()",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-527m-2xhr-j27g",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22,
+        918
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.path-traversal@123,codewatch:codewatch.python.web.path-traversal@136,codewatch:codewatch.python.web.path-traversal@149",
+      "flagged_code": "src/llamafactory/api/chat.py:123 elif os.path.isfile(image_url): (the local-file branch), :136 elif os.path.isfile(video_url): and :149 elif os.path.isfile(audio_url):, at the fix commit",
+      "source": "src/llamafactory/api/chat.py:120 image_url = input_item.image_url.url (also :133 video_url, :146 audio_url), a field of the OpenAI-style chat-completions JSON body parsed at :115-118",
+      "fix_check": "the fix calls check_lfi_path(image_url) at :124 (and :137, :150) and check_ssrf_url(image_url) in the else branch; both helpers are in src/llamafactory/api/common.py (:51-70 and :73-96), where check_lfi_path realpaths the value, requires it under SAFE_MEDIA_PATH and raises HTTPException. The helper is in another file, and the LFI check sits after the flagged os.path.isfile and before the open() at :125, so it is not between the source and the flagged line",
+      "category": "check-elsewhere",
+      "probe": "from fastapi import FastAPI, HTTPException\nfrom pathlib import Path\napp = FastAPI()\nMEDIA = Path('/srv/media')\n\ndef check_media_path(p: str) -> None:\n    if MEDIA.resolve() not in Path(p).resolve().parents:\n        raise HTTPException(status_code=403)\n\n@app.post('/chat')\nasync def chat(payload: dict):\n    url = payload['image_url']['url']\n    if url.startswith('http'):\n        return {'remote': url}\n    check_media_path(url)\n    with open(url, 'rb') as f:\n        return {'bytes': len(f.read())}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-g53g-q539-93cv",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        918
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.ssrf@48",
+      "flagged_code": "scout/server/blueprints/alignviewers/views.py:48 url=remote_url, inside requests.request(...) at :46-51, at the fix commit",
+      "source": "scout/server/blueprints/alignviewers/views.py:33-34 @alignviewers_bp.route('/remote/cors/<path:remote_url>', methods=['OPTIONS', 'GET']) def remote_cors(remote_url): (Flask route path parameter)",
+      "fix_check": "the fix adds at :42-44 `if controllers.check_session_tracks(remote_url) is False: return abort(403)`. check_session_tracks (scout/server/blueprints/alignviewers/controllers.py:17-33) requires an authenticated user and that the URL is in session['igv_tracks'], so a check does sit between the source and the flagged line, but it is a helper in another file and an allowlist membership test",
+      "category": "check-elsewhere",
+      "probe": "from flask import Flask, abort, request, session\nimport requests\napp = Flask(__name__)\n\ndef allowed(url):\n    return bool(session.get('user')) and url in session.get('tracks', [])\n\n@app.route('/proxy/<path:url>')\ndef proxy(url):\n    if not allowed(url):\n        abort(403)\n    return requests.request(method=request.method, url=url, headers=dict(request.headers)).content\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-pc6f-259w-w3j6",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        918
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.ssrf@182",
+      "flagged_code": "label_studio/data_import/uploader.py:182 file_upload_ids, project, request, url (the tasks_from_url(...) call spanning :181-183), at the fix commit",
+      "source": "label_studio/data_import/uploader.py:162 url = request.data.get('url') (form-encoded POST field of the import endpoint)",
+      "fix_check": "the fix adds at :178-179 `if url.strip().startswith('file://'): raise ValidationError('\"url\" is not valid')`, an inline scheme denylist before the flagged call, and it does lie between source and sink. Beside it the older gate at :175 (settings.SSRF_PROTECTION_ENABLED and url_is_local(url)) only rejects local addresses when that setting is on, so the new test is the only file:// check",
+      "category": "check-unknown",
+      "probe": "from flask import Flask, request, abort\nimport requests\napp = Flask(__name__)\n\ndef tasks_from_url(url):\n    return requests.get(url, timeout=5).json()\n\n@app.route('/import', methods=['POST'])\ndef load_tasks():\n    url = request.form['url']\n    if url.strip().startswith('file://'):\n        abort(400)\n    return {'tasks': tasks_from_url(url)}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8m9j-2f32-2vx4",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.open-redirect@146",
+      "flagged_code": "mobsf/MobSF/views/saml2.py:146 return redirect(auth.login(return_to=redirect_url)), at the fix commit",
+      "source": "mobsf/MobSF/views/saml2.py:144 nextp = request.GET.get('next', '') (Django query parameter on the SAML login entry)",
+      "fix_check": "the fix replaces the old `nextp if nextp.startswith('/') else '/'` with redirect_url = sanitize_redirect(nextp) at :145, on the flagged path. sanitize_redirect (mobsf/MobSF/security.py:200-207) returns '/' for '//...' and for anything not starting with '/', and the same helper replaces the RelayState test in get_redirect_url at :123-124 and both login_view assignments",
+      "category": "check-unknown",
+      "probe": "from django.shortcuts import redirect\n\ndef sanitize_redirect(url):\n    if url.startswith('//') or not url.startswith('/'):\n        return '/'\n    return url\n\ndef login_view(request):\n    nxt = request.GET.get('next', '')\n    return redirect(sanitize_redirect(nxt))\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-9crj-hpxh-f6qg",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.path-traversal@124,codewatch:codewatch.python.web.path-traversal@145,codewatch:codewatch.python.web.path-traversal@274,codewatch:codewatch.python.web.path-traversal@336",
+      "flagged_code": "web/pgadmin/tools/backup/__init__.py:336 backup_file = filename_with_file_manager_path(data['file'], (data.get('format','') != 'directory')); the other three are the same helper call at web/pgadmin/tools/import_export_servers/__init__.py:124, web/pgadmin/tools/restore/__init__.py:145 and web/pgadmin/tools/import_export/__init__.py:274, at the fix commit",
+      "source": "web/pgadmin/tools/backup/__init__.py:331 data = json.loads(request.data, encoding='utf-8') then :335-336 data['file'] (request body of the backup job route); the siblings read data['filename'] at import_export:271-274 and data['file'] at restore:144-145 and import_export_servers:119-124",
+      "fix_check": "the fix deletes four local copies of filename_with_file_manager_path and keeps one in web/pgadmin/utils/__init__.py:263-299, where :275-277 calls Filemanager.check_access_permission(storage_dir, _file, skip_permission_check) before the name is joined and opened; each call site now answers PermissionError with 401. The check is a helper in another file and another function than the flagged call, so it is not visible on the request value's path in the view",
+      "category": "check-elsewhere",
+      "probe": "from flask import Flask, request, jsonify\nfrom pathlib import Path\napp = Flask(__name__)\nBASE = Path('/srv/storage')\n\ndef check_access_permission(base, name):\n    target = (base / name.lstrip('/')).resolve()\n    if base.resolve() not in target.parents:\n        raise PermissionError(name)\n    return str(target)\n\n@app.post('/backup')\ndef backup():\n    name = request.json['file']\n    try:\n        path = check_access_permission(BASE, name)\n    except PermissionError:\n        return jsonify(error='denied'), 401\n    return jsonify(path=path)\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-gmpq-xrxj-xh8m",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        89
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.sql-value-formatting@1170",
+      "flagged_code": "arches/app/models/concept.py:1170 cursor.execute(sql), at the fix commit",
+      "source": "not a request value: sql is assembled at :1163-1169 from `value.id` for every DValue in self.values (rows read from the values table), inside check_if_concept_in_use",
+      "fix_check": "none on this line: the fix parameterises the request-reached queries in concept.get_child_edges (:507-738) and views/concept.py paged_dropdown (:404-428) with %(...)s placeholders passed to cursor.execute(sql, params). check_if_concept_in_use and its cursor.execute(sql) at :1170 are untouched, and the value formatted there is a database attribute, never request data",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8wv4-58g4-2v58",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        78
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.command-injection@271,codewatch:codewatch.python.web.command-injection@273,codewatch:codewatch.python.web.command-injection@290,codewatch:codewatch.python.web.command-injection@292",
+      "flagged_code": "endpoints/lollms_advanced.py:271 subprocess.run(['start', str(root_folder)], check=True), :273 subprocess.run(['xdg-open', str(root_folder)], check=True), and the same two calls at :290 and :292 in the request.folder_path branch, at the fix commit",
+      "source": "endpoints/lollms_advanced.py:250-251 FolderRequest(discussion_id: Optional[int], folder_path: Optional[str]) read from the POST body of /open_code_folder (:253-254); root_folder is built at :264-268 from the integer discussion_id, or at :277-280 from os.path.realpath(request.folder_path)",
+      "fix_check": "the fix removes shell=True from the four subprocess calls (the parent had ['start', path] with shell=True at the same lines), leaving an argument list. With shell=False the request value is only one argv entry and discussion_id is an int through pydantic, but codewatch does not take the list-plus-no-shell form (or the int conversion) as a sanitizer. The xdg-open calls at :273/:292 were already list calls without shell=True at the parent and are unchanged",
+      "category": "check-unknown",
+      "probe": "from fastapi import FastAPI\nfrom pydantic import BaseModel\nimport subprocess\napp = FastAPI()\n\nclass FolderRequest(BaseModel):\n    discussion_id: int | None = None\n\n@app.post('/open_folder')\ndef open_folder(req: FolderRequest):\n    folder = f'/srv/outputs/d_{req.discussion_id}'\n    subprocess.run(['xdg-open', folder], check=True)\n    return {'ok': True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-mcpq-xxxj-mc69",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        79
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.xss@217",
+      "flagged_code": "var/www/blueprints/tags_ui.py:217 return str(res[0]), inside delete_tag (:206-221), at the fix commit",
+      "source": "var/www/blueprints/tags_ui.py:213 tag = request.args.get('tag') (with :210-212 type, subtype, id), handed to Tag.api_delete_obj_tags at :215; when the API answers non-200 the body is returned as text/html",
+      "fix_check": "none on this line: the fix changed the identical `return str(res[0])` in add_tags at :199 to `return jsonify(res[0])` (the commit message names the reflected XSS in tag error responses from /tag/add_tags) and left delete_tag's copy untouched. The flagged line is a second endpoint answering with the API's error text instead of JSON",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-8j45-8v5h-63vj",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.path-traversal@55,codewatch:codewatch.python.web.path-traversal@84",
+      "flagged_code": "api/image_get.py:55 response = send_file(local_path) and :84 response = send_file(local_path) (the development and non-development branches), at the fix commit",
+      "source": "api/image_get.py:37 path = input.get('path', request.args.get('path', '')) (JSON-RPC input dict or the path query parameter of the image endpoint)",
+      "fix_check": "the fix adds _resolve_allowed_image_path() at :95-114: it makes the path absolute, resolves it and requires Path(...).relative_to(base_dir) to succeed, raising ValueError to a 403. It is called at :48 before both flagged lines, so it is between the source and the sink, but it is a helper in another function whose containment check codewatch does not follow",
+      "category": "check-elsewhere",
+      "probe": "from fastapi import FastAPI, HTTPException\nfrom fastapi.responses import FileResponse\nfrom pathlib import Path\napp = FastAPI()\nBASE = Path('/srv/agent')\n\ndef resolve_allowed(p: str) -> str:\n    target = (BASE / p.lstrip('/')).resolve()\n    if BASE.resolve() not in target.parents:\n        raise ValueError('outside')\n    return str(target)\n\n@app.get('/image')\ndef image(path: str = ''):\n    try:\n        local = resolve_allowed(path)\n    except ValueError:\n        raise HTTPException(status_code=403)\n    return FileResponse(local)\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-pj88-9xww-gxmh",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.path-traversal@268,codewatch:codewatch.python.web.path-traversal@270,codewatch:codewatch.python.web.path-traversal@290,codewatch:codewatch.python.web.path-traversal@313,codewatch:codewatch.python.web.path-traversal@316,codewatch:codewatch.python.web.path-traversal@319,codewatch:codewatch.python.web.path-traversal@343,codewatch:codewatch.python.web.path-traversal@346,codewatch:codewatch.python.web.path-traversal@349",
+      "flagged_code": "src/swingmusic/api/folder.py:268 req_dir = pathlib.Path(req_dir).resolve(), :270 if not req_dir.exists() or not req_dir.is_dir():, :290 if entry.is_dir(): (list_folders, /folder/dir-browser); :313 resolved_path = Path(query.path).resolve(), :316 if not is_path_within_root_dirs(query.path):, :319 if not resolved_path.exists(): (open_in_file_manager); :343, :346, :349 the same three in get_tracks_in_path, at the fix commit",
+      "source": "src/swingmusic/api/folder.py:259 req_dir = body.folder (DirBrowserBody POST body), :102-103 req_dir = body.folder (FolderTree), :313 query.path and :343 query.path (GET query parameters of /folder/show-in-files and /folder/tracks/all)",
+      "fix_check": "the fix adds is_path_within_root_dirs() at :30-48, a resolve-and-compare allowlist over the configured root directories, and calls it at :174-180 (get_folder_tree), :316 and :346 before the uses; it also adds @admin_required() to list_folders at :250. Codewatch takes neither the helper nor the decorator as a sanitizer, so all nine uses still flag; the dir-browser lines :268/:270/:290 have only admin_required, no path allowlist",
+      "category": "check-unknown",
+      "probe": "from flask import Flask, request, jsonify\nfrom pathlib import Path\napp = Flask(__name__)\nROOTS = [Path('/srv/music')]\n\ndef is_path_within_root_dirs(p: str) -> bool:\n    resolved = Path(p).resolve()\n    return any(resolved == r.resolve() or r.resolve() in resolved.parents for r in ROOTS)\n\n@app.post('/dir-browser')\ndef list_folders():\n    req_dir = request.json['folder']\n    if not is_path_within_root_dirs(req_dir):\n        return jsonify(error='denied'), 403\n    path = Path(req_dir).resolve()\n    return jsonify(dirs=[d.name for d in path.iterdir() if d.is_dir()])\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-jwxw-9h66-qrjj",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.open-redirect@60",
+      "flagged_code": "website/app/account/account.py:60 return redirect(_safe_next_url(request.args.get('next'))), at the fix commit",
+      "source": "website/app/account/account.py:60 request.args.get('next') (Flask query parameter on POST /login, used after a successful admin login)",
+      "fix_check": "the fix adds _safe_next_url() at :17-44 and wraps the value at the flagged line itself: the helper rejects whitespace, backslashes and control characters, refuses a scheme other than ''/http/https, refuses a netloc other than the request's own host, forces a leading '/', and rebuilds a local path with urlunsplit. It lies between source and sink, but it is a project helper whose name and logic codewatch does not know; the fix also stops rendering request.host into the templates",
+      "category": "check-unknown",
+      "probe": "from flask import Flask, request, redirect\nfrom urllib.parse import urlsplit, urlunsplit\napp = Flask(__name__)\n\ndef safe_next(target):\n    if not target or '\\\\' in target:\n        return '/'\n    parsed = urlsplit(target)\n    if (parsed.scheme and not parsed.netloc) or parsed.netloc.lower() not in ('', request.host.lower()):\n        return '/'\n    path = parsed.path or '/'\n    if not path.startswith('/') or path.startswith('//'):\n        return '/'\n    return urlunsplit(('', '', path, parsed.query, parsed.fragment))\n\n@app.post('/login')\ndef login():\n    return redirect(safe_next(request.args.get('next')))\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-Extravi-araa-search-bda4154bfac3",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        601
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.open-redirect@127",
+      "flagged_code": "__init__.py:127 response.headers['Location'] = _safe_redirect(request.form.get('past', '')), at the fix commit",
+      "source": "__init__.py:127 request.form.get('past') (POST form field of the /save-settings route defined in the same file)",
+      "fix_check": "the fix adds _safe_redirect() at :26-34, which requires a value starting with '/' that is not '//' and has neither scheme nor netloc, and applies it at the flagged line, so the check is between source and sink. It is a project helper the rule does not recognise; the commit also stops building current_url from request.host/request.url in the settings, discover, image and text result views",
+      "category": "check-unknown",
+      "probe": "from flask import Flask, request\nfrom urllib.parse import urlparse\napp = Flask(__name__)\n\ndef safe_redirect(url, fallback='/settings'):\n    if not url:\n        return fallback\n    p = urlparse(url)\n    if p.scheme or p.netloc or not url.startswith('/') or url.startswith('//'):\n        return fallback\n    return url\n\n@app.post('/save-settings')\ndef save_settings():\n    resp = app.response_class('ok')\n    resp.headers['Location'] = safe_redirect(request.form.get('past', ''))\n    return resp\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-archivy-archivy-2565a9ab11d1",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "task": "still-flagged",
+      "flagged": "codewatch:codewatch.python.web.path-traversal@157,codewatch:codewatch.python.web.path-traversal@177",
+      "flagged_code": "archivy/api.py:157 sanitized_name = data.create_dir(directory) (create_folder) and :177 if data.delete_dir(directory): (delete_folder), at the fix commit",
+      "source": "archivy/api.py:155 directory = request.json.get('path') (POST body of the folder API) and :174 the same in delete_folder",
+      "fix_check": "the fix adds is_relative_to() in archivy/data.py:21-27 (resolve + Path.relative_to containment) and uses it in create_dir (:198-206) and delete_dir (:208-220) before mkdir/rmtree, with a False return checked at api.py:158-160. The check is in another file and another function than the flagged call, so nothing on the request value's path in api.py shows it",
+      "category": "check-elsewhere",
+      "probe": "from flask import Flask, request, jsonify\nfrom pathlib import Path\napp = Flask(__name__)\nBASE = Path('/srv/data')\n\ndef inside(p: Path) -> bool:\n    try:\n        p.resolve().relative_to(BASE.resolve())\n        return True\n    except ValueError:\n        return False\n\ndef create_dir(name):\n    target = BASE / name.strip('/')\n    if not inside(target):\n        return False\n    target.mkdir(parents=True, exist_ok=True)\n    return True\n\n@app.post('/folders')\ndef create_folder():\n    if not create_dir(request.json.get('path', '')):\n        return jsonify(error='invalid'), 400\n    return jsonify(ok=True)\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_ded50c9b0ffefMNNfSBhGuzV6i",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 50,
+    "tool_calls": 55,
+    "tool_errors": 0,
+    "chars_read": 229718,
+    "tokens": {
+      "input": 153212,
+      "cache_read": 4305664,
+      "output": 41354,
+      "reasoning": 0
+    },
+    "usd": 0.121
+  }
+}
