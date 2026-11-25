@@ -128,10 +128,13 @@ and the miss rate, not finds: the suites grew faster than the finds (Python miss
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
 
 1. The 43 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
-   128), then values through several functions and project checks (42 D, E).
+   128), then values through several functions and project checks (42 D, E). From step 141 the gap runner also
+   checks those notes' quotes (check-quotes) and explains the 15 fixes still flagged (still-flagged notes, with a
+   safe look-alike probe): use both before writing a rule.
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
-4. Each morning: read the nightly, review topic 16's batches and read the gap notes, merge both pull requests the
+4. Each morning: read the nightly, review topic 16's batches and read the gap notes (a still-flagged note's probe
+   should be quiet; a check-quotes note marked `wrong` corrects the note it names), merge both pull requests the
    same session, and fast-forward `main` weekly after a clean nightly (CLAUDE.md, "Branches").
 
 ## How things work (non-obvious)

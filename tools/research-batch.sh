@@ -111,14 +111,14 @@ if [ "$waiting" -ge "$MAX_PENDING" ]; then
     exit 0
 fi
 if [ "$KIND" = gaps ]; then
-    # The agent never sees the nightly's results (blind suites are in there too): only this list of open misses.
+    # The agent never sees the nightly's results (blind suites are in there too): only this list of work on open cases.
     misses=$(python3 -I tools/export_misses.py --out "$HOME/codewatch-research/gaps/misses.tsv") \
-        || { say "can't list the nightly's misses"; exit 1; }
+        || { say "can't list the gap notes' work"; exit 1; }
     if [ "$misses" = 0 ]; then
-        say "no missed open case without a gap note; skipping"
+        say "no gap-note work left (missed, still-flagged or quotes to check); skipping"
         exit 0
     fi
-    say "$misses missed open cases without a gap note"
+    say "$misses rows of gap-note work"
 elif [ -d "$HOME/advisory-database/.git" ]; then
     git -C "$HOME/advisory-database" fetch -q --depth 1 origin main && git -C "$HOME/advisory-database" reset -q --hard FETCH_HEAD
 fi
@@ -136,12 +136,12 @@ say "starting a batch with $MODEL at $base"
 if [ "$KIND" = gaps ]; then
     TITLE="codewatch gap notes $(date +%F-%H%M)"
     PROMPT="Read AGENTS.md in full, then write one batch of gap notes as its section 9 says: no research topic, no
-candidates. The cases to note are in ~/codewatch-research/gaps/misses.tsv, in the order to take them. Keep your
+candidates. The work is in ~/codewatch-research/gaps/misses.tsv (its task column says which kind), in the order to take it. Keep your
 scripts and downloads in ~/codewatch-research/gaps/ (the only folder outside this repository you may write to).
 Commit only your benchmarks/gap-notes-*.json file, with the identity AGENTS.md gives. Don't push, pull or switch
 branches: the script that started you does that. $ALLOWLIST
 $TIME Commit the notes file by $commit_by with whatever has been noted by then (a smaller batch is fine).
-End with the counts: cases noted, by category, and cases left in misses.tsv."
+End with the counts: notes written, by task and category, and rows left in misses.tsv."
 else
     TITLE="codewatch research $(date +%F-%H%M)"
     PROMPT="Read AGENTS.md in full and do the next topic in its queue: one batch of about 60 advisories, following

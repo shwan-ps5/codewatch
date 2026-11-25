@@ -1,11 +1,15 @@
-"""The open CVE-pair cases the last nightly run missed, for the gap-notes runner (AGENTS.md section 9).
+"""The gap-notes runner's work list from the last nightly run (AGENTS.md section 9).
 
     python3 -I tools/export_misses.py --out FILE [--nightly DIR] [--benchmarks DIR]
 
-Writes one tab-separated row per missed case (verdict mode): suite, language, id, repo, fix, cwe, scope. Python
-suites first, then JavaScript, then PHP, then the rest. Only cve-pairs suites that aren't blind are read, whatever
-result files the nightly directory holds, and cases that already have a gap note in benchmarks/gap-notes-*.json are
-left out. Prints how many rows it wrote. Standard library only.
+Writes one tab-separated row per piece of work: task, suite, language, id, repo, fix, cwe, scope, detail. Tasks:
+- missed: an open case verdict mode didn't find, with no gap note yet (every language);
+- still-flagged: a Python case verdict mode still flags at its fix, with no still-flagged note yet; detail is what
+  flags it there (rule@line, as the nightly reports it);
+- check-quotes: a Python case still missed whose gap note hasn't had its quotes checked; detail is the note's file.
+Python first (missed, still-flagged, check-quotes), then JavaScript, then PHP, then the rest. Only cve-pairs suites
+that aren't blind are read, whatever result files the nightly directory holds. Prints how many rows it wrote.
+Standard library only.
 """
 
 import argparse
@@ -14,7 +18,8 @@ import sys
 from pathlib import Path
 
 ORDER = ("python", "javascript", "php")
-COLUMNS = ("suite", "language", "id", "repo", "fix", "cwe", "scope")
+TASKS = ("missed", "still-flagged", "check-quotes")
+COLUMNS = ("task", "suite", "language", "id", "repo", "fix", "cwe", "scope", "detail")
 
 
 def latest_nightly(root):
@@ -31,47 +36,65 @@ def open_suites(benchmarks):
 
 
 def noted(benchmarks):
-    """Ids that already have a gap note."""
-    ids = set()
-    for path in benchmarks.glob("gap-notes-*.json"):
+    """{(task, id): file name} of the work already done; a note without a task is a missed-case note."""
+    done = {}
+    for path in sorted(benchmarks.glob("gap-notes-*.json")):
         try:
-            ids |= {n.get("id") for n in json.loads(path.read_text()).get("notes", [])}
+            notes = json.loads(path.read_text()).get("notes", [])
         except ValueError:
             continue
-    return ids
+        for note in notes:
+            if isinstance(note, dict):
+                done.setdefault((note.get("task") or "missed", note.get("id")), path.name)
+    return done
 
 
-def missed(results, suite):
-    """Ids of the suite's cases that verdict mode didn't find, from its result file."""
+def verdicts(results, suite):
+    """The suite's verdict-mode cases from its result file, or []."""
     path = results / f"{suite}.json"
     if not path.is_file():
         return []
-    cases = json.loads(path.read_text()).get("verdict", {}).get("cases", [])
-    return [c["id"] for c in cases if not c.get("detected")]
+    return json.loads(path.read_text()).get("verdict", {}).get("cases", [])
+
+
+def work(case, language, done):
+    """[(task, detail)] for one case of the nightly."""
+    case_id, found = case["id"], case.get("detected")
+    todo = []
+    if not found and ("missed", case_id) not in done:
+        todo.append(("missed", ""))
+    if language == "python":
+        if case.get("still_flagged") and ("still-flagged", case_id) not in done:
+            todo.append(("still-flagged", ",".join(case.get("still_by", []))))
+        if not found and ("missed", case_id) in done and ("check-quotes", case_id) not in done:
+            todo.append(("check-quotes", done[("missed", case_id)]))
+    return todo
 
 
 def rows(nightly, benchmarks):
     suites = open_suites(benchmarks)
     done = noted(benchmarks)
-
-    def rank(name):
-        language = suites[name].get("language", "")
-        return (ORDER.index(language) if language in ORDER else len(ORDER), name)
-
     found = []
-    for name in sorted(suites, key=rank):
-        entries = {c["id"]: c for c in suites[name].get("cases", []) if isinstance(c, dict)}
-        for case_id in missed(nightly / "results", name):
-            entry = entries.get(case_id)
-            if entry and case_id not in done:
-                found.append((name, suites[name].get("language", ""), case_id, entry.get("repo", ""),
-                              entry.get("fix", ""), ",".join(map(str, entry.get("cwe", []))),
-                              ",".join(entry.get("scope", []))))
-    return found
+    for name, suite in suites.items():
+        language = suite.get("language", "")
+        entries = {c["id"]: c for c in suite.get("cases", []) if isinstance(c, dict)}
+        for case in verdicts(nightly / "results", name):
+            entry = entries.get(case.get("id"))
+            if not entry:
+                continue
+            for task, detail in work(case, language, done):
+                found.append((task, name, language, case["id"], entry.get("repo", ""), entry.get("fix", ""),
+                              ",".join(map(str, entry.get("cwe", []))), ",".join(entry.get("scope", [])), detail))
+
+    def rank(row):
+        language = row[2]
+        return (ORDER.index(language) if language in ORDER else len(ORDER), TASKS.index(row[0]), row[1])
+
+    return sorted(found, key=rank)
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="The open CVE-pair cases the last nightly run missed.")
+    parser = argparse.ArgumentParser(description="The gap-notes runner's work list from the last nightly run.")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--nightly", type=Path, help="a nightly run's directory (default: the latest)")
     parser.add_argument("--benchmarks", type=Path, default=Path(__file__).resolve().parent.parent / "benchmarks")

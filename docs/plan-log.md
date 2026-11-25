@@ -2757,3 +2757,13 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    137). Quotes match the fix diff. The probe, scanned as .tsx (the probe script names python-frontend probes .py),
    is missed: `window.location.search` read in a Next.js page and passed as a React prop to a component that hands
    it to `window.location.assign`. Codewatch doesn't follow a value through a prop. A lead for front-end rule work.
+141. **The gap runner gets two more tasks** (2026-11-25). With every missed open case noted, the runner had been
+   idle since 2026-11-24 18:30 and topic 16 finds a case or two a day. `tools/export_misses.py` now writes a
+   `task` column: `missed` as before (every language), `still-flagged` (a Python case still flagged at its fix;
+   `detail` names the rule and line) and `check-quotes` (a Python case still missed whose gap note's quotes haven't
+   been checked; `detail` names the note's file). Python first. AGENTS.md section 9 says what each note holds: a
+   still-flagged note gives the flagged line at the fix, the fix's check, why it isn't taken (`check-unknown`,
+   `check-elsewhere`, `other-flow`, `not-this-fix`) and a safe look-alike probe; a check-quotes note marks each
+   field `ok` or `wrong: ` with the correction, never editing the earlier file. The push check refuses any other
+   task. On the nightly of 2026-11-25: 72 rows (17 still-flagged, 54 quote checks, 1 missed), about five runs.
+   Tests in `tests/test_export_misses.py` and `tests/test_reviewed.py`.

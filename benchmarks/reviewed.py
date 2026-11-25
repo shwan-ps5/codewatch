@@ -171,6 +171,7 @@ ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|b
 IDENTITY = "Shwan <344055753+shwan-ps5@users.noreply.github.com>"
 WITHHELD = "accepted; reason withheld so the case stays blind"
 UNREVIEWED = "research only"
+GAP_TASKS = ("missed", "still-flagged", "check-quotes")  # AGENTS.md section 9; tools/export_misses.py
 # A review session's mark on a file it read: "reviewed DATE (PLAN.md step N)..." or "read DATE (PLAN.md step N)...",
 # or the early batches' "reviewed 2026-11-03 (...)", from before steps were numbered in statuses.
 REVIEWED_RE = re.compile(r"\(PLAN\.md step \d+\)|\breviewed 20\d\d-\d\d-\d\d\b")
@@ -270,6 +271,8 @@ def _note_problem(name, note, open_cases, blind_cases):
         return f"{name}: {case_id} is not an open CVE-pair case; gap notes are for those only"
     if note.get(SUITE) != open_cases[case_id]:
         return f"{name}: {case_id} is in {open_cases[case_id]}, not {note.get(SUITE)}"
+    if note.get("task", "missed") not in GAP_TASKS:
+        return f"{name}: {case_id} has task {note.get('task')!r}, not one of {', '.join(GAP_TASKS)}"
     return None
 
 

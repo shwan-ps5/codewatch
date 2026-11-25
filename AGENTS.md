@@ -588,13 +588,20 @@ gives the counts and lists open cases by id, plus any `unsure` questions; blind 
 ## 9. Gap notes (the second runner)
 
 A second unattended runner (`tools/research-batch.sh` with `CODEWATCH_RESEARCH_KIND=gaps`) doesn't look for new
-cases. It explains the open CVE-pair cases codewatch already misses, so a Claude session can write the rules that
-find them. In that run, ignore the topic queue and section 5's files: write gap notes only.
+cases. It explains the open CVE-pair cases codewatch already misses, and the fixes it still flags, so a Claude
+session can write the rules that find the one and stay quiet on the other; it also checks its earlier notes. In that run, ignore the topic queue and section 5's files: write gap notes only.
 
 **Input.** `~/codewatch-research/gaps/misses.tsv` (written by the runner from the last nightly run): one row per
-missed open case, `suite language id repo fix cwe scope`, Python first, then JavaScript, then PHP. Take them in
-that order, about 15 per run. Note only cases in that file. Never read a blind suite's entries in
-`benchmarks/suites.json` or any `benchmarks/results/*blind*` file; never note a blind case.
+piece of work, `task suite language id repo fix cwe scope detail`, Python first, then JavaScript, then PHP. Take
+the rows in that order, about 15 per run, whatever their task. Note only cases in that file. Never read a blind
+suite's entries in `benchmarks/suites.json` or any `benchmarks/results/*blind*` file; never note a blind case.
+The `task` column says what to write:
+- `missed`: codewatch doesn't find the case before its fix. Write a gap note as below ("What to write for each
+  case").
+- `still-flagged`: codewatch still flags the case at its fix commit, i.e. a false alarm on fixed code. `detail` is
+  what flags it (`rule@line`). Write a still-flagged note (below).
+- `check-quotes`: an earlier gap note on a case codewatch still misses; `detail` is that note's file. Check its
+  quotes and write a check-quotes note (below). Never edit the earlier file.
 
 **Reading.** For each case, fetch the fix commit's diff and, where the diff doesn't show them, the files at the fix
 commit's parent that hold the source and the sink (`gh api repos/O/R/contents/PATH?ref=SHA^`, raw). This uses
@@ -630,7 +637,40 @@ section 6 says.
 - `confidence`: `sure` when the diff and the files show source and sink, `unsure` otherwise (say what's missing in
   `between`).
 
-**Output.** One file per run, `benchmarks/gap-notes-YYYY-MM-DD-N.json` (N counting up from 1 per day):
+**Still-flagged notes** (task `still-flagged`). The fix should have made the finding go away; say why it didn't.
+Read the fix's diff and the files at the fix commit itself (`?ref=SHA`, not its parent). `detail` gives the rule and
+line but not the file: look first at that line in each file the fix changed, then in the files under `scope`.
+- `task`: `still-flagged`; `flagged`: `detail` as given.
+- `flagged_code`: `file:line` and the code at that line at the fix commit.
+- `source`: where the flagged value comes from, `file:line` and the code, as for a gap note.
+- `fix_check`: the check the fix added, `file:line` and the code, and whether it lies between `source` and the
+  flagged line.
+- `category`: one of
+  - `check-unknown` — the fix's check sits on the flagged path, in a form codewatch may not take as a check: a
+    project helper (name it and say what it does), an allowlist membership test, a regex match that returns
+    early, a conversion to int or uuid, a resolve-and-compare. Say which form;
+  - `check-elsewhere` — the check is in another function or file than the flagged path (a validator called
+    earlier, a decorator, a form or serializer field, a model method);
+  - `other-flow` — the flagged line is a different flow the fix didn't touch. Say whether it still looks
+    exploitable at the fix (a real issue left over) or harmless, and why;
+  - `not-this-fix` — the fix changes something other than a value's path (a permission check, a setting).
+- `probe`: for `check-unknown` and `check-elsewhere`, the safe look-alike: the shortest code with the source, the
+  fix's check in the same form and the sink, 5 to 30 lines, which a rule should leave quiet (no project names).
+  Empty otherwise.
+- `confidence`: `sure` when you found the flagged line and the check, `unsure` otherwise (say why in `fix_check`).
+
+**Check-quotes notes** (task `check-quotes`). Gap notes are written fast; a rule written from a wrong quote is
+wasted. Open the note named in `detail`, find the entry with this `id`, and check it against the fix's diff and
+the files at the fix's parent.
+- `task`: `check-quotes`; `checks`: the file name from `detail`.
+- `source`, `sink`, `between`, `fix`: each `ok` when the file, line and code match (code shortened with `...` is
+  fine), or `wrong: ` followed by the corrected text in full.
+- `category`: `ok`, or `wrong: ` and the right category with the reason.
+- `probe`: `ok` when it has the source and sink of the case in the same shape, or `wrong: ` and a corrected probe.
+- `confidence`: `sure` when every field could be checked against the code, `unsure` otherwise (say which not).
+
+**Output.** One file per run, `benchmarks/gap-notes-YYYY-MM-DD-N.json` (N counting up from 1 per day), holding
+every note of the run, whatever its task (`task` may be left out on a missed-case note):
 
 ```json
 {"batch": "gap-notes-2026-11-23-1", "status": "research only: not read yet",
@@ -643,10 +683,14 @@ section 6 says.
             "probe": "from flask import request\n...", "confidence": "sure"}]}
 ```
 
+A still-flagged note and a check-quotes note sit in the same `notes` list, for example
+`{"id": "GHSA-...", "suite": "cve-pairs-python", "task": "still-flagged", "flagged": "codewatch:codewatch.python.web.path-traversal@88", ...}`
+and `{"id": "GHSA-...", "suite": "cve-pairs-python", "task": "check-quotes", "checks": "gap-notes-2026-11-20-3.json", "source": "ok", ...}`.
+
 `id` and `suite` exactly as in `misses.tsv`; the push check refuses a note about any case that isn't an open
-CVE-pair case in that suite. Commit with:
+CVE-pair case in that suite, or with a task other than the three above. Commit with:
 
 ```
 git add benchmarks/gap-notes-YYYY-MM-DD-N.json
-git commit -m "Gap notes: N cases (S source, K sink, ...)"
+git commit -m "Gap notes: N cases (S source, K sink, ...; F still-flagged, Q quotes checked)"
 ```
