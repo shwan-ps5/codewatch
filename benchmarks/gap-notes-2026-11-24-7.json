@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-24-7",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-25 (PLAN.md step 138): leads for rule work; quotes not yet checked one by one",
   "method": "Rows 1-14 of ~/codewatch-research/gaps/misses.tsv, in file order. The file held 14 missed cases (15 lines: a header plus 14 rows), all cve-pairs-php, no Python or JavaScript, and none had been noted by an earlier run. For each case I read the fix commit's message and full per-file diff (gh api repos/O/R/commits/SHA) and, where the diff did not show the source or the sink, the files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw): chamilo's model.ajax.php, egroupware's Saml.php, TestLink's planUrgency.php and testPlanUrgency.class.php, Fork CMS's Search/Index.php and Engine/Header.php, fusionpbx's dialplan_detail_edit.php and call_centers/cmd.php, OpenEMR's portal/lib/download_template.php, Admidio's TableAccess.php, Session.php and common.php, AVideo's objects/Streamer.php, objects/Login.php and install/test.php, OSSN's dynamic.php, EspoCRM's Core/Utils/Language.php and Tools/LabelManager/LabelManager.php, Piwigo's admin/batch_manager.php, Wavelog's controllers/Oqrs.php, and MISP's ObjectsController.php and Lib/Tools/AttachmentTool.php. Fork CMS, Admidio and AVideo-Encoder were also downloaded as tarballs at the fix's parent to find the callers the diff does not show (SpoonFilter::getGetValue, new Session(), Login::run). Nothing was skipped: all 14 rows have a note. One case is unsure: CVE-2014-9470 (Fork CMS) encodes a canonical URL that Header::parseSeo also encodes at the parent, so only the entry point the fix changes is visible. CVE-2026-135258 (MISP) is unsure because the model method that passes a request attribute id into AttachmentTool::save is not in the diff.",
   "notes": [
     {
@@ -15,7 +15,8 @@
       "between": "groupOp is appended once more at :354, between two rules; the WHERE fragment leaves this file as a bare string argument for lib functions (getWorkListTeacher and friends) that run it, so the SQL string is assembled in one file and executed in another. No whitelist or escaping of the keyword. The fix uppercases groupOp and accepts only AND/OR before it is used.",
       "fix": "validates groupOp against AND and OR before it is concatenated into the WHERE clause",
       "probe": "<?php\n$filters = json_decode($_REQUEST['filters2']);\n$where = ' 1 = 1 ';\nforeach ($filters->rules as $rule) {\n    $where .= ' AND (' . $rule->field . \" = '\" . $rule->data . \"') \";\n}\n$where .= $filters->groupOp . ' ( ' . implode($filters->groupOp, $parts) . ' ) ';\n$rows = getWorkListTeacher(0, 25, null, null, $where, true);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "GHSA-pr4x-6fj4-gm4h",
@@ -29,7 +30,8 @@
       "between": "the only thing in the way is the https:// regex, which accepts any host; the redirect itself is built inside SimpleSAMLphp, so the sink is a library call and no header('Location:') appears in the project's code. The fix rejects the login when the value is not one of the IdPs from self::splitIdP($GLOBALS['egw_info']['server']['saml_idp']).",
       "fix": "denies login unless the idp parameter names a configured IdP",
       "probe": "<?php\n$idp = $_REQUEST['idp'];\n$as = new SimpleSAML\\Auth\\Simple('default-sp');\n$as->requireAuth(preg_match('|^https://|', $idp) ? ['saml:idp' => $idp] : []);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2020-8638",
@@ -43,7 +45,8 @@
       "between": "planUrgency.php:155-159 loops the request array and calls $tplanMgr->setTestUrgency($argsObj->tplan_id, $id, $urgency) with the values uncast; only testplan_id and tcversion_id pass through prepare_int, urgency does not. The fix casts both to intval() in the caller and prepare_int() in the class.",
       "fix": "casts the urgency and tc id to integers before the UPDATE is built",
       "probe": "<?php\nforeach ($_REQUEST['urgency'] as $id => $urgency) {\n    $plan->setTestUrgency($_REQUEST['tplan_id'], $id, $urgency);\n}\n// class method\n$sql = \"UPDATE testplan_tcversions SET urgency={$urgency} WHERE testplan_id=\"\n     . $this->db->prepare_int($testplan_id)\n     . \" AND tcversion_id=\" . $this->db->prepare_int($tc_id);\n$this->db->exec_query($sql);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2014-9470",
@@ -57,7 +60,8 @@
       "between": "setCanonicalUrl() stores the value (Header.php:953-963) and parseSeo() inserts it into the link attributes built by string concatenation. parseSeo also encodes its copy of the URL at :933, so the unescaped output the advisory describes is not visible in this file at the parent; what the fix changes is the entry point, encoding q before it becomes part of the canonical URL. The miss is the source: the value is not read from $_GET at the sink, it arrives through a helper that writes $_GET['q'].",
       "fix": "htmlspecialchars() on q_widget before it is appended to the canonical URL",
       "probe": "<?php\n$_GET['q'] = SpoonFilter::getGetValue('q_widget', null, '');\n$canonicalUrl = SITE_URL . '?q=' . $_GET['q'];\n$header->setCanonicalUrl($canonicalUrl);\n// header engine\n$links['canonical'] = array('rel' => 'canonical', 'href' => $this->canonical);\n$html = '<link rel=\"canonical\" href=\"' . $links['canonical']['href'] . '\">';\n$tpl->assign('meta', $html);\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2019-19388",
@@ -71,7 +75,8 @@
       "between": "nothing validates either value before the echoes; they are read at the top of the page and used in the form ~160 lines later, once inside an onclick handler and once inside a single-quoted attribute. The fix takes the request values only when is_uuid() passes.",
       "fix": "assigns app_uuid and dialplan_uuid only when is_uuid() accepts them",
       "probe": "<?php\n$app_uuid = $_REQUEST['app_uuid'];\n$dialplan_uuid = $_REQUEST['dialplan_uuid'];\necho \"<td><input type='button' onclick=\\\"window.location='edit.php?id=\".$dialplan_uuid.\"&app_uuid=\".$app_uuid.\"';\\\" value='back'></td>\";\necho \"<input type='hidden' name='app_uuid' value='$app_uuid'>\\n\";\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: FOUND xss"
     },
     {
       "id": "CVE-2019-16964",
@@ -85,7 +90,8 @@
       "between": "event_socket_create() at :41 opens the socket with the session's credentials, and the whole $_GET string becomes the API command; the value is neither whitelisted nor quoted. The fix allows only load/unload/reload and rebuilds the call as 'api callcenter_config queue '.$cmd.' '.$queue with a uuid-checked queue.",
       "fix": "whitelists cmd to load, unload or reload and sends a fixed command with a uuid queue",
       "probe": "<?php\n$cmd = $_GET['cmd'];\n$fp = event_socket_create($_SESSION['ip'], $_SESSION['port'], $_SESSION['password']);\nif ($fp) {\n    event_socket_request($fp, 'api reloadxml');\n    $response = event_socket_request($fp, $cmd);\n    fclose($fp);\n}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2018-17180",
@@ -100,7 +106,8 @@
       "between": "the only thing between the POST value and the read is if (! file_exists($templatepath)) at :374 and the fallback it triggers, a test a scanner may take for path validation; there is no basename or containment. The fix calls check_file_dir_name($form_filename) at :371 and check_file_dir_name($pid) at :375. The same commit also parameterizes the pc_pid SQL built in fetchEvents at :234-243 (:242), which is the CWE-89 side of the case.",
       "fix": "rejects a docid or pid that is not a plain file name with check_file_dir_name() before the template path is built",
       "probe": "<?php\n$form_filename = $_POST['docid'];\n$pid = $_POST['pid'];\n$templatepath = \"$templatedir/$form_filename\";\nif (!file_exists($templatepath)) {\n    $templatepath = \"$templatedir/$pid/$form_filename\";\n}\n$zip = new ZipArchive();\n$zip->open($templatepath);\n$data = file_get_contents($templatepath);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: FOUND path-traversal"
     },
     {
       "id": "CVE-2020-11004",
@@ -114,7 +121,8 @@
       "between": "the cookie value crosses three files: common.php -> Session::__construct (:69 $this->readDataByColumns(array('ses_session_id' => $session))) -> TableAccess::readDataByColumns, which pastes the value into the WHERE string with no quoting. The fix turns the value into a bound parameter and passes array_values($columnArray) to readData().",
       "fix": "binds the column values instead of concatenating them into the WHERE clause",
       "probe": "<?php\n$session = $_COOKIE['SESSID'];\n$s = new Session($gDb, $session);\n// Session::__construct\n$this->readDataByColumns(array('ses_session_id' => $session));\n// TableAccess::readDataByColumns\nforeach ($columnArray as $columnName => $columnValue) {\n    $sqlWhereCondition .= ' AND ' . $columnName . \" = '\" . $columnValue . \"' \";\n}\n$returnCode = $this->readData($sqlWhereCondition);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2026-61569",
@@ -128,7 +136,8 @@
       "between": "the values travel from the endpoint into Login::run, then Login.php:116 Streamer::createIfNotExists($user, $pass, $aVideoURL, $encodedPass), then static::get($user, $siteURL) with no quoting or prepare on the way. The fix prepares the statement and binds both values (bind_param('ss', $user, $siteURL)).",
       "fix": "converts the query to a prepared statement binding user and siteURL",
       "probe": "<?php\nLogin::run($_REQUEST['user'], $_REQUEST['pass'], $_REQUEST['webSiteRootURL'], true);\n// Login::run\n$object->streamers_id = Streamer::createIfNotExists($user, $pass, $aVideoURL, $encodedPass);\n// Streamer\n$sql = \"SELECT * FROM streamers WHERE user = '{$user}' AND lower(siteURL) = lower('{$siteURL}') LIMIT 1\";\n$res = $global['mysqli']->query($sql);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2026-113388",
@@ -142,7 +151,8 @@
       "between": "input() is the framework's own accessor and its result is never re-read from a superglobal in this file; the values are only used for the connection test before the template is assembled. The fix builds an array and exports it with var_export() so nothing is interpolated as code.",
       "fix": "writes the settings with var_export() instead of interpolating them into PHP source",
       "probe": "<?php\n$host = input('host');\n$port = input('port');\n$status = input('status');\n$template = '<?php\n$cfg = array(\n    \"status\" => \"'.$status.'\",\n    \"host\" => \"'.$host.'\",\n    \"port\" => \"'.$port.'\",\n);';\nfile_put_contents($configs . 'config.dcache.php', $template);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2026-63130",
@@ -156,7 +166,8 @@
       "between": "Controller -> Tools/LabelManager::getScopeData/saveLabels -> Core/Utils/Language::getScopeCustom/saveScopeCustom: the value crosses three files, and the Controller only checked empty(); a ../ in scope or language walks out of the custom language directory on read and write. The fix adds is_string() and basename() checks in the Controller and basename() in Language (:230 area, :244-289).",
       "fix": "refuses scope/language with a path separator and applies basename() before the file path is built",
       "probe": "<?php\n$data = $request->getParsedBody();\n$scope = $data->scope;\n$language = $data->language;\n$tool->saveLabels($language, $scope, $labels);\n// Language\n$path = str_replace('{language}', $this->currentLanguage, $this->customPath) . \"/$scope.json\";\n$this->fileManager->putContents($path, $json);\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2016-10084",
@@ -170,7 +181,8 @@
       "between": "the value is only handed to $tabsheet->select($page['tab']) at :606 on the way, so the tab name is used for markup first and as a file name last; no whitelist before the include. The fix adds check_input_parameter('mode', $_GET, false, '/^(global|unit)$/') at :596.",
       "fix": "whitelists mode to global or unit before the dynamic include",
       "probe": "<?php\n$page['tab'] = $_GET['mode'];\n$tabsheet = new tabsheet();\n$tabsheet->select($page['tab']);\ninclude(PHPWG_ROOT_PATH . 'admin/batch_manager_' . $page['tab'] . '.php');\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: FOUND path-traversal"
     },
     {
       "id": "CVE-2026-55508",
@@ -184,7 +196,8 @@
       "between": "the value is passed at Oqrs.php:227 to Oqrs_model::search_log($callsign), so the source and the sink sit in different files; the TRUE argument only runs CodeIgniter's XSS filter, which a scanner may take for SQL sanitising. The fix builds the query with ? placeholders and a $binding array.",
       "fix": "replaces the string LIKE condition with a bound parameter",
       "probe": "<?php\n$callsign = $this->input->post('callsign', TRUE);\n$model->search_log($callsign);\n// model\n$this->db->where('COL_CALL like \"%'.$callsign.'%\"');\n$query = $this->db->get('table_name');\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: missed"
     },
     {
       "id": "CVE-2026-135258",
@@ -198,7 +211,8 @@
       "between": "the request attributes go from ObjectsController::edit/revise_object into the object save, which calls AttachmentTool::save/_save -> getPath with the stored/request ids; no digit check existed, so '../' or '.php' in an id moved the write outside the attachment directory. The fix unsets the carried Attribute.id/event_id/object_id at :70 and asserts ctype_digit on both ids in getPath (:590-604). The commit also changes the audit-log event and the session revision handling, so it bundles three fixes.",
       "fix": "drops request-supplied attribute ids and accepts only digit-only event/attribute ids in attachment paths",
       "probe": "<?php\nforeach ($this->request->data['Attribute'] as &$attribute) {\n    $attribute['uuid'] = CakeText::uuid();\n}\n$model->save($this->request->data);\n// AttachmentTool\n$path = $this->getPath($shadow, $eventId, $attributeId, $pathSuffix);\nFileAccessTool::writeToFile($this->attachmentDir() . DS . $path, $data, true);\n// getPath\nreturn $path . $eventId . DS . $attributeId . $pathSuffix;\n",
-      "confidence": "unsure"
+      "confidence": "unsure",
+      "probe_scanned": "2026-11-25: missed"
     }
   ],
   "usage": {
