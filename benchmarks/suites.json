@@ -16320,7 +16320,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88, 101 and 105) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Cases added 2026-11-21 from pull request #5 (topic 17, silent fixes, and topic 16; PLAN.md step 110), unread at review apart from their size. Four more added 2026-11-21 from topic 17 (PLAN.md step 113), unread at review. 3 more added 2026-11-22 (PLAN.md step 118), unread at review. 1 more added 2026-11-25 (PLAN.md step 137), unread at review apart from its size.",
+      "about": "Blind set of Python CVE fix pairs, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md steps 88, 101 and 105) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. Cases added 2026-11-21 from pull request #5 (topic 17, silent fixes, and topic 16; PLAN.md step 110), unread at review apart from their size. Four more added 2026-11-21 from topic 17 (PLAN.md step 113), unread at review. 3 more added 2026-11-22 (PLAN.md step 118), unread at review. 1 more added 2026-11-25 (PLAN.md step 137), unread at review apart from its size. 2 more added 2026-11-25 (PLAN.md step 139), unread at review apart from their size.",
       "cases": [
         {
           "id": "GHSA-gcwf-c25f-p9rv",
@@ -16558,6 +16558,35 @@
             "spug_api/apps/credential",
             "spug_api/libs"
           ]
+        },
+        {
+          "id": "GHSA-gp8r-76j6-hjcj",
+          "cve": "CVE-2026-136134",
+          "repo": "https://github.com/mealie-recipes/mealie.git",
+          "fix": "4d074185d0dd1bb2dada7a4470bd04bd91227040",
+          "cwe": [
+            22
+          ],
+          "license": "AGPL-3.0",
+          "summary": "Path traversal in the i18n locale provider via the Accept-Language header (Mealie up to 3.29.0)",
+          "scope": [
+            "mealie/pkgs/i18n"
+          ]
+        },
+        {
+          "id": "GHSA-r87r-9p73-r6v6",
+          "cve": "CVE-2026-133461",
+          "repo": "https://github.com/Significant-Gravitas/AutoGPT.git",
+          "fix": "413807bf22fe5ab19ce24ee9b1dfc3e25159dce4",
+          "cwe": [
+            601
+          ],
+          "license": "NOASSERTION",
+          "summary": "Open Redirect in OAuth authorize endpoint via unvalidated error redirects",
+          "scope": [
+            "autogpt_platform/backend/backend/api/features",
+            "autogpt_platform/frontend/src/app"
+          ]
         }
       ]
     },
@@ -16635,7 +16664,7 @@
       "kind": "cve-pairs",
       "held_out": true,
       "blind": true,
-      "about": "Second blind set of Python CVE fix pairs whose input isn't an HTTP request, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules.",
+      "about": "Second blind set of Python CVE fix pairs whose input isn't an HTTP request, split from the research batches of 2026-11-18 and 2026-11-19 (topic 15, PHP from before 2021; topic 16, new arrivals; PLAN.md step 88) before any scan (a case is blind when int(sha256(id), 16) % 3 == 0). Scanned only when named, at the end of a round; never used to write or tune rules. 1 more added 2026-11-25 (PLAN.md step 139), unread at review apart from its size.",
       "cases": [
         {
           "id": "GHSA-phv8-wgjp-g4p9",
@@ -16649,6 +16678,19 @@
           "summary": "copyparty FTP: upload outside defined volumes (limited path traversal)",
           "scope": [
             "copyparty"
+          ]
+        },
+        {
+          "id": "GHSA-hqw7-q8v2-pq3m",
+          "repo": "https://github.com/sebastienrousseau/pain001-mcp.git",
+          "fix": "1c6291907c96329eef29fb6517535a304a302096",
+          "cwe": [
+            73
+          ],
+          "license": "Apache-2.0",
+          "summary": "commit_payment_batch writes to any path, behind a token returned to the same caller",
+          "scope": [
+            "pain001_mcp"
           ]
         }
       ]
