@@ -1,0 +1,201 @@
+{
+  "batch": "gap-notes-2026-11-25-6",
+  "status": "research only: not read yet",
+  "method": "Rows 1-11 of ~/codewatch-research/gaps/misses.tsv, in file order: the whole file, all 11 check-quotes rows, all in cve-pairs-python-nonhttp (the file had no Python web, JavaScript or PHP rows). None was skipped. For each row I read the gap note entry named in its detail column (benchmarks/gap-notes-2026-11-23-3.json), the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA) and the files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw), 1.5 s between calls. Each quoted file:line was compared with the parent file; for GHSA-6rmm-3cfr-7939 I also read chirp/drivers/generic_csv.py at the parent to confirm _clean() calls _clean_tmode() per row. 9 notes came out fully ok; 2 needed corrections (GHSA-3j25-mjx3-pwg4 source and between line numbers, CVE-2026-57496 source line range).",
+  "notes": [
+    {
+      "id": "GHSA-xq87-v97r-jw5g",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-2xj7-6vvg-p9hp",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        918
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3j25-mjx3-pwg4",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "wrong: agent/src/tools/remember_tool.py:88 memory_type = kwargs.get(\"memory_type\", \"project\") — the remember agent tool's memory_type argument (documented as one of user/feedback/project/reference); line 89 is the add() call, not the read",
+      "sink": "ok",
+      "between": "_save() passes the tool argument straight to MemoryStore.add() (:89); add() only slugifies the *name* (and re-hashes it when empty), interpolates memory_type unslugified into the filename (:304), joins it onto the memory directory (:305) and writes (:320). memory_type=\"../../x\" therefore writes a markdown file outside the memory dir; nothing compares it with the four allowed types (MEMORY_TYPES at :29). Second explanation: source (an agent-tool argument).",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-m54h-vhf9-3w3m",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        22,
+        73
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3mp7-vp6j-2mxx",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        918
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-6rmm-3cfr-7939",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        95
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-4p62-hqp5-g644",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        77
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-105793",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        78
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-vmhf-j68f-c7h8",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        20,
+        918
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-vvr2-h2jp-838m",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-57496",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-3.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "wrong: src/netlicensing_mcp/tools/products.py:20-22 async def get_product(product_number: str) -> dict: ... return strip_output_fields(await nl_get(f\"/product/{product_number}\")) — an MCP tool argument interpolated into a REST path (bundles.py, licensees.py, tokens.py and the other tool modules do the same); the return is at :22, not :21",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_dec750806ffesRzPeFiQBuhB5e",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 2,
+    "turns": 32,
+    "tool_calls": 38,
+    "tool_errors": 0,
+    "chars_read": 215405,
+    "tokens": {
+      "input": 105805,
+      "cache_read": 2312296,
+      "output": 15758,
+      "reasoning": 0
+    },
+    "usd": 0.065
+  }
+}
