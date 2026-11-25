@@ -376,6 +376,8 @@ def run_analyzers(cfg, ctx, log):
         tools[analyzer.name] = {"status": "ok", "issues": len(kept), "seconds": round(time.monotonic() - started, 1)}
         if result.notes:
             tools[analyzer.name]["detail"] = " ".join(result.notes)
+        if result.gave_up:
+            tools[analyzer.name]["gave_up"] = result.gave_up
     return combined, tools
 
 

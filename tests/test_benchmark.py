@@ -164,6 +164,19 @@ def test_a_finding_gone_from_an_incomplete_fixed_scan_is_not_detection(cwes):
     assert r["detected"] and r["by"] == ["codewatch:sqli@11"]
 
 
+def test_a_finding_gone_counts_when_both_sides_gave_up_on_the_same_other_files(cwes):
+    """clawmetry da1d1d8fd021: Semgrep's summary passes gave up on 29 unrelated files on both sides; the finding its
+    fix removes, in a file both sides scanned to the end, is detection."""
+    far = pair_issue("sqli", 70, "cursor.execute(sql)")
+    same = {**SPOTS, "gave_up": {"before": ["lib/big.py", "lib/huge.py"], "after": ["lib/big.py"]}}
+    r = benchmark.score_pair(CASE, same, {"before": [far], "after": []}, benchmark.MODES["verdict"], PARENTS)
+    assert r["detected"] and r["by"] == ["codewatch:sqli@70"]
+    for after in (["lib/big.py", "lib/other.py"], ["app/views.py"], True):  # new file, its own file, unnamed
+        spots = {**SPOTS, "gave_up": {"before": ["lib/big.py", "app/views.py"], "after": after}}
+        r = benchmark.score_pair(CASE, spots, {"before": [far], "after": []}, benchmark.MODES["verdict"], PARENTS)
+        assert not r["detected"], after
+
+
 def test_pair_still_flagged_when_the_finding_survives_the_fix(cwes):
     far = pair_issue("sqli", 70, "cursor.execute(sql)")
     sides = {"before": [far], "after": [{**far, "line": 71}, pair_issue("sqli", 30, "x()", kind="security_hotspot")]}

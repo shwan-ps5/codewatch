@@ -44,6 +44,7 @@ def git(*args, cwd):
 
 BEFORE, AFTER = "before", "after"
 FETCH, GAVE_UP, CVE_PAIRS = "fetch", "gave_up", "cve-pairs"
+ANY_FILE = "*"  # Semgrep gave up on some file it didn't name
 
 
 def lenient_text(path):
@@ -78,10 +79,10 @@ def fetch(suite):
     return target
 
 
-def timing(log, label, seconds, parts=None, gave_up=False):
+def timing(log, label, seconds, parts=None, gave_up: object = False):
     """Logs one line per fetch or scan: "timing", suite, case ("-" for a whole-repository suite), phase, seconds, then
     its parts' seconds, slowest first (each analyzer, and "prep" for the template renderers and importers looked up
-    before them), and whether Semgrep gave up on some files. devtools.py bench writes them to
+    before them), and whether Semgrep gave up on some files (any truthy record: a bool or the files). devtools.py bench writes them to
     $CODEWATCH_BENCH_TIMINGS."""
     parts = [f"{name}={sec:.0f}" for name, sec in sorted((parts or {}).items(), key=lambda kv: -kv[1]) if sec >= 1]
     log("\t".join(["timing", *label, f"{seconds:.0f}", " ".join(parts + ([GAVE_UP] if gave_up else []))]))
@@ -103,8 +104,8 @@ def scan(root, log, paths=(), focus=None):
 
 
 def scan_and_gave_up(root, log, paths=(), focus=None, tools=None):
-    """The scan's issues, and whether Semgrep gave up on some rules in some files (its only note is that one).
-    tools, when given, is filled with each analyzer's seconds."""
+    """The scan's issues, and the files Semgrep gave up on some rules in ([] when none; [ANY_FILE] when it said so
+    without naming them). tools, when given, is filled with each analyzer's seconds."""
     files = [f for f in tracked(root, paths) if f]
     cfg = ScanConfig(disabled_analyzers=SKIPPED_ANALYZERS, custom_rules=catalog.custom_semgrep_rules())
     out = collect(cfg, ScanInput(root, files, "benchmark", focus=focus), log)
@@ -115,7 +116,7 @@ def scan_and_gave_up(root, log, paths=(), focus=None, tools=None):
         raise RuntimeError(f"semgrep failed on {root}: {semgrep['detail']}")
     if semgrep.get("detail"):
         log(f"  {root}: {semgrep['detail']}")
-    return out["issues"], bool(semgrep.get("detail"))
+    return out["issues"], semgrep.get("gave_up") or ([ANY_FILE] if semgrep.get("detail") else [])
 
 
 def related(a, b, parents):
@@ -616,13 +617,30 @@ def rule_lines(issues):
     return sorted({f"{i['tool']}:{i['rule']}@{i['line']}" for i in issues})
 
 
+def gave_up_files(flag):
+    """A side's gave-up record as a set of paths: a bare True (results from before 2026-11-25) names no file."""
+    return set(flag) if isinstance(flag, (list, tuple, set)) else ({ANY_FILE} if flag else set())
+
+
+def complete_for(issue, spots):
+    """Whether the fixed side's scan can be trusted to have kept this finding had it still been there. Semgrep
+    giving up on a file under load (the 2026-11-07 nightly, mlflow GHSA-wqmh) drops its findings there without an
+    error, and a summary pass giving up drops what its functions hand on. So: no giving up on the fixed side, or
+    only on files the vulnerable side gave up on too (the same handicap on both sides, which the vulnerable side
+    found the finding despite) and not on the finding's own file (clawmetry da1d1d8fd021: 29 unrelated files on
+    both sides hid the finding its fix removes)."""
+    after = gave_up_files(spots.get(GAVE_UP, {}).get(AFTER))
+    if not after:
+        return True
+    before = gave_up_files(spots.get(GAVE_UP, {}).get(BEFORE))
+    return ANY_FILE not in after and after <= before and issue["path"] not in after
+
+
 def hits_and_still(before, after, spots):
     """(findings that detect the advisory, findings still there after its fix)."""
     after_keys = {issue_key(i) for i in after}
-    # A finding the fix makes go away counts only when the fixed side's scan was complete: Semgrep giving up on a
-    # file under load (the 2026-11-07 nightly, mlflow GHSA-wqmh) drops its findings there without an error.
-    complete = not spots.get(GAVE_UP, {}).get(AFTER)
-    hits = [i for i in before if at_spot(i, spots, BEFORE) or (complete and issue_key(i) not in after_keys)]
+    # A finding the fix makes go away counts only when the fixed side's scan was complete for it.
+    hits = [i for i in before if at_spot(i, spots, BEFORE) or (complete_for(i, spots) and issue_key(i) not in after_keys)]
     hit_keys = {issue_key(i) for i in hits}
     return hits, [i for i in after if issue_key(i) in hit_keys or at_spot(i, spots, AFTER)]
 
