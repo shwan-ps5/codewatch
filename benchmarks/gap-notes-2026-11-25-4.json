@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-25-4",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-25 (PLAN.md step 146): quote checks of earlier notes; corrections spot-checked (Horizon forms.py lines)",
   "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order (the file held 41 work rows, all check-quotes: 30 cve-pairs-python then 11 cve-pairs-python-nonhttp; no JavaScript or PHP rows were reachable in this batch). None was skipped. For each row I read the gap note named in its detail column (benchmarks/gap-notes-2026-11-22-1.json, gap-notes-2026-11-23-1.json, gap-notes-2026-11-23-2.json), the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA, read with 1.5 s between calls) and the source files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw), then checked every quoted file:line and code, the category and the probe against them. Six rows needed no correction; nine had at least one field corrected: three categories (source/check to functions, because the note's own probe is found by codewatch so the miss is the cross-file flow), two source lines, three sink lines, two between steps, two fix descriptions and one probe (a Flask JSON source where the case reads a protobuf body).",
   "notes": [
     {

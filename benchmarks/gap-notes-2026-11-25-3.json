@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-25-3",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-25 (PLAN.md step 146): two still-flagged notes (MCP path helpers) and quote checks of earlier notes; corrections spot-checked (alerta queryparser lines)",
   "method": "15 rows of gaps/misses.tsv in file order (all python): the 2 still-flagged rows first, then 13 check-quotes rows; 41 rows left. For the still-flagged rows I read the fix diff and the changed source files at the fix commit. For each check-quotes row I read the note in the file named in detail, the fix diff and the files at the fix's parent, and checked every quoted line.",
   "notes": [
     {
@@ -17,7 +17,8 @@
       "fix_check": "src/yt_mcp/tools/attachments.py:203 safe_path, err = _confine_attachment_path(file_path); the helper (:38-70) realpaths the value and accepts it only when os.path.commonpath([root, target]) == root for an operator-set YOUTRACK_ATTACHMENT_ROOTS entry, returning an error otherwise (empty allowlist disables the mode). It lies between the tool argument and both flagged lines",
       "category": "check-unknown",
       "probe": "import os\n\ndef read_attachment(file_path: str) -> bytes:\n    roots = [os.path.realpath(p) for p in os.environ[\"ATTACH_ROOTS\"].split(os.pathsep) if p]\n    target = os.path.realpath(file_path)\n    for root in roots:\n        if os.path.commonpath([root, target]) == root:\n            with open(target, \"rb\") as f:\n                return f.read()\n    raise ValueError(\"outside the permitted attachment directories\")\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "CVE-2026-130154",
@@ -33,7 +34,8 @@
       "fix_check": "mcp_service.py:116 src_or_err = _confine_source(source_path) and :121 dest_or_err = _confine_destination(destination_name); the helpers (:53-77, :80-106) resolve each value with Path(...).resolve(), require the source to be a file under DOCS_DIR or VAULT_IMPORT_ALLOWLIST via Path.relative_to, and require the destination to be a plain basename that stays under the vault. Both sit between the tool arguments and the flagged open()/copy2()",
       "category": "check-unknown",
       "probe": "from pathlib import Path\nimport shutil\n\nVAULT = Path(\"/srv/vault\").resolve()\n\ndef _under(p: Path, root: Path) -> bool:\n    try:\n        p.resolve().relative_to(root.resolve())\n        return True\n    except ValueError:\n        return False\n\ndef import_to_vault(source_path: str, destination_name: str) -> str:\n    src = Path(source_path).resolve(strict=False)\n    if not src.is_file() or not _under(src, VAULT):\n        return \"source outside the allowed import directories\"\n    if \"/\" in destination_name or \"\\\\\" in destination_name or Path(destination_name).is_absolute():\n        return \"destination must be a plain filename\"\n    dest = (VAULT / Path(destination_name).name).resolve()\n    if not _under(dest, VAULT):\n        return \"destination escaped the vault\"\n    with open(src, \"r\", errors=\"ignore\") as f:\n        f.read(10000)\n    shutil.copy2(src, dest)\n    return \"ok\"\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "GHSA-gjxm-x497-4h6h",

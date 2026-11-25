@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-25-5",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-25 (PLAN.md step 146): quote checks of earlier notes; roxy-wi correction agrees with step 144",
   "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order (the file held 26 work rows, all check-quotes: 16 cve-pairs-python then 10 cve-pairs-python-nonhttp; no JavaScript or PHP rows were reachable in this batch). None was skipped. For each row I read the gap note named in its detail column (benchmarks/gap-notes-2026-11-23-1.json, -2.json, -4.json), the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA, read with 1.5 s between calls) and the source files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw). Quotes were compared line by line; a field is 'ok' only when the file, line and code match, otherwise 'wrong:' with the corrected text. 15 notes written: 5 rows had every field ok; 10 needed at least one correction (4 source, 4 sink, 4 between, 2 probe).",
   "notes": [
     {

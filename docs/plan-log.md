@@ -2827,3 +2827,18 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    - pgAdmin GHSA-hp84: the JSON body goes into a Jinja `.sql` template (`'PARALLEL ' + data.vacuum_parallel`, no
      `qtLiteral`/`qtIdent` filter) whose output is psql's `--command`. Needs SQL templates as a sink, like the
      HTML template analyzers: a bigger piece, to weigh against pgAdmin's hundreds of filtered templates.
+146. **Gap notes 2026-11-25-2 to -6 read** (17 still-flagged notes, 54 quote checks of earlier notes).
+   Still-flagged: three flagged lines are right to stay flagged, the fix left a copy of the flaw (Parsl GHSA-f2mf:
+   `queries/pandas.py` still formats `workflow_id` into SQL; AIL GHSA-mcpq: `delete_tag` still returns the error
+   text as HTML; MindsDB GHSA-2g5w: `os.remove` of the request-made name), and arches GHSA-gmpq's line is a database
+   value, not request data. The rest are checks codewatch doesn't take: path helpers that resolve and test
+   containment (`relative_to`, `in .parents`, `commonpath`) and return or raise, in the same or another file
+   (LLaMA-Factory, pgAdmin GHSA-9crj, Agent Zero GHSA-8j45, swingmusic, archivy, the two MCP cases), redirect
+   helpers that keep only local paths (MobSF, GHSA-jwxw, araa-search), label-studio's `file://` denylist (a weak
+   check; flagging it is defensible) and lollms's argument lists without a shell (one from a Pydantic int).
+   Probes (safe look-alikes): flagged for swingmusic, archivy, Agent Zero and label-studio, so those reproduce;
+   the others don't, the cause lies elsewhere (helpers in another file). Quotes checked for Parsl, AIL tags and
+   lollms. The quote checks corrected 23 of 54 earlier notes (source 11, sink 11, between 7, probe 4, category 3,
+   fix 2); two corrections checked and right (alerta's parser lines came from the fixed file; Horizon's sink line).
+   roxy-wi's check agrees with step 144 and adds that the raw `grep` reaches the syslog command unquoted
+   (`logs.py:87`). Next for still-flagged: containment helpers as checks, then local-path redirect helpers.

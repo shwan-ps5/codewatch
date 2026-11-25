@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-25-2",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-25 (PLAN.md step 146): still-flagged notes: quotes spot-checked against the fix commits (Parsl, AIL tags, lollms); leads for path and redirect helper checks",
   "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order (the file held 71 work rows, all Python: 17 still-flagged then 54 check-quotes). These 15 are the first Python still-flagged rows and none had a note in an earlier gap-notes file. For each case I read the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA) and the changed source files at the fix commit and its parent (raw.githubusercontent.com), plus parsl/monitoring/queries/pandas.py at the fix commit to see the SQL the two flagged calls reach. Detail's rule@line numbers are line numbers in the scanned file at the fix commit; where several changed files shared a line number I matched the number to the file whose diff hunk covers it. Nothing was skipped; all 15 have a note. The check-quotes rows were left for a later run.",
   "notes": [
     {
@@ -16,7 +16,8 @@
       "fix_check": "no check on these two lines: the fix rewrote only the two inline queries in the same function (views.py:149 df_tasks = pd.read_sql_query(sqlalchemy.text(query), db.engine, params={'run_id': workflow_id}) and :171-174 the same for df_task_tries). The flagged calls go to parsl/monitoring/queries/pandas.py, which the fix does not touch: tasks_for_workflow still runs read_sql_query(\"... WHERE run_id='%s'\" % (workflow_id), db) at pandas.py:60-65 and nodes_for_workflow the same at :20-25, and the route value (workflow_id at :158) reaches them one call away. The check is not between the source and the flagged lines; the same request value still reaches SQL string formatting inside those helpers",
       "category": "other-flow",
       "probe": "",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: no probe (the flagged line is another flow)"
     },
     {
       "id": "GHSA-2g5w-29q9-w6hx",
@@ -31,7 +32,8 @@
       "fix_check": "the fix adds safe_extract() (mindsdb/api/http/utils.py:33-38: realpath containment over tar members) and uses it at file.py:137 for .tar.gz only, so the check covers archive members, not the request-made name. It is not between the JSON value and the flagged os.remove at :138, and the .zip branch at :134 still calls extractall()",
       "category": "other-flow",
       "probe": "",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: no probe (the flagged line is another flow)"
     },
     {
       "id": "GHSA-527m-2xhr-j27g",
@@ -47,7 +49,8 @@
       "fix_check": "the fix calls check_lfi_path(image_url) at :124 (and :137, :150) and check_ssrf_url(image_url) in the else branch; both helpers are in src/llamafactory/api/common.py (:51-70 and :73-96), where check_lfi_path realpaths the value, requires it under SAFE_MEDIA_PATH and raises HTTPException. The helper is in another file, and the LFI check sits after the flagged os.path.isfile and before the open() at :125, so it is not between the source and the flagged line",
       "category": "check-elsewhere",
       "probe": "from fastapi import FastAPI, HTTPException\nfrom pathlib import Path\napp = FastAPI()\nMEDIA = Path('/srv/media')\n\ndef check_media_path(p: str) -> None:\n    if MEDIA.resolve() not in Path(p).resolve().parents:\n        raise HTTPException(status_code=403)\n\n@app.post('/chat')\nasync def chat(payload: dict):\n    url = payload['image_url']['url']\n    if url.startswith('http'):\n        return {'remote': url}\n    check_media_path(url)\n    with open(url, 'rb') as f:\n        return {'bytes': len(f.read())}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "GHSA-g53g-q539-93cv",
@@ -62,7 +65,8 @@
       "fix_check": "the fix adds at :42-44 `if controllers.check_session_tracks(remote_url) is False: return abort(403)`. check_session_tracks (scout/server/blueprints/alignviewers/controllers.py:17-33) requires an authenticated user and that the URL is in session['igv_tracks'], so a check does sit between the source and the flagged line, but it is a helper in another file and an allowlist membership test",
       "category": "check-elsewhere",
       "probe": "from flask import Flask, abort, request, session\nimport requests\napp = Flask(__name__)\n\ndef allowed(url):\n    return bool(session.get('user')) and url in session.get('tracks', [])\n\n@app.route('/proxy/<path:url>')\ndef proxy(url):\n    if not allowed(url):\n        abort(403)\n    return requests.request(method=request.method, url=url, headers=dict(request.headers)).content\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: no ssrf on the look-alike (its session allowlist is taken there), only xss on the proxied body, another finding; the cause of the still-flagged ssrf lies elsewhere (the check is in another file)"
     },
     {
       "id": "GHSA-pc6f-259w-w3j6",
@@ -77,7 +81,8 @@
       "fix_check": "the fix adds at :178-179 `if url.strip().startswith('file://'): raise ValidationError('\"url\" is not valid')`, an inline scheme denylist before the flagged call, and it does lie between source and sink. Beside it the older gate at :175 (settings.SSRF_PROTECTION_ENABLED and url_is_local(url)) only rejects local addresses when that setting is on, so the new test is the only file:// check",
       "category": "check-unknown",
       "probe": "from flask import Flask, request, abort\nimport requests\napp = Flask(__name__)\n\ndef tasks_from_url(url):\n    return requests.get(url, timeout=5).json()\n\n@app.route('/import', methods=['POST'])\ndef load_tasks():\n    url = request.form['url']\n    if url.strip().startswith('file://'):\n        abort(400)\n    return {'tasks': tasks_from_url(url)}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: codewatch flags the safe look-alike (ssrf): reproduces the still-flagged line"
     },
     {
       "id": "GHSA-8m9j-2f32-2vx4",
@@ -92,7 +97,8 @@
       "fix_check": "the fix replaces the old `nextp if nextp.startswith('/') else '/'` with redirect_url = sanitize_redirect(nextp) at :145, on the flagged path. sanitize_redirect (mobsf/MobSF/security.py:200-207) returns '/' for '//...' and for anything not starting with '/', and the same helper replaces the RelayState test in get_redirect_url at :123-124 and both login_view assignments",
       "category": "check-unknown",
       "probe": "from django.shortcuts import redirect\n\ndef sanitize_redirect(url):\n    if url.startswith('//') or not url.startswith('/'):\n        return '/'\n    return url\n\ndef login_view(request):\n    nxt = request.GET.get('next', '')\n    return redirect(sanitize_redirect(nxt))\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "GHSA-9crj-hpxh-f6qg",
@@ -107,7 +113,8 @@
       "fix_check": "the fix deletes four local copies of filename_with_file_manager_path and keeps one in web/pgadmin/utils/__init__.py:263-299, where :275-277 calls Filemanager.check_access_permission(storage_dir, _file, skip_permission_check) before the name is joined and opened; each call site now answers PermissionError with 401. The check is a helper in another file and another function than the flagged call, so it is not visible on the request value's path in the view",
       "category": "check-elsewhere",
       "probe": "from flask import Flask, request, jsonify\nfrom pathlib import Path\napp = Flask(__name__)\nBASE = Path('/srv/storage')\n\ndef check_access_permission(base, name):\n    target = (base / name.lstrip('/')).resolve()\n    if base.resolve() not in target.parents:\n        raise PermissionError(name)\n    return str(target)\n\n@app.post('/backup')\ndef backup():\n    name = request.json['file']\n    try:\n        path = check_access_permission(BASE, name)\n    except PermissionError:\n        return jsonify(error='denied'), 401\n    return jsonify(path=path)\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "GHSA-gmpq-xrxj-xh8m",
@@ -122,7 +129,8 @@
       "fix_check": "none on this line: the fix parameterises the request-reached queries in concept.get_child_edges (:507-738) and views/concept.py paged_dropdown (:404-428) with %(...)s placeholders passed to cursor.execute(sql, params). check_if_concept_in_use and its cursor.execute(sql) at :1170 are untouched, and the value formatted there is a database attribute, never request data",
       "category": "other-flow",
       "probe": "",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: no probe (the flagged line is another flow)"
     },
     {
       "id": "GHSA-8wv4-58g4-2v58",
@@ -137,7 +145,8 @@
       "fix_check": "the fix removes shell=True from the four subprocess calls (the parent had ['start', path] with shell=True at the same lines), leaving an argument list. With shell=False the request value is only one argv entry and discussion_id is an int through pydantic, but codewatch does not take the list-plus-no-shell form (or the int conversion) as a sanitizer. The xdg-open calls at :273/:292 were already list calls without shell=True at the parent and are unchanged",
       "category": "check-unknown",
       "probe": "from fastapi import FastAPI\nfrom pydantic import BaseModel\nimport subprocess\napp = FastAPI()\n\nclass FolderRequest(BaseModel):\n    discussion_id: int | None = None\n\n@app.post('/open_folder')\ndef open_folder(req: FolderRequest):\n    folder = f'/srv/outputs/d_{req.discussion_id}'\n    subprocess.run(['xdg-open', folder], check=True)\n    return {'ok': True}\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "GHSA-mcpq-xxxj-mc69",
@@ -152,7 +161,8 @@
       "fix_check": "none on this line: the fix changed the identical `return str(res[0])` in add_tags at :199 to `return jsonify(res[0])` (the commit message names the reflected XSS in tag error responses from /tag/add_tags) and left delete_tag's copy untouched. The flagged line is a second endpoint answering with the API's error text instead of JSON",
       "category": "other-flow",
       "probe": "",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: no probe (the flagged line is another flow)"
     },
     {
       "id": "GHSA-8j45-8v5h-63vj",
@@ -167,7 +177,8 @@
       "fix_check": "the fix adds _resolve_allowed_image_path() at :95-114: it makes the path absolute, resolves it and requires Path(...).relative_to(base_dir) to succeed, raising ValueError to a 403. It is called at :48 before both flagged lines, so it is between the source and the sink, but it is a helper in another function whose containment check codewatch does not follow",
       "category": "check-elsewhere",
       "probe": "from fastapi import FastAPI, HTTPException\nfrom fastapi.responses import FileResponse\nfrom pathlib import Path\napp = FastAPI()\nBASE = Path('/srv/agent')\n\ndef resolve_allowed(p: str) -> str:\n    target = (BASE / p.lstrip('/')).resolve()\n    if BASE.resolve() not in target.parents:\n        raise ValueError('outside')\n    return str(target)\n\n@app.get('/image')\ndef image(path: str = ''):\n    try:\n        local = resolve_allowed(path)\n    except ValueError:\n        raise HTTPException(status_code=403)\n    return FileResponse(local)\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: codewatch flags the safe look-alike (path-traversal): reproduces the still-flagged line"
     },
     {
       "id": "GHSA-pj88-9xww-gxmh",
@@ -182,7 +193,8 @@
       "fix_check": "the fix adds is_path_within_root_dirs() at :30-48, a resolve-and-compare allowlist over the configured root directories, and calls it at :174-180 (get_folder_tree), :316 and :346 before the uses; it also adds @admin_required() to list_folders at :250. Codewatch takes neither the helper nor the decorator as a sanitizer, so all nine uses still flag; the dir-browser lines :268/:270/:290 have only admin_required, no path allowlist",
       "category": "check-unknown",
       "probe": "from flask import Flask, request, jsonify\nfrom pathlib import Path\napp = Flask(__name__)\nROOTS = [Path('/srv/music')]\n\ndef is_path_within_root_dirs(p: str) -> bool:\n    resolved = Path(p).resolve()\n    return any(resolved == r.resolve() or r.resolve() in resolved.parents for r in ROOTS)\n\n@app.post('/dir-browser')\ndef list_folders():\n    req_dir = request.json['folder']\n    if not is_path_within_root_dirs(req_dir):\n        return jsonify(error='denied'), 403\n    path = Path(req_dir).resolve()\n    return jsonify(dirs=[d.name for d in path.iterdir() if d.is_dir()])\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: codewatch flags the safe look-alike (path-traversal): reproduces the still-flagged line"
     },
     {
       "id": "GHSA-jwxw-9h66-qrjj",
@@ -197,7 +209,8 @@
       "fix_check": "the fix adds _safe_next_url() at :17-44 and wraps the value at the flagged line itself: the helper rejects whitespace, backslashes and control characters, refuses a scheme other than ''/http/https, refuses a netloc other than the request's own host, forces a leading '/', and rebuilds a local path with urlunsplit. It lies between source and sink, but it is a project helper whose name and logic codewatch does not know; the fix also stops rendering request.host into the templates",
       "category": "check-unknown",
       "probe": "from flask import Flask, request, redirect\nfrom urllib.parse import urlsplit, urlunsplit\napp = Flask(__name__)\n\ndef safe_next(target):\n    if not target or '\\\\' in target:\n        return '/'\n    parsed = urlsplit(target)\n    if (parsed.scheme and not parsed.netloc) or parsed.netloc.lower() not in ('', request.host.lower()):\n        return '/'\n    path = parsed.path or '/'\n    if not path.startswith('/') or path.startswith('//'):\n        return '/'\n    return urlunsplit(('', '', path, parsed.query, parsed.fragment))\n\n@app.post('/login')\ndef login():\n    return redirect(safe_next(request.args.get('next')))\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "FIX-Extravi-araa-search-bda4154bfac3",
@@ -212,7 +225,8 @@
       "fix_check": "the fix adds _safe_redirect() at :26-34, which requires a value starting with '/' that is not '//' and has neither scheme nor netloc, and applies it at the flagged line, so the check is between source and sink. It is a project helper the rule does not recognise; the commit also stops building current_url from request.host/request.url in the settings, discover, image and text result views",
       "category": "check-unknown",
       "probe": "from flask import Flask, request\nfrom urllib.parse import urlparse\napp = Flask(__name__)\n\ndef safe_redirect(url, fallback='/settings'):\n    if not url:\n        return fallback\n    p = urlparse(url)\n    if p.scheme or p.netloc or not url.startswith('/') or url.startswith('//'):\n        return fallback\n    return url\n\n@app.post('/save-settings')\ndef save_settings():\n    resp = app.response_class('ok')\n    resp.headers['Location'] = safe_redirect(request.form.get('past', ''))\n    return resp\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: not flagged: the look-alike doesn't reproduce it, the cause lies elsewhere"
     },
     {
       "id": "FIX-archivy-archivy-2565a9ab11d1",
@@ -227,7 +241,8 @@
       "fix_check": "the fix adds is_relative_to() in archivy/data.py:21-27 (resolve + Path.relative_to containment) and uses it in create_dir (:198-206) and delete_dir (:208-220) before mkdir/rmtree, with a False return checked at api.py:158-160. The check is in another file and another function than the flagged call, so nothing on the request value's path in api.py shows it",
       "category": "check-elsewhere",
       "probe": "from flask import Flask, request, jsonify\nfrom pathlib import Path\napp = Flask(__name__)\nBASE = Path('/srv/data')\n\ndef inside(p: Path) -> bool:\n    try:\n        p.resolve().relative_to(BASE.resolve())\n        return True\n    except ValueError:\n        return False\n\ndef create_dir(name):\n    target = BASE / name.strip('/')\n    if not inside(target):\n        return False\n    target.mkdir(parents=True, exist_ok=True)\n    return True\n\n@app.post('/folders')\ndef create_folder():\n    if not create_dir(request.json.get('path', '')):\n        return jsonify(error='invalid'), 400\n    return jsonify(ok=True)\n",
-      "confidence": "sure"
+      "confidence": "sure",
+      "probe_scanned": "2026-11-25: codewatch flags the safe look-alike (path-traversal): reproduces the still-flagged line"
     }
   ],
   "usage": {

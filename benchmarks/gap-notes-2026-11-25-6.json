@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-25-6",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-25 (PLAN.md step 146): quote checks of earlier notes",
   "method": "Rows 1-11 of ~/codewatch-research/gaps/misses.tsv, in file order: the whole file, all 11 check-quotes rows, all in cve-pairs-python-nonhttp (the file had no Python web, JavaScript or PHP rows). None was skipped. For each row I read the gap note entry named in its detail column (benchmarks/gap-notes-2026-11-23-3.json), the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA) and the files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw), 1.5 s between calls. Each quoted file:line was compared with the parent file; for GHSA-6rmm-3cfr-7939 I also read chirp/drivers/generic_csv.py at the parent to confirm _clean() calls _clean_tmode() per row. 9 notes came out fully ok; 2 needed corrections (GHSA-3j25-mjx3-pwg4 source and between line numbers, CVE-2026-57496 source line range).",
   "notes": [
     {
