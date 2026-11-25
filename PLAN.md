@@ -41,7 +41,7 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | Juice Shop (tuned) | 15/35 | 17/35 |
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
-| cve-pairs-python (110) | 67 found, 15 still flagged | 72, 24 |
+| cve-pairs-python (107; 110 at the run, step 143) | 67 found, 15 still flagged | 71, 24 |
 | cve-pairs-python-frontend (32) | 4, 0 | 16, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
@@ -106,7 +106,8 @@ Ground truth:
   summary line was seen (step 110).
 
 Speed and stability:
-- clawmetry (step 110): Semgrep gives up on both sides (about 30 minutes a side, 2026-11-22), so it scores as missed.
+- clawmetry (step 110): Semgrep gives up on both sides (about 30 minutes a side, 2026-11-22); since step 142 the
+  scorer credits its finding anyway (same give-ups both sides). The slowness itself remains.
 - tests/test_detection.py (4,300 lines): CI's Semgrep gives up on some rules there even at 60 s a rule (step 125;
   `check` now says so). A finding reviewed in that file can drop out and fail the self-check as a stale review;
   find the slow rule or split the file.
@@ -123,11 +124,11 @@ Housekeeping:
 ## Next steps
 
 Target (agreed 2026-11-23): Python first until `cve-pairs-python` verdict detection passes 70% (64 of 109, 59%, on
-2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25, so 77 needed), with still-flagged fixes not rising. Measure by misses
+2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25; 67 of 107, 63%, after step 143 dropped three cases no rule should fix, so 75 needed), with still-flagged fixes not rising. Measure by misses
 and the miss rate, not finds: the suites grew faster than the finds (Python misses 22 to 45 from 2026-11-06 to 2026-11-23), and with topic 17 done they now grow
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
 
-1. The 43 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
+1. The 40 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E). From step 141 the gap runner also
    checks those notes' quotes (check-quotes) and explains the 15 fixes still flagged (still-flagged notes, with a
    safe look-alike probe): use both before writing a rule.

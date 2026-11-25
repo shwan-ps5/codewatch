@@ -2786,3 +2786,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    leading `/`, checked on 3.14) are misses no rule should fix. Tests: `test_benchmark`
    test_a_finding_gone_counts_when_both_sides_gave_up_on_the_same_other_files, `test_units`
    test_semgrep_timeouts_are_reported_not_lost.
+143. **Three cases dropped from cve-pairs-python** (2026-11-25, the maintainer's decision on step 142's proposal).
+   cg GHSA-w228 (a redirect back to the Referer, not an open redirect per step 108) and the zipfile cases
+   changedetection.io GHSA-25g8 and gramps-web-api GHSA-m5gr (`ZipFile.extractall()` strips `..` and a leading `/`)
+   left the suite: a rule that found them would be a false alarm everywhere else. They stay known to
+   `reviewed.py` as rejected, in `cve-candidates-2026-11-25-dropped.tsv`. The suite is now 107 cases; the nightly
+   of 2026-11-25 scored the three as missed in verdict mode, and review mode found GHSA-w228, so on that run's
+   numbers verdict is 67 of 107 (63%) and review 71 of 107; the 70% target needs 75.
