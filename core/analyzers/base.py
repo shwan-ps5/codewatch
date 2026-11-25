@@ -48,6 +48,8 @@ class Result:
     duplicated_lines: dict[str, set[int]] = field(default_factory=dict)
     # What the analysis couldn't do (a file a tool gave up on), shown with the tool's status.
     notes: list[str] = field(default_factory=list)
+    # The files a tool gave up on in some pass (relative paths), for the benchmark's scorer.
+    gave_up: list[str] = field(default_factory=list)
 
 
 @dataclass

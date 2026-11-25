@@ -188,10 +188,14 @@ class Semgrep(Analyzer):
         limits = ["--timeout", str(FOCUS_TIMEOUT), "--timeout-threshold", "0"] if long else []
         return self.scan(ctx, configs, main_targets, limits) if main_targets else {"results": []}
 
+    def gave_up_paths(self, ctx, originals):
+        """The files some rule timed out on, in any round (summary passes included), relative to the root."""
+        return sorted({ctx.rel(originals.get(p, p)) for p in self.timeouts})
+
     def timeout_notes(self, ctx, originals):
         if not self.timeouts:
             return []
-        paths = sorted({ctx.rel(originals.get(p, p)) for p in self.timeouts})
+        paths = self.gave_up_paths(ctx, originals)
         listed = f"{', '.join(paths[:5])}{' and more' if len(paths) > 5 else ''}"
         return [f"Semgrep gave up on some rules in {len(paths)} file(s), so they may hide findings: {listed}."]
 
@@ -208,6 +212,7 @@ class Semgrep(Analyzer):
             data = self.main_scan(ctx, self.final_rules(custom_rules, known), copies)
         result = Result()
         result.notes += self.timeout_notes(ctx, originals)
+        result.gave_up = self.gave_up_paths(ctx, originals)
         reading = Reading(ctx, originals, custom_rules, known, taint_checked(custom_rules), LineCache(ctx.root))
         found = [f for item in data["results"] if (f := self.result_finding(reading, item)) is not None]
         result.findings = without_derived_duplicates(found)
