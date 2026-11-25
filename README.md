@@ -148,7 +148,7 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 | [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 15 of 35 flagged | 17 of 35 flagged |
 | [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
 | [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |
-| CVE fix pairs, Python: 110 advisories and fixes in web apps (vulnerable commit, then its fix) | 67 of 110 found, 15 still flagged after the fix | 72 of 110 found, 24 still flagged |
+| CVE fix pairs, Python: 107 advisories and fixes in web apps (vulnerable commit, then its fix) | 67 of 107 found, 15 still flagged after the fix | 71 of 107 found, 24 still flagged |
 | CVE fix pairs, Python front end: 32 advisories fixed in templates or front-end JS | 4 of 32 found | 16 of 32 found, 8 still flagged |
 | CVE fix pairs, JS/TS: 103 advisories in web apps | 22 of 103 found, 9 still flagged | 46 of 103 found, 32 still flagged |
 | CVE fix pairs, PHP: 341 advisories in PHP apps and CMSs | 75 of 341 found, 27 still flagged | 83 of 341 found, 36 still flagged |

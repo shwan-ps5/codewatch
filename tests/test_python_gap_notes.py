@@ -197,3 +197,53 @@ def test_a_path_a_helper_returns_is_a_file_path_when_used(tmp_path):
         "    return p.strip('/')\n")})
     assert found == {("app/views.py", 17, "path-traversal"), ("app/views.py", 44, "path-traversal"),
                      ("app/views.py", 48, "path-traversal")}
+
+
+@semgrep
+def test_compile_alone_runs_nothing_but_exec_of_what_it_built_does(tmp_path):
+    """Langflow GHSA-v798's note: validate_code() parsed the request's code, compiled each function definition and
+    exec'd it; the fix only compiles, to report syntax errors. compile() was a sink itself, so the route stayed
+    flagged after the fix. Found: exec() of a code object compiled from the request, in a helper and inline. Not
+    found: compile() alone."""
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app/api.py": (
+            "from fastapi import APIRouter\n"
+            "from pydantic import BaseModel\n\n"
+            "from app.checks import check_code, run_code\n\n"
+            "router = APIRouter()\n\n\n"
+            "class Code(BaseModel):\n"
+            "    code: str\n\n\n"
+            "@router.post('/run')\n"
+            "async def run(code: Code):\n"
+            "    return run_code(code.code)\n\n\n"
+            "@router.post('/check')\n"
+            "async def check(code: Code):\n"
+            "    return check_code(code.code)\n\n\n"
+            "@router.post('/inline')\n"
+            "async def inline(code: Code):\n"
+            "    exec(compile(code.code, '<string>', 'exec'), {})\n"
+            "    return {}\n\n\n"
+            "@router.post('/syntax')\n"
+            "async def syntax(code: Code):\n"
+            "    compile(code.code, '<string>', 'exec')\n"
+            "    return {}\n"),
+        "app/checks.py": (
+            "import ast\n\n\n"
+            "def run_code(code):\n"
+            "    tree = ast.parse(code)\n"
+            "    for node in tree.body:\n"
+            "        if isinstance(node, ast.FunctionDef):\n"
+            "            code_obj = compile(ast.Module(body=[node], type_ignores=[]), '<string>', 'exec')\n"
+            "            exec(code_obj, {})\n"
+            "    return {}\n\n\n"
+            "def check_code(code):\n"
+            "    errors = []\n"
+            "    tree = ast.parse(code)\n"
+            "    for node in tree.body:\n"
+            "        if isinstance(node, ast.FunctionDef):\n"
+            "            try:\n"
+            "                compile(ast.Module(body=[node], type_ignores=[]), '<string>', 'exec')\n"
+            "            except SyntaxError as e:\n"
+            "                errors.append(str(e))\n"
+            "    return errors\n")})
+    assert found == {("app/api.py", 15, "code-injection"), ("app/api.py", 25, "code-injection")}
