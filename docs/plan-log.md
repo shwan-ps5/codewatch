@@ -2749,3 +2749,11 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    in the diff). The other 9 rejections stand as written.
 138. **14 more gap notes read** (2026-11-25, pull request #19), all PHP. Probes scanned as in step 126: 11 missed,
    3 found (XSS 1, path traversal 2). Leads for the PHP rule work, which waits for the Python target.
+139. **Topic 16's batches new and new-2 of 2026-11-25 reviewed** (pull request #21). 20 advisories read, 3 accepted,
+   all blind and kept unread apart from their size (1-5 non-test files, 35-156 lines): 2 in
+   cve-pairs-blind-python-27, 1 in cve-pairs-blind-python-nonhttp-2. The 17 rejections stand as written (14
+   Webmin advisories in Perl, two duplicates of a kept advisory, library code and an oversized C++ fix).
+140. **Gap note read: HarnessRouter CVE-2026-136182** (2026-11-25, pull request #22; the case was added in step
+   137). Quotes match the fix diff. The probe, scanned as .tsx (the probe script names python-frontend probes .py),
+   is missed: `window.location.search` read in a Next.js page and passed as a React prop to a component that hands
+   it to `window.location.assign`. Codewatch doesn't follow a value through a prop. A lead for front-end rule work.
