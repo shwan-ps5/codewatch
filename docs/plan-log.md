@@ -2849,3 +2849,6 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    fix 2); two corrections checked and right (alerta's parser lines came from the fixed file; Horizon's sink line).
    roxy-wi's check agrees with step 144 and adds that the raw `grep` reaches the syslog command unquoted
    (`logs.py:87`). Next for still-flagged: containment helpers as checks, then local-path redirect helpers.
+147. **Research batch 2026-11-25 new-7 reviewed** (1 read, 0 accepted). Faveo Helpdesk CVE-2026-69697 rejected as
+   written: the CVE record's fix commit (2aa2c249) is the whole v2.0.4.B.1 release build (GitHub lists 300 files,
+   the most it shows, and about 98,000 lines added), so the SSRF fix can't be read from it.
