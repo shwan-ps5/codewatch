@@ -28,7 +28,7 @@ that file, not here, and keep them short: what changed, the case behind it, what
 step gives counts, what was kept, rejections that set a new precedent and any problem found; the batch TSVs hold
 every other reason. This file holds only what is true now: update the sections below when a step changes them.
 
-## Where things stand (nightly 2026-11-24, commit 08970bb)
+## Where things stand (nightly 2026-11-25, commit 65e556c)
 
 Verdict mode counts findings that claim a vulnerability; review mode adds hotspots. CVE pairs: found = flagged
 before the fix, still flagged = flagged after it (the false-alarm measure).
@@ -41,8 +41,8 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | Juice Shop (tuned) | 15/35 | 17/35 |
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
-| cve-pairs-python (110) | 66 found, 15 still flagged | 71, 25 |
-| cve-pairs-python-frontend (31) | 4, 0 | 16, 8 |
+| cve-pairs-python (110) | 67 found, 15 still flagged | 72, 24 |
+| cve-pairs-python-frontend (32) | 4, 0 | 16, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
 | cve-pairs-javascript-nonhttp (38) | 1, 0 | 10, 8 |
@@ -123,11 +123,11 @@ Housekeeping:
 ## Next steps
 
 Target (agreed 2026-11-23): Python first until `cve-pairs-python` verdict detection passes 70% (64 of 109, 59%, on
-2026-11-23; 66 of 110, 60%, on 2026-11-24, so 77 needed), with still-flagged fixes not rising. Measure by misses
+2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25, so 77 needed), with still-flagged fixes not rising. Measure by misses
 and the miss rate, not finds: the suites grew faster than the finds (Python misses 22 to 45 from 2026-11-06 to 2026-11-23), and with topic 17 done they now grow
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
 
-1. The 44 Python misses (Checkmk addressed in step 136, to be confirmed by the nightly), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
+1. The 43 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E).
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
