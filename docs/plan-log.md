@@ -2767,3 +2767,22 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    field `ok` or `wrong: ` with the correction, never editing the earlier file. The push check refuses any other
    task. On the nightly of 2026-11-25: 72 rows (17 still-flagged, 54 quote checks, 1 missed), about five runs.
    Tests in `tests/test_export_misses.py` and `tests/test_reviewed.py`.
+142. **The scorer credits a finding a fix removes when both sides gave up on the same other files** (2026-11-25).
+   clawmetry da1d1d8fd021 was missed although codewatch flags its flow: `?session=` into
+   `_parse_session_reasoning()` (`reasoning.py:399`) and `<skill_name>` into `_find_skill_dir()` (`skills.py:594`,
+   `682`), all three gone at the fix, which adds the checks inside those helpers. They are 8 or more lines from
+   the changed lines, so only "the fix makes it go away" could count them, and that was refused whenever Semgrep
+   gave up on any file at the fix (the guard from the 2026-11-07 nightly, mlflow GHSA-wqmh). Here the summary
+   passes gave up on 29 unrelated files on both sides. The Semgrep analyzer now reports every file it gave up on
+   (`Result.gave_up`, the tool record's `gave_up`; the note still names five), and a finding gone at the fix
+   counts unless the fixed side gave up on its file or on any file the vulnerable side didn't (same handicap both
+   sides). A bare give-up without names (older results) still refuses. Rerun of the six missed Python cases whose
+   fixed side gave up: clawmetry found (verdict and review), quiet at its fix; GHSA-gjxm, GHSA-frvj, GHSA-8gh5,
+   GHSA-x7r7 and CVE-2026-52835 unchanged. Not a rule change. Gap note categories checked by hand on the way:
+   xhu GHSA-hwv5 is a multi-function case (a helper trusted by its `sanitized_` name, a tuple of paths, a
+   context-manager opener), not a weak check alone; the `str(p).startswith(...)` guard accepts an unresolved
+   `Path.absolute()`, to fix with a case that needs it. cg GHSA-w228 (a redirect to the Referer, not an open
+   redirect per step 108) and the zipfile cases GHSA-25g8 and GHSA-m5gr (CPython's `extractall()` strips `..` and
+   leading `/`, checked on 3.14) are misses no rule should fix. Tests: `test_benchmark`
+   test_a_finding_gone_counts_when_both_sides_gave_up_on_the_same_other_files, `test_units`
+   test_semgrep_timeouts_are_reported_not_lost.

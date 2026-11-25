@@ -486,12 +486,16 @@ def test_semgrep_timeouts_are_reported_not_lost(monkeypatch, tmp_path):
         name = "noted"
 
         def run(self, ctx):
-            return Result(notes=["Gave up on app/big.py."])
+            return Result(notes=["Gave up on app/big.py."], gave_up=["app/big.py"])
 
     monkeypatch.setattr(collect, "ANALYZERS", [Noted()])
     monkeypatch.setattr(collect, "analyzer_skip_reason", lambda *a: None)
     _, tools = collect.run_analyzers(None, Context(root=tmp_path, files=[]), lambda m: None)
     assert tools["noted"]["detail"] == "Gave up on app/big.py."
+    # The benchmark's scorer needs every file, not the note's first five (clawmetry da1d1d8fd021, 29 files).
+    assert tools["noted"]["gave_up"] == ["app/big.py"]
+    ctx = Context(root=tmp_path, files=[])
+    assert semgrep.gave_up_paths(ctx, {}) == ["app/big.py"]
 
 
 PASS_RULE = {"id": "r", "mode": "taint", "languages": ["python"], "message": "m", "severity": "ERROR",
