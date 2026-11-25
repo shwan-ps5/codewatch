@@ -1,0 +1,37 @@
+{
+  "batch": "gap-notes-2026-11-25-1",
+  "status": "research only: not read yet",
+  "method": "The whole of ~/codewatch-research/gaps/misses.tsv (a header plus one row: CVE-2026-136182, cve-pairs-python-frontend, CWE-601). No Python or JavaScript cases in the file and nothing to skip. I read the fix commit's message and full per-file diff (gh api repos/HarnessRouter/harnessrouter/commits/7db36fd28c13a1362f1c734745f962f829a962ed) and the two changed source files at its parent d5ea34c (ui/src/app/login/page.tsx, ui/src/components/SelfHostLogin.tsx, raw via the contents API), which show both the request-side read and the redirect sink. The new test file and the new safe-next.ts were read as well to confirm what the fix refuses.",
+  "notes": [
+    {
+      "id": "CVE-2026-136182",
+      "suite": "cve-pairs-python-frontend",
+      "cwe": [
+        601
+      ],
+      "category": "front-end",
+      "source": "ui/src/app/login/page.tsx:18-20 const next = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') || '' : ''; (the next query parameter of /login?next=..., read from the address bar in a Next.js client component; passed as a prop at :22 return <SelfHostLogin next={next} />)",
+      "sink": "ui/src/components/SelfHostLogin.tsx:30 window.location.assign(next || '/harnesses'); (client-side navigation after a successful password sign-in; next is used verbatim, so https://evil.example/ or //evil.example leaves the site)",
+      "between": "the value only crosses a React prop: LoginPage's next -> SelfHostLogin({ next }) -> the submit handler's window.location.assign. No check of any kind on the way, not even a startsWith('/'), and the second use in page.tsx passes the same raw string. The fix adds ui/src/lib/safe-next.ts and calls safeNext() at both read sites: it requires a single leading '/', refuses backslashes and %2f/%5c, resolves the value against a placeholder origin and keeps only a path whose origin is unchanged. A second explanation for the miss is source: the taint origin is window.location.search in browser code, not a server request object.",
+      "fix": "adds a safeNext() helper (site-relative path only, no backslash or encoded slash, origin rechecked against a placeholder) and applies it where the next parameter is read and before window.location.assign",
+      "probe": "'use client';\nimport { useState } from 'react';\n\nfunction SignInForm({ next }: { next: string }) {\n  const [user, setUser] = useState('');\n  const [pass, setPass] = useState('');\n  async function submit(e: React.FormEvent) {\n    e.preventDefault();\n    const r = await fetch('/api/signin', {\n      method: 'POST',\n      headers: { 'content-type': 'application/json' },\n      body: JSON.stringify({ user, pass }),\n    });\n    if (!r.ok) return;\n    window.location.assign(next || '/dashboard');\n  }\n  return (\n    <form onSubmit={submit}>\n      <input value={user} onChange={(e) => setUser(e.target.value)} />\n      <input type=\"password\" value={pass} onChange={(e) => setPass(e.target.value)} />\n      <button type=\"submit\">Sign in</button>\n    </form>\n  );\n}\n\nexport default function LoginPage() {\n  const next = new URLSearchParams(window.location.search).get('next') || '';\n  return <SignInForm next={next} />;\n}\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_deed14f1cffep018zOac1Q3RoR",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 1,
+    "turns": 10,
+    "tool_calls": 11,
+    "tool_errors": 0,
+    "chars_read": 72896,
+    "tokens": {
+      "input": 43719,
+      "cache_read": 378112,
+      "output": 4490,
+      "reasoning": 0
+    },
+    "usd": 0.01
+  }
+}
