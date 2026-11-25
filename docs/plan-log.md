@@ -2827,3 +2827,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    - pgAdmin GHSA-hp84: the JSON body goes into a Jinja `.sql` template (`'PARALLEL ' + data.vacuum_parallel`, no
      `qtLiteral`/`qtIdent` filter) whose output is psql's `--command`. Needs SQL templates as a sink, like the
      HTML template analyzers: a bigger piece, to weigh against pgAdmin's hundreds of filtered templates.
+145. **Research batches 2026-11-25 new-3 to new-6 reviewed** (14 read, 1 accepted). Accepted, open: DB-GPT
+   CVE-2026-136694 (fc6a5017, one file, 48 lines): `skill_upload`'s `file.filename` (Starlette keeps the client's
+   name) reaches `upload_dir / filename` and `write_bytes`; the fix allows only a plain file name. Read at its parent
+   commit; added to cve-pairs-python (108 cases, so 76 for the 70% target). Rejections kept: seven Symfony
+   framework fixes, asar-py and paramz (libraries), build-git-clone (an npm library), laradocs (the binary path is
+   operator configuration), lscache_prestashop (the linked commit is a cache-purge change, not the template fix),
+   Part-DB (checked: 7 files, 232 lines, over the limit).
