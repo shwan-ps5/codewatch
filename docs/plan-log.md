@@ -2786,3 +2786,44 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    leading `/`, checked on 3.14) are misses no rule should fix. Tests: `test_benchmark`
    test_a_finding_gone_counts_when_both_sides_gave_up_on_the_same_other_files, `test_units`
    test_semgrep_timeouts_are_reported_not_lost.
+143. **Three cases dropped from cve-pairs-python** (2026-11-25, the maintainer's decision on step 142's proposal).
+   cg GHSA-w228 (a redirect back to the Referer, not an open redirect per step 108) and the zipfile cases
+   changedetection.io GHSA-25g8 and gramps-web-api GHSA-m5gr (`ZipFile.extractall()` strips `..` and a leading `/`)
+   left the suite: a rule that found them would be a false alarm everywhere else. They stay known to
+   `reviewed.py` as rejected, in `cve-candidates-2026-11-25-dropped.tsv`. The suite is now 107 cases; the nightly
+   of 2026-11-25 scored the three as missed in verdict mode, and review mode found GHSA-w228, so on that run's
+   numbers verdict is 67 of 107 (63%) and review 71 of 107; the 70% target needs 75.
+144. **`compile()` is no longer a code-injection sink** (2026-11-25, from Langflow GHSA-v798's gap note). The note's
+   probe was found, so the miss lay elsewhere: codewatch flagged the route (`validate_code(code.code)`, in a file
+   the fix doesn't change) on both sides, because the fixed `validate_code()` still compiles each function
+   definition to report syntax errors, and `compile($CODE, ...)` was a sink of its own. `compile()` builds a code
+   object and runs nothing; what it returns stays tainted, so `exec(compile(...))` and `eval(compile(...))` are
+   still found. `devtools.py cases GHSA-v798`: found (code-injection at the route, gone at the fix), quiet at the
+   fix. Costs: SecurityEval's CWE-094 `author_1` sample, which only compiles (its docstring says "then execute
+   it"), is no longer flagged (51 to 50 of 121; correct, it runs nothing); NetBox's uploaded-script check (step
+   47's note, compile to validate) goes quiet too. No other code-injection finding in the cached CVE cases came from
+   `compile()` alone, and no held-out Copilot or InCoder answer calls it. Test: `test_python_gap_notes`
+   test_compile_alone_runs_nothing_but_exec_of_what_it_built_does (fails without the change: the compile-only route
+   and helper were flagged).
+
+   Read on the way, the other found-probe cases of step 142's list, with what each one needs (no rule yet):
+   - roxy-wi CVE-2026-22265: `checkAjaxInput()` returns `shlex.quote(value)` and the caller wraps it in double
+     quotes (`'|egrep "%s"' % checkAjaxInput(grep)`), which undoes the quoting (a `"` closes them, then a newline
+     runs a command). `shlex.quote` is a sanitizer whatever surrounds it. A rule would also flag the fix: its
+     `exgrep` keeps the same shape and only the wider denylist protects it; left for now.
+   - OpenHands GHSA-7h8w: the sink is `self.execute(...)`, a callable the runtime hands to `GitHandler`; nothing
+     says it runs a shell.
+   - geonode GHSA-9fpx: `import_with_ogr2ogr` is a Celery task; the names come from its arguments, not a request.
+   - alerta GHSA-8prr: the case's scope (`alerta/database/backends/postgres`) leaves out the view that passes
+     `request.args` to `from_params()`, so no source is in the checkout; then a query parser builds the WHERE text
+     across three files.
+   - pygeoapi GHSA-f6pr: the route calls through `execute_from_flask(fn, request, *args)` and a provider loaded as a
+     plugin: two dynamic dispatches.
+   - lektor GHSA-wv28: five calls through objects (`ctx.tree.edit` to `untrusted_to_os_path`).
+   - superset GHSA-pfwg and aperisolve CVE-2026-34977: stored, as their notes say.
+   - moonraker GHSA-3jqf: the source is Moonraker's own `web_request.get_str('username')` (its JSON-RPC request
+     object, one app's API), and the value reaches the LDAP filter through `run_in_thread(self._perform_ldap_auth,
+     username, password)`, a function passed as a value.
+   - pgAdmin GHSA-hp84: the JSON body goes into a Jinja `.sql` template (`'PARALLEL ' + data.vacuum_parallel`, no
+     `qtLiteral`/`qtIdent` filter) whose output is psql's `--command`. Needs SQL templates as a sink, like the
+     HTML template analyzers: a bigger piece, to weigh against pgAdmin's hundreds of filtered templates.
