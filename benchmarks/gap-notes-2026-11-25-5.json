@@ -1,0 +1,265 @@
+{
+  "batch": "gap-notes-2026-11-25-5",
+  "status": "research only: not read yet",
+  "method": "Rows 1-15 of ~/codewatch-research/gaps/misses.tsv in file order (the file held 26 work rows, all check-quotes: 16 cve-pairs-python then 10 cve-pairs-python-nonhttp; no JavaScript or PHP rows were reachable in this batch). None was skipped. For each row I read the gap note named in its detail column (benchmarks/gap-notes-2026-11-23-1.json, -2.json, -4.json), the fix commit's message and per-file diff (gh api repos/O/R/commits/SHA, read with 1.5 s between calls) and the source files at the fix commit's parent (gh api repos/O/R/contents/PATH?ref=PARENT, raw). Quotes were compared line by line; a field is 'ok' only when the file, line and code match, otherwise 'wrong:' with the corrected text. 15 notes written: 5 rows had every field ok; 10 needed at least one correction (4 source, 4 sink, 4 between, 2 probe).",
+  "notes": [
+    {
+      "id": "GHSA-9fpx-fr6j-2vh6",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        78
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-7r34-79r5-rcc9",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-1.json",
+      "cwe": [
+        918
+      ],
+      "category": "ok",
+      "source": "wrong: src/mcp_atlassian/servers/main.py:449-473 _process_authentication_headers(scope) reads the raw ASGI headers x-atlassian-jira-url (:451) and x-atlassian-confluence-url (:455) into jira_url_str (:461-463) and confluence_url_str (:469-473) — an HTTP header taken from the ASGI scope, not a query or body field",
+      "sink": "wrong: src/mcp_atlassian/servers/dependencies.py:270-283 get_jira_fetcher builds JiraConfig(url=jira_url_header, ...) and JiraFetcher(config=header_config) at :283; get_confluence_fetcher does the same at :477-490 (ConfluenceFetcher(config=header_config) at :490). The fetcher's requests session then calls that host (the fix attaches a redirect hook to header_jira_fetcher.jira._session)",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3jqf-v4mv-747g",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        90
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-3fmp-59v6-4qw2",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        20,
+        943
+      ],
+      "category": "ok",
+      "source": "wrong: web/home/views.py:361-371 fetch_cvedata (POST /fetch_cve_data at :361) builds ServerSideDataTable(request=request, ...) from the request at :371; web/helpers/server_side_datatables.py:20 self.request_values = request.values, and the DataTables columns[i][data] / order[i][column] fields are parsed in lib/DatabasePlugins/mongodb.py:262-299 (datatables_data_columns_ordering) before the helper takes the columns up at :61-70",
+      "sink": "wrong: lib/DatabasePlugins/mongodb.py:364-388 datatables_data_order appends (columns[order[i]['column']]['data'], ASCENDING/DESCENDING) to sort; web/helpers/server_side_datatables.py:99-106 _fetch_results passes query_filter=self.fields and sort to backend.query_docs, whose .find() calls use them as MongoDB field names (lib/DatabasePlugins/mongodb.py:169-214)",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-33078",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        89
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-34977",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        78
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "wrong: from flask import Flask, request\nimport sqlite3, subprocess\n\napp = Flask(__name__)\ndb = sqlite3.connect(\"jobs.db\")\ndb.execute(\"CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY, password TEXT)\")\n\ndef build_cmd(password):\n    script = f\"expect -c 'spawn jpseek img.png out.txt; expect \\\"Passphrase:\\\"; send \\\"{password}\\\\r\\\"; expect eof'\"\n    return [\"bash\", \"-c\", script]\n\n@app.post(\"/upload\")\ndef upload():\n    db.execute(\"INSERT INTO submissions (password) VALUES (?)\", (request.form.get(\"password\", \"\"),))\n    db.commit()\n    return {\"status\": \"pending\"}\n\ndef analyze():\n    for (password,) in db.execute(\"SELECT password FROM submissions\"):\n        subprocess.run(build_cmd(password), capture_output=True)",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-22265",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        78
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "wrong: the query value passes through checkAjaxInput (app/modules/common/common.py:120-125), which rejects [&;|$`] and then returns shlex.quote(ajax_input.rstrip()) — it does not return the string unchanged, so the quoted grep_act at logs.py:59 is not injectable. The raw grep is however interpolated unquoted into the syslog command at logs.py:87, so the denylist is the only guard on that path; the fix widens the denylist with \\n \\r < > and switches the wrapper at :59-60 to a single-quoted grep",
+      "fix": "ok",
+      "probe": "wrong: from flask import Flask, request\nimport re, subprocess\nfrom shlex import quote\n\napp = Flask(__name__)\n\ndef check_input(value):\n    if re.search(r\"[&;|$`]\", value):\n        raise ValueError(\"bad characters\")\n    return quote(value)\n\n@app.get(\"/logs\")\ndef logs():\n    grep = request.args.get(\"grep\", \"\")\n    grep_act = '|egrep \"%s\"' % check_input(grep)\n    cmd = f\"cat /var/log/app.log {grep_act} {grep}\"\n    return subprocess.run(cmd, shell=True, capture_output=True).stdout",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-63502",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2019-19775",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        601
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "wrong: the value passes the prefix tests in zerver/lib/thumbnail.py:21-22 user_uploads_or_external (url.startswith('http') or url.lstrip('/').startswith('user_uploads/')) and :33-37 generate_thumbnail_url (def at :33; if not path.startswith('https://') or path.startswith('http://'): path = '/' + path at :36-37), then '/'-prefix concatenation; a '//host/x' value is not 'http' but redirects as protocol-relative. Those prefix checks read like sanitizers and codewatch may accept them",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-52835",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        22,
+        434
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "wrong: plexpy/webserve.py:3940 os.path.join(plexpy.CONFIG.CACHE_DIR, database_file.filename + '.import.db') then :3943-3948 with open(database_path, 'wb') writes the upload; the same shape at :4032 os.path.join(... config_file.filename + '.import.ini') and :4035-4040 open(config_path, 'wb')",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-130156",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "wrong: bazarr/api/subtitles/subtitles_contents.py:56 reqparse argument subtitlePath and :84 path = args.get('subtitlePath') (Flask-RESTX request); bazarr/api/subtitles/subtitles.py:83-97 patch parser declares the path argument (:87) and reference (:95), and :130 subtitles_path = args.get('path')",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-dataelement-bisheng-f4905b6dcb7b",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        918
+      ],
+      "category": "ok",
+      "source": "wrong: src/backend/bisheng/api/v1/report.py:30-33 @router.post('/callback') async def callback(data: dict) reads status = data.get('status') and file_url = data.get('url') from an unauthenticated JSON body; the same shape in src/backend/bisheng/api/v1/workflow.py:214-218 upload_report_file(request, data: dict = Body(...)) (status at :217, file_url at :218)",
+      "sink": "wrong: src/backend/bisheng/api/v1/report.py:39 file = Requests().get(url=file_url) (the office document server callback download); workflow.py:225 the same Requests().get(url=file_url)",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-CounterpartyXCP-counterparty-core-fde3545ddaa0",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        89
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "ok",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-vivekchand-clawmetry-da1d1d8fd021",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-2.json",
+      "cwe": [
+        22
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "wrong: api_reasoning passes session_id to _parse_session_reasoning(session_id) (:132), another function in the same file, which joins it onto SESSIONS_DIR (:139) and opens it (:147); helpers/logs.py:73-83 joins a ?date= value onto the log dirs (os.path.join at :81) and returns the first existing path, and routes/skills.py:192-197 joins a URL skill name onto each skills dir (os.path.join at :193). Sibling transcript routes route through a file_security.is_path_within check (the earlier GHSA-6r57 containment) that these three never called",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-snarfed-bridgy-fed-1f977a7d5c0d",
+      "suite": "cve-pairs-python",
+      "task": "check-quotes",
+      "checks": "gap-notes-2026-11-23-4.json",
+      "cwe": [
+        601
+      ],
+      "category": "ok",
+      "source": "ok",
+      "sink": "ok",
+      "between": "wrong: the handler only checks that to starts with http:// or https:// (redirect.py:37-38) and then redirects; the value is the raw request path (path_qs) exposed by webapp2's handler, not a framework API codewatch may model as a source, and nothing checks the target host. Second explanation: source (self.request.path_qs).",
+      "fix": "ok",
+      "probe": "ok",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_decabfba4ffeEuWwXMLZjBhYJa",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 5,
+    "turns": 38,
+    "tool_calls": 42,
+    "tool_errors": 0,
+    "chars_read": 338166,
+    "tokens": {
+      "input": 210275,
+      "cache_read": 4083328,
+      "output": 32770,
+      "reasoning": 0
+    },
+    "usd": 0.127
+  }
+}
