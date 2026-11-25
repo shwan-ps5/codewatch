@@ -79,10 +79,10 @@ def fetch(suite):
     return target
 
 
-def timing(log, label, seconds, parts=None, gave_up=False):
+def timing(log, label, seconds, parts=None, gave_up: object = False):
     """Logs one line per fetch or scan: "timing", suite, case ("-" for a whole-repository suite), phase, seconds, then
     its parts' seconds, slowest first (each analyzer, and "prep" for the template renderers and importers looked up
-    before them), and whether Semgrep gave up on some files. devtools.py bench writes them to
+    before them), and whether Semgrep gave up on some files (any truthy record: a bool or the files). devtools.py bench writes them to
     $CODEWATCH_BENCH_TIMINGS."""
     parts = [f"{name}={sec:.0f}" for name, sec in sorted((parts or {}).items(), key=lambda kv: -kv[1]) if sec >= 1]
     log("\t".join(["timing", *label, f"{seconds:.0f}", " ".join(parts + ([GAVE_UP] if gave_up else []))]))
