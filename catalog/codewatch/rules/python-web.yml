@@ -1052,11 +1052,13 @@ rules:
       - *known-safe
       - *lookup-result
     pattern-sinks:
+      # Not compile(): it only builds a code object and runs nothing, and compiling to check syntax is the usual
+      # fix (Langflow GHSA-v798: validate_code() exec'd each function, the fix only compiles it). What compile()
+      # returns stays tainted, so exec(compile(...)) and eval(compile(...)) are still found.
       - patterns:
           - pattern-either:
               - pattern: eval($CODE, ...)
               - pattern: exec($CODE, ...)
-              - pattern: compile($CODE, ...)
           - focus-metavariable: $CODE
 
   - id: codewatch.python.web.sql-injection
