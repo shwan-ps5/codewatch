@@ -18,7 +18,8 @@ import sys
 from pathlib import Path
 
 ORDER = ("python", "javascript", "php")
-TASKS = ("missed", "still-flagged", "check-quotes")
+MISSED, STILL_FLAGGED, CHECK_QUOTES = "missed", "still-flagged", "check-quotes"
+TASKS = (MISSED, STILL_FLAGGED, CHECK_QUOTES)
 COLUMNS = ("task", "suite", "language", "id", "repo", "fix", "cwe", "scope", "detail")
 
 
@@ -45,7 +46,7 @@ def noted(benchmarks):
             continue
         for note in notes:
             if isinstance(note, dict):
-                done.setdefault((note.get("task") or "missed", note.get("id")), path.name)
+                done.setdefault((note.get("task") or MISSED, note.get("id")), path.name)
     return done
 
 
@@ -61,13 +62,13 @@ def work(case, language, done):
     """[(task, detail)] for one case of the nightly."""
     case_id, found = case["id"], case.get("detected")
     todo = []
-    if not found and ("missed", case_id) not in done:
-        todo.append(("missed", ""))
+    if not found and (MISSED, case_id) not in done:
+        todo.append((MISSED, ""))
     if language == "python":
-        if case.get("still_flagged") and ("still-flagged", case_id) not in done:
-            todo.append(("still-flagged", ",".join(case.get("still_by", []))))
-        if not found and ("missed", case_id) in done and ("check-quotes", case_id) not in done:
-            todo.append(("check-quotes", done[("missed", case_id)]))
+        if case.get("still_flagged") and (STILL_FLAGGED, case_id) not in done:
+            todo.append((STILL_FLAGGED, ",".join(case.get("still_by", []))))
+        if not found and (MISSED, case_id) in done and (CHECK_QUOTES, case_id) not in done:
+            todo.append((CHECK_QUOTES, done[(MISSED, case_id)]))
     return todo
 
 
