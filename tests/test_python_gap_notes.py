@@ -144,3 +144,56 @@ def test_djangos_same_origin_check_clears_a_redirect_it_replaced(tmp_path):
         "        same_origin(request.build_absolute_uri(redirect_to), request.build_absolute_uri())\n"
         "        return shortcuts.redirect(redirect_to or '/')\n")})
     assert found == {("app/views.py", 19, "open-redirect")}
+
+
+@semgrep
+def test_a_path_a_helper_returns_is_a_file_path_when_used(tmp_path):
+    """Checkmk 31dfe9231eee: `_file_path()` joins the request's file_id to the upload directory and returns it, and
+    `self._file_path().open()` and `.unlink()` use it; also `path = file_path(file_id); path.write_text(...)`.
+    Not: the helper after the fix (isalnum() or raise), a fixed uuid name, a helper not named for a path,
+    str.replace() on a returned display path, or a query's exists() with a path helper in its filter (label-studio)."""
+    found = semgrep_vulnerabilities(tmp_path, {"app/views.py": (
+        "import uuid\n"
+        "from pathlib import Path\n\n"
+        "from flask import Flask, request\n\n"
+        "app = Flask(__name__)\n"
+        "TMP = Path('/tmp/host-import')\n\n\n"
+        "def file_path(file_id):\n"
+        "    return TMP / ('%s.csv' % file_id)\n\n\n"
+        "@app.post('/import')\n"
+        "def upload():\n"
+        "    path = file_path(request.form['file_id'])\n"
+        "    path.write_text(request.form['csv'])\n"
+        "    shown = get_display_path(request.form['file_id']).replace('/', ' > ')\n"
+        "    return {'ok': True, 'shown': shown}\n\n\n"
+        "def get_display_path(name):\n"
+        "    return '/files/' + name\n\n\n"
+        "class BulkImport:\n"
+        "    _upload_tmp_path = Path('/tmp/upload')\n\n"
+        "    def _file_path(self):\n"
+        "        file_id = request.args.get('file_id', 'x')\n"
+        "        return self._upload_tmp_path / ('%s.csv' % file_id)\n\n"
+        "    def _checked_path(self, file_id=None):\n"
+        "        if file_id is None:\n"
+        "            file_id = request.args.get('file_id')\n"
+        "        if not file_id.isalnum():\n"
+        "            raise ValueError('file_id')\n"
+        "        return self._upload_tmp_path / ('%s.csv' % file_id)\n\n"
+        "    def _record(self):\n"
+        "        return Record(request.args.get('id'))\n\n"
+        "    def read(self):\n"
+        "        with self._file_path().open('r') as f:\n"
+        "            return f.read()\n\n"
+        "    def delete(self):\n"
+        "        self._file_path().unlink()\n"
+        "        self._record().unlink()\n\n"
+        "    def read_checked(self):\n"
+        "        return self._checked_path().read_text()\n\n"
+        "    def save(self):\n"
+        "        self._checked_path(uuid.uuid4().hex).write_text('x')\n\n"
+        "    def known(self):\n"
+        "        return Storage.objects.filter(path=normalize_path(request.args['p'])).exists()\n\n\n"
+        "def normalize_path(p):\n"
+        "    return p.strip('/')\n")})
+    assert found == {("app/views.py", 17, "path-traversal"), ("app/views.py", 44, "path-traversal"),
+                     ("app/views.py", 48, "path-traversal")}
