@@ -2887,3 +2887,28 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    extra lines are the nightly's give-ups. Tests: `test_a_containment_helper_that_said_yes_clears_the_path`,
    `test_a_resolved_path_checked_against_its_base_is_clear` (both fail without the change). Expected in the nightly:
    Python still flagged 15 to 13; app findings to watch for gone ones.
+151. **Redirect helpers that keep only local paths** (2026-11-26, the rest of step 146's still-flagged notes). The
+   three notes' probes didn't reproduce (they renamed the helpers); the real causes, each probed on a copy of the
+   fixed code: (1) `_safe_next_url` (GHSA-jwxw) and `_safe_redirect` (araa-search) missed the safe-URL name only for
+   the leading underscore; the open-redirect rule's `$SAFE` names now allow one. (2) MobSF's ACS view,
+   `redirect(get_redirect_url(req))` with `req = prepare_django_request(request)`: `get_redirect_url` hands nothing
+   back (it returns '/' or `sanitize_redirect(...)`), but the final variant whose sources are returner calls
+   (`summaries.from_rules`) dropped the pass-through sanitizers, so any helper fed a returner's value stayed
+   tainted, even one returning a constant. They are kept now: `clean_functions` never names a returner, so the
+   comment's worry (cleaning the returner's own call) doesn't arise. This is in the summary analyzer, for every
+   rule and JavaScript too. (3) MobSF's login view, `redirect(auth.login(return_to=...))`: python3-saml's
+   `login()`/`logout()` return the identity provider's URL from the settings (return_to goes into RelayState),
+   accepted when `auth` is `OneLogin_Saml2_Auth(...)` or from an `init_saml_auth`-style helper. Cases (devtools):
+   MobSF GHSA-8m9j, GHSA-jwxw and araa-search all still found, quiet at their fixes (MobSF's vulnerable side keeps
+   186, 62, 70 and loses 143, the login view's). Test: `test_redirect_helpers_that_keep_only_local_paths` (fails
+   without each of the three; controls: a helper that hands back its argument, fed directly or through a returner,
+   and login() of a non-SAML object). Not measured beyond these: this machine has one CPU, so a whole suite doesn't
+   fit before the nightly. Expected: Python still flagged 13 to 10 if step 150 holds; check every suite's found
+   counts and the apps' gone findings for the returner change.
+152. **A compiled pattern named `regex` isn't the regex module** (2026-11-26). The push hook for step 151 showed an
+   open hotspot on codewatch's own code, older than today's steps (present at 05955e9): regex-injection at
+   `summaries.assigned_calls`, `for regex in regexes ... regex.findall(text)`. The sink `regex.$FUNC($PATTERN, ...)`,
+   meant for the regex module, took the loop variable for it, so the searched text counted as a pattern. It now
+   skips a `regex` bound by a for loop, an assignment or a comprehension. Test:
+   `test_a_compiled_pattern_named_regex_is_not_the_regex_module` (fails without it; the module's own call still
+   found). The self-check on summaries.py is clean again.

@@ -2930,6 +2930,27 @@ def test_a_regex_with_a_timeout_is_not_regex_injection(tmp_path):
     assert found == {("app.py", 12, "regex-injection")}
 
 
+def test_a_compiled_pattern_named_regex_is_not_the_regex_module(tmp_path):
+    """codewatch's own summaries.assigned_calls (PLAN.md step 152): `for regex in regexes: regex.findall(text)`, in
+    a loop or a comprehension, searches the text with a compiled pattern; the text isn't a pattern. Still found:
+    the regex module itself."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import re\nimport regex\nfrom flask import Flask, request\n\napp = Flask(__name__)\n"
+        "WORD, NUM = re.compile(r'\\w+'), re.compile(r'\\d+')\n\n\n"
+        "@app.route('/find')\n"
+        "def find():\n"
+        "    text = request.args['q']\n"
+        "    out = []\n"
+        "    for regex in (WORD, NUM):\n"
+        "        out += regex.findall(text)\n"
+        "    out += sorted({n for t in [text] for regex in (WORD, NUM) for n in regex.findall(t)})\n"
+        "    out += [regex.findall(text) for regex in (WORD, NUM)]\n"
+        "    return {'out': out + regex.findall(text, 'abc')}\n")})
+    assert found == {("app.py", 17, "regex-injection")}
+
+
 def test_a_path_name_or_extension_is_not_a_file_opened(tmp_path):
     """paperless-ngx: Path(str(document.filename)).suffix reads the extension; nothing is opened."""
     if not Semgrep().available():

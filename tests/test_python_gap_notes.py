@@ -383,3 +383,64 @@ def test_a_resolved_path_checked_against_its_base_is_clear(tmp_path):
             "        raise\n"
             "    return str(candidate)\n")})
     assert found == {("app/api.py", 23, "path-traversal"), ("app/api.py", 28, "path-traversal")}
+
+
+@semgrep
+def test_redirect_helpers_that_keep_only_local_paths(tmp_path):
+    """MobSF GHSA-8m9j's, MISP website GHSA-jwxw's and araa-search bda4154bfac3's notes, at their fixes. A safe-URL
+    helper with a leading underscore (_safe_next_url); python3-saml's auth.login(return_to=...), which returns the
+    identity provider's URL; and a helper that hands nothing back (get_redirect_url returns '/' or what
+    sanitize_redirect made of the RelayState), fed a value another helper took from the request
+    (prepare_django_request). Still found: a helper that hands its argument back, fed either way, and login() of an
+    object that isn't a SAML client."""
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app/views.py": (
+            "from django.shortcuts import redirect\n"
+            "from onelogin.saml2.auth import OneLogin_Saml2_Auth\n\n"
+            "from app.security import Client, sanitize_redirect\n\n\n"
+            "def prepare_django_request(request):\n"
+            "    return {'get_data': request.GET.copy(), 'post_data': request.POST.copy()}\n\n\n"
+            "def init_saml_auth(req):\n"
+            "    return OneLogin_Saml2_Auth(req, {'idp': {}})\n\n\n"
+            "def get_redirect_url(req):\n"
+            "    redirect_url = '/'\n"
+            "    relay_state = req['post_data'].get('RelayState')\n"
+            "    if relay_state:\n"
+            "        redirect_url = sanitize_redirect(relay_state)\n"
+            "    return redirect_url\n\n\n"
+            "def relay_state_of(req):\n"
+            "    return req['post_data'].get('RelayState')\n\n\n"
+            "def _safe_next_url(target):\n"
+            "    if not target.startswith('/') or target.startswith('//'):\n"
+            "        return '/'\n"
+            "    return target\n\n\n"
+            "def _next_url(target):\n"
+            "    return target\n\n\n"
+            "def saml_login(request):\n"
+            "    auth = init_saml_auth(prepare_django_request(request))\n"
+            "    return redirect(auth.login(return_to=sanitize_redirect(request.GET.get('next', ''))))\n\n\n"
+            "def saml_acs(request):\n"
+            "    req = prepare_django_request(request)\n"
+            "    return redirect(get_redirect_url(req))\n\n\n"
+            "def saml_acs_unchecked(request):\n"
+            "    req = prepare_django_request(request)\n"
+            "    return redirect(relay_state_of(req))\n\n\n"
+            "def other_login(request):\n"
+            "    client = Client(request.GET)\n"
+            "    return redirect(client.login(return_to='/'))\n\n\n"
+            "def login_next(request):\n"
+            "    return redirect(_safe_next_url(request.GET.get('next', '')))\n\n\n"
+            "def login_next_unchecked(request):\n"
+            "    return redirect(_next_url(request.GET.get('next', '')))\n"),
+        "app/security.py": (
+            "def sanitize_redirect(url):\n"
+            "    if url.startswith('//') or not url.startswith('/'):\n"
+            "        return '/'\n"
+            "    return url\n\n\n"
+            "class Client:\n"
+            "    def __init__(self, params):\n"
+            "        self.params = params\n\n"
+            "    def login(self, return_to):\n"
+            "        return self.params.get('to', return_to)\n")})
+    assert found == {("app/views.py", 49, "open-redirect"), ("app/views.py", 54, "open-redirect"),
+                     ("app/views.py", 62, "open-redirect")}

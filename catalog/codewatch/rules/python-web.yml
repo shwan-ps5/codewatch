@@ -2029,9 +2029,27 @@ rules:
       - pattern: $MODEL.objects.$QUERY(...)
       # A project helper that returns only a URL it found safe (flaskbb: get_first_safe_redirect_url(next, ...,
       # allowed_hosts=...) returns the candidate when its host is allowed, else the fallback).
+      # A leading underscore only makes it private: _safe_next_url(next) (MISP website GHSA-jwxw at its fix),
+      # _safe_redirect(past) (araa-search bda4154bfac3).
       - patterns:
           - pattern: $SAFE(...)
-          - metavariable-regex: {metavariable: $SAFE, regex: '(?i)^(.*\.)?(\w+_)?safe_(\w+_)?(url|redirect|next|target)$'}
+          - metavariable-regex: {metavariable: $SAFE, regex: '(?i)^(.*\.)?_*(\w+_)?safe_(\w+_)?(url|redirect|next|target)$'}
+      # python3-saml's login()/logout() return the identity provider's URL from the SAML settings; return_to only
+      # goes into its RelayState, which the assertion consumer redirects to later (MobSF GHSA-8m9j at its fix:
+      # redirect(auth.login(return_to=redirect_url)), auth from init_saml_auth(req) built of the request).
+      - patterns:
+          - pattern-either:
+              - pattern: $AUTH.login(...)
+              - pattern: $AUTH.logout(...)
+          - pattern-either:
+              - pattern-inside: |
+                  $AUTH = onelogin.saml2.auth.OneLogin_Saml2_Auth(...)
+                  ...
+              - patterns:
+                  - pattern-inside: |
+                      $AUTH = $INIT(...)
+                      ...
+                  - metavariable-regex: {metavariable: $INIT, regex: '(?i)^(\w+\.)?_*(init|get|make|build|create)_saml2?_auth$'}
     pattern-sinks: &redirect-sinks
       - patterns:
           - pattern-either:
@@ -2547,6 +2565,19 @@ rules:
           # The regex module's timeout bounds a slow pattern: a user's own pattern taken on purpose (recipes'
           # automations, regex.sub(rule[1], ..., timeout=REGEX_TIMEOUT)).
           - pattern-not: regex.$FUNC(..., timeout=$TIMEOUT, ...)
+          # A compiled pattern in a variable named regex isn't the regex module: its findall(text) takes the text
+          # to search, not a pattern (codewatch's own summaries.assigned_calls: `for regex in regexes:
+          # regex.findall(text)`, PLAN.md step 152).
+          - pattern-not-inside: |
+              for regex in $ITEMS:
+                ...
+          - pattern-not-inside: |
+              regex = $VALUE
+              ...
+          - pattern-not-inside: '[$X for regex in $ITEMS]'
+          - pattern-not-inside: '{$X for regex in $ITEMS}'
+          - pattern-not-inside: '($X for regex in $ITEMS)'
+          - pattern-not-inside: '{$N for $A in $B for regex in $ITEMS for $N in $C}'
           # A compile that only checks the pattern, alone in a try: compiling doesn't backtrack, and its result is
           # dropped (paperless-ngx's validate_regex_pattern, before matching with a timeout elsewhere).
           - pattern-not-inside: |
