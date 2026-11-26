@@ -28,7 +28,7 @@ that file, not here, and keep them short: what changed, the case behind it, what
 step gives counts, what was kept, rejections that set a new precedent and any problem found; the batch TSVs hold
 every other reason. This file holds only what is true now: update the sections below when a step changes them.
 
-## Where things stand (nightly 2026-11-25, commit 65e556c)
+## Where things stand (nightly 2026-11-26, commit c04c725)
 
 Verdict mode counts findings that claim a vulnerability; review mode adds hotspots. CVE pairs: found = flagged
 before the fix, still flagged = flagged after it (the false-alarm measure).
@@ -36,12 +36,12 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | Suite | Verdict | Review |
 |---|---|---|
 | OWASP Benchmark Python (tuned) | 100% found, 0% false alarms | 100%, 35% |
-| SecurityEval (tuned) | 51/121 | 78/121 |
+| SecurityEval (tuned) | 50/121 | 77/121 |
 | SecurityEval Copilot / InCoder (held out) | 34% / 31%, 0% / 0% false alarms | 51% / 47%, 6% / 0% |
 | Juice Shop (tuned) | 15/35 | 17/35 |
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
-| cve-pairs-python (107; 110 at the run, step 143) | 67 found, 15 still flagged | 71, 24 |
+| cve-pairs-python (108; 109 after step 148) | 69 found, 15 still flagged | 72, 25 |
 | cve-pairs-python-frontend (32) | 4, 0 | 16, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
@@ -106,8 +106,10 @@ Ground truth:
   summary line was seen (step 110).
 
 Speed and stability:
-- clawmetry (step 110): Semgrep gives up on both sides (about 30 minutes a side, 2026-11-22); since step 142 the
-  scorer credits its finding anyway (same give-ups both sides). The slowness itself remains.
+- clawmetry (step 110): Semgrep gives up on both sides (about 30 minutes a side, 2026-11-22). Step 142's credit
+  needs the fixed side to give up on no file the vulnerable side finished, and the give-ups vary by run: on
+  2026-11-26 the fixed side gave up on 33 files, the vulnerable side on 16, so it was missed again. Fix the
+  slowness (step 149).
 - tests/test_detection.py (4,300 lines): CI's Semgrep gives up on some rules there even at 60 s a rule (step 125;
   `check` now says so). A finding reviewed in that file can drop out and fail the self-check as a stale review;
   find the slow rule or split the file.

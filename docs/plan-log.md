@@ -2861,3 +2861,12 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    super-forms, markdownify-mcp, spotweb, siyuan), stored values (several WordPress plugins, LuCI), checks made
    stricter (lms, chamilo, TYPO3, thelia, adminneo), archive contents (ILIAS, hortusfox, laradashboard) and
    libraries (PyBioNetGen, gammapy, diffpy, yt, PHPCSUtils).
+149. **Nightly of 2026-11-26 read** (commit c04c725). cve-pairs-python verdict 69 of 108 (64%), 15 still flagged,
+   as step 144 expected for Langflow GHSA-v798 (found, quiet at the fix); DB-GPT CVE-2026-136694 found on its first
+   scan. SecurityEval 50 of 121, the CWE-094 sample step 144 gave up. clawmetry is still missed: its fixed side
+   gave up on 33 files, the vulnerable side on 16, so step 142's guard refused the credit; which files time out
+   varies from run to run, so the fix is the slowness, not the guard. Review mode only: Tautulli CVE-2026-52835's
+   fixed side finished this time (it gave up on 2026-11-25 and looked quiet) and is still flagged there, 24 to 25.
+   meta-ads-mcp GHSA-45gf lost its second SSRF line (`ads.py:3500`, a page id read from an API response) on both
+   sides; it is still found at line 1389, and the cause wasn't traced. No new or gone app findings. PLAN and the
+   README refreshed.
