@@ -2912,3 +2912,7 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    skips a `regex` bound by a for loop, an assignment or a comprehension. Test:
    `test_a_compiled_pattern_named_regex_is_not_the_regex_module` (fails without it; the module's own call still
    found). The self-check on summaries.py is clean again.
+153. **Research batches 2026-11-26 new-7 and new-8 reviewed** (7 read, 0 accepted). Rejections kept: SpecForge
+   (both ids: a training library, a local checkpoint, the fix spread over a merged branch), Airflow CVE-2026-120353
+   (14 files, framework and provider code), lastversion, torchvision and ezdxf (libraries; archives and files the
+   user supplies), pyfda (a desktop app, two fix commits).
