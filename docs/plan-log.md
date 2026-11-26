@@ -2870,3 +2870,20 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    meta-ads-mcp GHSA-45gf lost its second SSRF line (`ads.py:3500`, a page id read from an API response) on both
    sides; it is still found at line 1389, and the cause wasn't traced. No new or gone app findings. PLAN and the
    README refreshed.
+150. **Containment checks in path helpers** (2026-11-26, from step 146's still-flagged notes). In the path-traversal
+   rule only: a helper named for containment (`within`, `inside`, `contained`, `relative_to`: swingmusic's
+   `is_path_within_root_dirs`, archivy's `is_relative_to`) clears its first argument after `if not check(p): return`
+   (also `... or other`, not under an `and` that can skip it) and inside `if check(p):`; `base not in p.parents` then
+   return or raise, or use inside `if base in p.parents`; and `p = x.resolve(...)` followed by `try: p.relative_to(base)
+   except ValueError: raise/return` (also `raise ... from exc`). Since path traversal answers the pass rules with its
+   own sanitizers, a helper that checks this way and returns the path hands back nothing (Agent Zero's
+   `_resolve_allowed_image_path`). `p = Path(x).resolve()` (or `.absolute()`) assigned is no longer a sink; uses of
+   `p` still are. Cases (devtools): archivy and Agent Zero GHSA-8j45 still found, now quiet at the fix; swingmusic
+   GHSA-pj88 9 to 3 flagged lines (`list_folders` gained only `@admin_required`, and `open_in_file_manager`
+   resolves `query.path` before checking it, so the resolved copy stays tainted); LLaMA-Factory GHSA-527m and pgAdmin
+   GHSA-9crj unchanged (an `os.path.isfile` before the check; a permission-named helper). The 32 other Python path
+   cases with these shapes: no detection lost; CVE-2026-63502 now found in review mode (its fix's `target != base and
+   base not in target.parents` clears the fixed side) and CVE-2026-130154 loses one still-flagged line; GHSA-mjrq's
+   extra lines are the nightly's give-ups. Tests: `test_a_containment_helper_that_said_yes_clears_the_path`,
+   `test_a_resolved_path_checked_against_its_base_is_clear` (both fail without the change). Expected in the nightly:
+   Python still flagged 15 to 13; app findings to watch for gone ones.
