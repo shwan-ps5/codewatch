@@ -247,3 +247,139 @@ def test_compile_alone_runs_nothing_but_exec_of_what_it_built_does(tmp_path):
             "                errors.append(str(e))\n"
             "    return errors\n")})
     assert found == {("app/api.py", 15, "code-injection"), ("app/api.py", 25, "code-injection")}
+
+
+@semgrep
+def test_a_containment_helper_that_said_yes_clears_the_path(tmp_path):
+    """swingmusic GHSA-pj88's and archivy 2565a9ab11d1's notes: a helper named for containment
+    (is_path_within_root_dirs, is_relative_to) checks the path, and the view or the file helper returns when it says
+    no, or uses the path only where it says yes. Still found: no check, the branch where it said no, a check an
+    `and` can skip, and a helper named for permission rather than containment."""
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app/views.py": (
+            "from pathlib import Path\n\n"
+            "from flask import Flask, request\n\n"
+            "from app.store import create_dir, delete_dir, is_path_within_root_dirs\n\n"
+            "app = Flask(__name__)\n\n\n"
+            "def check_access(path):\n"
+            "    return True\n\n\n"
+            "@app.post('/list')\n"
+            "def list_dir():\n"
+            "    resolved = Path(request.json['folder']).resolve()\n"
+            "    if not is_path_within_root_dirs(str(resolved)):\n"
+            "        return {'error': 'denied'}, 403\n"
+            "    return {'dirs': [d.name for d in resolved.iterdir()]}\n\n\n"
+            "@app.post('/unchecked')\n"
+            "def unchecked():\n"
+            "    resolved = Path(request.json['folder']).resolve()\n"
+            "    return {'dirs': [d.name for d in resolved.iterdir()]}\n\n\n"
+            "@app.post('/no-branch')\n"
+            "def no_branch():\n"
+            "    resolved = Path(request.json['folder']).resolve()\n"
+            "    if not is_path_within_root_dirs(resolved):\n"
+            "        resolved.unlink()\n"
+            "        return {}, 403\n"
+            "    return {}\n\n\n"
+            "@app.post('/skippable')\n"
+            "def skippable():\n"
+            "    resolved = Path(request.json['folder']).resolve()\n"
+            "    if request.json.get('strict') and not is_path_within_root_dirs(resolved):\n"
+            "        return {}, 403\n"
+            "    return {'dirs': [d.name for d in resolved.iterdir()]}\n\n\n"
+            "@app.post('/permission')\n"
+            "def permission():\n"
+            "    resolved = Path(request.json['folder']).resolve()\n"
+            "    if not check_access(resolved):\n"
+            "        return {}, 403\n"
+            "    return {'dirs': [d.name for d in resolved.iterdir()]}\n\n\n"
+            "@app.post('/folders')\n"
+            "def create_folder():\n"
+            "    if not create_dir(request.json.get('path', '')):\n"
+            "        return {}, 400\n"
+            "    return {}\n\n\n"
+            "@app.delete('/folders')\n"
+            "def delete_folder():\n"
+            "    return {'ok': delete_dir(request.json.get('path', ''))}\n"),
+        "app/store.py": (
+            "from pathlib import Path\n"
+            "from shutil import rmtree\n\n"
+            "ROOT = Path('/srv/data')\n\n\n"
+            "def is_path_within_root_dirs(path):\n"
+            "    resolved = Path(path).resolve()\n"
+            "    return resolved == ROOT or ROOT in resolved.parents\n\n\n"
+            "def is_relative_to(sub_path, parent):\n"
+            "    try:\n"
+            "        sub_path.resolve().relative_to(parent)\n"
+            "        return True\n"
+            "    except ValueError:\n"
+            "        return False\n\n\n"
+            "def create_dir(name):\n"
+            "    new_path = ROOT / name.strip('/')\n"
+            "    if is_relative_to(new_path, ROOT):\n"
+            "        new_path.mkdir(parents=True, exist_ok=True)\n"
+            "        return True\n"
+            "    return False\n\n\n"
+            "def delete_dir(name):\n"
+            "    target = ROOT / name\n"
+            "    if not is_relative_to(target, ROOT) or target == ROOT:\n"
+            "        return False\n"
+            "    rmtree(target)\n"
+            "    return True\n")})
+    assert found == {("app/views.py", 25, "path-traversal"), ("app/views.py", 32, "path-traversal"),
+                     ("app/views.py", 42, "path-traversal"), ("app/views.py", 50, "path-traversal")}
+
+
+@semgrep
+def test_a_resolved_path_checked_against_its_base_is_clear(tmp_path):
+    """Agent Zero GHSA-8j45's note: the fix's _resolve_allowed_image_path() resolves the path, makes relative_to()
+    against the base directory raise for one outside it, and returns it; the view sends what it returns. Also the
+    check written as `BASE not in resolved.parents`. Still found: a helper that resolves without checking, and
+    relative_to() on a path that wasn't resolved ("a/../../x" passes it)."""
+    found = semgrep_vulnerabilities(tmp_path, {
+        "app/api.py": (
+            "from pathlib import Path\n\n"
+            "from fastapi import FastAPI, HTTPException\n"
+            "from fastapi.responses import FileResponse\n\n"
+            "from app.paths import lexical_only, resolve_allowed, resolve_unchecked\n\n"
+            "app = FastAPI()\n"
+            "BASE = Path('/srv/agent')\n\n\n"
+            "@app.get('/image')\n"
+            "def image(path: str = ''):\n"
+            "    try:\n"
+            "        local = resolve_allowed(path)\n"
+            "    except ValueError:\n"
+            "        raise HTTPException(status_code=403)\n"
+            "    return FileResponse(local)\n\n\n"
+            "@app.get('/unchecked')\n"
+            "def unchecked(path: str = ''):\n"
+            "    return FileResponse(resolve_unchecked(path))\n\n\n"
+            "@app.get('/lexical')\n"
+            "def lexical(path: str = ''):\n"
+            "    return FileResponse(lexical_only(path))\n\n\n"
+            "@app.get('/parents')\n"
+            "def parents(path: str = ''):\n"
+            "    target = (BASE / path).resolve()\n"
+            "    if BASE.resolve() not in target.parents:\n"
+            "        raise HTTPException(status_code=403)\n"
+            "    return FileResponse(target)\n"),
+        "app/paths.py": (
+            "from pathlib import Path\n\n"
+            "BASE = Path('/srv/agent')\n\n\n"
+            "def resolve_allowed(path: str) -> str:\n"
+            "    candidate = BASE / path\n"
+            "    resolved = candidate.resolve(strict=False)\n"
+            "    try:\n"
+            "        resolved.relative_to(BASE)\n"
+            "    except ValueError as exc:\n"
+            "        raise ValueError('outside') from exc\n"
+            "    return str(resolved)\n\n\n"
+            "def resolve_unchecked(path: str) -> str:\n"
+            "    return str((BASE / path).resolve())\n\n\n"
+            "def lexical_only(path: str) -> str:\n"
+            "    candidate = BASE / path\n"
+            "    try:\n"
+            "        candidate.relative_to(BASE)\n"
+            "    except ValueError:\n"
+            "        raise\n"
+            "    return str(candidate)\n")})
+    assert found == {("app/api.py", 23, "path-traversal"), ("app/api.py", 28, "path-traversal")}

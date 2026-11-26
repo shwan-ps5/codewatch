@@ -136,7 +136,9 @@ by about one case a day. JavaScript and PHP rule work waits until then; their ga
    safe look-alike probe): use both before writing a rule. Step 144 won Langflow GHSA-v798 (compile() alone no longer a sink; to
    confirm in the nightly) and sorted the other found-probe cases by what each needs (none a small rule; roxy-wi's
    double-quoted `shlex.quote` and pgAdmin's SQL templates are the nearest). Step 146: for still-flagged fixes, path helpers that resolve and
-   test containment, then redirect helpers that keep only local paths.
+   test containment (step 150: archivy and Agent Zero quiet at their fixes, to confirm in the nightly; swingmusic
+   keeps its admin-only dir browser and a path resolved before its check), then redirect helpers that keep only
+   local paths.
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 4. Each morning: read the nightly, review topic 16's batches and read the gap notes (a still-flagged note's probe
