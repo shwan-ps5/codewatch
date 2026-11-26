@@ -1633,6 +1633,20 @@
           "scope": [
             "packages/dbgpt-app/src/dbgpt_app/openapi/api_v1"
           ]
+        },
+        {
+          "id": "CVE-2026-137585",
+          "cve": "CVE-2026-137585",
+          "repo": "https://github.com/morpheus65535/bazarr.git",
+          "fix": "9ea62688dfc2bd56ed11f6352653eaaf68c2f758",
+          "cwe": [
+            22
+          ],
+          "license": "GPL-3.0",
+          "summary": "Bazarr: unauthenticated path traversal in the catch_all PWA asset handler",
+          "scope": [
+            "bazarr/app"
+          ]
         }
       ]
     },
@@ -16246,6 +16260,35 @@
           "summary": "NukeViet CMS reflected cross-site scripting (CVE-2026-94599)",
           "scope": [
             "modules/news/funcs"
+          ]
+        },
+        {
+          "id": "GHSA-968m-4g5g-c538",
+          "cve": "CVE-2026-104899",
+          "repo": "https://github.com/AyeCode/geodirectory.git",
+          "fix": "2357d640dad7973988742a6706b3a857b6b05d52",
+          "cwe": [
+            98
+          ],
+          "license": "GPLv3",
+          "summary": "GeoDirectory: Local File Inclusion via the design_type parameter",
+          "scope": [
+            "includes",
+            "."
+          ]
+        },
+        {
+          "id": "CVE-2026-137305",
+          "cve": "CVE-2026-137305",
+          "repo": "https://github.com/getgrav/grav-plugin-form.git",
+          "fix": "3daa9cb66c43b6d472473dcbf0c312c8e66b1769",
+          "cwe": [
+            94
+          ],
+          "license": "MIT",
+          "summary": "Grav Form plugin before 9.2.4 contains a code injection vulnerability that allows page authors to upload files into Twig template folders",
+          "scope": [
+            "classes"
           ]
         }
       ]

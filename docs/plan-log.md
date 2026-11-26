@@ -2852,3 +2852,12 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
 147. **Research batch 2026-11-25 new-7 reviewed** (1 read, 0 accepted). Faveo Helpdesk CVE-2026-69697 rejected as
    written: the CVE record's fix commit (2aa2c249) is the whole v2.0.4.B.1 release build (GitHub lists 300 files,
    the most it shows, and about 98,000 lines added), so the SSRF fix can't be read from it.
+148. **Research batches 2026-11-26 new to new-6 reviewed** (42 read, 3 accepted: 1 open, 2 blind). Accepted, open:
+   Bazarr CVE-2026-137585 (9ea62688, one file, 6 lines): `catch_all`'s `/<path:path>` route parameter, when it is
+   a PWA asset name or starts with `workbox-`, reaches `send_file(os.path.join(frontend_build_path, path))`; the fix
+   normalises the join and refuses a result outside the build folder. Read at GitHub; added to cve-pairs-python
+   (109 cases, so 77 for the 70% target). The two blind accepts went to cve-pairs-blind-php-36 unread. Rejections
+   kept: fixes over the limit or spread over merges (TastyIgniter, openSIS, modified-shop, Vvveb, Kunstmaan,
+   super-forms, markdownify-mcp, spotweb, siyuan), stored values (several WordPress plugins, LuCI), checks made
+   stricter (lms, chamilo, TYPO3, thelia, adminneo), archive contents (ILIAS, hortusfox, laradashboard) and
+   libraries (PyBioNetGen, gammapy, diffpy, yt, PHPCSUtils).
