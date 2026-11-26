@@ -138,7 +138,8 @@ by about one case a day. JavaScript and PHP rule work waits until then; their ga
    double-quoted `shlex.quote` and pgAdmin's SQL templates are the nearest). Step 146: for still-flagged fixes, path helpers that resolve and
    test containment (step 150: archivy and Agent Zero quiet at their fixes, to confirm in the nightly; swingmusic
    keeps its admin-only dir browser and a path resolved before its check), then redirect helpers that keep only
-   local paths.
+   local paths (step 151: MobSF, GHSA-jwxw and araa-search quiet at their fixes; its returner change touches
+   every rule, JS too, so check the nightly for lost detections and gone app findings).
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 4. Each morning: read the nightly, review topic 16's batches and read the gap notes (a still-flagged note's probe

@@ -848,19 +848,22 @@ def from_rules(rules, returners, summaries):
         variant = copy.deepcopy(rule)
         variant["id"] = rule["id"] + FROM_SUFFIX
         variant["pattern-sources"] = from_sources(found, is_js(rule))
-        variant[SANITIZERS] = without_lookup_result(rule)
+        # The pass-through sanitizers stay: they never name a returner (clean_functions leaves them out), and a
+        # helper that hands nothing back is as clean fed a returner's value as the request's (MobSF GHSA-8m9j at
+        # its fix: redirect(get_redirect_url(req)), req from prepare_django_request(request)).
+        variant[SANITIZERS] = without_lookup_result(rule, keep_pass_through=True)
         variant["pattern-sinks"] = rule["pattern-sinks"] + via_sinks(summaries.get(rule["id"], ()), is_js(rule))
         variant["message"] = rule["message"].strip() + KEYWORD_MARK + " [from $RET_FUNC()]"
         out.append(variant)
     return out
 
 
-def without_lookup_result(rule):
+def without_lookup_result(rule, keep_pass_through=False):
     """The rule's sanitizers minus lookup-result (python-web.yml, javascript-taint.yml) and the pass-through
     sanitizer, which would also clean get_cmd() when get_cmd is a returner: what the returner pass found overrides
     the name."""
-    return [s for s in rule.get(SANITIZERS, [])
-            if not any(mark in repr(s) for mark in (LOOKUP_RESULT_MARK, JS_LOOKUP_RESULT_MARK, PASS_THROUGH_MARK))]
+    marks = (LOOKUP_RESULT_MARK, JS_LOOKUP_RESULT_MARK) + (() if keep_pass_through else (PASS_THROUGH_MARK,))
+    return [s for s in rule.get(SANITIZERS, []) if not any(mark in repr(s) for mark in marks)]
 
 
 # Not $FIELD: the JS request sources bind that name (req.$FIELD).
