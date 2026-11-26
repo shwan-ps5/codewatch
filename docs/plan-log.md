@@ -2905,3 +2905,10 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    and login() of a non-SAML object). Not measured beyond these: this machine has one CPU, so a whole suite doesn't
    fit before the nightly. Expected: Python still flagged 13 to 10 if step 150 holds; check every suite's found
    counts and the apps' gone findings for the returner change.
+152. **A compiled pattern named `regex` isn't the regex module** (2026-11-26). The push hook for step 151 showed an
+   open hotspot on codewatch's own code, older than today's steps (present at 05955e9): regex-injection at
+   `summaries.assigned_calls`, `for regex in regexes ... regex.findall(text)`. The sink `regex.$FUNC($PATTERN, ...)`,
+   meant for the regex module, took the loop variable for it, so the searched text counted as a pattern. It now
+   skips a `regex` bound by a for loop, an assignment or a comprehension. Test:
+   `test_a_compiled_pattern_named_regex_is_not_the_regex_module` (fails without it; the module's own call still
+   found). The self-check on summaries.py is clean again.

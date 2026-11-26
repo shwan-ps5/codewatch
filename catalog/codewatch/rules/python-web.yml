@@ -2565,6 +2565,19 @@ rules:
           # The regex module's timeout bounds a slow pattern: a user's own pattern taken on purpose (recipes'
           # automations, regex.sub(rule[1], ..., timeout=REGEX_TIMEOUT)).
           - pattern-not: regex.$FUNC(..., timeout=$TIMEOUT, ...)
+          # A compiled pattern in a variable named regex isn't the regex module: its findall(text) takes the text
+          # to search, not a pattern (codewatch's own summaries.assigned_calls: `for regex in regexes:
+          # regex.findall(text)`, PLAN.md step 152).
+          - pattern-not-inside: |
+              for regex in $ITEMS:
+                ...
+          - pattern-not-inside: |
+              regex = $VALUE
+              ...
+          - pattern-not-inside: '[$X for regex in $ITEMS]'
+          - pattern-not-inside: '{$X for regex in $ITEMS}'
+          - pattern-not-inside: '($X for regex in $ITEMS)'
+          - pattern-not-inside: '{$N for $A in $B for regex in $ITEMS for $N in $C}'
           # A compile that only checks the pattern, alone in a try: compiling doesn't backtrack, and its result is
           # dropped (paperless-ngx's validate_regex_pattern, before matching with a timeout elsewhere).
           - pattern-not-inside: |
