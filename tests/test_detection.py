@@ -2951,6 +2951,20 @@ def test_a_compiled_pattern_named_regex_is_not_the_regex_module(tmp_path):
     assert found == {("app.py", 17, "regex-injection")}
 
 
+def test_a_request_pattern_compiled_into_a_variable_named_regex_is_found(tmp_path):
+    """PLAN.md step 154: step 152's exclusions for a compiled pattern named regex hid the compile itself, `regex =
+    re.compile(user_pattern)`; they belong to the regex module's calls only."""
+    if not Semgrep().available():
+        pytest.skip("semgrep not installed")
+    found = semgrep_vulnerabilities(tmp_path, {"app.py": (
+        "import re\nfrom fastapi import FastAPI\n\napp = FastAPI()\n\n\n"
+        "@app.get('/grep')\n"
+        "def grep(expr: str, body: str):\n"
+        "    regex = re.compile(expr, re.IGNORECASE)\n"
+        "    return {'hits': [m.group(0) for m in regex.finditer(body)]}\n")})
+    assert found == {("app.py", 9, "regex-injection")}
+
+
 def test_a_path_name_or_extension_is_not_a_file_opened(tmp_path):
     """paperless-ngx: Path(str(document.filename)).suffix reads the extension; nothing is opened."""
     if not Semgrep().available():
