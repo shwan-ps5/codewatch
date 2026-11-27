@@ -139,7 +139,8 @@ by about one case a day. JavaScript and PHP rule work waits until then; their ga
    test containment (step 150: archivy and Agent Zero quiet at their fixes, confirmed 2026-11-27; swingmusic
    keeps its admin-only dir browser and a path resolved before its check), then redirect helpers that keep only
    local paths (step 151: MobSF, GHSA-jwxw and araa-search quiet at their fixes, confirmed; no lost detections or
-   gone app findings). Still flagged 15 to 10 (step 154).
+   gone app findings). Still flagged 15 to 10 (step 154). Next for path traversal: a raw path's `startswith` prefix test clears it today (Bazarr, step 155);
+   count it only on a resolved or normalised path.
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 4. Each morning: read the nightly, review topic 16's batches and read the gap notes (a still-flagged note's probe
