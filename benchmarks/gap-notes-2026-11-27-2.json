@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-27-2",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-27 (PLAN.md step 155)",
   "method": "The whole of ~/codewatch-research/gaps/misses.tsv: one row (check-quotes, cve-pairs-python, CVE-2026-137585), so one note was written and none was skipped. I read the fix commit 9ea62688dfc2bd56ed11f6352653eaaf68c2f758's message and diff (gh api repos/morpheus65535/bazarr/commits/SHA) and bazarr/app/ui.py at the fix's parent 20dcb2666c4e25f7a2606efd4b6713f5a3850889 and at the fix (gh api contents?ref=..., raw), 2 s between calls. The earlier note's explanation of the miss was also checked against the shared validated-guard sanitizer in catalog/codewatch/rules/python-web.yml (defined at the command-injection rule and reused by codewatch.python.web.path-traversal, including the `if <... $X.startswith(...) ...>: ... return ...` and `if <... $X not in $ALLOWED ...>:` forms); no scan was run. 0 rows of misses.tsv remain unread.",
   "notes": [
     {

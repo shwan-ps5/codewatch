@@ -1,6 +1,6 @@
 {
   "batch": "gap-notes-2026-11-27-1",
-  "status": "research only: not read yet",
+  "status": "read 2026-11-27 (PLAN.md step 155)",
   "method": "The whole of ~/codewatch-research/gaps/misses.tsv, one row (missed, cve-pairs-python, CVE-2026-137585); the file had no other Python rows and no JavaScript or PHP rows, so only this case was noted and none was skipped. I read the fix commit 9ea62688dfc2bd56ed11f6352653eaaf68c2f758's message and diff (gh api repos/morpheus65535/bazarr/commits/SHA) and bazarr/app/ui.py at the fix's parent 20dcb2666c4e25f7a2606efd4b6713f5a3850889 (gh api contents?ref=..., raw), 2 s between the two calls. The explanation of the miss is read from catalog/codewatch/rules/python-web.yml (the path-traversal rule's web-sources, propagators and sanitizers); no scan was run. 0 rows of misses.tsv remain unread.",
   "notes": [
     {
