@@ -445,16 +445,6 @@ rules:
           - patterns:
               - pattern-either:
                   - pattern-inside: |
-                      if <... $X.startswith(...) ...>:
-                        ...
-                        return ...
-                      ...
-                  - pattern-inside: |
-                      if <... $X.startswith(...) ...>:
-                        ...
-                        raise ...
-                      ...
-                  - pattern-inside: |
                       if <... $X.endswith(...) ...>:
                         ...
                         return ...
@@ -817,6 +807,14 @@ rules:
               - pattern-not-inside: |
                   if <... not $X in $ALLOWED ...>:
                     ...
+              # Nor under an `or`, which lets a value that isn't in the list through on the other test: `if path in
+              # pwa_assets or path.startswith('workbox-'): return send_file(...)` (Bazarr, PLAN.md step 156).
+              - pattern-not-inside: |
+                  if $X in $ALLOWED or $OTHER:
+                    ...
+              - pattern-not-inside: |
+                  if $OTHER or $X in $ALLOWED:
+                    ...
               # Never the request's own mappings: `if not ("hitId" in request.args): raise` checks that a key is
               # there and says nothing about the values (psiturk GHSA-9mq4-9556-6qxq lost every finding below it).
               - metavariable-regex:
@@ -856,6 +854,23 @@ rules:
               - metavariable-regex:
                   metavariable: $EXPECTED
                   regex: '^(?![a-z_][a-z0-9_]*$)(?!.*\b(request|req|form|args|params|data|query|body|json|POST|GET)\b)'
+      # A prefix test that ends the request: `if not page.startswith("/"): return`. Every rule but path traversal,
+      # which takes it only on a resolved path: `path.startswith('workbox-')` doesn't stop `workbox-../../x`
+      # (Bazarr CVE-2026-137585, PLAN.md step 156).
+      - &prefix-guard
+        patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if <... $X.startswith(...) ...>:
+                    ...
+                    return ...
+                  ...
+              - pattern-inside: |
+                  if <... $X.startswith(...) ...>:
+                    ...
+                    raise ...
+                  ...
+          - pattern: $X
       # Used only where a check said yes: `if is_safe_url(x): return redirect(x)` (GHSA-6rmf-cv6p-4h27).
       - &checked-inside
         patterns:
@@ -1048,6 +1063,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1083,6 +1099,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1180,6 +1197,72 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      # A prefix test counts only on a resolved or normalised path (Bazarr CVE-2026-137585 at its fix:
+      # `fullpath = os.path.realpath(os.path.join(base, path))`, then `if not fullpath.startswith(...)`), never
+      # on the raw value: `path.startswith('workbox-')` lets `workbox-../../etc/passwd` through.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if <... $X.startswith(...) ...>:
+                    ...
+                    return ...
+                  ...
+              - pattern-inside: |
+                  if <... $X.startswith(...) ...>:
+                    ...
+                    raise ...
+                  ...
+          - pattern-either:
+              - pattern-inside: |
+                  $X = os.path.realpath(...)
+                  ...
+              - pattern-inside: |
+                  $X = os.path.abspath(...)
+                  ...
+              - pattern-inside: |
+                  $X = os.path.normpath(...)
+                  ...
+              - pattern-inside: |
+                  $X = $P.resolve(...)
+                  ...
+              - pattern-inside: |
+                  $X = str($P.resolve(...))
+                  ...
+          - pattern: $X
+      # The same, inside a branch whose else ends the request, used after it (tiny-scientist GHSA-rrgf at its fix:
+      # `if pdf_path.startswith("/api/files/"):` resolves and checks the path, `else: return ...`, then
+      # os.path.exists(path)). Written `if E:`: the analysis copy makes each else its own if
+      # (else_branches.split_else).
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if $COND:
+                    ...
+                    $X = os.path.$NORM(...)
+                    ...
+                    if <... $X.startswith(...) ...>:
+                      ...
+                      return ...
+                    ...
+                  if E:
+                    ...
+                    return ...
+                  ...
+              - pattern-inside: |
+                  if $COND:
+                    ...
+                    $X = os.path.$NORM(...)
+                    ...
+                    if <... $X.startswith(...) ...>:
+                      ...
+                      raise ...
+                    ...
+                  if E:
+                    ...
+                    raise ...
+                  ...
+          - metavariable-regex: {metavariable: $NORM, regex: ^(realpath|abspath|normpath)$}
+          - pattern: $X
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1461,6 +1544,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1721,6 +1805,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1790,6 +1875,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1887,6 +1973,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -1968,6 +2055,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *checked-or-replaced
       - *known-safe
@@ -2098,6 +2186,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -2159,6 +2248,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -2206,6 +2296,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -2322,6 +2413,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -2421,6 +2513,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *checked-or-replaced
       - *known-safe
@@ -2553,6 +2646,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -2616,6 +2710,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result
@@ -2668,6 +2763,7 @@ rules:
       - *request-path
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *checked-or-replaced
       - *known-safe
@@ -2974,6 +3070,7 @@ rules:
     pattern-propagators: *propagators
     pattern-sanitizers:
       - *validated-guard
+      - *prefix-guard
       - *checked-inside
       - *known-safe
       - *lookup-result

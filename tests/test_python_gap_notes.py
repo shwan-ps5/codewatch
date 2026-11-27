@@ -444,3 +444,63 @@ def test_redirect_helpers_that_keep_only_local_paths(tmp_path):
             "        return self.params.get('to', return_to)\n")})
     assert found == {("app/views.py", 49, "open-redirect"), ("app/views.py", 54, "open-redirect"),
                      ("app/views.py", 62, "open-redirect")}
+
+
+@semgrep
+def test_a_prefix_test_on_the_raw_path_does_not_clear_it(tmp_path):
+    """Bazarr CVE-2026-137585's note (PLAN.md step 156): `if path in pwa_assets or path.startswith('workbox-'):
+    return send_file(os.path.join(build, path))`. A prefix test on the raw path doesn't stop `workbox-../../x`, and
+    membership under an `or` doesn't prove membership. Clear: the fix's prefix test on a resolved path, a plain
+    membership test, other rules' prefix tests (a redirect kept to local paths), and a path resolved and checked in a
+    branch whose else returns (tiny-scientist GHSA-rrgf at its fix)."""
+    found = semgrep_vulnerabilities(tmp_path, {"app/ui.py": (
+        "import os\n"
+        "from pathlib import Path\n\n"
+        "from flask import Blueprint, redirect, request, send_file\n\n"
+        "bp = Blueprint('ui', __name__)\n"
+        "BUILD = os.path.join(os.path.dirname(__file__), 'build')\n"
+        "ASSETS = ['sw.js', 'manifest.webmanifest']\n\n\n"
+        "@bp.route('/raw/<path:path>')\n"
+        "def raw(path):\n"
+        "    if path in ASSETS or path.startswith('workbox-'):\n"
+        "        return send_file(os.path.join(BUILD, path))\n"
+        "    return 'no', 404\n\n\n"
+        "@bp.route('/prefix/<path:path>')\n"
+        "def prefix(path):\n"
+        "    if not path.startswith('static/'):\n"
+        "        return 'no', 404\n"
+        "    return send_file(os.path.join(BUILD, path))\n\n\n"
+        "@bp.route('/fixed/<path:path>')\n"
+        "def fixed(path):\n"
+        "    full = os.path.realpath(os.path.join(BUILD, path))\n"
+        "    if not full.startswith(os.path.realpath(BUILD) + os.sep):\n"
+        "        return 'no', 404\n"
+        "    return send_file(full)\n\n\n"
+        "@bp.route('/resolved/<path:path>')\n"
+        "def resolved(path):\n"
+        "    target = (Path(BUILD) / path).resolve()\n"
+        "    if not str(target).startswith(BUILD + os.sep):\n"
+        "        return 'no', 404\n"
+        "    return send_file(target)\n\n\n"
+        "@bp.route('/listed/<path:path>')\n"
+        "def listed(path):\n"
+        "    if path in ASSETS:\n"
+        "        return send_file(os.path.join(BUILD, path))\n"
+        "    return 'no', 404\n\n\n"
+        "@bp.route('/next')\n"
+        "def after_login():\n"
+        "    target = request.args.get('next', '/')\n"
+        "    if not target.startswith('/') or target.startswith('//'):\n"
+        "        return redirect('/')\n"
+        "    return redirect(target)\n\n\n"
+        "@bp.route('/branch', methods=['POST'])\n"
+        "def branch():\n"
+        "    wanted = request.json.get('path', '')\n"
+        "    if wanted.startswith('/files/'):\n"
+        "        full = os.path.abspath(os.path.join(BUILD, wanted[len('/files/'):]))\n"
+        "        if not full.startswith(os.path.abspath(BUILD) + os.sep):\n"
+        "            return 'no', 403\n"
+        "    else:\n"
+        "        return 'no', 403\n"
+        "    return send_file(full)\n")})
+    assert found == {("app/ui.py", 14, "path-traversal"), ("app/ui.py", 22, "path-traversal")}

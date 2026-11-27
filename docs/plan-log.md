@@ -2936,3 +2936,18 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    validated-guard's `if <... $X.startswith(...) ...>: ... return ...` clears the raw path, though a prefix test
    on an unresolved path can't stop `..`. A lead for path traversal: a startswith test should count only on a
    resolved or normalised path (the fix's own check), which needs care because validated-guard is shared.
+156. **A prefix test on a raw path doesn't clear it** (2026-11-27). From step 155's Bazarr note. (1) validated-guard's
+   `if <... $X.startswith(...) ...>: ... return/raise` is now its own anchor, prefix-guard, used by every rule as
+   before except path traversal, which takes it only on a value assigned from os.path.realpath/abspath/normpath or
+   .resolve(): `path.startswith('workbox-')` lets `workbox-../../etc/passwd` through. (2) validated-guard's
+   membership test no longer clears a value under `or` (`if path in ASSETS or ...:`), for every rule: the other
+   test can let a value through that isn't in the list. (3) GHSA-rrgf (tiny-scientist) at its fix resolves and
+   checks inside `if pdf_path.startswith("/api/files/"):` with `else: return`, and used the path after it; it had
+   been quiet only through the raw prefix test, so that shape is accepted now, written `if E:` because the analysis
+   copy turns each else into its own if (else_branches.split_else). Cases (devtools, 45 Python path-traversal
+   pairs; mlflow GHSA-wqmh, clawmetry, GHSA-f63h and GHSA-9crj left out for time): Bazarr found at 79, quiet at
+   its fix; GHSA-rrgf unchanged after (3); swingmusic gains lines 148 and 152 on its vulnerable side in review
+   mode; no other change. Test: `test_a_prefix_test_on_the_raw_path_does_not_clear_it` (fails without (1)+(2),
+   and without (3); controls: the fix's realpath check, a pathlib resolve, a plain membership test, a redirect's
+   prefix test). Expected tonight: Python 69 to 70 found; check other rules' found and still-flagged counts and
+   the apps for (2).
