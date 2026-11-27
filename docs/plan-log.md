@@ -2927,3 +2927,12 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    which change lost it, and the test uses another shape. Test:
    `test_a_request_pattern_compiled_into_a_variable_named_regex_is_found` (fails without it). No new or gone app
    findings; tests 385 passed. Expected tonight: Copilot back to 33 and 49.
+155. **Research batches 2026-11-27 new to new-4 and gap notes 2026-11-27-1 and -2 read** (8 read, 0 accepted).
+   Rejections kept: onnxmltools (both ids: the fix PR is still open, and it's a library reading a model file),
+   tastyigniter (both ids already read as their GHSAs), Flask-AppBuilder CVE-2026-137703 (framework code),
+   lscache_wp (the fix only drops query arguments; no dangerous call in it), Webmin (both ids: Perl CGI). Gap note
+   on Bazarr CVE-2026-137585, quotes confirmed by the second note: `if path in pwa_assets or
+   path.startswith('workbox-'): return send_file(os.path.join(build, path))`. The note's probe gets no finding:
+   validated-guard's `if <... $X.startswith(...) ...>: ... return ...` clears the raw path, though a prefix test
+   on an unresolved path can't stop `..`. A lead for path traversal: a startswith test should count only on a
+   resolved or normalised path (the fix's own check), which needs care because validated-guard is shared.
