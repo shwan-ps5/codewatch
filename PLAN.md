@@ -28,7 +28,7 @@ that file, not here, and keep them short: what changed, the case behind it, what
 step gives counts, what was kept, rejections that set a new precedent and any problem found; the batch TSVs hold
 every other reason. This file holds only what is true now: update the sections below when a step changes them.
 
-## Where things stand (nightly 2026-11-26, commit c04c725)
+## Where things stand (nightly 2026-11-27, commit 801551a)
 
 Verdict mode counts findings that claim a vulnerability; review mode adds hotspots. CVE pairs: found = flagged
 before the fix, still flagged = flagged after it (the false-alarm measure).
@@ -37,11 +37,11 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 |---|---|---|
 | OWASP Benchmark Python (tuned) | 100% found, 0% false alarms | 100%, 35% |
 | SecurityEval (tuned) | 50/121 | 77/121 |
-| SecurityEval Copilot / InCoder (held out) | 34% / 31%, 0% / 0% false alarms | 51% / 47%, 6% / 0% |
+| SecurityEval Copilot / InCoder (held out) | 33% / 31%, 0% / 0% false alarms | 50% / 47%, 6% / 0% |
 | Juice Shop (tuned) | 15/35 | 17/35 |
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
-| cve-pairs-python (108; 109 after step 148) | 69 found, 15 still flagged | 72, 25 |
+| cve-pairs-python (109) | 69 found, 10 still flagged | 73, 21 |
 | cve-pairs-python-frontend (32) | 4, 0 | 16, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
@@ -126,20 +126,20 @@ Housekeeping:
 ## Next steps
 
 Target (agreed 2026-11-23): Python first until `cve-pairs-python` verdict detection passes 70% (64 of 109, 59%, on
-2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25; 67 of 107, 63%, after step 143 dropped three cases no rule should fix; 108 cases after step 145; 69 of 108, 64%, on 2026-11-26; 109 cases after step 148, so 77 needed), with still-flagged fixes not rising. Measure by misses
+2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25; 67 of 107, 63%, after step 143 dropped three cases no rule should fix; 108 cases after step 145; 69 of 108, 64%, on 2026-11-26; 69 of 109, 63%, on 2026-11-27, so 77 needed), with still-flagged fixes not rising. Measure by misses
 and the miss rate, not finds: the suites grew faster than the finds (Python misses 22 to 45 from 2026-11-06 to 2026-11-23), and with topic 17 done they now grow
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
 
-1. The 40 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
+1. The 40 Python misses (Bazarr CVE-2026-137585, added in step 148, is one) (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E). From step 141 the gap runner also
-   checks those notes' quotes (check-quotes) and explains the 15 fixes still flagged (still-flagged notes, with a
+   checks those notes' quotes (check-quotes) and explains the 10 fixes still flagged (still-flagged notes, with a
    safe look-alike probe): use both before writing a rule. Step 144 won Langflow GHSA-v798 (compile() alone no longer a sink; to
    confirm in the nightly) and sorted the other found-probe cases by what each needs (none a small rule; roxy-wi's
    double-quoted `shlex.quote` and pgAdmin's SQL templates are the nearest). Step 146: for still-flagged fixes, path helpers that resolve and
-   test containment (step 150: archivy and Agent Zero quiet at their fixes, to confirm in the nightly; swingmusic
+   test containment (step 150: archivy and Agent Zero quiet at their fixes, confirmed 2026-11-27; swingmusic
    keeps its admin-only dir browser and a path resolved before its check), then redirect helpers that keep only
-   local paths (step 151: MobSF, GHSA-jwxw and araa-search quiet at their fixes; its returner change touches
-   every rule, JS too, so check the nightly for lost detections and gone app findings).
+   local paths (step 151: MobSF, GHSA-jwxw and araa-search quiet at their fixes, confirmed; no lost detections or
+   gone app findings). Still flagged 15 to 10 (step 154).
 2. Step 42 I: browser JS writing fetched or form data as HTML (the largest front-end group; step 131 started it).
 3. Step 42 H, templates: stored fields into `|safe` / autoescape-off templates, SQLAlchemy models included.
 4. Each morning: read the nightly, review topic 16's batches and read the gap notes (a still-flagged note's probe

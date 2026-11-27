@@ -2916,3 +2916,14 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    (both ids: a training library, a local checkpoint, the fix spread over a merged branch), Airflow CVE-2026-120353
    (14 files, framework and provider code), lastversion, torchvision and ezdxf (libraries; archives and files the
    user supplies), pyfda (a desktop app, two fix commits).
+154. **Nightly 2026-11-27 read; step 152 narrowed** (commit 801551a). Python verdict 69 of 109 found (Bazarr,
+   new in step 148, missed), still flagged 15 to 10; review 72 to 73 found, 25 to 21 still flagged. Steps 150 and
+   151 held: archivy, Agent Zero GHSA-8j45, MobSF GHSA-8m9j, GHSA-jwxw and araa-search quiet at their fixes
+   (jwxw's fixed side keeps a registry-rule hotspot in review mode), swingmusic 9 to 3 lines, CVE-2026-63502 found
+   in review mode. No other suite lost a detection except the held-out SecurityEval Copilot answers, 33 to 32
+   (verdict) and 49 to 48 (review): CWE-730 codeql_2, `regex = re.compile(request value)`. Step 152's exclusions
+   for a compiled pattern named `regex` covered the assignment, so the `re.compile` inside it stopped being a sink.
+   They now apply to `regex.$FUNC` only, which is what step 152 meant; the held-out file was read only to find
+   which change lost it, and the test uses another shape. Test:
+   `test_a_request_pattern_compiled_into_a_variable_named_regex_is_found` (fails without it). No new or gone app
+   findings; tests 385 passed. Expected tonight: Copilot back to 33 and 49.
