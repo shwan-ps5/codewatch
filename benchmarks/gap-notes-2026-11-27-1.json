@@ -1,0 +1,37 @@
+{
+  "batch": "gap-notes-2026-11-27-1",
+  "status": "read 2026-11-27 (PLAN.md step 155)",
+  "method": "The whole of ~/codewatch-research/gaps/misses.tsv, one row (missed, cve-pairs-python, CVE-2026-137585); the file had no other Python rows and no JavaScript or PHP rows, so only this case was noted and none was skipped. I read the fix commit 9ea62688dfc2bd56ed11f6352653eaaf68c2f758's message and diff (gh api repos/morpheus65535/bazarr/commits/SHA) and bazarr/app/ui.py at the fix's parent 20dcb2666c4e25f7a2606efd4b6713f5a3850889 (gh api contents?ref=..., raw), 2 s between the two calls. The explanation of the miss is read from catalog/codewatch/rules/python-web.yml (the path-traversal rule's web-sources, propagators and sanitizers); no scan was run. 0 rows of misses.tsv remain unread.",
+  "notes": [
+    {
+      "id": "CVE-2026-137585",
+      "suite": "cve-pairs-python",
+      "cwe": [
+        22
+      ],
+      "category": "check",
+      "source": "bazarr/app/ui.py:71-72 (fix parent): @ui_bp.route('/<path:path>') on `def catch_all(path):` - the whole URL path after the hostname, a Flask <path:...> route parameter (the outer decorator @ui_bp.route('/', defaults={'path': ''}) at :70 only defaults it)",
+      "sink": "bazarr/app/ui.py:79 (fix parent): `return send_file(os.path.join(frontend_build_path, path))` (send_file) - the request path is joined to frontend/build and served, and os.path.join collapses '..', so a value such as workbox-../../../../etc/passwd names a file outside the build directory",
+      "between": "the branch at :78 is the only gate: `if path in pwa_assets or path.startswith('workbox-'):` - a three-name list and a bare prefix test, neither of which constrains '..' - and it is tested before authentication (:81-91 only runs for the paths that fall through), so the traversal is unauthenticated. `path` then goes unchanged into os.path.join(frontend_build_path, path) at :79 (frontend_build_path is built at :23) with no basename, normalisation or containment check before send_file. The miss: the prefix test sits in an `if` whose branch returns, which matches the shared validated-guard sanitizer `if <... $X.startswith(...) ...>: ... return ...` (catalog/codewatch/rules/python-web.yml), so tainted `path` is taken as sanitised exactly where the sink is; the positive `path in pwa_assets` membership test is not a sanitizer by itself (only a failed `not ... in ...` check is). Second explanation: sink (send_file on a path built with os.path.join).",
+      "fix": "normalises the joined path and returns 404 unless it starts with os.path.realpath(frontend_build_path) + os.sep, then serves the normalised path",
+      "probe": "import os\nfrom flask import Blueprint, send_file\n\nbp = Blueprint('assets', __name__)\nBASE = os.path.join(os.path.dirname(__file__), 'frontend', 'build')\nPWA = ['registerSW.js', 'manifest.webmanifest', 'sw.js']\n\n\n@bp.route('/', defaults={'path': ''})\n@bp.route('/<path:path>')\ndef catch_all(path):\n    if path in PWA or path.startswith('workbox-'):\n        return send_file(os.path.join(BASE, path))\n    return 'not found', 404\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_de48495d0ffev1ysPtbei6DZPS",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 2,
+    "turns": 40,
+    "tool_calls": 45,
+    "tool_errors": 0,
+    "chars_read": 233970,
+    "tokens": {
+      "input": 154134,
+      "cache_read": 2682496,
+      "output": 19996,
+      "reasoning": 0
+    },
+    "usd": 0.043
+  }
+}
