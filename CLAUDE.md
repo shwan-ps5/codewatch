@@ -26,6 +26,11 @@ real name, and never add one to commit messages, files or pull requests.
   - When a change alters what the README describes (the benchmark table and its paragraph, sources and sinks
     listed under Benchmarks, commands, setup), update the README in the same commit; refresh its benchmark table
     from the nightly at least weekly. Stale numbers in the README are public.
+  - The README leads with the untuned numbers ("How well it works": blind and held-out suites). Keep that table
+    current with the benchmark table, and regenerate `docs/rule-trust.md` (`benchmarks/rule_trust.py`) at the same
+    weekly refresh.
+  - `benchmarks/smoke.json` lists the CVE pairs CI re-scores on every push (`benchmarks/smoke.py`). A rule change
+    that moves one of them on purpose updates the list in the same commit and says why in the log.
 - Research-only agents (opencode or Ollama models on the maintainer's always-on desktop) follow `AGENTS.md`. They write candidate files
   only. A Claude session reviews those candidates before adding them to `suites.json`: check each open fix commit
   on GitHub against step 22's limits, and record the decisions as a step in `docs/plan-log.md`. `python3 -I benchmarks/reviewed.py
@@ -43,7 +48,8 @@ real name, and never add one to commit messages, files or pull requests.
   of that note against the rules as they are now. They come to the `research-gaps` branch and the pull request "Gap notes waiting to be read";
   `reviewed.py pending --gaps` lists them. Treat a note as a lead and check its quotes against the diff before
   writing a rule from it; mark the file read (status "read DATE (PLAN.md step N)") and merge as above.
-- Branches. `detection-gaps` is where all work lands and what the nightly measures. `research` and `research-gaps`
+- Branches. `detection-gaps` is where all work lands, what the nightly measures, and GitHub's default branch (since
+  2026-11-28). `research` and `research-gaps`
   carry only the runners' files and reach `detection-gaps` only through their pull requests. Merge each pull request
   as soon as its review is committed and CI passes, in the same session: a review left unmerged keeps the branch
   ahead, and the runner keeps adding to it. A review that a new batch overtook before the merge (the head moved
@@ -53,6 +59,9 @@ real name, and never add one to commit messages, files or pull requests.
 - Blind sets (`~/.cache/codewatch/blind*`, the `cve-pairs-blind-*` suites) are scanned once, at the end of a round,
   and never used to adjust rules. Held-out suites (SecurityEval Copilot/InCoder, Vulnerable-Code-Snippets JS) are
   measured, never tuned on.
+  On 2026-11-28 half of the round-2 Python blind cases (`benchmarks/blind-spent.json`, picked by
+  `int(sha256(id), 16) // 3 % 2 == 0`) were run once to check the tuned numbers. They're spent; the other half and
+  every JS and PHP blind suite stay sealed.
 - Every rule change gets a test in `tests/test_detection.py` that fails without it; record in the log (`docs/plan-log.md`) and
   `benchmarks/suites.json` which case drove it.
 - Before committing: `venv/bin/ruff check .` and `venv/bin/pytest -q -n auto`.

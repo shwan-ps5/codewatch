@@ -1,0 +1,28 @@
+{
+ "_about": "CVE fix pairs that every pull request re-scores in CI (benchmarks/smoke.py, the workflow's smoke job): each was found in verdict mode and quiet after its fix in the nightly of 2026-11-28, and each must stay so. Chosen across rules and from repositories small enough to fetch quickly; never from blind suites. A rule change that moves one on purpose updates this list in the same commit and says why in docs/plan-log.md.",
+ "cases": [
+  "GHSA-2689-cw26-6cpj",
+  "GHSA-8whx-v8qq-pq64",
+  "GHSA-9x43-5qcq-h79q",
+  "GHSA-6rmf-cv6p-4h27",
+  "GHSA-48rp-jc79-2264",
+  "GHSA-h454-rq3m-89rc",
+  "GHSA-rrgf-hcr9-jq6h",
+  "GHSA-3864-rp2m-2qfj",
+  "GHSA-vghm-8cjp-hjw6",
+  "GHSA-hq38-64gm-3w2c",
+  "GHSA-8j45-8v5h-63vj",
+  "GHSA-fghj-qqgj-7rxf",
+  "GHSA-2f7r-82r8-4h2g",
+  "GHSA-xf3h-4wh8-v749",
+  "GHSA-4q38-756g-c8c9",
+  "CVE-2026-137585",
+  "FIX-Linbreux-wikmd-8c3f1fd38c06",
+  "FIX-archivy-archivy-2565a9ab11d1",
+  "FIX-Extravi-araa-search-bda4154bfac3",
+  "GHSA-45r7-w6hj-284x",
+  "GHSA-2987-f6gf-82vj",
+  "CVE-2026-41167",
+  "GHSA-pm52-wwrw-c282"
+ ]
+}

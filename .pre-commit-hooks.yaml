@@ -1,0 +1,9 @@
+# For the pre-commit framework (pre-commit.com). Runs in codewatch's Docker image, which holds every analyzer, on
+# the files the commit changes; issues on changed lines block it, as `codewatch init --hook pre-commit` does.
+- id: codewatch
+  name: codewatch check
+  description: codewatch's analyzers on the staged files
+  language: docker
+  entry: codewatch check
+  pass_filenames: true
+  require_serial: true

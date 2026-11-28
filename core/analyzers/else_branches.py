@@ -6,12 +6,16 @@ statement, else branch included, so `else: return mark_safe(f"...{ext}...")` (th
 was cleared too. In the copy Semgrep scans (never run; every line and column kept), `else:` becomes `if E:` and
 `elif c:` becomes `if   c:`, so each branch is a statement of its own and only the checked one is inside the
 check. Taint still flows into both branches, as it would at run time.
+
+Rules are written against the source as people write it: `rules_for_copies` rewrites the `else:` lines of Python
+rules' patterns the same way before they run, so no rule has to know about the copy.
 """
 import ast
 import re
 
 ELSE_RE = re.compile(r"^(\s*)else(\s*):")
 ELIF_RE = re.compile(r"^(\s*)elif\b")
+IF_RE = re.compile(r"^(\s*)(?:if|elif)\b")
 
 
 def else_rows(tree, lines):
@@ -65,3 +69,38 @@ def split_else(source):
     except (SyntaxError, ValueError):
         return None
     return None if result == source else result
+
+
+def pattern_for_copies(pattern):
+    """A Semgrep pattern with each `else:` of an if statement written `if E:`, as split_else writes the copies.
+    An `else:` counts when the nearest line above it at its indentation starts with `if` or `elif` (not `for`,
+    `while` or `try`, whose else the copies keep)."""
+    lines = pattern.splitlines(keepends=True)
+    for row, line in enumerate(lines):
+        m = ELSE_RE.match(line)
+        if m and opened_by_if(lines[:row], len(m.group(1))):
+            lines[row] = ELSE_RE.sub(lambda m: m.group(1) + "if E" + m.group(2) + ":", line, count=1)
+    return "".join(lines)
+
+
+def opened_by_if(above, indent):
+    for line in reversed(above):
+        if not line.strip() or len(line) - len(line.lstrip()) > indent:
+            continue
+        return len(line) - len(line.lstrip()) == indent and IF_RE.match(line) is not None
+    return False
+
+
+def rules_for_copies(rules):
+    """Python rules with their patterns' if-statement `else:` lines written as the copies have them."""
+    return [rewritten_patterns(rule) if "python" in rule.get("languages", ()) else rule for rule in rules]
+
+
+def rewritten_patterns(node, key=""):
+    if isinstance(node, dict):
+        return {k: rewritten_patterns(v, k) for k, v in node.items()}
+    if isinstance(node, list):
+        return [rewritten_patterns(v, key) for v in node]
+    if isinstance(node, str) and key.startswith("pattern") and "else" in node:
+        return pattern_for_copies(node)
+    return node

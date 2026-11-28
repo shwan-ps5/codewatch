@@ -8,6 +8,62 @@ Self-hosted code-quality server: branch analysis, new-code tracking, quality gat
 
 Scans normally run **on the developer's machine** against the local working copy (private repos never leave it) and upload the results. The server can also clone and scan a repository URL itself.
 
+## How well it works
+
+The fairest numbers are from code the rules were never tuned on, so they come first. Detection is "found" in
+verdict mode, i.e. findings that claim a vulnerability.
+
+| Measure (never used to write or tune rules) | Result |
+|---|---|
+| Python CVE fix pairs, blind, round 2: 40 back-end cases (half of them, run once on 2026-11-28) | 11 of 40 found (28%), 3 still flagged after the fix; review mode 20 found, 9 still flagged |
+| Python front-end CVE fix pairs, blind, round 2: 10 cases (the same half) | 1 of 10 found; review mode 6 found, 4 still flagged |
+| Python CVE fix pairs, blind, round 1 | 2 of 5 found, 1 still flagged after its fix |
+| SecurityEval Copilot answers, Python (held out) | finds 34%, false alarms 0% |
+| SecurityEval InCoder answers, Python (held out) | finds 31%, false alarms 0% |
+| Vulnerable-Code-Snippets, JS/TS (held out) | 11 of 22 flagged |
+| Ordinary apps, three blind sets of four (Django, FastAPI, Express, NestJS) | false alarms in 2, 2 and 4 of the 4 apps |
+
+On the Python CVE pairs the rules were tuned on, codewatch finds 70 of 109 (64%). On advisories it has never
+seen, it finds 28% (11 of 40; with this few cases, roughly 15-44%). So most of the tuned number is the tuning,
+not the general ability. The blind run had other benchmarks running at the same time, and under load Semgrep can
+give up on slow rules, so a case or two may have dropped out. That doesn't come close to closing the gap. On ordinary apps it hasn't seen, expect some false alarms;
+[docs/rule-trust.md](docs/rule-trust.md) shows, rule by rule, how often each one is right on the CVE pairs and
+how often it fires on clean apps. Everything is in [Benchmarks](#benchmarks).
+
+**Scope.** Python web apps (Django, Flask, FastAPI) are the focus and where the rules are strongest. The
+JavaScript/TypeScript and PHP rules are earlier-stage (22 of 103 and 75 of 341 CVE pairs found). Other languages
+get the Semgrep registry and complexity checks only.
+
+## Quick start: check a repository
+
+No server needed. Every analyzer runs locally on the files, and nothing is uploaded.
+
+```bash
+docker build -t codewatch https://github.com/shwan-ps5/codewatch.git
+docker run --rm -v "$PWD:/src" codewatch check --all       # every file; issues are listed, blocking ones marked !
+```
+
+As a GitHub Actions step, after `actions/checkout` (pin a commit SHA):
+
+```yaml
+- uses: shwan-ps5/codewatch@<commit sha>
+  with:
+    strict: "false"   # "true": any open issue fails the job
+```
+
+As a [pre-commit](https://pre-commit.com) hook, run in the Docker image on the files a commit changes:
+
+```yaml
+- repo: https://github.com/shwan-ps5/codewatch
+  rev: <commit sha>
+  hooks:
+    - id: codewatch
+```
+
+Or from a clone: `pip install -e .`, `make tools`, then `venv/bin/codewatch check --all`. The server below adds
+history, new-code tracking, ratings and the quality gate. To run the server in Docker:
+`docker run -d -p 8100:8100 -v codewatch-data:/data -e CODEWATCH_ALLOWED_HOSTS=your.host --entrypoint /opt/codewatch/docker-serve.sh codewatch`.
+
 ## Server setup
 
 ```bash
@@ -139,24 +195,32 @@ Admins can press **Update rules now** (optionally upgrading the analyzers first)
 
 `codewatch benchmark` scans third-party code with published ground truth, pinned to a commit (never executed), and writes results to `benchmarks/results/`. Two modes are scored: **verdict** counts only findings that claim a vulnerability (data reaching a dangerous call, or a definite flaw such as a weak hash or an insecure cookie), which is what the Security rating uses; **review** adds security hotspots, i.e. everything a reviewer is asked to look at.
 
+Not tuned on (held out, or blind: scanned once, never used to adjust rules):
+
+| Suite | Verdict | Review |
+|---|---|---|
+| SecurityEval Copilot answers, manually labelled (held out) | finds 34%, false alarms 0% | finds 51%, false alarms 6% |
+| SecurityEval InCoder answers, manually labelled (held out) | finds 31%, false alarms 0% | finds 47%, false alarms 0% |
+| [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
+| Blind CVE fix pairs, round 2, half of the Python ones (run once on 2026-11-28): 40 back end, 10 front end | back end 11 of 40 found, 3 still flagged; front end 1 of 10 | back end 20 of 40, 9 still flagged; front end 6 of 10, 4 still flagged |
+| Blind CVE fix pairs, first round (never looked at before this run): 5 Python, 4 JS/TS | Python 2 of 5 found, 1 still flagged; JS 1 of 4, 1 still flagged | same, JS 2 still flagged |
+| Blind ordinary apps (Django, FastAPI, Express, NestJS; expected clean) | false alarms in 2 of 4 apps (12 findings, 10 in the Express app) | |
+| Second blind set of ordinary apps (Django, FastAPI, Express, NestJS), after two learning sets | false alarms in 2 of 4 apps (34 findings, 28 in the Django app); 2 real at code level | |
+| Third blind set of ordinary apps (Django, FastAPI, Express, NestJS), after three learning sets | false alarms in 4 of 4 apps (24 findings, 13 in the Express app); 2 real | |
+
+Tuned on (rules were written or adjusted from these, so they flatter codewatch):
+
 | Suite | Verdict | Review |
 |---|---|---|
 | [OWASP Benchmark for Python](https://github.com/OWASP-Benchmark/BenchmarkPython): 1,230 labelled cases, 14 CWEs | finds 100%, false alarms 0% | finds 100%, false alarms 35% |
 | [SecurityEval](https://github.com/s2e-lab/SecurityEval): 121 insecure Python samples filed by CWE | 50 of 121 flagged | 77 of 121 flagged |
-| SecurityEval Copilot answers, manually labelled (held out) | finds 34%, false alarms 0% | finds 51%, false alarms 6% |
-| SecurityEval InCoder answers, manually labelled (held out) | finds 31%, false alarms 0% | finds 47%, false alarms 0% |
 | [OWASP Juice Shop](https://github.com/juice-shop/juice-shop): 35 marked vulnerable challenges (JS/TS) | 15 of 35 flagged | 17 of 35 flagged |
-| [Vulnerable-Code-Snippets](https://github.com/snoopysecurity/Vulnerable-Code-Snippets): 22 JS/TS snippets (held out) | 11 of 22 flagged | 13 of 22 flagged |
 | [vulnerable-node SAST seeds](https://github.com/cr0hn/vulnerable-node/tree/master/sast): 12 seeds and 2 clean controls (JS) | finds 92%, false alarms 0% | finds 100%, false alarms 50% |
 | CVE fix pairs, Python: 109 advisories and fixes in web apps (vulnerable commit, then its fix) | 70 of 109 found, 10 still flagged after the fix | 74 of 109 found, 21 still flagged |
 | CVE fix pairs, Python front end: 32 advisories fixed in templates or front-end JS | 4 of 32 found | 16 of 32 found, 8 still flagged |
 | CVE fix pairs, JS/TS: 103 advisories in web apps | 22 of 103 found, 9 still flagged | 46 of 103 found, 32 still flagged |
 | CVE fix pairs, PHP: 341 advisories in PHP apps and CMSs | 75 of 341 found, 27 still flagged | 83 of 341 found, 36 still flagged |
 | CVE fix pairs whose input isn't an HTTP request (desktop, bot, agent and MCP tool input): 15 Python, 38 JS/TS | 5 of 53 found, 2 still flagged | 16 of 53 found, 11 still flagged |
-| Blind CVE fix pairs, first round (never looked at before this run): 5 Python, 4 JS/TS | Python 2 of 5 found, 1 still flagged; JS 1 of 4, 1 still flagged | same, JS 2 still flagged |
-| Blind ordinary apps (Django, FastAPI, Express, NestJS; expected clean) | false alarms in 2 of 4 apps (12 findings, 10 in the Express app) | |
-| Second blind set of ordinary apps (Django, FastAPI, Express, NestJS), after two learning sets | false alarms in 2 of 4 apps (34 findings, 28 in the Django app); 2 real at code level | |
-| Third blind set of ordinary apps (Django, FastAPI, Express, NestJS), after three learning sets | false alarms in 4 of 4 apps (24 findings, 13 in the Express app); 2 real | |
 
 The CVE pairs are real projects' advisories: a finding of the advisory's weakness near the lines its fix changed counts as found (or one the fix makes go away, when the fixed side's scan finished every rule), and one that survives the fix as a false alarm. The non-blind pairs were used to adjust rules (which ones, and for what, is in `benchmarks/suites.json`); the blind ones and the blind apps were scanned once, at the end, without adjusting anything, and read case by case the JS blind "find" is the same noise on both sides of its fix. The blind apps show that zero false alarms on the apps used for tuning doesn't carry over: fixed-prefix relative redirects, requests to fixed hosts with an encoded query, and JSON written to an event stream were all flagged. The first two shapes are now handled, learned from five other ordinary apps (flaskbb, outline, proshop-v2 and two Express boilerplates, listed in `PLAN.md`), and five more in the second blind set's frameworks (wger, taiga, dispatch, immich, linkwarden: 86 false alarms down to 1); the second blind set, chosen and pinned before any scan, says it mostly doesn't: the Express and NestJS apps were clean, but the Django app had 28 false alarms of shapes the learning apps never showed (a project's own redirect allowlist function, a `reverse()` URL with a query string appended, session writes as trust-boundary findings, SHA-1 keyed with the secret key). The third blind set, after a third learning set aimed at Django, did worse by apps: Python is now close (3 false alarms in two apps) but every JavaScript app brought shapes of its own (SVG badges and RSS feeds rendered by escaping libraries, cache and Redis lookups keyed by request data, an opt-in TLS bypass, a cookie made secure through config). A fourth learning set, mostly Express apps, took JavaScript's false alarms there from 37 to 27. The focus is now Python web apps and the JavaScript they ship. The CVE pairs have grown from advisories GitHub reviewed (PyPI, npm) and, since 2026-11-03, from advisories it never reviews, which is where apps that aren't published as packages get theirs, since 2026-11-13 from Python and JS/TS app CVEs that have no GitHub advisory at all (read from the CVE list), and since 2026-11-20 from security fixes apps made without any advisory or CVE (found through GitHub's commit search; ids `FIX-OWNER-REPO-SHA`): each fix read and accepted or rejected with a reason, and a third of the accepted ones split off as blind before any scan. The table above is the nightly run of 2026-11-28. PHP has had rules since 2026-11-14, written from the first 197 reviewed PHP app and CMS pairs (where Semgrep's registry rules alone found none); `cve-pairs-php` has since grown to 342, the rest scored only after the rules were written. The blind CVE suites of this round (60 Python and JS/TS suites with 219 cases, and 36 PHP suites with 226) and a fourth blind set of Python apps with JavaScript front ends wait for the end of the round. The pairs without an HTTP request are kept apart because codewatch has no sources for that input yet. Of the Python pairs' still-flagged fixes, the ones read as incomplete fixes are counted as real findings. Details: `PLAN.md` for where things stand, `docs/plan-log.md` for every step and the case behind it.
 
@@ -182,6 +246,12 @@ GitHub's CodeQL (2.27.4, its default code-scanning queries for verdict and secur
 | Input that isn't an HTTP request (Python, JS/TS) | 32 | 2, 2 (review 3) | 2, 0 | 9, 6 |
 
 On Python web apps codewatch finds about twice as many (19 found by both, 28 by codewatch only, 4 by CodeQL only) with about as many false alarms. On JavaScript the two tie in verdict mode with different cases (2 in common), and CodeQL leaves fewer findings on fixed code; the six only it finds are mostly path traversal, codewatch's weakest JavaScript area. CodeQL's results are a measurement only: no rule was written from them. CodeQL's terms allow it only on code under an OSI-approved licence (anything else needs a paid GitHub licence), so `benchmarks/codeql_compare.py` scans a case only when its licence is one; CodeQL itself is not part of codewatch and has to be installed separately (the script's docstring says how). Details in `docs/plan-log.md`, step 71.
+
+Meta's Pysa (open source, follows data across functions) was tried on 2026-11-28 as a second comparison, and not
+run on the pairs. Pysa 0.10 now needs Pyrefly for types, and its bundled Flask models name Werkzeug classes
+removed in Werkzeug 2.1. On a ten-line Flask app with a shell command and a file path built from `request.args`,
+it reported neither, even with current source models added. Its four reports were all inside Flask's own code. A
+fair comparison needs Pysa models written for each framework, which is a project of its own.
 
 ## Claude / MCP
 
@@ -220,6 +290,11 @@ venv/bin/python manage.py scan my-app --all-branches --fail-on-gate
 
 ## Development
 
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). [docs/architecture.md](docs/architecture.md) explains how a scan flows,
+[docs/writing-rules.md](docs/writing-rules.md) where a rule change goes and the tests it needs, and
+[docs/benchmarks.md](docs/benchmarks.md) how to reproduce every number here. Work lands on `detection-gaps`, the default
+branch. `main` is fast-forwarded from it weekly, after a clean nightly run.
+
 ```bash
 make test    # pytest across all CPUs (pytest-xdist); accessibility tests are skipped if tools/ isn't installed
 make lint
@@ -227,6 +302,9 @@ make lock    # new analyzer versions into tools/*.lock (hashed); review, re-run 
 venv/bin/python benchmarks/devtools.py bench [SUITE...]   # score suites, in parallel
 venv/bin/python benchmarks/devtools.py repos DIR...        # Semgrep findings on whole projects, in parallel
 venv/bin/python benchmarks/devtools.py cases GHSA-...     # only the CVE pairs a change targets, nothing written
+venv/bin/python benchmarks/devtools.py copy FILE.py       # the rewritten copy of a Python file that Semgrep scans
+venv/bin/python benchmarks/smoke.py                       # the CVE pairs CI re-scores on every push
+venv/bin/python benchmarks/rule_trust.py > docs/rule-trust.md   # per-rule evidence from the latest nightly
 benchmarks/nightly.sh [BRANCH]                            # the full verification, unattended, with a dated report
 ```
 

@@ -42,6 +42,7 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | Vulnerable-Code-Snippets JS (held out) | 11/22 | 13/22 |
 | vulnerable-node seeds | 11/12, 0 false alarms | 12/12, 1 |
 | cve-pairs-python (109) | 70 found, 10 still flagged | 74, 21 |
+| blind round 2, half the Python cases (40; run once, 2026-11-28, step 160) | 11 found (28%), 3 still flagged | 20, 9 |
 | cve-pairs-python-frontend (32) | 4, 0 | 16, 8 |
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
@@ -101,7 +102,8 @@ Ground truth:
 - 5 cases in `cve-pairs-blind-php-35` have a rejected other id (step 102); keep them unread and re-judge after that
   suite's end-of-round scan (step 103).
 - End of the round, not yet run: blind set 4 (redash, InvenTree, pretalx, fief) and the blind CVE suites, each
-  scanned once, measurement only. Caveats for the report: `-python-5` and the early JavaScript blind fixes were
+  scanned once, measurement only. Half the round-2 Python blind cases were run early on 2026-11-28 (step 160,
+  `benchmarks/blind-spent.json`); the other half and every JS and PHP blind suite stay sealed. Caveats for the report: `-python-5` and the early JavaScript blind fixes were
   never sized (steps 27, 29); GHSA-hh2q and GHSA-h8pc were partly seen (report with and without them); isard's
   summary line was seen (step 110).
 
@@ -120,8 +122,15 @@ Speed and stability:
 Housekeeping:
 - After 2026-11-30: drop the minimatch/glob override in `tools/package.json` once on typescript-eslint >= 8.73
   (step 98).
-- A container for server-side scans of untrusted repositories (step 20): not built.
+- A container for server-side scans of untrusted repositories (step 20): a Dockerfile exists since step 160
+  (`codewatch check` and the server), but the server doesn't yet run each scan in a container of its own.
 - Comparison (step 71): CodeQL measured once; the cases only CodeQL finds are still to be read as ordinary misses.
+  Pysa (step 160): tried, not measured. Its bundled Flask models are stale, and it found nothing on a toy app;
+  a fair run needs framework models written first.
+- Rule exclusions (step 160): `python-web.yml` has over 130 `pattern-not*` clauses, many for one case. Prefer a
+  shared anchor or an analysis-copy rewrite to a new one (docs/writing-rules.md). Shrinking the existing ones is
+  open.
+- No release yet: no tags, nothing on PyPI (version 0.1.0).
 
 ## Next steps
 
@@ -129,6 +138,11 @@ Target (agreed 2026-11-23): Python first until `cve-pairs-python` verdict detect
 2026-11-23; 66 of 110, 60%, on 2026-11-24; 67 of 110, 61%, on 2026-11-25; 67 of 107, 63%, after step 143 dropped three cases no rule should fix; 108 cases after step 145; 69 of 108, 64%, on 2026-11-26; 69 of 109, 63%, on 2026-11-27; 70 of 109, 64%, on 2026-11-28, so 77 needed), with still-flagged fixes not rising. Measure by misses
 and the miss rate, not finds: the suites grew faster than the finds (Python misses 22 to 45 from 2026-11-06 to 2026-11-23), and with topic 17 done they now grow
 by about one case a day. JavaScript and PHP rule work waits until then; their gap notes keep coming as leads.
+
+Step 160's blind run says the tuned figure doesn't carry over: 28% (11 of 40) on unseen Python advisories against
+64% on the tuned suite. Reaching 70% on `cve-pairs-python` alone would mostly measure tuning. Prefer changes that
+fix a class of misses (a shape, a source, a framework) over ones that win a single case, and judge the target
+again by the sealed half at the end of the Python push.
 
 1. The 39 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E). From step 141 the gap runner also
