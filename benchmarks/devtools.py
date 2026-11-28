@@ -7,6 +7,7 @@
     venv/bin/python benchmarks/devtools.py repos [--via|--entry|--messages] DIR...
                                                                      # full Semgrep analyzer on projects (git or not)
     venv/bin/python benchmarks/devtools.py owasp [CATEGORY...]      # OWASP Python cases scored wrong (verdict mode)
+    venv/bin/python benchmarks/devtools.py copy FILE.py              # the rewritten copy Semgrep scans, as a diff
     venv/bin/python benchmarks/devtools.py timings FILE [PREVIOUS]   # where a bench run's time went; bench writes
                                                                      # FILE when CODEWATCH_BENCH_TIMINGS names it
 
@@ -176,6 +177,23 @@ def owasp(categories):
         print(m["category"], m["test"], "FP" if m["flagged"] else "FN", related)
 
 
+def copy(files):
+    """Each Python file's analysis copy (multi_tools.analysis_copy) as a unified diff against the file: what the
+    rules actually match, with every line and column kept. Django URL arguments aren't marked (that needs the
+    project's urls.py)."""
+    import difflib
+
+    from core.analyzers.multi_tools import analysis_copy
+    for name in files:
+        source = Path(name).read_text()
+        copied = analysis_copy(source)
+        if copied is None:
+            print(f"{name}: scanned as written")
+            continue
+        sys.stdout.writelines(difflib.unified_diff(source.splitlines(keepends=True), copied.splitlines(keepends=True),
+                                                   name, f"{name} (analysis copy)"))
+
+
 def main(argv):
     if not argv or argv[0] not in COMMANDS:
         sys.exit(__doc__)
@@ -186,7 +204,8 @@ def main(argv):
         COMMANDS[command](rest)
 
 
-COMMANDS = {"bench": bench, "cases": cases, "rules": rules, "repos": repos, "owasp": owasp, "timings": timings}
+COMMANDS = {"bench": bench, "cases": cases, "rules": rules, "repos": repos, "owasp": owasp, "timings": timings,
+            "copy": copy}
 
 if __name__ == "__main__":
     main(sys.argv[1:])

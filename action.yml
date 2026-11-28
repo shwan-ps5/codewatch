@@ -1,0 +1,61 @@
+# codewatch as a GitHub Action for other repositories: every analyzer at its pinned version over the checked-out
+# repository, locally on the runner (nothing uploaded). In a workflow, after actions/checkout:
+#
+#   - uses: shwan-ps5/codewatch@<commit sha>
+#     with:
+#       strict: "true"     # any open issue fails the job, not just bugs, vulnerabilities and blockers
+name: codewatch check
+description: Run codewatch's analyzers (Semgrep taint rules, ruff, bandit, ESLint, checkov, secrets...) over the repository
+inputs:
+  strict:
+    description: '"true" fails the job on any open issue; otherwise only bugs, vulnerabilities and blocker/critical issues fail it'
+    default: "false"
+  paths:
+    description: Files or folders to check (space-separated); empty checks every file in the repository
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+      with:
+        python-version: "3.14"
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+      with:
+        node-version: "22"
+    - name: Restore codewatch's analyzers
+      id: tools
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: |
+          ${{ github.action_path }}/venv
+          ${{ github.action_path }}/tools/semgrep-venv
+          ${{ github.action_path }}/tools/checkov-venv
+          ${{ github.action_path }}/tools/node_modules
+        key: codewatch-action-${{ runner.os }}-${{ github.action_ref }}
+    - name: Install codewatch and its analyzers (pinned versions and hashes)
+      if: steps.tools.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        python -m venv venv
+        venv/bin/pip install -q -e .
+        venv/bin/pip install -q --require-hashes -r tools/analyzers.lock
+        for t in semgrep checkov; do
+          python -m venv "tools/$t-venv"
+          "tools/$t-venv/bin/pip" install -q --require-hashes -r "tools/$t.lock"
+        done
+        npm ci --prefix tools --no-audit --no-fund
+    - name: codewatch check
+      shell: bash
+      env:
+        CODEWATCH_STRICT: ${{ inputs.strict }}
+        CODEWATCH_PATHS: ${{ inputs.paths }}
+      run: |
+        args=()
+        [ "$CODEWATCH_STRICT" = "true" ] && args+=(--strict)
+        if [ -n "$CODEWATCH_PATHS" ]; then
+          read -ra paths <<< "$CODEWATCH_PATHS"
+          "$GITHUB_ACTION_PATH/venv/bin/codewatch" check --all-lines "${args[@]}" "${paths[@]}"
+        else
+          "$GITHUB_ACTION_PATH/venv/bin/codewatch" check --all "${args[@]}"
+        fi

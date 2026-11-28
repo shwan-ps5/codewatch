@@ -34,7 +34,7 @@ from .body_models import with_model_sources
 from .constant_branches import blank_dead_branches
 from .containers import track_slots
 from .drf_serializers import with_serializer_checks
-from .else_branches import split_else
+from .else_branches import rules_for_copies, split_else
 from .flask_resources import with_resource_sources
 from .inline_scripts import inline_scripts
 from .jinja_sandboxes import with_sandbox_sanitizers
@@ -203,7 +203,7 @@ class Semgrep(Analyzer):
         custom_rules = yaml.safe_load(ctx.custom_rules).get("rules", []) if ctx.custom_rules else []
         if not ctx.semgrep_config and not custom_rules:
             return Result()
-        custom_rules = self.project_rules(ctx, custom_rules)
+        custom_rules = self.project_rules(ctx, rules_for_copies(custom_rules))
         self.timeouts, self.first_found = set(), []
         with tempfile.TemporaryDirectory() as work:
             targets, originals = analysis_copies(ctx, ctx.files_with(self.extensions), Path(work) / "copies")

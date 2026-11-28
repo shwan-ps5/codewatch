@@ -2979,3 +2979,33 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    `test_fixes_only_review_mode_still_flags_are_listed_with_the_review_hotspots`,
    `test_notes_a_week_old_on_cases_still_missed_are_rechecked` (fails at 6 days), and the guard test with a
    recheck note.
+160. **An outside view, acted on** (2026-11-28, branch `outsider-review`). Asked how someone who cloned the
+   repository would improve it, the answer was eight points; the maintainer asked for all of them.
+   - Measurement first. Half the round-2 Python blind cases (40 back end, 10 front end), chosen before any scan by
+     `int(sha256(id), 16) // 3 % 2 == 0` (`benchmarks/blind-spent.json`), were run once from a pinned worktree of
+     76cc9e0: back end 11 of 40 found (28%), 3 still flagged; review 20 and 9. Front end 1 of 10; review 6 and 4.
+     Against 64% on the tuned suite. Three other runs were scanning at the same time, so a case or two may have
+     dropped out (see the smoke note below), nowhere near the gap. Only the totals were read. The other half and
+     every JS and PHP blind suite stay sealed. The README now leads with these untuned numbers ("How well it
+     works") and splits its benchmark table into not-tuned and tuned.
+   - Rules against ordinary Python: `else_branches.rules_for_copies` rewrites Python rules' if-statement `else:`
+     lines to the copies' `if E:` before they run (not for/while/try else). The path-traversal rule's two `if E:`
+     are written `else:` again; the built rules are identical to before (all 97 compared), and
+     `test_a_prefix_test_on_the_raw_path_does_not_clear_it` fails without the rewrite. Tests in
+     `tests/test_else_branches.py`. `devtools.py copy FILE.py` prints a file's analysis copy as a diff.
+     docs/writing-rules.md asks for a shared fix over one more exclusion.
+   - Pysa tried as a second comparison, not run on the pairs: 0.10 needs Pyrefly, its Flask models name
+     Werkzeug classes removed in 2.1, and on a toy Flask app with command and path flows it reported neither,
+     even with current source models added.
+   - Without the server: a Dockerfile (`check` by default, the server through docker-serve.sh, the database on
+     /data via the new CODEWATCH_DB setting), tested on a toy repository, as the caller's uid and as a server;
+     `action.yml` (a GitHub Action) and `.pre-commit-hooks.yaml` (runs the image), not yet tried from another
+     repository.
+   - CI: a smoke job re-scores 23 CVE pairs (`benchmarks/smoke.json`, found and quiet after their fix in the
+     nightly of 2026-11-28) on every push. The first local run lost GHSA-8whx under load and found it again alone,
+     so `smoke.py` re-scores a failing case alone before calling it a regression.
+   - `benchmarks/rule_trust.py` writes docs/rule-trust.md: per rule, CVE pairs found, fixed code still flagged
+     and findings on 29 public clean apps (`benchmarks/clean-apps.json`, all tuned on, so it shows regressions,
+     not precision). Python open-redirect has 33 findings in 3 of them.
+   - CONTRIBUTING.md, docs/architecture.md, docs/benchmarks.md. GitHub's default branch is now `detection-gaps`.
+     README scope: Python is the main product; JS/TS and PHP are earlier-stage.

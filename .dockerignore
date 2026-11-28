@@ -1,0 +1,11 @@
+.git
+venv
+tools/node_modules
+tools/semgrep-venv
+tools/checkov-venv
+db.sqlite3
+*.egg-info
+**/__pycache__
+benchmarks/results
+coverage.xml
+.coverage

@@ -47,3 +47,18 @@ jobs:
         run: venv/bin/ruff check .
       - name: codewatch check --all --strict
         run: venv/bin/codewatch check --all --strict
+
+  # A few dozen real CVE fix pairs (benchmarks/smoke.json), re-scored on every push and pull request: a change that
+  # loses one of these detections, or flags its fixed code, fails here instead of in the nightly run. The full
+  # benchmark (every suite, about 50 apps) still runs nightly on the maintainer's machine.
+  smoke:
+    name: CVE pairs smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Re-score the smoke CVE pairs
+        run: venv/bin/python benchmarks/smoke.py --workers 3
