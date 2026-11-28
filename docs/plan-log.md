@@ -2963,4 +2963,7 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    unread. Rejections kept: Lookyloo and Flowintel (an allowlist or configured endpoint added as a new setting),
    Roundcube (mail content, no request flow), pydantic-deepagents (both ids: a release commit of five PRs),
    JSONSchema2PoPo2, detoxify, hcipy, leo-editor and HyperSpy (libraries or desktop tools), bagel, Wazuh-MCP-Server
-   and mcp-video-analyzer (fixes over the size limit).
+   and mcp-video-analyzer (fixes over the size limit). Then 2026-11-28 new-3, which arrived during CI (8 read, none
+   accepted): HyperSpy and Chamilo (library code), Webmin (Perl, operator input), NukeViet (existing checks made
+   stricter), Seo-Panel (an unrelated SQL fix in the same commit), zipline (stored data), baserCMS and super-forms
+   (fixes far over the limit).
