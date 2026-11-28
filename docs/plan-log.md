@@ -2951,3 +2951,7 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    and without (3); controls: the fix's realpath check, a pathlib resolve, a plain membership test, a redirect's
    prefix test). Expected tonight: Python 69 to 70 found; check other rules' found and still-flagged counts and
    the apps for (2).
+157. **Nightly 2026-11-28 read** (commit 78d792e). Steps 154 and 156 held: SecurityEval Copilot back to 33 (verdict) and
+   49 (review); Python 70 of 109 found (64%; Bazarr at line 79, quiet at its fix), still flagged 10, review 74 and 21.
+   swingmusic gains 148 and 152 on its vulnerable side in review mode, as the case run said. No other suite moved
+   and no app finding came or went, so step 156's `or` change cost nothing. `main` fast-forwarded to this commit.
