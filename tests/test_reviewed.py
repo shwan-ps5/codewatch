@@ -176,7 +176,8 @@ def test_guard_takes_gap_notes_of_the_known_tasks_only(tmp_path):
     notes = tmp_path / "benchmarks" / "gap-notes-2026-11-25-1.json"
     notes.write_text(json.dumps({"status": "research only", "notes": [
         {"id": "GHSA-open", "suite": "cve-pairs-python", "task": "still-flagged"},
-        {"id": "GHSA-two", "suite": "cve-pairs-python", "task": "check-quotes"}]}))
+        {"id": "GHSA-two", "suite": "cve-pairs-python", "task": "check-quotes"},
+        {"id": "GHSA-two", "suite": "cve-pairs-python", "task": "recheck"}]}))
     git("add", "-A")
     git("commit", "-qm", "notes")
     assert reviewed.guard("HEAD~1", repo=tmp_path) == []

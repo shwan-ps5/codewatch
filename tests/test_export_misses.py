@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location("export_misses",
@@ -79,3 +80,42 @@ def test_python_notes_of_cases_still_missed_get_their_quotes_checked(tmp_path):
 
     rows = export_misses.rows(nightly, benchmarks)
     assert [(r[0], r[3], r[8]) for r in rows] == [("missed", "K", ""), ("check-quotes", "M", "gap-notes-2026-11-20-3.json")]
+
+
+def test_fixes_only_review_mode_still_flags_are_listed_with_the_review_hotspots(tmp_path):
+    """PLAN.md step 159: 11 Python fixes were still flagged in review mode only (hotspots), with no note."""
+    benchmarks, nightly = tmp_path / "benchmarks", tmp_path / "2026-11-28"
+    write_suites(benchmarks, nightly, {"cve-pairs-python": {"V": (True, ["x@1"]), "W": (True, []), "Z": (True, [])}})
+    path = nightly / "results" / "cve-pairs-python.json"
+    data = json.loads(path.read_text())
+    data["review"] = {"cases": [
+        {"id": "V", "detected": True, "still_flagged": True, "still_by": ["x@1", "y@2"]},
+        {"id": "W", "detected": True, "still_flagged": True, "still_by": ["bandit:B608:hardcoded_sql_expressions@5"]},
+        {"id": "Z", "detected": True, "still_flagged": False, "still_by": []}]}
+    path.write_text(json.dumps(data))
+
+    rows = export_misses.rows(nightly, benchmarks)
+    assert [(r[0], r[3], r[8]) for r in rows] == [
+        ("still-flagged", "V", "x@1"), ("still-flagged", "W", "review: bandit:B608:hardcoded_sql_expressions@5")]
+
+
+def test_notes_a_week_old_on_cases_still_missed_are_rechecked(tmp_path):
+    """PLAN.md step 159: once a missed case's quotes are checked, its newest note is rechecked against the rules
+    after RECHECK_DAYS; a newer recheck or check-quotes note starts the wait again. Files sort by their number."""
+    benchmarks, nightly = tmp_path / "benchmarks", tmp_path / "2026-11-30"
+    write_suites(benchmarks, nightly, {"cve-pairs-python": {"A": (False, []), "B": (False, []), "C": (False, []),
+                                                            "D": (True, [])},
+                                       "cve-pairs-php": {"P": (False, [])}})
+    (benchmarks / "gap-notes-2026-11-20-9.json").write_text(json.dumps({"notes": [
+        {"id": "A"}, {"id": "B"}, {"id": "C"}, {"id": "D"}, {"id": "P"}]}))
+    (benchmarks / "gap-notes-2026-11-21-10.json").write_text(json.dumps({"notes": [
+        {"id": i, "task": "check-quotes"} for i in "ABCD"]}))
+    (benchmarks / "gap-notes-2026-11-21-2.json").write_text(json.dumps({"notes": [{"id": "A", "task": "check-quotes"}]}))
+    (benchmarks / "gap-notes-2026-11-26-1.json").write_text(json.dumps({"notes": [{"id": "B", "task": "recheck"}]}))
+
+    rows = export_misses.rows(nightly, benchmarks)
+    assert [(r[0], r[3], r[8]) for r in rows] == [("recheck", "A", "gap-notes-2026-11-21-10.json"),
+                                                  ("recheck", "C", "gap-notes-2026-11-21-10.json")]
+    six_days = tmp_path / "2026-11-27"
+    shutil.copytree(nightly, six_days)
+    assert export_misses.rows(six_days, benchmarks) == []

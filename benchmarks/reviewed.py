@@ -171,7 +171,7 @@ ALLOWED = re.compile(r"^(benchmarks/cve-candidates-[A-Za-z0-9._-]+\.(tsv|json)|b
 IDENTITY = "Shwan <344055753+shwan-ps5@users.noreply.github.com>"
 WITHHELD = "accepted; reason withheld so the case stays blind"
 UNREVIEWED = "research only"
-GAP_TASKS = ("missed", "still-flagged", "check-quotes")  # AGENTS.md section 9; tools/export_misses.py
+GAP_TASKS = ("missed", "still-flagged", "check-quotes", "recheck")  # AGENTS.md section 9; tools/export_misses.py
 # A review session's mark on a file it read: "reviewed DATE (PLAN.md step N)..." or "read DATE (PLAN.md step N)...",
 # or the early batches' "reviewed 2026-11-03 (...)", from before steps were numbered in statuses.
 REVIEWED_RE = re.compile(r"\(PLAN\.md step \d+\)|\breviewed 20\d\d-\d\d-\d\d\b")

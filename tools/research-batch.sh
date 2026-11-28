@@ -115,7 +115,7 @@ if [ "$KIND" = gaps ]; then
     misses=$(python3 -I tools/export_misses.py --out "$HOME/codewatch-research/gaps/misses.tsv") \
         || { say "can't list the gap notes' work"; exit 1; }
     if [ "$misses" = 0 ]; then
-        say "no gap-note work left (missed, still-flagged or quotes to check); skipping"
+        say "no gap-note work left (missed, still-flagged, quotes to check or notes to recheck); skipping"
         exit 0
     fi
     say "$misses rows of gap-note work"

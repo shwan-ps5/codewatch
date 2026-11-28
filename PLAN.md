@@ -133,7 +133,9 @@ by about one case a day. JavaScript and PHP rule work waits until then; their ga
 1. The 39 Python misses (Checkmk found since step 136, confirmed by the nightly of 2026-11-25 with no new app findings), each with a gap note: the small server-side sources, sinks and checks first (steps 126,
    128), then values through several functions and project checks (42 D, E). From step 141 the gap runner also
    checks those notes' quotes (check-quotes) and explains the 10 fixes still flagged (still-flagged notes, with a
-   safe look-alike probe): use both before writing a rule. Step 144 won Langflow GHSA-v798 (compile() alone no longer a sink; to
+   safe look-alike probe): use both before writing a rule. From step 159 it also notes the 11 fixes only review
+   mode still flags, and rechecks a still-missed case's notes against the current rules a week after the newest
+   (first on 2026-12-03, 50 cases): a recheck saying `still_holds: no` names what stops the finding now. Step 144 won Langflow GHSA-v798 (compile() alone no longer a sink; to
    confirm in the nightly) and sorted the other found-probe cases by what each needs (none a small rule; roxy-wi's
    double-quoted `shlex.quote` and pgAdmin's SQL templates are the nearest). Step 146: for still-flagged fixes, path helpers that resolve and
    test containment (step 150: archivy and Agent Zero quiet at their fixes, confirmed 2026-11-27; swingmusic

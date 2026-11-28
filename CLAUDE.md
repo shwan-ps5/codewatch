@@ -38,8 +38,9 @@ real name, and never add one to commit messages, files or pull requests.
   JSON status must stop starting with "research only".
 - A second runner (`CODEWATCH_RESEARCH_KIND=gaps`, its own clone and timer at half past the hour) writes gap notes
   (AGENTS.md section 9): for each open CVE-pair case the last nightly missed, its source, sink, what's between and
-  a probe; for each Python fix still flagged, why the fix's check isn't taken; and a check of earlier Python notes'
-  quotes against the code. They come to the `research-gaps` branch and the pull request "Gap notes waiting to be read";
+  a probe; for each Python fix still flagged (review mode's hotspots too), why the fix's check isn't taken; a check
+  of earlier Python notes' quotes against the code; and, a week after a still-missed case's newest note, a recheck
+  of that note against the rules as they are now. They come to the `research-gaps` branch and the pull request "Gap notes waiting to be read";
   `reviewed.py pending --gaps` lists them. Treat a note as a lead and check its quotes against the diff before
   writing a rule from it; mark the file read (status "read DATE (PLAN.md step N)") and merge as above.
 - Branches. `detection-gaps` is where all work lands and what the nightly measures. `research` and `research-gaps`

@@ -599,7 +599,13 @@ The `task` column says what to write:
 - `missed`: codewatch doesn't find the case before its fix. Write a gap note as below ("What to write for each
   case").
 - `still-flagged`: codewatch still flags the case at its fix commit, i.e. a false alarm on fixed code. `detail` is
-  what flags it (`rule@line`). Write a still-flagged note (below).
+  what flags it (`rule@line`). Write a still-flagged note (below). A `detail` that starts with `review: ` is a
+  hotspot that only review mode reports (often a Semgrep registry or Bandit rule, such as
+  `semgrep:python.flask.security...` or `bandit:B608...`): note it the same way, saying in `fix_check` whether the
+  fix's check covers the flagged line.
+- `recheck`: an earlier note on a case codewatch still misses, a week old or more; `detail` is the case's newest
+  note's file. The rules have changed since it was written, so its explanation may no longer hold. Write a recheck
+  note (below). Never edit the earlier file.
 - `check-quotes`: an earlier gap note on a case codewatch still misses; `detail` is that note's file. Check its
   quotes and write a check-quotes note (below). Never edit the earlier file.
 
@@ -669,6 +675,21 @@ the files at the fix's parent.
 - `probe`: `ok` when it has the source and sink of the case in the same shape, or `wrong: ` and a corrected probe.
 - `confidence`: `sure` when every field could be checked against the code, `unsure` otherwise (say which not).
 
+**Recheck notes** (task `recheck`). Open the note named in `detail` (and any earlier note on the same `id`), and
+read the rules it relies on as they are now: `catalog/codewatch/rules/` (for Python, `python-web.yml`: the rule for
+the case's weakness, its sources, sanitizers and sinks, and the shared anchors they use) and `docs/plan-log.md`'s
+steps since the note's date that name the case or its rule. Then say whether the note still explains the miss.
+- `task`: `recheck`; `checks`: the file name from `detail`.
+- `still_holds`: `yes` when the source, sink or check the note blames is still missing or still taken as a
+  sanitizer in the rules as they are now; `no` when a later rule covers it (name the rule part, or the plan-log
+  step).
+- `explanation`: when `still_holds` is `no`, what else now stops the finding, read from the rules: a sanitizer that
+  clears the value (quote its pattern), a step the flow needs that no propagator gives, a project function it
+  crosses. When `yes`, one line saying which part of the rules is still missing.
+- `category`: the gap-note category that fits now (it may be the old one).
+- `probe`: `ok` when the old probe still has the case's shape, or a corrected probe.
+- `confidence`: `sure` when you found the rule parts you name, `unsure` otherwise (say what you couldn't find).
+
 **Output.** One file per run, `benchmarks/gap-notes-YYYY-MM-DD-N.json` (N counting up from 1 per day), holding
 every note of the run, whatever its task (`task` may be left out on a missed-case note):
 
@@ -683,14 +704,14 @@ every note of the run, whatever its task (`task` may be left out on a missed-cas
             "probe": "from flask import request\n...", "confidence": "sure"}]}
 ```
 
-A still-flagged note and a check-quotes note sit in the same `notes` list, for example
+A still-flagged note, a check-quotes note and a recheck note sit in the same `notes` list, for example
 `{"id": "GHSA-...", "suite": "cve-pairs-python", "task": "still-flagged", "flagged": "codewatch:codewatch.python.web.path-traversal@88", ...}`
 and `{"id": "GHSA-...", "suite": "cve-pairs-python", "task": "check-quotes", "checks": "gap-notes-2026-11-20-3.json", "source": "ok", ...}`.
 
 `id` and `suite` exactly as in `misses.tsv`; the push check refuses a note about any case that isn't an open
-CVE-pair case in that suite, or with a task other than the three above. Commit with:
+CVE-pair case in that suite, or with a task other than the four above. Commit with:
 
 ```
 git add benchmarks/gap-notes-YYYY-MM-DD-N.json
-git commit -m "Gap notes: N cases (S source, K sink, ...; F still-flagged, Q quotes checked)"
+git commit -m "Gap notes: N cases (S source, K sink, ...; F still-flagged, Q quotes checked, R rechecked)"
 ```

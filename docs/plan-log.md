@@ -2967,3 +2967,15 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    accepted): HyperSpy and Chamilo (library code), Webmin (Perl, operator input), NukeViet (existing checks made
    stricter), Seo-Panel (an unrelated SQL fix in the same commit), zipline (stored data), baserCMS and super-forms
    (fixes far over the limit).
+159. **More work for the gap runner** (2026-11-28). It had skipped 21 of 22 runs a night since 2026-11-26: every
+   open miss, every Python fix still flagged in verdict mode and every quote check had a note. `export_misses.py`
+   now also lists (1) Python fixes only review mode still flags, as `still-flagged` with a detail starting
+   `review: ` (11 today: 4 codewatch path-traversal hotspots, the rest Semgrep registry and Bandit rules), and
+   (2) a new task, `recheck`, for a Python case still missed whose quotes were checked, once its newest note is
+   7 days old (RECHECK_DAYS): the agent reads the current rules and the plan-log steps since, and says whether the
+   note still explains the miss (`still_holds`) and, if not, what stops the finding now. 50 cases come due on
+   2026-12-03, then each week after its last note. Note files now sort by date and number (-10 after -9).
+   AGENTS.md section 9 describes both; `reviewed.py guard` takes `recheck`. Tests:
+   `test_fixes_only_review_mode_still_flags_are_listed_with_the_review_hotspots`,
+   `test_notes_a_week_old_on_cases_still_missed_are_rechecked` (fails at 6 days), and the guard test with a
+   recheck note.
