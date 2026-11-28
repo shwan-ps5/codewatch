@@ -46,7 +46,7 @@ before the fix, still flagged = flagged after it (the false-alarm measure).
 | cve-pairs-python-nonhttp (15) | 4, 2 | 6, 3 |
 | cve-pairs-javascript (103) | 22, 9 | 46, 32 |
 | cve-pairs-javascript-nonhttp (38) | 1, 0 | 10, 8 |
-| cve-pairs-php (341) | 75, 27 | 83, 36 |
+| cve-pairs-php (341; 342 after step 158) | 75, 27 | 83, 36 |
 
 Apps: 51 in the nightly (learning sets, deliberately vulnerable apps, ordinary apps, the maintainer's own projects;
 listed in `~/.config/codewatch/nightly-apps.txt`, outside the repository). Every finding there has been read;

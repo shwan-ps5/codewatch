@@ -2955,3 +2955,15 @@ scans failed with `io_uring_queue_init: Cannot allocate memory`; `Analyzer.exec`
    49 (review); Python 70 of 109 found (64%; Bazarr at line 79, quiet at its fix), still flagged 10, review 74 and 21.
    swingmusic gains 148 and 152 on its vulnerable side in review mode, as the case run said. No other suite moved
    and no app finding came or went, so step 156's `or` change cost nothing. `main` fast-forwarded to this commit.
+158. **Research batches 2026-11-27 new-5 to new-11 and 2026-11-28 new, new-2 reviewed** (15 read, 2 accepted:
+   1 open, 1 blind). Accepted: Otter Blocks CVE-2026-138152 (cve-pairs-php; fix 4654cc1 read: one source file, a
+   form-editor REST payload's Mailchimp API key whose data-center part became the request host, now held to
+   `^[a-z0-9]+$`, plus wp_safe_remote_*). Its scope is widened at review to inc/server, where the payload is read
+   (in the candidate file too). The blind accept (JetFormBuilder GHSA-h3qq) went into cve-pairs-blind-php-36
+   unread. Rejections kept: Lookyloo and Flowintel (an allowlist or configured endpoint added as a new setting),
+   Roundcube (mail content, no request flow), pydantic-deepagents (both ids: a release commit of five PRs),
+   JSONSchema2PoPo2, detoxify, hcipy, leo-editor and HyperSpy (libraries or desktop tools), bagel, Wazuh-MCP-Server
+   and mcp-video-analyzer (fixes over the size limit). Then 2026-11-28 new-3, which arrived during CI (8 read, none
+   accepted): HyperSpy and Chamilo (library code), Webmin (Perl, operator input), NukeViet (existing checks made
+   stricter), Seo-Panel (an unrelated SQL fix in the same commit), zipline (stored data), baserCMS and super-forms
+   (fixes far over the limit).
