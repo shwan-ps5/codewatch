@@ -96,43 +96,62 @@ def verdicts(results, suite, mode="verdict"):
     return json.loads(path.read_text()).get(mode, {}).get("cases", [])
 
 
+def still_flagged(case, review):
+    """The detail of a still-flagged row for a case (verdict mode first, then review mode's hotspots), or None."""
+    if case.get("still_flagged"):
+        return ",".join(case.get("still_by", []))
+    if review and review.get("still_flagged"):
+        return REVIEW + ",".join(review.get("still_by", []))
+    return None
+
+
+def missed_note_work(case_id, done, newest):
+    """[(task, detail)] for a Python case still missed that has a note: its quotes checked, then a recheck once the
+    newest note is RECHECK_DAYS old."""
+    if (CHECK_QUOTES, case_id) not in done:
+        return [(CHECK_QUOTES, done[(MISSED, case_id)])]
+    if newest and (newest[1] or 0) >= RECHECK_DAYS:
+        return [(RECHECK, newest[0])]
+    return []
+
+
 def work(case, language, done, review=None, newest=None):
     """[(task, detail)] for one case of the nightly. review: the case in review mode, or None. newest: (file name
     of its newest note explaining the miss, days since), or None."""
     case_id, found = case["id"], case.get("detected")
-    todo = []
-    if not found and (MISSED, case_id) not in done:
-        todo.append((MISSED, ""))
-    if language == "python":
-        if (STILL_FLAGGED, case_id) not in done:
-            if case.get("still_flagged"):
-                todo.append((STILL_FLAGGED, ",".join(case.get("still_by", []))))
-            elif review and review.get("still_flagged"):
-                todo.append((STILL_FLAGGED, REVIEW + ",".join(review.get("still_by", []))))
-        if not found and (MISSED, case_id) in done and (CHECK_QUOTES, case_id) not in done:
-            todo.append((CHECK_QUOTES, done[(MISSED, case_id)]))
-        elif not found and (CHECK_QUOTES, case_id) in done and newest and (newest[1] or 0) >= RECHECK_DAYS:
-            todo.append((RECHECK, newest[0]))
+    todo = [] if found or (MISSED, case_id) in done else [(MISSED, "")]
+    if language != "python":
+        return todo
+    detail = None if (STILL_FLAGGED, case_id) in done else still_flagged(case, review)
+    if detail is not None:
+        todo.append((STILL_FLAGGED, detail))
+    if not found and (MISSED, case_id) in done:
+        todo += missed_note_work(case_id, done, newest)
     return todo
 
 
-def rows(nightly, benchmarks):
-    suites = open_suites(benchmarks)
-    done, newest = noted(benchmarks), newest_notes(benchmarks)
+def suite_rows(nightly, name, suite, notes):
+    """The rows of one suite's cases. notes: (done, newest) as noted() and newest_notes() give them."""
+    done, newest = notes
+    language = suite.get("language", "")
+    entries = {c["id"]: c for c in suite.get("cases", []) if isinstance(c, dict)}
+    review = {c.get("id"): c for c in verdicts(nightly / "results", name, "review")}
     found = []
-    for name, suite in suites.items():
-        language = suite.get("language", "")
-        entries = {c["id"]: c for c in suite.get("cases", []) if isinstance(c, dict)}
-        review = {c.get("id"): c for c in verdicts(nightly / "results", name, "review")}
-        for case in verdicts(nightly / "results", name):
-            entry = entries.get(case.get("id"))
-            if not entry:
-                continue
-            note = newest.get(case["id"])
-            for task, detail in work(case, language, done, review.get(case["id"]),
-                                     note and (note, days_between(note, nightly.name))):
-                found.append((task, name, language, case["id"], entry.get("repo", ""), entry.get("fix", ""),
-                              ",".join(map(str, entry.get("cwe", []))), ",".join(entry.get("scope", [])), detail))
+    for case in verdicts(nightly / "results", name):
+        entry = entries.get(case.get("id"))
+        if not entry:
+            continue
+        note = newest.get(case["id"])
+        for task, detail in work(case, language, done, review.get(case["id"]),
+                                 note and (note, days_between(note, nightly.name))):
+            found.append((task, name, language, case["id"], entry.get("repo", ""), entry.get("fix", ""),
+                          ",".join(map(str, entry.get("cwe", []))), ",".join(entry.get("scope", [])), detail))
+    return found
+
+
+def rows(nightly, benchmarks):
+    notes = (noted(benchmarks), newest_notes(benchmarks))
+    found = [row for name, suite in open_suites(benchmarks).items() for row in suite_rows(nightly, name, suite, notes)]
 
     def rank(row):
         language = row[2]
