@@ -1,0 +1,190 @@
+{
+  "batch": "gap-notes-2026-11-28-1",
+  "status": "research only: not read yet",
+  "method": "The whole of ~/codewatch-research/gaps/misses.tsv: 11 rows, all still-flagged and all in Python (10 cve-pairs-python, 1 cve-pairs-python-nonhttp), so all 11 were read and none skipped. For each case I read the fix commit's message and diff (gh api repos/O/R/commits/SHA) and the changed files at the fix commit (gh api contents?ref=SHA, raw), plus the parent of psiturk/experiment.py and mlflow/server/auth/__init__.py to see the vulnerable side, the postgraas_server management_resources.py and roxy-wi common/class_models helpers, the SQLBot datasource API and model files, and the mcp-for-stata mcp_servers.py tool layer, all at the fix commit; 1.5-2 s between API calls, no scans. Notes are still-flagged notes (no recheck, check-quotes or missed tasks in this row set). 0 rows of misses.tsv remain unread.",
+  "notes": [
+    {
+      "id": "GHSA-9mq4-9556-6qxq",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        94,
+        1336
+      ],
+      "flagged": "review: semgrep:python.flask.security.audit.render-template-string.render-template-string@384,semgrep:python.flask.security.audit.render-template-string.render-template-string@411",
+      "flagged_code": "psiturk/experiment.py:384 return render_template_string( (advertisement, rendering ad_string read from templates/ad.html with mode=mode at :386) and :411 return render_template_string( (give_consent, consent_string read from templates/consent.html with mode=mode at :413), at the fix commit",
+      "source": "psiturk/experiment.py:328 mode = request.args['mode'] in advertisement (route /ad) and :407 the same in give_consent (route /consent), Flask query parameters",
+      "fix_check": "The fix removes the request value from the template source: insert_mode() at :736-746 now appends the literal '&mode={{ mode }}' (:745) instead of '&mode=' + mode, and the two render_template_string calls pass mode=mode as an autoescaped context variable (:386, :413). There is no check on the flagged line itself; what changed is that the template string (ad_string/consent_string) is a static file read at :381-382 and :408-409, while the request value is only a keyword argument. That keyword-argument form is not a sanitizer codewatch or the audit rule recognises, so the render_template_string call still matches",
+      "category": "check-unknown",
+      "probe": "from flask import Flask, request, render_template_string\n\napp = Flask(__name__)\n\n@app.route(\"/ad\")\ndef ad():\n    mode = request.args[\"mode\"]\n    page = open(\"templates/ad.html\").read()\n    page = page.replace(\"workerId={{ workerid }}\", \"workerId={{ workerid }}&mode={{ mode }}\")\n    return render_template_string(page, mode=mode)\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-vwhf-3v6x-wff8",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        79
+      ],
+      "flagged": "review: semgrep:python.flask.security.audit.xss.make-response-with-unknown-content.make-response-with-unknown-content@763,semgrep:python.flask.security.audit.xss.make-response-with-unknown-content.make-response-with-unknown-content@776",
+      "flagged_code": "mlflow/server/auth/__init__.py:763 return make_response({\"user\": user.to_json()}) in create_user and :776 the same in get_user, at the fix commit",
+      "source": "mlflow/server/auth/__init__.py:746 content_type = request.headers.get('Content-Type') is the header the advisory's reflected error used at the parent's :765; the flagged responses themselves take :762 user = store.create_user(username, password) / :775 user = store.get_user(username), a stored user object",
+      "fix_check": "The fix replaces the parent's :765 make_response(f\"Invalid content type: '{content_type}'\", 400) with a constant message built at :765-768 and returned at :769, and adds content-type validation in mlflow/server/validation.py; it does not touch the flagged :763 and :776 dict responses, which Flask serialises as application/json. No check lies between the request and these two lines because no request data reaches them",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-vghm-8cjp-hjw6",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        89
+      ],
+      "flagged": "review: semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query@38,review: semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query@43,review: semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query@52,review: semgrep:python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query@57",
+      "flagged_code": "postgraas_server/backends/postgres_cluster/postgres_cluster_driver.py:38 cur.execute(SQL(\"CREATE USER {} WITH PASSWORD %s;\").format(Identifier(connection_dict['db_username']),), (connection_dict['db_pwd'],)), :43 cur.execute(SQL(\"GRANT {} TO {};\").format(Identifier(...), Identifier(...))), :52 cur.execute(SQL(\"CREATE DATABASE {} OWNER {};\").format(Identifier(...), Identifier(...))) and :57 cur.execute(SQL(\"DROP ROLE {};\").format(Identifier(...))), at the fix commit",
+      "source": "postgraas_server/management_resources.py:130-133 parser.add_argument('db_name'/'db_username'/'db_pwd') parsed by reqparse from the POST body of DBInstanceCollectionResource.post, put into db_credentials at :143-146 and passed to the backend's create at :178",
+      "fix_check": "The fix rewrites every statement with psycopg2.sql: check_db_or_user_exists parameterises its SELECTs at :23-25, and the four flagged calls format quoted identifiers with SQL(...).format(Identifier(...)) and bind the password with %s at :38-42, :43-46, :52-55 and :57-59. The mitigation is on the flagged path but in a form codewatch does not take as a SQL sanitizer",
+      "category": "check-unknown",
+      "probe": "import psycopg2\nfrom flask import request\nfrom psycopg2.sql import SQL, Identifier\n\ndef create(con, schema):\n    name = request.json[\"db_name\"]\n    pwd = request.json[\"db_pwd\"]\n    with con.cursor() as cur:\n        cur.execute(SQL(\"CREATE USER {} WITH PASSWORD %s;\").format(\n            Identifier(name),\n        ), (pwd,))\n        cur.execute(SQL(\"CREATE DATABASE {} OWNER {};\").format(\n            Identifier(schema), Identifier(name),\n        ))\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-hq38-64gm-3w2c",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        22
+      ],
+      "flagged": "review: codewatch:codewatch.python.web.path-traversal@417,review: codewatch:codewatch.python.web.path-traversal@418",
+      "flagged_code": "endpoints/lollms_apps.py:417 if app_path.exists(): and :418 shutil.rmtree(app_path), at the fix commit",
+      "source": "endpoints/lollms_apps.py:413-414 @router.post(\"/uninstall/{app_name}\") async def uninstall_app(app_name: str, auth: AuthRequest), a FastAPI path parameter",
+      "fix_check": "endpoints/lollms_apps.py:415 app_name=sanitize_path(app_name) before app_path = ...apps_zoo_path / app_name at :416, so the check lies between the route parameter and both flagged lines. sanitize_path is imported at :13 from lollms.security, a project/package helper that reduces the value to a safe path component; codewatch has no pattern for it",
+      "category": "check-unknown",
+      "probe": "from pathlib import Path\nimport shutil\n\nfrom fastapi import FastAPI\n\napp = FastAPI()\nBASE = Path(\"/srv/apps\")\n\ndef sanitize_path(name: str) -> str:\n    return name if name not in (\"\", \".\", \"..\") and \"/\" not in name else \"\"\n\n@app.post(\"/uninstall/{app_name}\")\nasync def uninstall_app(app_name: str):\n    app_name = sanitize_path(app_name)\n    app_path = BASE / app_name\n    if app_path.exists():\n        shutil.rmtree(app_path)\n    return {\"ok\": True}\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-33077",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        22
+      ],
+      "flagged": "review: codewatch:codewatch.python.web.path-traversal@253,review: codewatch:codewatch.python.web.path-traversal@303",
+      "flagged_code": "app/routes/config/routes.py:253 start_line, end_line, config_read = section_mod.get_section_from_config(cfg, section) and :303 with open(cfg, \"w\") as conf:, at the fix commit",
+      "source": "app/routes/config/routes.py:246-249 @bp.route('/section/haproxy/<server_ip>/<section>') def haproxy_section_show(server_ip: Union[IPvAnyAddress, DomainName], section) and :280-283 the same for /section/haproxy/<server_ip>/save, Flask path parameters; :287-288 config_file/oldcfg from request.json",
+      "fix_check": "The fix adds @validate() and the typed parameter Union[IPvAnyAddress, DomainName] at :248-250 and :282-284 (server_ip = str(server_ip) then builds cfg at :251/:286), makes generate_config_path call common.is_ip_or_dns at app/modules/config/common.py:45, and rejects '..' in config_file/oldcfg at :297-298. The typed pydantic conversion and the is_ip_or_dns helper sit between the request values and both flagged lines, but codewatch takes neither form as a path sanitizer",
+      "category": "check-unknown",
+      "probe": "from typing import Annotated, Union\n\nfrom flask import Flask\nfrom flask_pydantic import validate\nfrom pydantic import IPvAnyAddress, StringConstraints\n\napp = Flask(__name__)\nDomainName = Annotated[str, StringConstraints(pattern=r\"^[a-z0-9.-]+$\")]\n\n@app.route(\"/config/<server_ip>\")\n@validate()\ndef show(server_ip: Union[IPvAnyAddress, DomainName]):\n    path = f\"/etc/app/{server_ip}.conf\"\n    with open(path) as fh:\n        return fh.read()\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-33076",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        22
+      ],
+      "flagged": "review: codewatch:codewatch.python.web.path-traversal@253,review: codewatch:codewatch.python.web.path-traversal@303",
+      "flagged_code": "app/routes/config/routes.py:253 start_line, end_line, config_read = section_mod.get_section_from_config(cfg, section) and :303 with open(cfg, \"w\") as conf:, at the fix commit (the same lines as CVE-2026-33077; both CVEs share this fix commit)",
+      "source": "app/routes/config/routes.py:246-249 @bp.route('/section/haproxy/<server_ip>/<section>') def haproxy_section_show(server_ip: Union[IPvAnyAddress, DomainName], section) and :280-283 the same for /section/haproxy/<server_ip>/save, Flask path parameters; :287-288 config_file/oldcfg from request.json",
+      "fix_check": "The fix adds @validate() and the typed parameter Union[IPvAnyAddress, DomainName] at :248-250 and :282-284 (server_ip = str(server_ip) then builds cfg at :251/:286), makes generate_config_path call common.is_ip_or_dns at app/modules/config/common.py:45, and rejects '..' in config_file/oldcfg at :297-298. The typed pydantic conversion and the is_ip_or_dns helper sit between the request values and both flagged lines, but codewatch takes neither form as a path sanitizer",
+      "category": "check-unknown",
+      "probe": "from typing import Annotated, Union\n\nfrom flask import Flask\nfrom flask_pydantic import validate\nfrom pydantic import IPvAnyAddress, StringConstraints\n\napp = Flask(__name__)\nDomainName = Annotated[str, StringConstraints(pattern=r\"^[a-z0-9.-]+$\")]\n\n@app.route(\"/config/<server_ip>\")\n@validate()\ndef show(server_ip: Union[IPvAnyAddress, DomainName]):\n    path = f\"/etc/app/{server_ip}.conf\"\n    with open(path) as fh:\n        return fh.read()\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-53556",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        89
+      ],
+      "flagged": "review: bandit:B608:hardcoded_sql_expressions@335,review: bandit:B608:hardcoded_sql_expressions@339,review: bandit:B608:hardcoded_sql_expressions@343,review: bandit:B608:hardcoded_sql_expressions@351,review: bandit:B608:hardcoded_sql_expressions@358,review: bandit:B608:hardcoded_sql_expressions@362,review: bandit:B608:hardcoded_sql_expressions@366,review: bandit:B608:hardcoded_sql_expressions@370",
+      "flagged_code": "backend/apps/datasource/crud/datasource.py:335 sql = f\"\"\"SELECT ... FROM `{table.table_name}` ...\"\"\" and the same shape for SQL Server :339, PostgreSQL :343, Oracle :351, ClickHouse :358, DM :362, Elasticsearch :366 and SQLite :370, at the fix commit",
+      "source": "backend/apps/datasource/api/datasource.py:226-232 @router.post('/previewData/{id}') async def preview_data(..., data: TableObj, ...): return preview(session, current_user, id, data), the request body; TableObj.table is a CoreTable (backend/apps/datasource/models/datasource.py:104-106) whose table_name was the request-supplied value at the parent",
+      "fix_check": "The fix adds backend/apps/datasource/crud/datasource.py:331 table = session.query(CoreTable).filter(CoreTable.id == data.table.id).first() and every f-string now interpolates table.table_name instead of data.table.table_name (the eight flagged lines). No check is added; the request value is replaced by the CoreTable row that the id selects, so the table name, the fields and the row filter now all come from the database at the fix. Bandit B608 still matches each f-string",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "CVE-2026-52835",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        22,
+        434
+      ],
+      "flagged": "review: codewatch:codewatch.python.web.path-traversal@3937,review: codewatch:codewatch.python.web.path-traversal@3944,review: codewatch:codewatch.python.web.path-traversal@4037",
+      "flagged_code": "plexpy/webserve.py:3937 database_path = shutil.copyfile(database_path, database_cache_path), :3944 with open(database_path, 'wb') as f: and :4037 with open(config_path, 'wb') as f:, at the fix commit",
+      "source": "plexpy/webserve.py:3902-3903 def import_database(self, app=None, database_file=None, database_path=None, ...) and :4006 def import_config(self, config_file=None, config_path=None, ...), CherryPy exposed methods whose multipart uploads (database_file/config_file) and full-path string parameters (database_path/config_path) arrive through the dispatcher; the docstring at :3909-3913 names both forms",
+      "fix_check": "The fix adds os.path.basename() at :3940 (database_file.filename) and :4033 (config_file.filename) before the joins, so the upload writes at :3944 and :4037 are reduced to a cache directory name; that check lies between the upload and those two lines. It does not cover :3937: the string-parameter branch at :3932-3937 still copies from the caller-named database_path (basename at :3933 only names the destination), so that line remains a request-reachable read the fix did not touch",
+      "category": "other-flow",
+      "probe": "",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-cbcoutinho-nextcloud-mcp-server-4a3857aabb74",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        79
+      ],
+      "flagged": "review: semgrep:python.django.security.injection.raw-html-format.raw-html-format@451,review: semgrep:python.django.security.injection.raw-html-format.raw-html-format@538",
+      "flagged_code": "nextcloud_mcp_server/auth/webhook_routes.py:451 content=f'<div class=\"warning\">Unknown preset: {html.escape(preset_id)}</div>' (enable_webhook_preset) and :538 the same in disable_webhook_preset, at the fix commit",
+      "source": "nextcloud_mcp_server/auth/webhook_routes.py:432 preset_id = request.path_params[\"preset_id\"] (enable_webhook_preset, route /app/webhooks/enable/{preset_id:path}) and :519 the same in disable_webhook_preset, Starlette path parameters",
+      "fix_check": "The fix wraps the value in html.escape() inside the f-string at the flagged :451 and :538 themselves (and the str(e) texts at :412, :502 and :593), so the escape sits between the path parameter and the HTMLResponse body. The semgrep raw-html-format audit rule still matches the f-string even though the interpolated value is escaped inline",
+      "category": "check-unknown",
+      "probe": "import html\n\nfrom starlette.applications import Starlette\nfrom starlette.requests import Request\nfrom starlette.responses import HTMLResponse\nfrom starlette.routing import Route\n\nasync def enable(request: Request) -> HTMLResponse:\n    preset_id = request.path_params[\"preset_id\"]\n    if preset_id not in (\"alpha\", \"beta\"):\n        return HTMLResponse(\n            content=f'<div class=\"warning\">Unknown preset: {html.escape(preset_id)}</div>',\n            status_code=404,\n        )\n    return HTMLResponse(\"<div>enabled</div>\")\n\napp = Starlette(routes=[\n    Route(\"/app/webhooks/enable/{preset_id:path}\", enable, methods=[\"POST\"]),\n])\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "FIX-vulnerability-lookup-vulnerability-lookup-378ccdf95882",
+      "suite": "cve-pairs-python",
+      "task": "still-flagged",
+      "cwe": [
+        79
+      ],
+      "flagged": "review: bandit:B704:markupsafe_markup_xss@354,review: bandit:B704:markupsafe_markup_xss@363,review: semgrep:python.flask.security.injection.raw-html-concat.raw-html-format@364",
+      "flagged_code": "website/web/views/home.py:354 message = Markup(f\"Nothing found in the database for {safe_vid}.\"), :363 link = Markup( and :364 f\" This vulnerability is referenced by <a href='/sightings?query={q}'>sightings</a>.\", at the fix commit",
+      "source": "website/web/views/home.py:316-319 @home_bp.route(\"/cve/<string:vulnerability_id>\") and @home_bp.route(\"/vuln/<string:vulnerability_id>\") def vulnerability_view(vulnerability_id: str), a Flask path parameter",
+      "fix_check": "The fix escapes at :352 safe_vid = escape(vulnerability_id) before it is interpolated at :354, and URL-encodes at :361 q = quote_plus(vulnerability_id) before the Markup anchor at :363-364; the redirect at :382 also uses safe_vid. Both sanitizers sit between the path parameter and the flagged lines. codewatch's XSS taint was quiet after quote/quote_plus were added as sanitizers, but bandit B704 flags every Markup() call by name and semgrep raw-html-format flags the f-string",
+      "category": "check-unknown",
+      "probe": "from urllib.parse import quote_plus\n\nfrom flask import Flask, flash\nfrom markupsafe import Markup, escape\n\napp = Flask(__name__)\n\n@app.route(\"/vuln/<string:vulnerability_id>\")\ndef view(vulnerability_id):\n    safe_vid = escape(vulnerability_id)\n    message = Markup(f\"Nothing found in the database for {safe_vid}.\")\n    q = quote_plus(vulnerability_id)\n    link = Markup(f\"<a href='/sightings?query={q}'>sightings</a>\")\n    flash(message + link, \"warning\")\n    return \"ok\"\n",
+      "confidence": "sure"
+    },
+    {
+      "id": "GHSA-4p62-hqp5-g644",
+      "suite": "cve-pairs-python-nonhttp",
+      "task": "still-flagged",
+      "cwe": [
+        77
+      ],
+      "flagged": "review: bandit:B602:subprocess_popen_with_shell_equals_true@241,review: bandit:B602:subprocess_popen_with_shell_equals_true@376",
+      "flagged_code": "src/stata_mcp/stata/stata_do/do.py:241 shell=True, inside result = subprocess.run(cmd, ...) in _execute_windows, and :376 shell=True, inside proc = subprocess.Popen(cmd, ...) in _execute_windows_with_monitors, at the fix commit",
+      "source": "src/stata_mcp/mcp_servers.py:139-145 def stata_do(dofile_path: str, log_file_name: str = None, ...), an MCP tool argument, passed as stata_executor.execute_dofile(dofile_path, log_file_name, is_replace_log, enable_smcl) at :269-270; src/stata_mcp/stata/stata_do/do.py:58-62 execute_dofile(..., log_file_name: str = None, ...) receives it",
+      "fix_check": "The fix adds LOG_FILE_NAME_PATTERN = re.compile(r\"^[A-Za-z0-9_.-]{1,128}$\") at do.py:33 and _validate_log_name() at :136-143 (fullmatch allowlist, plus a reject of '', '.' and '..' parts), called at :85 on log_name before the log path and the batch file are built. The allowlist lies between the tool argument and the two Windows shell calls, but bandit B602 flags every shell=True regardless of the argv list, and the calls themselves carry only the fixed cli and a temp batch path",
+      "category": "check-unknown",
+      "probe": "import re\nimport subprocess\nfrom pathlib import Path\n\nLOG_NAME = re.compile(r\"^[A-Za-z0-9_.-]{1,128}$\")\n\ndef run_tool(cli: str, workdir: str, log_file_name: str) -> None:\n    if not LOG_NAME.fullmatch(log_file_name):\n        raise ValueError(\"invalid log name\")\n    batch = Path(workdir) / f\"batch_{log_file_name}.do\"\n    batch.write_text(f'log using \"{log_file_name}.log\"\\n', encoding=\"utf-8\")\n    subprocess.run([cli, \"/e\", \"do\", batch.as_posix()], shell=True, check=True)\n",
+      "confidence": "sure"
+    }
+  ],
+  "usage": {
+    "session": "ses_dde4b8beaffeb1qjp4EFcaq02z",
+    "model": "deepseek-v4.1-flash:cloud",
+    "minutes": 6,
+    "turns": 63,
+    "tool_calls": 70,
+    "tool_errors": 0,
+    "chars_read": 379934,
+    "tokens": {
+      "input": 137651,
+      "cache_read": 6749056,
+      "output": 45458,
+      "reasoning": 0
+    },
+    "usd": 0.068
+  }
+}
